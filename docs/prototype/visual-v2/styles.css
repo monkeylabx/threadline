@@ -416,7 +416,7 @@ code { color: #315f82; font: 8px/1.4 ui-monospace, SFMono-Regular, Menlo, monosp
   .channel-title:hover { background: #f4f7fa; }
   .channel-title small { display: none; }
   .mobile-channel-chevron { width: 12px; display: block; color: #8796a5; transform: rotate(90deg); }
-  .workspace-pill, .top-actions > .icon-button:first-of-type { display: none; }
+  .workspace-pill, .notification-button { display: none; }
   .content-stage { grid-template-columns: 1fr; }
   .channel-dock { display: none; }
   .timeline { padding: 14px 11px 20px; }
@@ -482,8 +482,7 @@ code { color: #315f82; font: 8px/1.4 ui-monospace, SFMono-Regular, Menlo, monosp
 }
 
 @media (max-width: 480px) {
-  .top-actions > .icon-button { display: none; }
-  .top-actions > .avatar { width: 28px; height: 28px; }
+  .top-actions > .avatar { display: none; }
   .run-strip { grid-template-columns: 34px minmax(0, 1fr) 13px; min-height: 70px; }
   .run-icon { width: 34px; height: 34px; }
   .agent-actions { flex-wrap: wrap; }
