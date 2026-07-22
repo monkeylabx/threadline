@@ -57,6 +57,7 @@ document.querySelectorAll(".sheet-tabs").forEach((tabs) => {
 const conversationSheet = document.querySelector(".mobile-conversation-sheet");
 
 function openConversationSheet() {
+  if (!window.matchMedia("(max-width: 820px)").matches) return;
   root.classList.add("is-conversation-sheet-open");
   conversationSheet.setAttribute("aria-hidden", "false");
 }
