@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Threadline Native - 视觉方向 V2</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.4-3.4"></path></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 4h16v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"></path><path d="M4 14h4l2 3h4l2-3h4"></path></symbol>
+      <symbol id="i-checks" viewBox="0 0 24 24"><path d="m3 12 4 4L17 6M11 16l2 2 8-10"></path></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.4 4.1L17.5 9l-4.1 1.9L12 15l-1.4-4.1L6.5 9l4.1-1.9z"></path><path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"></path></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></symbol>
+      <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.4 18a2 2 0 0 1-2.8-2.8l8.5-8.5"></path></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"></path></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"></path></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"></path></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h5"></path></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"></path></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></symbol>
+    </svg>
+
+    <main class="desktop-window" data-view="channel">
+      <aside class="sidebar">
+        <div class="window-bar">
+          <span class="window-dot close"></span>
+          <span class="window-dot minimize"></span>
+          <span class="window-dot expand"></span>
+        </div>
+
+        <button class="org-switcher" title="切换组织">
+          <span class="org-logo">北</span>
+          <span><strong>北辰科技</strong><small>产品与工程</small></span>
+          <svg><use href="#i-chevron"></use></svg>
+        </button>
+
+        <button class="quick-search" title="搜索">
+          <svg><use href="#i-search"></use></svg>
+          <span>搜索</span>
+          <kbd>⌘K</kbd>
+        </button>
+
+        <nav class="main-nav" aria-label="主要导航">
+          <button><svg><use href="#i-inbox"></use></svg><span>收件箱</span><em>5</em></button>
+          <button class="is-active" data-view-target="channel"><svg><use href="#i-message"></use></svg><span>消息</span></button>
+          <button data-view-target="task"><svg><use href="#i-checks"></use></svg><span>任务</span><em>3</em></button>
+          <button data-view-target="approval"><svg><use href="#i-shield"></use></svg><span>审批</span><i></i></button>
+        </nav>
+
+        <section class="nav-section">
+          <div class="nav-heading"><span>频道</span><button title="新建频道">+</button></div>
+          <button class="channel-link is-selected"><span>#</span><strong>产品研发</strong><i class="agent-wake"></i></button>
+          <button class="channel-link"><span>#</span><strong>客户端体验</strong><em>4</em></button>
+          <button class="channel-link"><span>#</span><strong>安全与合规</strong></button>
+          <button class="channel-link"><span>#</span><strong>发布协调</strong></button>
+        </section>
+
+        <section class="nav-section direct-messages">
+          <div class="nav-heading"><span>私聊</span><button title="新建会话">+</button></div>
+          <button class="person-link"><span class="avatar avatar-meng">孟</span><strong>孟青</strong><i class="online"></i></button>
+          <button class="person-link"><span class="avatar avatar-zhou">周</span><strong>周一鸣</strong><i class="online"></i></button>
+          <button class="person-link"><span class="avatar avatar-atlas">A</span><strong>Atlas</strong><em>AI</em></button>
+        </section>
+
+        <button class="runtime-status" title="查看本地运行时">
+          <span class="runtime-glyph"><svg><use href="#i-terminal"></use></svg></span>
+          <span><strong>本地 Runtime</strong><small>Mac Studio · 18 ms</small></span>
+          <i></i>
+        </button>
+      </aside>
+
+      <section class="workbench">
+        <header class="topbar">
+          <button class="mobile-menu" title="打开导航"><span></span><span></span></button>
+          <div class="channel-title">
+            <span>#</span>
+            <div><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></div>
+          </div>
+          <div class="top-actions">
+            <button class="workspace-pill" title="当前工作区"><i></i><span>client-app</span><small>main</small></button>
+            <button class="icon-button" title="通知"><svg><use href="#i-bell"></use></svg></button>
+            <button class="icon-button" title="频道成员"><svg><use href="#i-users"></use></svg></button>
+            <span class="avatar avatar-user">林</span>
+          </div>
+        </header>
+
+        <section class="content-stage">
+          <div class="conversation">
+            <div class="timeline" id="timeline">
+              <div class="day-marker"><span>今天</span><time>7 月 22 日</time></div>
+
+              <article class="message">
+                <span class="avatar avatar-meng">孟</span>
+                <div class="message-copy">
+                  <header><strong>孟青</strong><time>10:18</time></header>
+                  <p>桌面端离线恢复还有一个问题：网络回来以后，旧的同步进程可能会覆盖新状态。这个不能只靠重试解决。</p>
+                </div>
+              </article>
+
+              <article class="message">
+                <span class="avatar avatar-zhou">周</span>
+                <div class="message-copy">
+                  <header><strong>周一鸣</strong><time>10:21</time></header>
+                  <p>建议把 Run Lease 和消息同步分开。Runtime 用 fencing token，消息继续使用 channel sequence。</p>
+                  <blockquote>旧 Worker 恢复后，任何落后的 token 都不能写入状态。</blockquote>
+                </div>
+              </article>
+
+              <article class="agent-message">
+                <span class="avatar avatar-atlas">A</span>
+                <div class="message-copy">
+                  <header><strong>Atlas</strong><span>工程 Agent</span><time>10:22</time></header>
+                  <p>这段讨论已经形成可执行决策。我可以建立一个仅引用上方两条消息的任务，不读取频道其他历史。</p>
+                  <div class="agent-actions">
+                    <button class="blue-button" data-view-target="task"><svg><use href="#i-spark"></use></svg>开始执行</button>
+                    <button class="plain-button"><svg><use href="#i-eye"></use></svg>查看上下文</button>
+                  </div>
+                </div>
+              </article>
+
+              <button class="run-strip" data-view-target="task">
+                <span class="run-icon"><svg><use href="#i-terminal"></use></svg></span>
+                <span class="run-copy">
+                  <span><strong>ENG-248</strong><em>执行中</em></span>
+                  <b>为本地 Runtime 增加 Lease 与 Fencing Token</b>
+                  <small>Atlas · 正在运行并发测试</small>
+                </span>
+                <span class="run-progress"><i></i></span>
+                <svg class="chevron"><use href="#i-chevron"></use></svg>
+              </button>
+
+              <article class="message">
+                <span class="avatar avatar-user">林</span>
+                <div class="message-copy">
+                  <header><strong>林嘉</strong><time>10:34</time></header>
+                  <p>先跑最小改动。涉及删除旧状态文件时必须让我审批，测试通过后再发 PR。</p>
+                  <button class="reaction">✓ <span>3</span></button>
+                </div>
+              </article>
+            </div>
+
+            <div class="composer-shell">
+              <div class="composer">
+                <textarea id="message-input" rows="2" placeholder="发消息到 #产品研发"></textarea>
+                <div class="composer-tools">
+                  <div>
+                    <button class="icon-button" title="添加附件"><svg><use href="#i-paperclip"></use></svg></button>
+                    <button class="mode-button"><span>消息</span><small>⌄</small></button>
+                  </div>
+                  <button class="send-button" id="send-message" title="发送消息"><svg><use href="#i-send"></use></svg></button>
+                </div>
+              </div>
+              <p>Agent 只读取被明确引用的消息与授权范围</p>
+            </div>
+          </div>
+
+          <aside class="activity-dock channel-dock">
+            <div class="dock-head"><span>活动</span><button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button></div>
+            <section class="quiet-section">
+              <div class="section-label"><span>正在进行</span><i>1</i></div>
+              <button class="quiet-task" data-view-target="task">
+                <span class="task-signal"><i></i></span>
+                <span><strong>ENG-248</strong><b>Runtime Lease</b><small>Atlas · 8 分钟</small></span>
+                <svg><use href="#i-chevron"></use></svg>
+              </button>
+            </section>
+            <section class="quiet-section">
+              <div class="section-label"><span>工作区</span></div>
+              <div class="workspace-line"><span><svg><use href="#i-folder"></use></svg></span><div><strong>client-app</strong><small>GitHub · main</small></div><i></i></div>
+              <p class="scope-note"><svg><use href="#i-shield"></use></svg>默认只读。写入和高影响动作需要单独授权。</p>
+            </section>
+            <section class="quiet-section">
+              <div class="section-label"><span>Agent</span><i>2</i></div>
+              <div class="agent-line"><span class="avatar avatar-small avatar-atlas">A</span><div><strong>Atlas</strong><small>工程执行</small></div><em class="active">运行中</em></div>
+              <div class="agent-line"><span class="avatar avatar-small avatar-sage">S</span><div><strong>Sage</strong><small>决策记录</small></div><em>待命</em></div>
+            </section>
+          </aside>
+
+          <aside class="activity-sheet task-sheet" aria-label="任务执行现场">
+            <header class="sheet-header">
+              <button class="icon-button close-sheet" title="关闭"><svg><use href="#i-close"></use></svg></button>
+              <div><span class="sheet-kicker"><i></i>Atlas 正在本机执行</span><h2>Runtime Lease 与 Fencing Token</h2><p>ENG-248 · Run 03</p></div>
+              <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
+            </header>
+
+            <div class="sheet-scroll">
+              <div class="run-overview">
+                <div><span>已运行</span><strong>08:42</strong></div>
+                <div><span>上下文</span><strong>2 条消息</strong></div>
+                <div><span>成本</span><strong>¥0.84</strong></div>
+              </div>
+
+              <div class="sheet-tabs" role="tablist"><button class="is-active">活动</button><button>改动 <i>3</i></button><button>产物 <i>1</i></button></div>
+
+              <div class="activity-flow">
+                <article class="flow-step done">
+                  <span class="flow-mark">✓</span>
+                  <div><header><strong>读取运行契约</strong><time>10:24</time></header><p>检查 `runner.go`、状态写入和当前并发假设。</p><button class="file-link"><svg><use href="#i-file"></use></svg>internal/runner/runner.go</button></div>
+                </article>
+                <article class="flow-step done">
+                  <span class="flow-mark">✓</span>
+                  <div><header><strong>拟定最小变更</strong><time>10:27</time></header><p>Lease 由 Runtime Service 持有，Agent Core 仅校验 token。</p></div>
+                </article>
+                <article class="flow-step current">
+                  <span class="flow-mark"><i></i></span>
+                  <div><header><strong>运行并发测试</strong><time>现在</time></header><p>验证旧 Worker 恢复后不能覆盖新的 Run Owner。</p><pre><code><b>$</b> go test ./internal/runner -run Fencing
+PASS  stale writer rejected
+RUN   lease recovery after crash</code></pre></div>
+                </article>
+                <article class="flow-step waiting">
+                  <span class="flow-mark"></span>
+                  <div><header><strong>生成变更摘要与 PR</strong></header><p>测试通过后继续；删除临时文件前需要你的批准。</p></div>
+                </article>
+              </div>
+
+              <button class="approval-prompt" data-view-target="approval">
+                <span><svg><use href="#i-shield"></use></svg></span>
+                <span><small>需要你的决定</small><strong>删除 2 个过期测试文件</strong><em>一次性授权 · 中风险</em></span>
+                <svg class="chevron"><use href="#i-chevron"></use></svg>
+              </button>
+
+              <section class="context-scope">
+                <div class="section-label"><span>本次上下文</span></div>
+                <div><svg><use href="#i-message"></use></svg><span><strong>2 条指定消息</strong><small>不包含频道完整历史</small></span></div>
+                <div><svg><use href="#i-folder"></use></svg><span><strong>agent-core / 只读</strong><small>写入仅限任务分支</small></span></div>
+              </section>
+            </div>
+
+            <footer class="sheet-footer"><button class="plain-button"><svg><use href="#i-pause"></use></svg>暂停</button><button class="blue-button">打开完整任务</button></footer>
+          </aside>
+
+          <aside class="activity-sheet approval-sheet" aria-label="权限审批">
+            <header class="sheet-header approval-head">
+              <button class="icon-button close-sheet" title="关闭"><svg><use href="#i-close"></use></svg></button>
+              <div><span class="sheet-kicker amber"><i></i>一次性授权</span><h2>删除过期状态文件</h2><p>Atlas · ENG-248 · Run 03</p></div>
+              <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
+            </header>
+
+            <div class="sheet-scroll">
+              <section class="approval-reason">
+                <span class="section-label">为什么需要</span>
+                <p>并发测试生成了两份失效的 lease fixture。删除后才能验证崩溃恢复路径，不影响源代码。</p>
+              </section>
+
+              <section class="permission-receipt">
+                <div><span>能力</span><code>workspace.file.delete</code></div>
+                <div><span>范围</span><strong>仅以下 2 个文件</strong></div>
+                <button class="target-file"><span><svg><use href="#i-file"></use></svg></span><div><strong>lease-old.json</strong><small>fixtures/ · 3.2 KB</small></div></button>
+                <button class="target-file"><span><svg><use href="#i-file"></use></svg></span><div><strong>owner-stale.json</strong><small>fixtures/ · 2.8 KB</small></div></button>
+                <div><span>有效期</span><strong>仅本次 · 10 分钟</strong></div>
+                <div><span>执行位置</span><strong>林嘉的 Mac Studio</strong></div>
+              </section>
+
+              <div class="policy-assurance"><svg><use href="#i-shield"></use></svg><p>授权不会扩大到其他目录，也不会允许 Atlas 再次删除文件。操作会写入组织审计日志。</p></div>
+
+              <label class="comment-field"><span>审批意见 <small>可选</small></span><textarea rows="3" placeholder="添加限制或说明"></textarea></label>
+            </div>
+
+            <footer class="sheet-footer approval-actions"><button class="reject-button">拒绝</button><button class="approve-button" id="approve-action"><svg><use href="#i-checks"></use></svg>批准一次</button></footer>
+          </aside>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

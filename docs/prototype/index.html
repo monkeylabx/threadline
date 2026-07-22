@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Threadline - 产品原型</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.4-3.4"></path></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></symbol>
+      <symbol id="i-checks" viewBox="0 0 24 24"><path d="m3 12 4 4L17 6M11 16l2 2 8-10"></path></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2"></rect><path d="M12 3v4M8 12h.01M16 12h.01M8 16h8"></path></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"></path></symbol>
+      <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.4 18a2 2 0 0 1-2.8-2.8l8.5-8.5"></path></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"></path></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m10 8 6 4-6 4z"></path></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h5"></path></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+    </svg>
+
+    <main class="app-shell">
+      <aside class="org-rail" aria-label="组织导航">
+        <a class="brand-mark" href="./overview.html" title="查看产品原型总览">R</a>
+        <nav class="rail-nav">
+          <button class="rail-button is-active" data-route="channel" title="消息"><svg><use href="#i-message"></use></svg></button>
+          <button class="rail-button" data-route="tasks" title="任务"><svg><use href="#i-checks"></use></svg><span class="rail-count">3</span></button>
+          <button class="rail-button" data-route="approvals" title="审批"><svg><use href="#i-shield"></use></svg><span class="rail-dot"></span></button>
+          <button class="rail-button" data-route="agents" title="Agent"><svg><use href="#i-bot"></use></svg></button>
+          <button class="rail-button" data-route="files" title="文件与产物"><svg><use href="#i-folder"></use></svg></button>
+        </nav>
+        <div class="rail-bottom">
+          <button class="rail-button" data-route="admin" title="管理后台"><svg><use href="#i-settings"></use></svg></button>
+          <button class="avatar avatar-user" title="林嘉">林</button>
+        </div>
+      </aside>
+
+      <aside class="channel-sidebar">
+        <button class="workspace-switcher" data-route="organization">
+          <div>
+            <strong>北辰科技</strong>
+            <span>产品与工程</span>
+          </div>
+          <span class="presence-dot"></span>
+        </button>
+        <button class="search-button" data-route="search"><svg><use href="#i-search"></use></svg><span>搜索消息、文件和任务</span><kbd>⌘ K</kbd></button>
+        <div class="sidebar-scroll">
+          <section class="sidebar-section">
+            <div class="section-title"><span>收件箱</span><span class="count-badge">5</span></div>
+            <button class="sidebar-item" data-route="inbox"><span class="item-symbol">@</span><span>提到我的</span><strong>2</strong></button>
+            <button class="sidebar-item" data-route="approvals"><svg><use href="#i-shield"></use></svg><span>待我审批</span><strong>1</strong></button>
+            <button class="sidebar-item" data-route="tasks"><svg><use href="#i-checks"></use></svg><span>我的任务</span><strong>3</strong></button>
+          </section>
+          <section class="sidebar-section">
+            <div class="section-title"><span>频道</span><button title="新建频道"><svg><use href="#i-plus"></use></svg></button></div>
+            <button class="sidebar-item is-selected" data-channel="产品研发"><span class="item-symbol">#</span><span>产品研发</span><i class="agent-eye" title="Agent 正在观察"></i></button>
+            <button class="sidebar-item"><span class="item-symbol">#</span><span>客户端体验</span><strong>4</strong></button>
+            <button class="sidebar-item"><span class="item-symbol">#</span><span>安全与合规</span></button>
+            <button class="sidebar-item"><span class="item-symbol">#</span><span>发布协调</span></button>
+          </section>
+          <section class="sidebar-section">
+            <div class="section-title"><span>私聊</span><button title="新建会话"><svg><use href="#i-plus"></use></svg></button></div>
+            <button class="sidebar-item"><span class="avatar avatar-small avatar-meng">孟</span><span>孟青</span><i class="online"></i></button>
+            <button class="sidebar-item"><span class="avatar avatar-small avatar-zhou">周</span><span>周一鸣</span><i class="online"></i></button>
+            <button class="sidebar-item"><span class="avatar avatar-small avatar-agent">A</span><span>Atlas · 工程 Agent</span><i class="agent-label">AI</i></button>
+          </section>
+        </div>
+        <button class="device-status" data-route="runtime"><span class="device-light"></span><div><strong>本地运行时在线</strong><small>Mac Studio · 延迟 18ms</small></div></button>
+      </aside>
+
+      <section class="workspace">
+        <header class="workspace-header">
+          <div class="header-title">
+            <span class="channel-hash">#</span>
+            <div><strong id="view-title">产品研发</strong><small id="view-subtitle">18 位成员 · 2 个 Agent · 1 个工作区</small></div>
+          </div>
+          <div class="header-actions">
+            <button class="runtime-pill" data-route="runtime" title="查看工作区"><span></span>client-app / main</button>
+            <button class="icon-button" title="成员"><svg><use href="#i-users"></use></svg></button>
+            <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
+          </div>
+        </header>
+
+        <section class="screen screen-channel is-visible" data-screen="channel">
+          <div class="conversation-pane">
+            <div class="timeline" id="timeline">
+              <div class="date-divider"><span>今天</span></div>
+              <article class="message-row">
+                <span class="avatar avatar-meng">孟</span>
+                <div class="message-body">
+                  <div class="message-meta"><strong>孟青</strong><time>10:18</time></div>
+                  <p>桌面端离线恢复还有一个问题：网络回来以后，旧的同步进程可能会覆盖新状态。这个不能只靠重试解决。</p>
+                </div>
+              </article>
+              <article class="message-row">
+                <span class="avatar avatar-zhou">周</span>
+                <div class="message-body">
+                  <div class="message-meta"><strong>周一鸣</strong><time>10:21</time></div>
+                  <p>同意。建议把 Run Lease 和消息同步分开看，Runtime 需要 fencing token；消息则继续用 channel sequence。</p>
+                  <blockquote>旧 Worker 恢复后，任何落后的 token 都不能写入状态。</blockquote>
+                </div>
+              </article>
+              <article class="message-row message-agent">
+                <span class="avatar avatar-agent">A</span>
+                <div class="message-body">
+                  <div class="message-meta"><strong>Atlas</strong><span class="role-tag">工程 Agent</span><time>10:22</time></div>
+                  <p>我检测到这段讨论已经形成可执行决策。可以建立任务，范围限定为 Runtime Lease，不读取频道其他历史。</p>
+                  <div class="agent-action-row">
+                    <button class="primary-button" id="create-task"><svg><use href="#i-plus"></use></svg>创建任务</button>
+                    <button class="text-button">查看上下文范围</button>
+                  </div>
+                </div>
+              </article>
+              <article class="task-event">
+                <div class="task-event-accent"></div>
+                <div class="task-event-main">
+                  <div class="eyebrow"><span>ENG-248</span><span class="status status-running">执行中</span></div>
+                  <h3>为本地 Runtime 增加 Lease 与 Fencing Token</h3>
+                  <p>由 Atlas 执行 · 来源为上方 2 条消息 · 只读 `agent-core/internal/runner`</p>
+                  <div class="run-progress"><span style="width: 62%"></span></div>
+                  <div class="task-event-footer"><span><i class="pulse"></i>正在运行并发测试</span><button class="open-task" data-route="tasks">打开任务 <svg><use href="#i-arrow"></use></svg></button></div>
+                </div>
+              </article>
+              <article class="message-row">
+                <span class="avatar avatar-user">林</span>
+                <div class="message-body">
+                  <div class="message-meta"><strong>林嘉</strong><time>10:34</time></div>
+                  <p>先跑最小改动。涉及删除旧状态文件时必须让我审批，测试通过后再发 PR。</p>
+                  <div class="reaction"><span>✓</span> 3</div>
+                </div>
+              </article>
+            </div>
+            <div class="composer-wrap">
+              <div class="reply-context"><span>回复 ENG-248</span><button title="取消回复"><svg><use href="#i-close"></use></svg></button></div>
+              <div class="composer">
+                <textarea id="composer-input" rows="2" placeholder="发消息到 #产品研发"></textarea>
+                <div class="composer-toolbar">
+                  <div><button class="icon-button" title="添加附件"><svg><use href="#i-paperclip"></use></svg></button><button class="composer-mode"><span>消息</span></button></div>
+                  <button class="send-button" id="send-message" title="发送"><svg><use href="#i-send"></use></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside class="context-panel">
+            <div class="context-heading"><strong>频道上下文</strong><button class="icon-button" title="关闭"><svg><use href="#i-close"></use></svg></button></div>
+            <section class="context-block">
+              <div class="context-label">活跃任务 <span>1</span></div>
+              <div class="active-task">
+                <div class="task-code">ENG-248 <span class="status status-running">执行中</span></div>
+                <strong>Runtime Lease 与 Fencing Token</strong>
+                <div class="agent-line"><span class="avatar avatar-tiny avatar-agent">A</span><span>Atlas · 本地运行</span><time>8 分钟</time></div>
+                <button class="secondary-button open-task" data-route="tasks">查看执行现场</button>
+              </div>
+            </section>
+            <section class="context-block">
+              <div class="context-label">工作区</div>
+              <div class="workspace-binding">
+                <img src="./assets/workspace-preview.jpg" alt="工作区文件预览" />
+                <div><strong>client-app</strong><span>GitHub · main</span><small>本机映射：~/work/client-app</small></div>
+              </div>
+              <div class="permission-line"><svg><use href="#i-shield"></use></svg><span>Agent 默认只读；写入需要 Task Grant</span></div>
+            </section>
+            <section class="context-block">
+              <div class="context-label">频道 Agent <span>2</span></div>
+              <div class="member-line"><span class="avatar avatar-small avatar-agent">A</span><div><strong>Atlas</strong><small>工程职责 · 正在执行</small></div><span class="watching">观察中</span></div>
+              <div class="member-line"><span class="avatar avatar-small avatar-sage">S</span><div><strong>Sage</strong><small>决策记录 · 按需</small></div><span class="quiet">休眠</span></div>
+            </section>
+          </aside>
+        </section>
+
+        <section class="screen screen-tasks" data-screen="tasks">
+          <div class="task-workspace">
+            <aside class="task-list">
+              <div class="pane-title"><div><span class="eyebrow">任务</span><strong>进行中的工作</strong></div><button class="icon-button"><svg><use href="#i-plus"></use></svg></button></div>
+              <button class="task-list-item is-selected"><div><span class="status-dot running"></span><strong>ENG-248</strong><time>8m</time></div><p>Runtime Lease 与 Fencing Token</p><small>Atlas · #产品研发</small></button>
+              <button class="task-list-item"><div><span class="status-dot approval"></span><strong>DES-091</strong><time>24m</time></div><p>移动端通知权限回退</p><small>Nova · 待审批</small></button>
+              <button class="task-list-item"><div><span class="status-dot blocked"></span><strong>SEC-037</strong><time>1h</time></div><p>审计日志导出策略</p><small>Sage · 已阻塞</small></button>
+            </aside>
+            <div class="run-detail">
+              <div class="run-header">
+                <div><span class="eyebrow">ENG-248 · RUN 03</span><h2>为本地 Runtime 增加 Lease 与 Fencing Token</h2><p>由 Atlas 在林嘉的 Mac Studio 上执行</p></div>
+                <div class="run-header-actions"><button class="secondary-button">暂停</button><button class="icon-button"><svg><use href="#i-more"></use></svg></button></div>
+              </div>
+              <div class="run-metrics"><div><span>状态</span><strong class="green-text">执行中</strong></div><div><span>耗时</span><strong>08:42</strong></div><div><span>上下文</span><strong>2 条消息</strong></div><div><span>成本</span><strong>¥0.84</strong></div></div>
+              <div class="run-tabs"><button class="is-active">活动</button><button>改动 <span>3</span></button><button>产物 <span>1</span></button><button>运行记录</button></div>
+              <div class="activity-feed">
+                <article class="activity-item is-complete"><span class="activity-mark">✓</span><div><div class="activity-top"><strong>读取现有运行契约</strong><time>10:24</time></div><p>检查 `runner.go`、状态写入和当前并发假设。</p><div class="file-chip"><svg><use href="#i-file"></use></svg>internal/runner/runner.go</div></div></article>
+                <article class="activity-item is-complete"><span class="activity-mark">✓</span><div><div class="activity-top"><strong>拟定最小变更</strong><time>10:27</time></div><p>Lease 放在 Runtime Service；`agent-core` 只校验 fencing token，不持有组织状态。</p></div></article>
+                <article class="activity-item is-current"><span class="activity-mark"><i></i></span><div><div class="activity-top"><strong>运行并发测试</strong><time>现在</time></div><p>验证旧 Worker 恢复后不能覆盖新 Run Owner 的状态。</p><pre><span>go test ./internal/runner -run TestFencingToken</span>
+PASS  TestFencingTokenRejectsStaleWriter
+RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
+                <article class="activity-item is-next"><span class="activity-mark"></span><div><div class="activity-top"><strong>生成变更摘要与 PR</strong></div><p>测试通过后执行；任何删除动作仍需审批。</p></div></article>
+              </div>
+            </div>
+            <aside class="task-inspector">
+              <div class="inspector-section"><span class="context-label">来源</span><blockquote><strong>周一鸣</strong><p>Runtime 需要 fencing token；消息继续用 channel sequence。</p><button>在频道中查看</button></blockquote></div>
+              <div class="inspector-section"><span class="context-label">上下文权限</span><div class="grant-row"><svg><use href="#i-message"></use></svg><div><strong>2 条指定消息</strong><span>不包含频道完整历史</span></div></div><div class="grant-row"><svg><use href="#i-folder"></use></svg><div><strong>agent-core / 只读</strong><span>写入变更仅限工作分支</span></div></div></div>
+              <div class="inspector-section"><span class="context-label">参与者</span><div class="avatar-stack"><span class="avatar avatar-small avatar-user">林</span><span class="avatar avatar-small avatar-zhou">周</span><span class="avatar avatar-small avatar-agent">A</span><button>+2</button></div></div>
+              <div class="inspector-section"><span class="context-label">执行位置</span><div class="runner-card"><span class="runner-icon">M</span><div><strong>林嘉的 Mac Studio</strong><span>本地 · 在线 · 18ms</span></div></div></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen screen-approvals" data-screen="approvals">
+          <div class="approval-layout">
+            <div class="approval-inbox">
+              <div class="page-heading"><span class="eyebrow">安全收件箱</span><h2>待我审批</h2><p>高影响动作会在执行前停下，并明确展示目标和影响范围。</p></div>
+              <div class="approval-filters"><button class="is-active">待处理 <span>1</span></button><button>已处理</button><button>全部</button></div>
+              <button class="approval-list-row is-selected">
+                <span class="risk-icon">!</span>
+                <div><div><strong>删除 2 个过期状态文件</strong><time>2 分钟前</time></div><p>ENG-248 · Atlas 请求一次性文件删除权限</p><div class="approval-meta"><span>中风险</span><span>本地工作区</span><span>2 个文件</span></div></div>
+              </button>
+            </div>
+            <aside class="approval-detail">
+              <div class="approval-detail-head"><span class="risk-icon">!</span><div><span class="eyebrow">一次性授权</span><h3>删除过期状态文件</h3><p>Atlas · ENG-248 · Run 03</p></div></div>
+              <div class="impact-summary"><strong>为什么需要</strong><p>并发测试生成了两份失效的 lease fixture。删除后才能验证崩溃恢复路径，不影响源代码。</p></div>
+              <div class="approval-scope"><div class="scope-row"><span>能力</span><code>workspace.file.delete</code></div><div class="scope-row"><span>目标</span><div><code>fixtures/lease-old.json</code><code>fixtures/owner-stale.json</code></div></div><div class="scope-row"><span>有效期</span><strong>仅本次操作 · 10 分钟</strong></div><div class="scope-row"><span>执行位置</span><strong>林嘉的 Mac Studio</strong></div></div>
+              <div class="policy-note"><svg><use href="#i-shield"></use></svg><p>授权不会扩大到其他目录，也不会允许 Atlas 再次删除文件。</p></div>
+              <label class="approval-comment"><span>审批意见（可选）</span><textarea placeholder="添加限制或说明"></textarea></label>
+              <div class="approval-actions"><button class="danger-outline">拒绝</button><button class="approve-button" id="approve-action"><svg><use href="#i-checks"></use></svg>批准一次</button></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen screen-agents" data-screen="agents">
+          <div class="agents-layout">
+            <div class="agent-directory">
+              <div class="page-heading"><span class="eyebrow">组织能力</span><h2>Agent 目录</h2><p>Agent 是有负责人、职责和权限边界的正式成员。</p></div>
+              <div class="directory-toolbar"><div class="inline-search"><svg><use href="#i-search"></use></svg><input placeholder="搜索 Agent" /></div><button class="primary-button"><svg><use href="#i-plus"></use></svg>添加 Agent</button></div>
+              <div class="agent-grid">
+                <button class="agent-card is-selected"><div class="agent-card-head"><span class="avatar avatar-agent avatar-large">A</span><span class="health"><i></i>在线</span></div><strong>Atlas</strong><span>工程执行 Agent</span><p>读取代码、运行测试、生成补丁；高影响动作需审批。</p><div class="agent-card-foot"><span># 产品研发</span><span>本地 Runtime</span></div></button>
+                <button class="agent-card"><div class="agent-card-head"><span class="avatar avatar-sage avatar-large">S</span><span class="health"><i></i>在线</span></div><strong>Sage</strong><span>决策记录 Agent</span><p>从明确结论中维护决策记录，不持续总结频道。</p><div class="agent-card-foot"><span>3 个频道</span><span>企业 Runner</span></div></button>
+                <button class="agent-card"><div class="agent-card-head"><span class="avatar avatar-nova avatar-large">N</span><span class="health is-idle"><i></i>空闲</span></div><strong>Nova</strong><span>产品设计 Agent</span><p>审查用户流程、设计规范和交付物的视觉一致性。</p><div class="agent-card-foot"><span># 客户端体验</span><span>远程 Runtime</span></div></button>
+              </div>
+            </div>
+            <aside class="agent-detail">
+              <div class="agent-profile"><span class="avatar avatar-agent avatar-xlarge">A</span><div><h3>Atlas</h3><p>工程执行 Agent</p><span class="health"><i></i>运行时在线</span></div><button class="icon-button"><svg><use href="#i-more"></use></svg></button></div>
+              <div class="agent-owner"><span class="context-label">负责人</span><div class="member-line"><span class="avatar avatar-small avatar-user">林</span><div><strong>林嘉</strong><small>平台工程</small></div></div></div>
+              <div class="agent-mode"><span class="context-label">在 #产品研发 中</span><div class="mode-control"><button>手动</button><button class="is-active">职责触发</button><button>仅任务</button></div><p>只在形成可执行工程决策或被分配任务时提出行动。</p></div>
+              <div class="agent-capabilities"><span class="context-label">默认能力</span><label><span><svg><use href="#i-message"></use></svg>读取明确引用的消息</span><input type="checkbox" checked /></label><label><span><svg><use href="#i-folder"></use></svg>读取绑定工作区</span><input type="checkbox" checked /></label><label><span><svg><use href="#i-message"></use></svg>主动发布频道消息</span><input type="checkbox" /></label><label><span><svg><use href="#i-shield"></use></svg>执行高影响动作</span><em>始终审批</em></label></div>
+              <div class="runtime-location"><span class="context-label">Runtime</span><div class="runner-card"><span class="runner-icon">M</span><div><strong>本地优先</strong><span>林嘉的 Mac Studio</span></div><span class="health"><i></i>18ms</span></div><button class="secondary-button">查看运行与健康状态</button></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen screen-inbox" data-screen="inbox">
+          <div class="inbox-layout">
+            <div class="inbox-list-pane">
+              <div class="page-heading compact"><span class="eyebrow">收件箱</span><h2>需要你的注意</h2><p>回复、提及、审批和任务变化按优先级集中处理。</p></div>
+              <div class="inbox-tabs"><button class="is-active">全部 <span>5</span></button><button>提到我的</button><button>任务</button></div>
+              <button class="inbox-row is-selected"><span class="inbox-kind mention">@</span><div><div><strong>孟青在 #产品研发 提到了你</strong><time>4 分钟前</time></div><p>先跑最小改动，涉及删除状态文件时让林嘉审批。</p><span># 产品研发 · ENG-248</span></div></button>
+              <button class="inbox-row" data-route="approvals"><span class="inbox-kind approval">!</span><div><div><strong>Atlas 请求一次性删除权限</strong><time>6 分钟前</time></div><p>删除 2 个并发测试产生的过期 fixture。</p><span>审批 · 中风险</span></div></button>
+              <button class="inbox-row" data-route="task-result"><span class="inbox-kind done">✓</span><div><div><strong>DES-088 已完成</strong><time>18 分钟前</time></div><p>桌面端空状态视觉修复已生成补丁。</p><span>Nova · 3 个文件</span></div></button>
+              <button class="inbox-row"><span class="avatar avatar-small avatar-zhou">周</span><div><div><strong>周一鸣回复了你的 Thread</strong><time>32 分钟前</time></div><p>我补了消息顺序和 Run Lease 的边界说明。</p><span># 架构讨论</span></div></button>
+            </div>
+            <div class="inbox-preview">
+              <div class="preview-context"><span># 产品研发</span><button class="text-button" data-route="channel">在频道中打开</button></div>
+              <article class="message-row"><span class="avatar avatar-meng">孟</span><div class="message-body"><div class="message-meta"><strong>孟青</strong><time>10:38</time></div><p>并发测试现在卡在删除旧 fixture。<strong>@林嘉</strong> 先跑最小改动，涉及删除状态文件时让你审批。</p></div></article>
+              <div class="thread-line"></div>
+              <article class="message-row message-agent"><span class="avatar avatar-agent">A</span><div class="message-body"><div class="message-meta"><strong>Atlas</strong><span class="role-tag">工程 Agent</span><time>10:39</time></div><p>删除动作已暂停。我只申请两个指定文件的一次性权限，其他目录保持不可写。</p><div class="agent-action-row"><button class="primary-button" data-route="approvals">查看审批</button><button class="text-button" data-route="tasks">打开任务</button></div></div></article>
+              <div class="inbox-resolve"><button class="secondary-button">标记已读</button><button class="primary-button" data-route="channel">回复消息</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen screen-search" data-screen="search">
+          <div class="search-page">
+            <div class="search-hero"><span class="eyebrow">全局检索</span><div class="search-query"><svg><use href="#i-search"></use></svg><input value="fencing token" aria-label="搜索关键词" /><button class="icon-button"><svg><use href="#i-close"></use></svg></button></div><div class="search-chips"><button class="is-active">全部 12</button><button>消息 6</button><button>文件 3</button><button>任务 2</button><button>成员 1</button></div></div>
+            <div class="search-body">
+              <aside class="search-filters"><span class="context-label">筛选</span><label>范围<button>所有频道 <b>⌄</b></button></label><label>时间<button>最近 90 天 <b>⌄</b></button></label><label>来自<button>任何成员 <b>⌄</b></button></label><label class="filter-check"><input type="checkbox" checked /> 仅我有权访问</label><div class="search-security"><svg><use href="#i-shield"></use></svg><p>结果在返回前重新校验当前权限；索引不参与授权判断。</p></div></aside>
+              <div class="search-results">
+                <div class="results-head"><strong>12 个结果</strong><span>按相关性排序</span></div>
+                <button class="result-row" data-route="channel"><span class="result-type message"><svg><use href="#i-message"></use></svg></span><div><div><strong>周一鸣</strong><span># 产品研发 · 今天 10:21</span></div><p>Runtime 需要 <mark>fencing token</mark>；消息继续使用 channel sequence。</p><small>匹配消息正文与 Thread 决策</small></div></button>
+                <button class="result-row" data-route="tasks"><span class="result-type task"><svg><use href="#i-checks"></use></svg></span><div><div><strong>ENG-248 · Runtime Lease</strong><span>执行中</span></div><p>为本地 Runtime 增加 Lease 与 <mark>Fencing Token</mark></p><small>Atlas · client-app · 2 条来源消息</small></div></button>
+                <button class="result-row" data-route="files"><span class="result-type file"><svg><use href="#i-file"></use></svg></span><div><div><strong>runtime-control-contract.md</strong><span>文档 · 18 KB</span></div><p>旧 Writer 的 <mark>fencing token</mark> 落后时必须拒绝写入。</p><small># 架构讨论 · 周一鸣 · 昨天</small></div></button>
+                <button class="result-row" data-route="task-result"><span class="result-type task"><svg><use href="#i-checks"></use></svg></span><div><div><strong>ENG-233 · 防止旧 Worker 覆盖状态</strong><span>已完成</span></div><p>早期实现只加了文件锁，没有引入 <mark>fencing token</mark>。</p><small>历史任务 · 2 周前</small></div></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen screen-files" data-screen="files">
+          <div class="files-layout">
+            <div class="files-main">
+              <div class="files-heading"><div class="page-heading compact"><span class="eyebrow">共享资料</span><h2>文件与产物</h2><p>频道文件、工作区文档和 Agent 交付物遵循同一权限模型。</p></div><button class="primary-button"><svg><use href="#i-plus"></use></svg>上传文件</button></div>
+              <div class="file-summary"><div><span>可访问文件</span><strong>1,284</strong><small>来自 12 个频道</small></div><div><span>Agent 产物</span><strong>37</strong><small>本月新增 12</small></div><div><span>本地缓存</span><strong>2.8 GB</strong><small>加密存储</small></div></div>
+              <div class="file-toolbar"><div class="inline-search"><svg><use href="#i-search"></use></svg><input placeholder="搜索文件名或内容" /></div><button class="secondary-button">类型：全部</button><button class="secondary-button">频道：全部</button></div>
+              <div class="file-table"><div class="file-table-head"><span>名称</span><span>位置</span><span>修改时间</span><span>大小</span></div>
+                <button class="file-row is-selected"><span><i class="file-icon md">MD</i><div><strong>runtime-control-contract.md</strong><small>命中：fencing token、lease</small></div></span><span># 架构讨论</span><time>今天 09:42</time><em>18 KB</em></button>
+                <button class="file-row"><span><i class="file-icon pdf">PDF</i><div><strong>客户端安全评审.pdf</strong><small>孟青上传</small></div></span><span># 安全与合规</span><time>昨天</time><em>4.2 MB</em></button>
+                <button class="file-row" data-route="task-result"><span><i class="file-icon diff">DIFF</i><div><strong>ENG-233-runtime-lock.patch</strong><small>Atlas 产物</small></div></span><span>ENG-233</span><time>2 周前</time><em>12 KB</em></button>
+                <button class="file-row"><span><i class="file-icon fig">FIG</i><div><strong>mobile-notification-flow.fig</strong><small>Nova 交付</small></div></span><span># 客户端体验</span><time>3 周前</time><em>6.8 MB</em></button>
+              </div>
+            </div>
+            <aside class="file-detail"><div class="file-preview-art"><span>MD</span><div></div><div></div><div></div><div></div></div><span class="eyebrow">Markdown · 已建立本地索引</span><h3>runtime-control-contract.md</h3><p>Runtime Service 控制契约、Run Lease、Cancellation 与 Event Streaming 说明。</p><div class="file-properties"><div><span>所属频道</span><strong># 架构讨论</strong></div><div><span>Owner</span><strong>周一鸣</strong></div><div><span>权限</span><strong>继承频道</strong></div><div><span>本地状态</span><strong class="green-text">已加密缓存</strong></div></div><button class="primary-button">打开预览</button><button class="secondary-button">用于新任务</button></aside>
+          </div>
+        </section>
+
+        <section class="screen screen-task-result" data-screen="task-result">
+          <div class="result-layout">
+            <div class="result-main"><div class="result-header"><div><span class="eyebrow">DES-088 · 已完成</span><h2>桌面端空状态视觉修复</h2><p>Nova 完成于 18 分钟前 · Run 02</p></div><span class="result-check">✓</span></div>
+              <div class="delivery-summary"><div><span>交付</span><strong>3 个文件</strong></div><div><span>测试</span><strong class="green-text">24/24 通过</strong></div><div><span>审查</span><strong>等待人工确认</strong></div><div><span>成本</span><strong>¥1.26</strong></div></div>
+              <div class="result-tabs"><button class="is-active">变更</button><button>预览</button><button>运行摘要</button></div>
+              <div class="diff-view"><div class="diff-file"><span>components/EmptyState.tsx</span><strong>+18 −7</strong></div><pre class="code-diff"><span class="context">  export function EmptyState() {</span>
+<span class="removed">-   return &lt;div className="empty-card"&gt;暂无任务&lt;/div&gt;;</span>
+<span class="added">+   return (</span>
+<span class="added">+     &lt;section className="empty-state" aria-labelledby="empty-title"&gt;</span>
+<span class="added">+       &lt;FileSearch aria-hidden="true" /&gt;</span>
+<span class="added">+       &lt;h2 id="empty-title"&gt;这里还没有任务&lt;/h2&gt;</span>
+<span class="added">+       &lt;p&gt;从一段讨论开始，或直接创建工作。&lt;/p&gt;</span>
+<span class="added">+     &lt;/section&gt;</span>
+<span class="added">+   );</span>
+<span class="context">  }</span></pre></div>
+              <div class="result-actions"><button class="secondary-button">要求修改</button><button class="secondary-button">下载 Patch</button><button class="primary-button" id="accept-result"><svg><use href="#i-checks"></use></svg>接受并创建 PR</button></div>
+            </div>
+            <aside class="result-aside"><span class="context-label">Agent 总结</span><p>移除了装饰性卡片和过大的标题；空状态现在与任务列表保持同一信息密度，并补充了无障碍标签。</p><span class="context-label">验证</span><div class="check-list"><span>✓ TypeScript</span><span>✓ 单元测试 24 项</span><span>✓ 1440 / 1024 / 430 截图</span><span>✓ 无文字溢出</span></div><span class="context-label">来源</span><button class="source-link" data-route="channel"><span># 客户端体验</span><p>这个页面的布局简直没法看呀……</p></button><span class="context-label">产物</span><button class="artifact-link"><i class="file-icon diff">DIFF</i><div><strong>empty-state-v2.patch</strong><span>12 KB · SHA256 已验证</span></div></button></aside>
+          </div>
+        </section>
+
+        <section class="screen screen-runtime" data-screen="runtime">
+          <div class="runtime-layout">
+            <div class="runtime-list-pane"><div class="page-heading compact"><span class="eyebrow">执行基础设施</span><h2>Runtime 设备</h2><p>本地客户端与企业 Runner 共同承载 Agent 执行。</p></div><div class="runtime-group"><span>我的设备</span><button class="runtime-row is-selected"><i class="runner-icon">M</i><div><strong>林嘉的 Mac Studio</strong><small>macOS · 本地 Connector</small></div><span class="health"><i></i>在线</span></button><button class="runtime-row"><i class="runner-icon">A</i><div><strong>林嘉的 MacBook Air</strong><small>macOS · 8 小时未连接</small></div><span class="health is-idle"><i></i>离线</span></button></div><div class="runtime-group"><span>企业 Runner</span><button class="runtime-row"><i class="runner-icon">R1</i><div><strong>cn-east-runner-01</strong><small>Kubernetes · 6/12 slots</small></div><span class="health"><i></i>健康</span></button><button class="runtime-row"><i class="runner-icon">R2</i><div><strong>secure-e2ee-indexer</strong><small>可见加密成员 · 1/4 slots</small></div><span class="health"><i></i>健康</span></button></div></div>
+            <div class="runtime-detail-pane"><div class="runtime-detail-head"><div class="runner-hero">M</div><div><span class="eyebrow">本地 Runtime</span><h2>林嘉的 Mac Studio</h2><p>最近心跳：刚刚 · 延迟 18ms</p></div><button class="secondary-button" id="simulate-offline">模拟离线</button></div><div class="runtime-stats"><div><span>正在运行</span><strong>1</strong></div><div><span>排队</span><strong>0</strong></div><div><span>本周成功率</span><strong>98.4%</strong></div><div><span>本地缓存</span><strong>2.8 GB</strong></div></div><div class="runtime-columns"><section><span class="context-label">当前执行</span><div class="running-job"><div><span class="status status-running">执行中</span><time>08:42</time></div><strong>ENG-248 · Runtime Lease</strong><p>Atlas · client-app / task-eng-248</p><div class="run-progress"><span style="width:62%"></span></div><button data-route="tasks">打开执行现场</button></div><span class="context-label">本地目录授权</span><div class="path-row"><svg><use href="#i-folder"></use></svg><div><strong>client-app</strong><span>~/work/client-app</span></div><em>读写需审批</em></div><div class="path-row"><svg><use href="#i-folder"></use></svg><div><strong>agent-core</strong><span>~/work/agent-core</span></div><em>只读</em></div></section><section><span class="context-label">健康状态</span><div class="health-chart"><div style="height:26%"></div><div style="height:35%"></div><div style="height:31%"></div><div style="height:48%"></div><div style="height:42%"></div><div style="height:57%"></div><div style="height:44%"></div><div style="height:51%"></div><div style="height:37%"></div><div style="height:46%"></div><div style="height:39%"></div><div style="height:53%"></div></div><div class="health-metrics"><span>CPU <strong>28%</strong></span><span>Memory <strong>4.1 GB</strong></span><span>Disk <strong>41%</strong></span></div><span class="context-label">安全</span><div class="security-status"><svg><use href="#i-shield"></use></svg><div><strong>设备密钥有效</strong><span>Secure Enclave · 轮换于 3 天前</span></div></div><button class="secondary-button" data-route="sync">查看同步与恢复</button></section></div></div>
+          </div>
+        </section>
+
+        <section class="screen screen-sync" data-screen="sync">
+          <div class="sync-page"><div class="page-heading"><span class="eyebrow">本地优先</span><h2>同步与恢复</h2><p>每台设备维护独立加密数据库，通过事件序列同步，不复制 SQLite 文件。</p></div><div class="sync-overview"><div class="sync-status ok"><span>✓</span><div><strong>消息同步正常</strong><small>最后应用序列：#产品研发 / 18,462</small></div></div><div><span>Outbox</span><strong>0</strong><small>没有等待发送的事件</small></div><div><span>Gap</span><strong>0</strong><small>序列完整</small></div><div><span>本地索引</span><strong>12,846</strong><small>FTS 条目</small></div></div><div class="sync-grid"><section><div class="section-head"><div><span class="context-label">设备游标</span><strong>最近同步位置</strong></div><button class="secondary-button" id="simulate-gap">模拟序列缺口</button></div><div class="cursor-row"><span class="avatar avatar-small avatar-user">M</span><div><strong>Mac Studio</strong><small>#产品研发 · seq 18,462</small></div><time>刚刚</time><i class="ok-dot"></i></div><div class="cursor-row"><span class="avatar avatar-small avatar-zhou">A</span><div><strong>MacBook Air</strong><small>#产品研发 · seq 18,102</small></div><time>8 小时前</time><i class="idle-dot"></i></div><div class="cursor-row"><span class="avatar avatar-small avatar-agent">P</span><div><strong>iPhone</strong><small>#产品研发 · seq 18,455</small></div><time>4 分钟前</time><i class="ok-dot"></i></div></section><section><span class="context-label">事件恢复过程</span><div class="recovery-flow"><div class="flow-step is-done"><span>1</span><div><strong>检测缺口</strong><small>比较 last_applied_seq</small></div></div><div class="flow-step is-done"><span>2</span><div><strong>拉取密文事件</strong><small>服务端重新校验 Membership</small></div></div><div class="flow-step is-done"><span>3</span><div><strong>验证签名与顺序</strong><small>拒绝重复和回退事件</small></div></div><div class="flow-step is-done"><span>4</span><div><strong>应用本地物化视图</strong><small>单写者事务完成</small></div></div></div></section><section><span class="context-label">加密存储</span><div class="storage-ring"><div><strong>2.8</strong><span>GB</span></div></div><div class="storage-legend"><span><i class="green"></i>消息与索引 1.1 GB</span><span><i class="blue"></i>文件缓存 1.5 GB</span><span><i class="gray"></i>Outbox / 临时 0.2 GB</span></div><button class="secondary-button">管理离线缓存</button></section></div></div>
+        </section>
+
+        <section class="screen screen-organization" data-screen="organization">
+          <div class="organization-layout"><aside class="org-picker"><div class="page-heading compact"><span class="eyebrow">组织</span><h2>工作空间</h2><p>切换企业不会混合消息、本地索引或 Runtime 授权。</p></div><button class="org-card is-selected"><span class="org-logo">北</span><div><strong>北辰科技</strong><small>236 位成员 · 企业版</small></div><i>✓</i></button><button class="org-card"><span class="org-logo alt">实</span><div><strong>实验工作室</strong><small>12 位成员 · 开发环境</small></div></button><button class="add-org"><svg><use href="#i-plus"></use></svg>加入或创建组织</button></aside><div class="org-dashboard"><div class="org-banner"><div><span class="eyebrow">北辰科技</span><h2>产品与工程</h2><p>你的默认 Space · 12 个频道 · 3 个 Agent</p></div><button class="secondary-button" data-route="admin">管理组织</button></div><div class="space-grid"><button class="space-card" data-route="channel"><div><span>#</span><em>18 人</em></div><strong>产品研发</strong><p>客户端、Runtime 与服务端架构讨论</p><small>Atlas 正在观察 · 1 个活跃任务</small></button><button class="space-card"><div><span>#</span><em>24 人</em></div><strong>客户端体验</strong><p>桌面端与移动端产品体验</p><small>Nova 按需参与 · 4 条未读</small></button><button class="space-card"><div><span>#</span><em>9 人</em></div><strong>安全与合规</strong><p>访问策略、审计和部署安全</p><small>仅邀请加入 · E2EE</small></button><button class="space-card"><div><span>#</span><em>31 人</em></div><strong>发布协调</strong><p>版本计划、变更说明与值班</p><small>今天 16:00 发布评审</small></button></div><div class="org-recent"><span class="context-label">最近访问</span><div class="recent-row"><span class="avatar avatar-small avatar-agent">A</span><div><strong>ENG-248 正在执行</strong><small>产品研发 · Atlas</small></div><time>现在</time></div><div class="recent-row"><span class="avatar avatar-small avatar-nova">N</span><div><strong>DES-088 已完成</strong><small>客户端体验 · Nova</small></div><time>18 分钟前</time></div></div></div></div>
+        </section>
+
+        <section class="screen screen-admin" data-screen="admin">
+          <div class="admin-layout"><aside class="admin-nav"><span class="eyebrow">管理后台</span><strong>北辰科技</strong><button class="is-active">概览</button><button>成员与部门</button><button>Agent 策略</button><button>设备与 Runtime</button><button>数据保留</button><button>安全与审计</button><button>SSO 与 SCIM</button></aside><div class="admin-main"><div class="page-heading compact"><span class="eyebrow">组织治理</span><h2>安全与运行概览</h2><p>身份、Agent、设备、策略与审计共享同一个企业边界。</p></div><div class="admin-metrics"><div><span>成员</span><strong>236</strong><small>本月 +8</small></div><div><span>Agent</span><strong>12</strong><small>9 个在线</small></div><div><span>受管设备</span><strong>184</strong><small>96% 合规</small></div><div><span>本月 Run</span><strong>3,842</strong><small>成功率 97.8%</small></div></div><div class="admin-grid"><section><div class="section-head"><div><span class="context-label">策略提醒</span><strong>需要处理</strong></div><span class="count-badge">2</span></div><div class="policy-alert"><span class="risk-icon">!</span><div><strong>4 台设备超过 30 天未轮换密钥</strong><p>不会阻塞消息，但不能承载高风险 Runtime。</p></div><button>查看</button></div><div class="policy-alert"><span class="risk-icon">!</span><div><strong>1 个 Agent 缺少负责人</strong><p>Agent `release-notes` 将在 24 小时后暂停。</p></div><button>查看</button></div></section><section><span class="context-label">频道加密模式</span><div class="mode-stat"><div><span>Managed Encryption</span><strong>38</strong></div><div class="bar"><i style="width:74%"></i></div></div><div class="mode-stat"><div><span>端到端加密</span><strong>13</strong></div><div class="bar e2ee"><i style="width:26%"></i></div></div><p class="admin-note">E2EE 频道只允许本地 Agent 或可见加密成员 Runtime 读取内容。</p></section><section class="audit-section"><div class="section-head"><div><span class="context-label">最近审计事件</span><strong>高影响动作</strong></div><button>导出</button></div><div class="audit-row"><i class="green-dot"></i><div><strong>林嘉批准一次性文件删除</strong><small>ENG-248 · workspace.file.delete</small></div><time>10:42</time></div><div class="audit-row"><i class="amber-dot"></i><div><strong>管理员撤销 Atlas 的发布能力</strong><small>#发布协调 · policy v18</small></div><time>09:31</time></div><div class="audit-row"><i class="blue-dot"></i><div><strong>新设备完成注册</strong><small>孟青的 MacBook Pro · compliant</small></div><time>昨天</time></div></section></div></div></div>
+        </section>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="task-modal" aria-hidden="true">
+      <section class="task-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-head"><div><span class="eyebrow">从 2 条消息创建</span><h2 id="modal-title">新建 Agent 任务</h2></div><button class="icon-button modal-close" title="关闭"><svg><use href="#i-close"></use></svg></button></div>
+        <label><span>任务目标</span><input value="为本地 Runtime 增加 Lease 与 Fencing Token" /></label>
+        <div class="modal-grid"><label><span>执行者</span><button class="select-control"><span class="avatar avatar-tiny avatar-agent">A</span>Atlas <b>⌄</b></button></label><label><span>工作区</span><button class="select-control"><svg><use href="#i-folder"></use></svg>client-app <b>⌄</b></button></label></div>
+        <div class="context-preview"><div><strong>上下文范围</strong><span>不会读取整个频道</span></div><p>孟青、周一鸣的 2 条消息</p><p>工作区 `agent-core/internal/runner` · 默认只读</p></div>
+        <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
+      </section>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
