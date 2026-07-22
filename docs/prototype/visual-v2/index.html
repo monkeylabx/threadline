@@ -20,6 +20,7 @@
       <symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7L9.4 18a2 2 0 0 1-2.8-2.8l8.5-8.5"></path></symbol>
       <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4zM22 2 11 13"></path></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+      <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"></path></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
       <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"></path></symbol>
       <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"></path></symbol>
@@ -80,7 +81,7 @@
 
       <section class="workbench">
         <header class="topbar">
-          <button class="mobile-menu" title="打开导航"><span></span><span></span></button>
+          <button class="mobile-space-trigger" title="切换频道"><span>北</span></button>
           <div class="channel-title">
             <span>#</span>
             <div><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></div>
@@ -187,7 +188,7 @@
 
           <aside class="activity-sheet task-sheet" aria-label="任务执行现场">
             <header class="sheet-header">
-              <button class="icon-button close-sheet" title="关闭"><svg><use href="#i-close"></use></svg></button>
+              <button class="icon-button close-sheet" title="返回"><svg class="desktop-sheet-close"><use href="#i-close"></use></svg><svg class="mobile-sheet-back"><use href="#i-arrow-left"></use></svg></button>
               <div><span class="sheet-kicker"><i></i>Atlas 正在本机执行</span><h2>Runtime Lease 与 Fencing Token</h2><p>ENG-248 · Run 03</p></div>
               <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
             </header>
@@ -240,7 +241,7 @@ RUN   lease recovery after crash</code></pre></div>
 
           <aside class="activity-sheet approval-sheet" aria-label="权限审批">
             <header class="sheet-header approval-head">
-              <button class="icon-button close-sheet" title="关闭"><svg><use href="#i-close"></use></svg></button>
+              <button class="icon-button close-sheet" title="返回"><svg class="desktop-sheet-close"><use href="#i-close"></use></svg><svg class="mobile-sheet-back"><use href="#i-arrow-left"></use></svg></button>
               <div><span class="sheet-kicker amber"><i></i>一次性授权</span><h2>删除过期状态文件</h2><p>Atlas · ENG-248 · Run 03</p></div>
               <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
             </header>
@@ -268,7 +269,38 @@ RUN   lease recovery after crash</code></pre></div>
             <footer class="sheet-footer approval-actions"><button class="reject-button">拒绝</button><button class="approve-button" id="approve-action"><svg><use href="#i-checks"></use></svg>批准一次</button></footer>
           </aside>
         </section>
+
+        <nav class="mobile-bottom-nav" aria-label="移动端主要导航">
+          <button class="is-active" data-view-target="channel"><svg><use href="#i-message"></use></svg><span>消息</span></button>
+          <button data-view-target="task"><svg><use href="#i-checks"></use></svg><span>任务</span><em>1</em></button>
+          <button data-view-target="approval"><svg><use href="#i-shield"></use></svg><span>审批</span><i></i></button>
+        </nav>
       </section>
+
+      <button class="mobile-sheet-scrim" aria-label="关闭频道列表"></button>
+      <aside class="mobile-conversation-sheet" aria-hidden="true" aria-label="频道与私聊">
+        <div class="mobile-sheet-handle"></div>
+        <header>
+          <div><span class="org-logo">北</span><span><strong>北辰科技</strong><small>产品与工程</small></span></div>
+          <button class="icon-button mobile-conversation-close" title="关闭"><svg><use href="#i-close"></use></svg></button>
+        </header>
+        <button class="mobile-search"><svg><use href="#i-search"></use></svg><span>搜索消息、文件和任务</span></button>
+        <div class="mobile-conversation-scroll">
+          <section>
+            <div class="mobile-list-heading"><span>频道</span><button title="新建频道">+</button></div>
+            <button class="mobile-conversation-row is-selected"><span class="row-symbol">#</span><div><strong>产品研发</strong><small>Atlas 正在执行 · 1 个任务</small></div><i class="agent-wake"></i></button>
+            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>客户端体验</strong><small>4 条未读消息</small></div><em>4</em></button>
+            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>安全与合规</strong><small>仅邀请加入</small></div></button>
+            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>发布协调</strong><small>今天 16:00 发布评审</small></div></button>
+          </section>
+          <section>
+            <div class="mobile-list-heading"><span>私聊</span><button title="新建会话">+</button></div>
+            <button class="mobile-conversation-row"><span class="avatar avatar-meng">孟</span><div><strong>孟青</strong><small>在线</small></div><i class="online"></i></button>
+            <button class="mobile-conversation-row"><span class="avatar avatar-zhou">周</span><div><strong>周一鸣</strong><small>在线</small></div><i class="online"></i></button>
+            <button class="mobile-conversation-row"><span class="avatar avatar-atlas">A</span><div><strong>Atlas</strong><small>工程 Agent · 运行中</small></div><em class="ai-label">AI</em></button>
+          </section>
+        </div>
+      </aside>
     </main>
 
     <script src="./app.js"></script>
