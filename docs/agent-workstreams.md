@@ -1,6 +1,6 @@
 # Threadline Agent 异步工作流
 
-状态：实施约束 0.1
+状态：Frozen Scope 1.1 实施基线 1.0
 
 计划来源：[Private Enterprise v1.0 交付计划](./delivery-plan.md)
 
@@ -64,11 +64,13 @@ Claim 必须先完成 Issue Assignee 和 `status/claimed` 更新，再创建 Wor
 | `design-system` | `packages/ui/`、`packages/design-tokens/` | Token、基础组件、状态规范 | Desktop/Mobile 页面业务 |
 | `core` | `services/core/`、`db/migrations/`、`db/queries/core/` | 事务模块、权限、Message Command | Realtime、Client DB |
 | `realtime-worker` | `services/realtime/`、`services/worker/` | WSS、Presence、Outbox Relay、DLQ | Core Domain Row |
-| `client-core` | `crates/client-core/`、`crates/locald/` | SQLite、Outbox、Sync、Search | UI 页面、agentd |
-| `desktop` | `apps/client/src/desktop/` | Desktop 页面、Window、快捷键 | Mobile 页面、Client Core |
-| `mobile` | `apps/client/src/mobile/`、移动 Native Adapter | Mobile 页面、Push、Share、后台恢复 | Desktop 页面、Agent Runtime |
+| `crypto-recovery` | `crates/client-crypto/`、`services/recovery-control/`、`test/crypto/` | Group E2EE Adapter、Golden Vector、Recovery Control | 自创算法、IM Core 明文路径、模型路由 |
+| `client-core` | `crates/client-core/`、`crates/client-ffi/`、`crates/locald/` | SQLite、Outbox、Sync、Search、稳定 FFI Facade | UI 页面、密码协议实现、agentd |
+| `desktop` | `apps/desktop/` | Tauri/React 页面、Window、快捷键 | iOS/Android 页面、Client Core |
+| `mobile-ios` | `apps/ios/` | SwiftUI/UIKit、APNs、Keychain、Share、后台恢复 | Android、Desktop、Rust Core |
+| `mobile-android` | `apps/android/` | Compose、FCM、Keystore、Share、后台恢复 | iOS、Desktop、Rust Core |
 | `runtime` | `services/agentd/`、`services/runtime-gateway/`、`crates/connectord/` | Run、Lease、Context、Workspace | IM SQLite、Core 表直写 |
-| `model-control` | `services/model-control/` | Discovery、Evaluation、Route Policy | Workflow 中硬编码模型名 |
+| `model-control` | `services/model-control/` | Discovery、Evaluation、Route Policy、Grant | Workflow 硬编码模型名、代理或记录 Prompt |
 | `admin-web` | `apps/admin-web/` | 管理页面、Audit Viewer | Core Policy 实现 |
 | `platform` | `deploy/`、镜像和 CI Release | Helm、PKI、Observability、Offline Bundle | 业务 Contract |
 | `quality` | `test/` | Contract/E2E/Load/Chaos、Fixture | 为通过测试而修改业务语义 |
@@ -88,7 +90,10 @@ Task，由 Integration Owner 串联合并。
 | Generated SDK | Contracts/Integration | 只由固定命令生成，禁止手改 |
 | `pnpm-lock.yaml` | Integration | Feature Agent 只改 Package Manifest，交接时说明依赖 |
 | Root Cargo/Go Workspace | Integration | 子工程先在自身 Manifest 声明，统一接入由 Integration 完成 |
-| Design Token | Design-system Agent | 页面 Agent 只消费 Token，不创建近似颜色和间距 |
+| SwiftPM/Gradle 根配置 | Integration | iOS/Android 任务只改各自模块，根版本和生成任务串行接入 |
+| Rust FFI Public Facade | Client-core Agent | Swift/Kotlin 只消费版本化接口；破坏性变更先走 Contract Task |
+| Crypto Protocol Adapter / Golden Vector | Crypto-recovery Agent | 其他 Agent 不直接调用底层密码库，不修改测试向量 |
+| Design Token | Design-system Agent | TS/Swift/Kotlin 页面只消费 Token，不创建近似颜色和间距 |
 | Release/Helm Values Schema | Platform Agent | 服务通过独立配置 Schema 提交需求 |
 
 ## 5. Contract-first 并行方式
@@ -99,9 +104,10 @@ Task，由 Integration Owner 串联合并。
 Contract Task
   -> Proto / Interface / Error / Fixture / Fake
        -> Server Implementation Task
-       -> Client Core Implementation Task
+       -> Crypto/Client Core Implementation Task
        -> Desktop UI Task
-       -> Mobile UI Task
+       -> iOS UI Task
+       -> Android UI Task
        -> Quality Task
   -> Integration Task
 ```
@@ -139,7 +145,7 @@ Integration Owner 串行处理共享表面，普通 Feature PR 可以并行 Revi
 
 1. Contract / Migration Reservation。
 2. Server 和 Client Core。
-3. Desktop/Mobile UI。
+3. Desktop、iOS、Android UI。
 4. Contract/E2E/Load Test。
 5. Generated SDK、Lockfile、Release Manifest。
 
@@ -147,14 +153,14 @@ Integration Owner 串行处理共享表面，普通 Feature PR 可以并行 Revi
 
 | Gate | 必须通过 |
 | --- | --- |
-| G0 / M0 | Scope、ADR、Threat Model、Tauri Gate、Proto Skeleton |
+| G0 / M0 | Scope、Client/Crypto/Storage ADR、Threat Model、Rust FFI/E2EE Interop Gate、Proto Skeleton |
 | G1 / M1 | Reproducible Build、CI、Contract Compatibility、Dev Stack |
-| G2 / M2 | Message Vertical Slice、Offline Outbox、Gap Repair E2E |
-| G3 / M3 | Collaboration Feature Matrix、File/Search/Push |
-| G4 / M4 | Runtime/Capability/Approval/Artifact/Model Route |
-| G5 / M5 | Helm、Backup/Restore、Upgrade/Rollback、Audit |
-| G6 / M6 | SLO、Chaos、Pentest、Five-platform E2E |
-| G7 / M7 | Two Enterprise Pilots、GA Checklist |
+| G2 / M2 | Desktop E2EE Message -> Local Agent -> Approval -> Artifact Vertical Slice |
+| G3 / M3 | Collaboration Feature Matrix、iOS/Android E2EE Message Alpha、File/Search/Push |
+| G4 / M4 | Runtime/Capability/Approval/Artifact/Model Route、Mobile Task Control |
+| G5 / M5 | Recovery、Helm、Backup/Restore、Upgrade/Rollback、Audit |
+| G6 / M6 | SLO、Chaos、Five-platform E2E、Feature Complete |
+| G7 / M7 | Independent Crypto Review、Pentest、Enterprise Pilot Candidate |
 
 ## 9. 首阶段并行启动矩阵
 
@@ -162,15 +168,16 @@ Integration Owner 串行处理共享表面，普通 Feature PR 可以并行 Revi
 
 | Agent Lane | 初始任务 | 产物 | Merge 依赖 |
 | --- | --- | --- | --- |
-| Product/Architecture | P00-01、P00-02 Draft | Scope、ADR | 产品评审 |
-| Security | P00-03 Draft | Threat Model、Data Classification | Scope Freeze |
-| Mobile Spike | P00-06 | iOS/Android 真机证据 | Client ADR |
-| Contracts | P02-01 Draft | Proto Skeleton、Golden Frame 方案 | Domain ADR |
-| Platform | P00-04、P12-01 Skeleton | Workspace、Local Dev Stack | Toolchain ADR |
+| Product/Architecture | P00-01、P00-02 Draft | Scope、Client/Server/Storage ADR | 产品评审 |
+| Crypto/Security | P00-03、P00-04 Draft | Crypto ADR、Threat Model、Recovery Boundary | Scope Freeze |
+| Native Bridge | P00-07 | Swift/Kotlin FFI 真机证据 | Client ADR、Monorepo Skeleton |
+| Crypto Interop | P00-08 | 三端 Golden Vector、Epoch/History/Recovery 证据 | Crypto ADR、Monorepo Skeleton |
+| Contracts | P02-01、P02-04 Draft | Proto Skeleton、Ciphertext/Key Envelope 方案 | Domain/Crypto ADR |
+| Platform | P00-05、P12-01 Skeleton | Workspace、Local Dev Stack | Toolchain ADR |
 | Quality | P13-01 Draft | Test Matrix、Fixture 方案 | Acceptance Scenario |
 | Design System | P01-01、P01-02 Draft | State Matrix、Token | Scope Freeze |
 
-初始任务合并到 G0 后，才批量创建 M1 的 Ready Issue。不要一次性把 116 个工作包全部标记 Ready；远期
+初始任务合并到 G0 后，才批量创建 M1 的 Ready Issue。不要一次性把全部工作包标记 Ready；远期
 任务会因 Contract 和 Pilot 反馈变化，过早 Claim 只会制造返工。
 
 ## 10. Agent Task 拆分检查
