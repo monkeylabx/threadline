@@ -1,9 +1,11 @@
 # Agent 原生企业 IM 产品需求文档
 
-状态：产品草案 0.3（含完整可交互原型）  
-日期：2026-07-22
+状态：M0 范围冻结评审稿 0.4（含完整可交互原型）
+日期：2026-07-24
 
 产品原型：[进入 Threadline 统一原型](./prototype/index.html)
+
+v1 范围基线：[Private Enterprise v1.0 Scope Freeze](./acceptance/scope.md)
 
 原型覆盖工作空间、收件箱、频道协作、全局搜索、文件与产物、Agent 任务执行、风险审批、
 任务交付、Agent 目录、Runtime 设备、同步恢复、组织管理，以及桌面端和移动端响应式布局。
@@ -47,7 +49,7 @@ Loop、工具调用、Session 恢复、记忆、Subagent、定时任务和异步
 - Agent 被赋予频道职责后，可以在策略允许时主动参与，不强制依de赖 `@Agent`。
 - 将一条消息或一段讨论转成绑定文件、仓库、工具、审批和 Runtime Run 的 Task。
 - 多个人可以观察、评论、批准、中断、恢复或接管同一个 Agent Task。
-- 架构兼容 SaaS、企业私有云和后续本地部署。
+- 提供可在企业内网独立安装、升级、备份和运维的单 Region 私有化部署。
 
 ### 3.2 非目标
 
@@ -94,7 +96,7 @@ Organization
 
 | 对象 | 用途 |
 | --- | --- |
-| Organization | 租户、身份、策略、计费和数据隔离边界 |
+| Organization | 企业身份、策略和数据隔离边界 |
 | Actor | Human、Agent、Service 的统一身份抽象 |
 | Space | 部门、项目或跨部门协作边界 |
 | Channel | 具有成员和策略的长期沟通空间 |
@@ -153,10 +155,10 @@ Local Runtime 进入同一套协作界面。
 | Approval | 授权前明确展示能力、目标、有效期、执行位置和影响范围 |
 | Task Delivery | 人工审查 Diff、测试和产物后，才接受结果或创建 PR |
 | Agent Directory | Agent 必须具备负责人、职责模式、默认能力和 Runtime 状态 |
-| Runtime | 展示 Local Connector、Enterprise Runner、路径授权和健康状态 |
+| Runtime | 展示授权 Desktop Runtime、Local Connector、路径授权和健康状态 |
 | Sync | 展示设备 Cursor、Outbox、Gap Recovery 和加密本地缓存 |
 | Organization Admin | 企业、Space、Channel、加密模式、设备策略与审计治理 |
-| Mobile | 手机端保留消息、任务观察和审批，重执行仍交给 Desktop / Runner |
+| Mobile | 手机端保留消息、任务观察和审批，长任务执行交给授权 Desktop Runtime |
 
 #### Channel：人类沟通是主界面
 
@@ -194,7 +196,7 @@ Agent 目录统一展示 Owner、Channel Participation Mode、Default Capability
 ![任务移动端原型](./prototype/screenshots/tasks-mobile.png)
 
 移动端不复制桌面端三栏布局。它保留完整消息时间线和 Run 关键活动，用于发起、观察、中断与
-审批；本地文件执行仍调度到在线 Desktop Connector 或 Enterprise Runner。
+审批；本地文件执行只调度到用户已授权且在线的 Desktop Runtime。Enterprise Runner 不属于 v1。
 
 ### 6.3 Channel 页面结构
 
@@ -238,7 +240,7 @@ Task 是共享执行现场，不是另一个无限聊天窗口：
 - 创建、配置、冻结和删除企业组织。
 - 邀请、停用、恢复成员，支持部门和团队层级。
 - Human、Agent、Service、Admin、Guest Actor 类型。
-- 初期支持 OIDC；企业通用版本支持 SAML SSO 和 SCIM Provisioning。
+- v1 支持企业 OIDC；SAML SSO、SCIM Provisioning 和完整目录同步属于后续版本。
 - 多设备登录、Session 撤销、MFA 策略和设备清单。
 - Agent 身份必须展示 Owner、Runtime、职责、当前健康状态和最近活动。
 
@@ -263,8 +265,8 @@ Task 是共享执行现场，不是另一个无限聊天窗口：
 - 分片上传、断点续传、预览、Checksum 和病毒扫描 Hook。
 - 附件使用独立随机 Content Key 分块加密；服务端对象存储只接收密文 Blob。
 - 文件默认继承 Channel 权限，也可以进一步收窄。
-- E2EE Channel 是否建立持久化本地全文索引由安全策略决定；高安全模式只在内存中按需搜索，
-  标准模式可将 FTS 索引放在整库加密的 SQLite 中。Managed Channel 可以额外建立服务端索引。
+- v1 Managed Encryption Channel 可将 FTS 索引放在整库加密的 SQLite 中，并可按企业策略建立
+  服务端索引。后续 MLS E2EE 模式的索引策略不属于 v1 验收。
 - 按成员、Channel、Thread、时间、附件类型、Task 过滤。
 - Search 只是可重建索引，不能成为权限判断来源。
 - 权限撤销后，未来搜索立即不可见，但不破坏安全审计证据。
@@ -309,7 +311,7 @@ Task 是共享执行现场，不是另一个无限聊天窗口：
 - Local Connector 将已有本地仓库映射到逻辑 WorkspaceBinding。
 - 本地访问只允许明确 Path Scope 和有效授权时段。
 - Connector 不能把整个文件系统 Root 暴露给 Server 或 Agent。
-- 每个 Task 可根据策略选择 Remote、企业 Runner 或 Local 执行。
+- v1 Task 只能调度到已注册并授权的 Desktop Runtime；Remote Enterprise Runner 属于后续版本。
 
 ## 8. 权限模型
 
@@ -472,11 +474,11 @@ Coordination Server
   |
   +-- Agent Orchestrator
           +-- Local agent-core
-          +-- Enterprise Runner agent-core
 ```
 
 “本地优先”表示客户端用本地数据库立即读写并支持离线，不表示不需要 Server。Server 仍负责
-身份、权限、设备目录、离线消息投递、Channel 排序和企业管理，但在 E2EE 模式下只保存密文。
+身份、权限、设备目录、离线消息投递、Channel 排序和企业管理。v1 使用 Managed Encryption；
+严格 MLS E2EE 是后续独立安全阶段。
 
 ### 11.2 不使用区块链
 
@@ -495,14 +497,14 @@ Event；是否删除密文和密钥由 Retention Policy 决定。
 
 ### 11.3 Channel 加密模式
 
-同一个产品应允许企业按 Channel 选择模式：
+v1 只交付 Managed Encryption。下表保留后续加密演进边界，MLS E2EE 不进入 v1 验收：
 
 | 模式 | 谁能解密 | 服务端搜索/审计 | Agent 使用 |
 | --- | --- | --- | --- |
-| Managed Encryption | 企业 KMS 和授权服务 | 完整支持 | Enterprise Runner 可直接按权限读取 |
-| End-to-End Encryption | Channel 成员设备 | 只能做 Metadata Audit，本地搜索 | Agent 必须作为加密成员或在成员本机运行 |
+| Managed Encryption（v1） | 企业 KMS 和授权服务 | 完整支持 | 授权 Desktop Runtime 通过 Context API 按范围读取 |
+| MLS E2EE（后续版本） | Channel 成员设备 | 只能做 Metadata Audit，本地搜索 | Agent 必须作为加密成员或在成员本机运行 |
 
-群聊 E2EE 不应自创协议，应采用经过审查的 Group Key Protocol，例如 MLS。每台设备是独立
+后续若引入群聊 E2EE，不应自创协议，应采用经过审查的 Group Key Protocol，例如 MLS。每台设备是独立
 Cryptographic Client；成员或设备加入/移除时进入新的 Group Epoch 并轮换密钥。
 
 必须提前承认 E2EE 的产品取舍：
@@ -571,10 +573,10 @@ agent-core
 History 写入 Workspace。Task 可以将经过选择的 Context Bundle 加密落盘，并在 Run 完成后
 按 Policy 清理。
 
-Remote `agent-core` 只有两种合法读取方式：
+后续 Remote Enterprise Runner 若进入产品，只允许以下读取方式；v1 不交付 Remote Runtime：
 
 - Managed Channel：通过企业授权服务获取任务范围内的明文。
-- E2EE Channel：Enterprise Runner 作为一个可见的 Cryptographic Device 加入 Channel。
+- MLS E2EE Channel：Enterprise Runner 作为一个可见的 Cryptographic Device 加入 Channel。
 
 ### 11.7 Runtime 并发
 
@@ -624,11 +626,11 @@ messages_fts: message_id, searchable_tokens
 `messages_fts` 是 Derived Cache，可以删除和重建，不是事实来源。它虽然逻辑上包含明文派生
 Token，但物理上位于整库加密 DB 中。
 
-高安全 E2EE 模式不持久化 `messages_fts`，只对本地已缓存 Ciphertext 批量解密并在内存中
+后续高安全 MLS E2EE 模式不持久化 `messages_fts`，只对本地已缓存 Ciphertext 批量解密并在内存中
 搜索。代价是慢、耗电，而且不能搜索设备从未同步的历史。
 
 Managed Encryption 模式可以在企业 Server 建立权限过滤的全文索引，实现跨设备完整历史
-搜索。Server E2EE 模式无法直接提供明文 Content Search。
+搜索。后续 Server MLS E2EE 模式无法直接提供明文 Content Search。
 
 #### 文件检索
 
@@ -639,12 +641,12 @@ Metadata Search：文件名、类型、Owner、Channel、时间、大小、Tag
 Content Search：PDF/DOCX/PPTX/XLSX/代码/文本内部内容
 ```
 
-E2EE Channel 中，文件名和 Tag 也可以作为加密 Metadata；Server 只按 `file_id`、Channel、
+后续 MLS E2EE Channel 中，文件名和 Tag 也可以作为加密 Metadata；Server 只按 `file_id`、Channel、
 时间和 Ciphertext Blob 路由。设备下载文件后由本地 Extractor 提取文本，再写入加密的
 Local Search Index。未下载的大文件不会为了索引自动复制到每台设备。
 
 Managed Channel 可以由 Enterprise Indexer 在 Server 或内网 Runner 解密、抽取和建立完整
-Content Index。E2EE Channel 若需要全量文件搜索，必须提供一台长期在线且作为 Channel
+Content Index。后续 MLS E2EE Channel 若需要全量文件搜索，必须提供一台长期在线且作为 Channel
 Cryptographic Member 的 Enterprise Indexer；否则只能搜索本机已经缓存的文件。
 
 #### Agent 检索
@@ -696,8 +698,8 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 
 - TLS 传输加密和静态加密。
 - 设备数据库和 Blob Cache 默认加密，密钥保存在 OS Secure Storage。
-- E2EE Channel 的 Server 只存 Ciphertext Envelope，不保留可解密的搜索索引。
-- Member、Device 或 Agent 移除时必须轮换 Group Epoch Key。
+- 后续 MLS E2EE Channel 的 Server 只存 Ciphertext Envelope，不保留可解密的搜索索引。
+- 后续 MLS E2EE 模式移除 Member、Device 或 Agent 时必须轮换 Group Epoch Key。
 - 每次存储查询和对象 Key 都执行 Tenant Isolation。
 - 服务凭证和 Runtime Credential 使用统一 Secret Manager。
 - 安全审计流不可变，并有独立保留策略。
@@ -720,8 +722,8 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 - IM、Control Plane、数据库、消息总线、对象存储、密钥服务、模型网关和 Observability 全部可运行
   在企业内网，不要求任何公网入站端点。
 - Desktop Runtime 只主动连接企业内网 Orchestrator，不在工作站开放入站端口。
-- 支持企业内网 DNS、私有 CA、OIDC / SAML / LDAP / AD、内部 S3-compatible Object Storage、
-  Vault / HSM 和内部模型 Endpoint。
+- v1 支持企业内网 DNS、私有 CA、OIDC、内部 S3-compatible Object Storage、Vault / HSM 和内部
+  模型 Endpoint；SAML、SCIM、LDAP / AD 目录适配器属于后续版本。
 - 发布物提供签名 OCI Bundle、Helm Chart、SBOM、Checksum、Schema Migration 与离线回滚包；安装和
   运行时不依赖公共 CDN、Package Registry、遥测 SaaS 或在线 License Service。
 - Standard Private 可以通过白名单 Proxy 使用 APNs / FCM 或经审批的外部模型；Air-gapped 模式
@@ -741,17 +743,18 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 - 从消息创建 Task。
 - `agent-core` Run 创建、Event Stream、Approval、Artifact 和 Cancellation。
 - Agent Actor、明确 Channel Membership、`manual/task_only` 模式。
-- Web 和 Desktop。
+- Desktop、Mobile 和私有化管理 Web；完整 Browser IM Client 不属于 v1。
+- 隔离 Local Connector；长任务只在授权 Desktop Runtime 执行。
 - 可离线安装的私有化部署包、内网证书/IdP/对象存储配置和零遥测默认值。
 
-### P1：企业通用版本
+### P1：v1 后续增强
 
-- SSO / SCIM、Guest、Retention、Audit Export、Policy Admin。
-- Mobile 和 Push Notification。
-- 隔离 Remote Workspace 和 Local Connector。
+- SAML / SCIM、完整目录同步和 Legal Hold 工作流。
+- Enterprise Runner 和隔离 Remote Workspace。
+- MLS E2EE、设备恢复和 History Sharing。
+- 完整 Browser IM Client。
 - `responsibility` 主动参与模式。
 - Runtime Fleet Health、Quota、Budget 和模型路由可见性。
-- Backup / Restore、HA、部署自动化和 Observability。
 
 ### P2：高级协作
 
@@ -802,15 +805,15 @@ Retry 创建新的 Run Attempt。
 - Runtime 输出 Typed Event，不把所有活动伪装成聊天消息。
 - 企业权限、审计和隔离从第一天进入领域模型。
 - 私有化部署是默认基线；核心服务和数据组件不依赖公网 SaaS。
+- v1 只支持单 Region 私有化部署，不包含 SaaS 多租户运营能力。
+- v1 使用 Managed Encryption；严格 MLS E2EE 进入后续独立安全阶段。
+- v1 Runtime 只运行在授权 Desktop / Workstation，不包含 Enterprise Runner。
+- v1 身份集成使用 OIDC，不包含 SAML 和 SCIM。
 - 第一方协议 Proto-first；JSON 只保留在 OIDC、SCIM、Webhook 等外部标准边界。
 
 ## 16. 待确定的产品决策
 
-1. 首要部署方式：SaaS、企业私有云，还是二者同时支持。
-2. Managed Encryption 与 E2EE 是否同时发布，以及哪些 Channel 类型允许切换。
-3. E2EE 的 Device Recovery、Enterprise Key Escrow 和新成员 History Sharing 策略。
-4. 音视频是自研、集成还是后置。
-5. 新 Channel 默认采用哪种 Agent Participation Mode。
-6. Task 对应一个长 Run，还是多个短且不可变的 Run。
-7. Local Connector 的 Device Certificate、企业 Enrollment 和远程操作确认模型。
-8. 产品名称、授权方式，以及 Runtime Capacity 是否与 Human Seat 分开计费。
+1. 新 Channel 默认采用哪种 Agent Participation Mode。
+2. Task 对应一个长 Run，还是多个短且不可变的 Run。
+3. Local Connector 的 Device Certificate、企业 Enrollment 和远程操作确认模型。
+4. 产品名称和私有化授权方式。
