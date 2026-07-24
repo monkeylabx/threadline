@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Threadline Native - 视觉方向 V2</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -28,6 +28,9 @@
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></symbol>
       <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"></path></symbol>
       <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path></symbol>
     </svg>
 
     <main class="desktop-window" data-view="channel">
@@ -51,8 +54,8 @@
         </button>
 
         <nav class="main-nav" aria-label="主要导航">
-          <button><svg><use href="#i-inbox"></use></svg><span>收件箱</span><em>5</em></button>
           <button class="is-active" data-view-target="channel"><svg><use href="#i-message"></use></svg><span>消息</span></button>
+          <button><svg><use href="#i-inbox"></use></svg><span>动态</span><em>5</em></button>
           <button data-view-target="task"><svg><use href="#i-checks"></use></svg><span>任务</span><em>3</em></button>
           <button data-view-target="approval"><svg><use href="#i-shield"></use></svg><span>审批</span><i></i></button>
         </nav>
@@ -81,10 +84,10 @@
 
       <section class="workbench">
         <header class="topbar">
-          <button class="channel-title mobile-space-trigger" title="切换频道">
+          <button class="icon-button mobile-back-to-home" title="返回消息列表" aria-label="返回消息列表"><svg><use href="#i-arrow-left"></use></svg></button>
+          <button class="channel-title" title="频道详情">
             <span>#</span>
             <div><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></div>
-            <svg class="mobile-channel-chevron"><use href="#i-chevron"></use></svg>
           </button>
           <div class="top-actions">
             <button class="workspace-pill" title="当前工作区"><i></i><span>client-app</span><small>main</small></button>
@@ -272,32 +275,77 @@ RUN   lease recovery after crash</code></pre></div>
 
       </section>
 
-      <button class="mobile-sheet-scrim" aria-label="关闭频道列表"></button>
-      <aside class="mobile-conversation-sheet" aria-hidden="true" aria-label="频道与私聊">
-        <div class="mobile-sheet-handle"></div>
-        <header>
-          <div><span class="org-logo">北</span><span><strong>北辰科技</strong><small>产品与工程</small></span></div>
-          <button class="icon-button mobile-conversation-close" title="关闭"><svg><use href="#i-close"></use></svg></button>
+      <section class="mobile-home" aria-label="Threadline 移动首页">
+        <header class="mobile-home-header">
+          <button class="mobile-org" title="切换组织"><span class="org-logo">北</span><span><strong>北辰科技</strong><small>产品与工程</small></span><svg><use href="#i-chevron"></use></svg></button>
+          <div><button class="icon-button mobile-search-trigger" title="搜索" aria-label="搜索"><svg><use href="#i-search"></use></svg></button><button class="mobile-compose" title="新建会话" aria-label="新建会话"><svg><use href="#i-plus"></use></svg></button></div>
         </header>
-        <button class="mobile-search"><svg><use href="#i-search"></use></svg><span>搜索消息、文件和任务</span></button>
-        <div class="mobile-conversation-scroll">
-          <section>
-            <div class="mobile-list-heading"><span>频道</span><button title="新建频道">+</button></div>
-            <button class="mobile-conversation-row is-selected"><span class="row-symbol">#</span><div><strong>产品研发</strong><small>Atlas 正在执行 · 1 个任务</small></div><i class="agent-wake"></i></button>
-            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>客户端体验</strong><small>4 条未读消息</small></div><em>4</em></button>
-            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>安全与合规</strong><small>仅邀请加入</small></div></button>
-            <button class="mobile-conversation-row"><span class="row-symbol">#</span><div><strong>发布协调</strong><small>今天 16:00 发布评审</small></div></button>
+
+        <section class="mobile-search-screen" aria-label="搜索" aria-hidden="true" inert>
+          <header>
+            <button class="icon-button mobile-search-back" title="返回" aria-label="返回"><svg><use href="#i-arrow-left"></use></svg></button>
+            <label><svg><use href="#i-search"></use></svg><input class="mobile-search-input" type="search" placeholder="搜索消息、文件和成员" autocomplete="off" /></label>
+          </header>
+          <div class="mobile-search-content">
+            <div class="mobile-search-tabs" aria-label="搜索范围"><button class="is-active">全部</button><button>消息</button><button>文件</button><button>成员</button></div>
+            <div class="mobile-list-heading"><span>最近搜索</span><button class="mobile-search-clear">清除</button></div>
+            <button class="mobile-search-result" data-mobile-route-target="channel"><span class="row-symbol">#</span><div><strong>产品研发</strong><small>频道 · 18 位成员</small></div><svg><use href="#i-chevron"></use></svg></button>
+            <button class="mobile-search-result" data-view-target="task"><span class="result-icon"><svg><use href="#i-terminal"></use></svg></span><div><strong>Runtime Lease</strong><small>任务 ENG-248 · 正在运行</small></div><svg><use href="#i-chevron"></use></svg></button>
+            <button class="mobile-search-result" data-mobile-route-target="channel"><span class="avatar avatar-zhou">周</span><div><strong>周一鸣</strong><small>产品工程 · 在线</small></div><svg><use href="#i-chevron"></use></svg></button>
+            <p class="mobile-search-empty" hidden>没有匹配结果</p>
+          </div>
+        </section>
+
+        <div class="mobile-home-content">
+          <section class="mobile-home-panel is-active" data-home-panel="messages">
+            <div class="mobile-message-filterbar" aria-label="会话筛选">
+              <button class="mobile-message-filter-trigger" data-message-filter="mention" title="仅看提及" aria-label="仅看提及" aria-pressed="false"><svg><use href="#i-filter"></use></svg><i>2</i></button>
+              <div class="mobile-message-tabs">
+                <button class="is-active" data-message-filter="all" aria-pressed="true">全部</button>
+                <button data-message-filter="unread" aria-pressed="false">未读 5</button>
+                <button data-message-filter="action" aria-pressed="false">待处理 2</button>
+              </div>
+            </div>
+
+            <div class="mobile-conversation-group">
+              <div class="mobile-list-heading"><span>置顶</span><button title="编辑置顶"><svg><use href="#i-more"></use></svg></button></div>
+              <button class="mobile-conversation-row" data-message-filters="unread action" data-mobile-route-target="channel"><span class="row-symbol">#</span><div><strong>产品研发</strong><small>Atlas：并发测试仍在运行</small></div><time>10:34</time><i class="agent-wake"></i></button>
+              <button class="mobile-conversation-row" data-message-filters="unread mention" data-mobile-route-target="channel"><span class="avatar avatar-meng">孟</span><div><strong>孟青</strong><small>旧同步进程可能覆盖新状态</small></div><time>10:18</time></button>
+            </div>
+
+            <div class="mobile-conversation-group">
+              <div class="mobile-list-heading"><span>最近</span><button title="会话选项"><svg><use href="#i-more"></use></svg></button></div>
+              <button class="mobile-conversation-row" data-message-filters="unread" data-mobile-route-target="channel"><span class="row-symbol">#</span><div><strong>客户端体验</strong><small>周一鸣：移动端返回层级需要统一</small></div><time>09:52</time><em>4</em></button>
+              <button class="mobile-conversation-row" data-message-filters="action" data-mobile-route-target="channel"><span class="avatar avatar-atlas">A</span><div><strong>Atlas</strong><small>工程 Agent · 等待一次审批</small></div><time>09:40</time><em class="ai-label">AI</em></button>
+              <button class="mobile-conversation-row" data-message-filters="" data-mobile-route-target="channel"><span class="row-symbol">#</span><div><strong>安全与合规</strong><small>新的审计策略已经发布</small></div><time>昨天</time></button>
+              <button class="mobile-conversation-row" data-message-filters="" data-mobile-route-target="channel"><span class="row-symbol">#</span><div><strong>发布协调</strong><small>今天 16:00 发布评审</small></div><time>昨天</time></button>
+            </div>
           </section>
-          <section>
-            <div class="mobile-list-heading"><span>私聊</span><button title="新建会话">+</button></div>
-            <button class="mobile-conversation-row"><span class="avatar avatar-meng">孟</span><div><strong>孟青</strong><small>在线</small></div><i class="online"></i></button>
-            <button class="mobile-conversation-row"><span class="avatar avatar-zhou">周</span><div><strong>周一鸣</strong><small>在线</small></div><i class="online"></i></button>
-            <button class="mobile-conversation-row"><span class="avatar avatar-atlas">A</span><div><strong>Atlas</strong><small>工程 Agent · 运行中</small></div><em class="ai-label">AI</em></button>
+
+          <section class="mobile-home-panel" data-home-panel="activity">
+            <div class="mobile-page-title"><div><h1>活动</h1><p>需要关注的人与 Agent 动作</p></div></div>
+            <div class="mobile-filter-tabs"><button class="is-active">全部</button><button>待处理</button><button>Agent</button></div>
+            <button class="mobile-activity-card approval" data-view-target="approval"><span><svg><use href="#i-shield"></use></svg></span><div><small>等待你的决定 · 2 分钟前</small><strong>Atlas 请求删除 2 个过期测试文件</strong><p>一次性授权 · 中风险 · ENG-248</p></div><svg class="chevron"><use href="#i-chevron"></use></svg></button>
+            <button class="mobile-activity-card runtime" data-view-target="task"><span><svg><use href="#i-terminal"></use></svg></span><div><small>运行中 · 8 分钟</small><strong>Runtime Lease 与 Fencing Token</strong><p>并发测试 3/4 · 本地 Mac Studio</p></div><svg class="chevron"><use href="#i-chevron"></use></svg></button>
+            <button class="mobile-activity-card mention" data-mobile-route-target="channel"><span class="avatar avatar-meng">孟</span><div><small>#产品研发 · 18 分钟前</small><strong>孟青提到了你</strong><p>删除旧状态文件时必须让我审批。</p></div><svg class="chevron"><use href="#i-chevron"></use></svg></button>
+          </section>
+
+          <section class="mobile-home-panel" data-home-panel="profile">
+            <div class="mobile-page-title"><div><h1>我的</h1><p>身份、组织与本地运行时</p></div></div>
+            <div class="mobile-profile-card"><span class="avatar avatar-user">林</span><div><strong>林嘉</strong><small>产品工程 · 在线</small></div><button title="编辑资料"><svg><use href="#i-chevron"></use></svg></button></div>
+            <div class="mobile-profile-section"><span>工作环境</span><button><i class="runtime-glyph"><svg><use href="#i-terminal"></use></svg></i><div><strong>本地 Runtime</strong><small>Mac Studio · 18 ms</small></div><em>在线</em></button><button><i><svg><use href="#i-folder"></use></svg></i><div><strong>client-app</strong><small>GitHub · main · 默认只读</small></div><svg class="chevron"><use href="#i-chevron"></use></svg></button></div>
+            <div class="mobile-profile-section"><span>组织</span><button><i class="org-logo">北</i><div><strong>北辰科技</strong><small>产品与工程 · 企业版</small></div><svg class="chevron"><use href="#i-chevron"></use></svg></button><button><i><svg><use href="#i-shield"></use></svg></i><div><strong>权限与审计</strong><small>查看设备、授权和安全记录</small></div><svg class="chevron"><use href="#i-chevron"></use></svg></button></div>
           </section>
         </div>
-      </aside>
+
+        <nav class="mobile-home-nav" aria-label="移动端主要导航">
+          <button class="is-active" data-home-panel-target="messages"><svg><use href="#i-message"></use></svg><span>消息</span></button>
+          <button data-home-panel-target="activity"><span class="nav-icon"><svg><use href="#i-inbox"></use></svg><i>1</i></span><span>活动</span></button>
+          <button data-home-panel-target="profile"><svg><use href="#i-user"></use></svg><span>我的</span></button>
+        </nav>
+      </section>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=4"></script>
   </body>
 </html>

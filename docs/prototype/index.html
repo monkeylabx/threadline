@@ -4,7 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Threadline - 产品原型</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        if (!window.matchMedia("(max-width: 720px)").matches || params.get("viewport") === "desktop") return;
+        const mobileRoutes = {
+          channel: "channel",
+          inbox: "activity",
+          search: "search",
+          tasks: "task",
+          approvals: "approval",
+          "task-result": "task",
+          files: "messages",
+          agents: "messages",
+          runtime: "profile",
+          sync: "profile",
+          organization: "profile",
+          admin: "profile",
+        };
+        const view = params.get("view") || mobileRoutes[params.get("screen")] || "messages";
+        window.location.replace(`./visual-v2/index.html?view=${view}`);
+      })();
+    </script>
+    <link rel="stylesheet" href="./styles.css?v=2" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -53,12 +75,6 @@
         <button class="search-button" data-route="search"><svg><use href="#i-search"></use></svg><span>搜索消息、文件和任务</span><kbd>⌘ K</kbd></button>
         <div class="sidebar-scroll">
           <section class="sidebar-section">
-            <div class="section-title"><span>收件箱</span><span class="count-badge">5</span></div>
-            <button class="sidebar-item" data-route="inbox"><span class="item-symbol">@</span><span>提到我的</span><strong>2</strong></button>
-            <button class="sidebar-item" data-route="approvals"><svg><use href="#i-shield"></use></svg><span>待我审批</span><strong>1</strong></button>
-            <button class="sidebar-item" data-route="tasks"><svg><use href="#i-checks"></use></svg><span>我的任务</span><strong>3</strong></button>
-          </section>
-          <section class="sidebar-section">
             <div class="section-title"><span>频道</span><button title="新建频道"><svg><use href="#i-plus"></use></svg></button></div>
             <button class="sidebar-item is-selected" data-channel="产品研发"><span class="item-symbol">#</span><span>产品研发</span><i class="agent-eye" title="Agent 正在观察"></i></button>
             <button class="sidebar-item"><span class="item-symbol">#</span><span>客户端体验</span><strong>4</strong></button>
@@ -70,6 +86,10 @@
             <button class="sidebar-item"><span class="avatar avatar-small avatar-meng">孟</span><span>孟青</span><i class="online"></i></button>
             <button class="sidebar-item"><span class="avatar avatar-small avatar-zhou">周</span><span>周一鸣</span><i class="online"></i></button>
             <button class="sidebar-item"><span class="avatar avatar-small avatar-agent">A</span><span>Atlas · 工程 Agent</span><i class="agent-label">AI</i></button>
+          </section>
+          <section class="sidebar-section">
+            <div class="section-title"><span>动态</span><span class="count-badge">5</span></div>
+            <button class="sidebar-item" data-route="inbox"><span class="item-symbol">@</span><span>提及、回复与 Agent 结果</span><strong>5</strong></button>
           </section>
         </div>
         <button class="device-status" data-route="runtime"><span class="device-light"></span><div><strong>本地运行时在线</strong><small>Mac Studio · 延迟 18ms</small></div></button>
@@ -253,8 +273,8 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <section class="screen screen-inbox" data-screen="inbox">
           <div class="inbox-layout">
             <div class="inbox-list-pane">
-              <div class="page-heading compact"><span class="eyebrow">收件箱</span><h2>需要你的注意</h2><p>回复、提及、审批和任务变化按优先级集中处理。</p></div>
-              <div class="inbox-tabs"><button class="is-active">全部 <span>5</span></button><button>提到我的</button><button>任务</button></div>
+              <div class="page-heading compact"><span class="eyebrow">个人动态</span><h2>与你直接相关</h2><p>这里只汇总提及、回复，以及需要确认的 Agent 结果；任务进度和审批仍在各自工作区处理。</p></div>
+              <div class="inbox-tabs"><button class="is-active">全部 <span>5</span></button><button>提及与回复</button><button>Agent 结果</button></div>
               <button class="inbox-row is-selected"><span class="inbox-kind mention">@</span><div><div><strong>孟青在 #产品研发 提到了你</strong><time>4 分钟前</time></div><p>先跑最小改动，涉及删除状态文件时让林嘉审批。</p><span># 产品研发 · ENG-248</span></div></button>
               <button class="inbox-row" data-route="approvals"><span class="inbox-kind approval">!</span><div><div><strong>Atlas 请求一次性删除权限</strong><time>6 分钟前</time></div><p>删除 2 个并发测试产生的过期 fixture。</p><span>审批 · 中风险</span></div></button>
               <button class="inbox-row" data-route="task-result"><span class="inbox-kind done">✓</span><div><div><strong>DES-088 已完成</strong><time>18 分钟前</time></div><p>桌面端空状态视觉修复已生成补丁。</p><span>Nova · 3 个文件</span></div></button>
@@ -354,6 +374,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=2"></script>
   </body>
 </html>

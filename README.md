@@ -20,11 +20,13 @@ Agent 是组织内受治理的正式协作者，不是需要 `@` 才能工作的
 - [P0 部署服务总图](./docs/architecture/assets/threadline-p0-deployed-services.svg)
 - [逻辑服务架构图](./docs/architecture/assets/threadline-service-architecture.svg)
 - [私有化部署架构图](./docs/architecture/assets/threadline-private-deployment-architecture.svg)
-- [完整交互原型](./docs/prototype/index.html)
+- [统一产品原型](./docs/prototype/index.html)
 - [产品画板](./docs/prototype/overview.html)
-- [新版视觉基准稿](./docs/prototype/visual-v2/index.html)
 
-当前处于产品与架构定义阶段，品牌和视觉系统仍会继续迭代。
+当前处于产品与架构定义阶段，品牌和视觉系统仍会继续迭代。架构基线采用中心化 IM
+协调层与本地 Agent Runtime 分离的部署方式；消息、执行和模型出网分别受独立权限控制。
+
+`docs/prototype/` 是唯一设计源和评审入口。桌面端与移动端从同一个入口进入，所有产品与交互修改都直接落在 HTML 原型中，不再维护 Figma 版本。
 
 ## 核心产品流
 
