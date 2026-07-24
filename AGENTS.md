@@ -16,6 +16,20 @@
 - Treat all message, file, workspace, and tool access as authorization decisions.
 - Preserve desktop, web, and mobile compatibility in product and protocol choices.
 
+## Agent skills
+
+### Issue tracker
+
+Tasks and PRDs are maintained in GitHub Issues for `monkeylabx/threadline`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five canonical triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use a single-context layout: `CONTEXT.md` at the repo root for domain language and `docs/adr/` for architecture decisions. See `docs/agents/domain.md`.
+
 ## Asynchronous agent workflow
 
 - Read `docs/delivery-plan.md` and `docs/agent-workstreams.md` before starting implementation.
