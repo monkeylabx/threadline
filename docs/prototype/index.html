@@ -23,7 +23,7 @@
           admin: "profile",
         };
         const view = params.get("view") || mobileRoutes[params.get("screen")] || "messages";
-        window.location.replace(`./visual-v2/index.html?view=${view}`);
+        window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
     <link rel="stylesheet" href="./styles.css?v=2" />
@@ -50,7 +50,7 @@
 
     <main class="app-shell">
       <aside class="org-rail" aria-label="组织导航">
-        <a class="brand-mark" href="./overview.html" title="查看产品原型总览">R</a>
+        <span class="brand-mark" aria-label="Threadline">R</span>
         <nav class="rail-nav">
           <button class="rail-button is-active" data-route="channel" title="消息"><svg><use href="#i-message"></use></svg></button>
           <button class="rail-button" data-route="tasks" title="任务"><svg><use href="#i-checks"></use></svg><span class="rail-count">3</span></button>

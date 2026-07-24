@@ -3,9 +3,7 @@
 状态：产品草案 0.3（含完整可交互原型）  
 日期：2026-07-22
 
-原型总览：[打开 Threadline 产品画板](./prototype/overview.html)  
-交互原型：[进入 Threadline 高保真原型](./prototype/index.html)  
-视觉基准：[打开 Threadline Native V2](./prototype/visual-v2/index.html)
+产品原型：[进入 Threadline 统一原型](./prototype/index.html)
 
 原型覆盖工作空间、收件箱、频道协作、全局搜索、文件与产物、Agent 任务执行、风险审批、
 任务交付、Agent 目录、Runtime 设备、同步恢复、组织管理，以及桌面端和移动端响应式布局。
@@ -142,10 +140,8 @@ Local Runtime 进入同一套协作界面。
 
 #### 产品原型总览
 
-![Threadline 产品原型总览](./prototype/screenshots/product-overview.png)
-
-总览画板将完整产品拆成三条核心流程：沟通与发现、从讨论到交付、能力与治理。点击画板中的
-任意页面可进入对应的可交互高保真页面。
+统一原型通过 URL 路由覆盖沟通与发现、从讨论到交付、能力与治理三条核心流程。桌面端和移动端
+共用一个入口，窄视口自动进入移动交互。
 
 | 原型页面 | 需要验证的产品决策 |
 | --- | --- |

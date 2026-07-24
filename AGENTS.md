@@ -30,7 +30,7 @@
 ## Frontend direction
 
 - Treat `docs/prototype/index.html` as the single product-design entry and `docs/prototype/` as the source of truth.
-- Desktop/web behavior lives in the root prototype; narrow viewports are routed to the mobile renderer in `docs/prototype/visual-v2/`.
+- Desktop/web behavior lives in the root prototype; narrow viewports are routed to the internal renderer in `docs/prototype/mobile/`.
 - Maintain and review the product design directly in the HTML prototype. Figma exports are not part of the active workflow.
 - Daily IM surfaces should feel native, quiet, and work-focused.
 - Agent activity belongs in the conversation context through sheets and activity layers.
