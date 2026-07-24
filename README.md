@@ -14,6 +14,12 @@ Agent 是组织内受治理的正式协作者，不是需要 `@` 才能工作的
 ## 当前资产
 
 - [产品需求文档](./docs/product-requirements.md)
+- [系统架构与通信协议](./docs/architecture/system-architecture.md)
+- [P0 服务目录](./docs/architecture/service-catalog.md)
+- [产品架构图](./docs/architecture/assets/threadline-product-architecture.svg)
+- [P0 部署服务总图](./docs/architecture/assets/threadline-p0-deployed-services.svg)
+- [逻辑服务架构图](./docs/architecture/assets/threadline-service-architecture.svg)
+- [私有化部署架构图](./docs/architecture/assets/threadline-private-deployment-architecture.svg)
 - [完整交互原型](./docs/prototype/index.html)
 - [产品画板](./docs/prototype/overview.html)
 - [新版视觉基准稿](./docs/prototype/visual-v2/index.html)
@@ -30,4 +36,5 @@ Agent 是组织内受治理的正式协作者，不是需要 `@` 才能工作的
 
 ## 仓库状态
 
-此仓库目前包含 PRD 与交互原型。技术栈、服务边界和第一阶段实现计划将在架构评审后写入 `docs/architecture/`。
+此仓库目前包含 PRD、系统架构与交互原型。下一步需要通过架构评审确认协议契约、威胁模型和
+第一阶段部署拓扑，再进入实现。

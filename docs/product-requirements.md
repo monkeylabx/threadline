@@ -718,6 +718,22 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 - 大 Channel 使用 Windowed Rendering 和分页历史。
 - Agent Streaming 不得导致消息时间线持续抖动或重排。
 
+### 12.4 私有化部署
+
+- 私有化部署是默认产品形态，不是公有 SaaS 的兼容模式。
+- IM、Control Plane、数据库、消息总线、对象存储、密钥服务、模型网关和 Observability 全部可运行
+  在企业内网，不要求任何公网入站端点。
+- Desktop Runtime 只主动连接企业内网 Orchestrator，不在工作站开放入站端口。
+- 支持企业内网 DNS、私有 CA、OIDC / SAML / LDAP / AD、内部 S3-compatible Object Storage、
+  Vault / HSM 和内部模型 Endpoint。
+- 发布物提供签名 OCI Bundle、Helm Chart、SBOM、Checksum、Schema Migration 与离线回滚包；安装和
+  运行时不依赖公共 CDN、Package Registry、遥测 SaaS 或在线 License Service。
+- Standard Private 可以通过白名单 Proxy 使用 APNs / FCM 或经审批的外部模型；Air-gapped 模式
+  不允许公网出站，只能使用本地或企业内网模型。
+- Air-gapped 模式下，iOS / Android 被系统挂起后不承诺后台实时唤醒；重新打开应用或恢复企业
+  网络连接后必须通过 Cursor 补齐消息。
+- 产品遥测默认关闭；管理员只能显式生成并导出经过脱敏的诊断包。
+
 ## 13. 交付优先级
 
 ### P0：协作基础
@@ -730,6 +746,7 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 - `agent-core` Run 创建、Event Stream、Approval、Artifact 和 Cancellation。
 - Agent Actor、明确 Channel Membership、`manual/task_only` 模式。
 - Web 和 Desktop。
+- 可离线安装的私有化部署包、内网证书/IdP/对象存储配置和零遥测默认值。
 
 ### P1：企业通用版本
 
@@ -788,6 +805,8 @@ Retry 创建新的 Run Attempt。
 - Task Context 使用引用、权限过滤和版本控制。
 - Runtime 输出 Typed Event，不把所有活动伪装成聊天消息。
 - 企业权限、审计和隔离从第一天进入领域模型。
+- 私有化部署是默认基线；核心服务和数据组件不依赖公网 SaaS。
+- 第一方协议 Proto-first；JSON 只保留在 OIDC、SCIM、Webhook 等外部标准边界。
 
 ## 16. 待确定的产品决策
 

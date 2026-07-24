@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Threadline private deployment topology</title>
+  <desc id="desc">Physical deployment and network topology for Threadline in an enterprise private network.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#b45309"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; letter-spacing: 0; }
+      .eyebrow { font-size: 13px; font-weight: 700; fill: #2563eb; }
+      .title { font-size: 31px; font-weight: 720; }
+      .subtitle { font-size: 16px; fill: #64748b; }
+      .zone-title { font-size: 13px; font-weight: 700; fill: #475569; }
+      .zone-note { font-size: 12px; fill: #64748b; }
+      .card-title { font-size: 15px; font-weight: 680; }
+      .card-note { font-size: 12px; fill: #64748b; }
+      .tiny { font-size: 11px; fill: #64748b; }
+      .protocol { font-size: 11px; font-weight: 650; fill: #2563eb; }
+      .badge { font-size: 12px; font-weight: 700; fill: #0f766e; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+      .blue-card { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1.2; }
+      .teal-card { fill: #ecfdf5; stroke: #99f6e4; stroke-width: 1.2; }
+      .amber-card { fill: #fffbeb; stroke: #fcd34d; stroke-width: 1.2; }
+      .violet-card { fill: #f5f3ff; stroke: #c4b5fd; stroke-width: 1.2; }
+      .line { fill: none; stroke: #2563eb; stroke-width: 2; marker-end: url(#arrow-blue); }
+      .teal-line { fill: none; stroke: #0f766e; stroke-width: 2; marker-end: url(#arrow-teal); }
+      .amber-line { fill: none; stroke: #b45309; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow-amber); }
+      .internal-line { fill: none; stroke: #94a3b8; stroke-width: 1.5; marker-end: url(#arrow-blue); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f6f8fb"/>
+  <rect x="0" y="0" width="1600" height="8" fill="#2563eb"/>
+
+  <text class="eyebrow" x="52" y="50">THREADLINE / PRIVATE DEPLOYMENT TOPOLOGY</text>
+  <text class="title" x="52" y="88">私有化部署架构</text>
+  <text class="subtitle" x="52" y="118">回答“组件部署在哪里”：核心服务与数据位于企业内网，Runtime 在授权工作站执行。</text>
+
+  <rect x="1325" y="43" width="220" height="42" rx="8" fill="#ecfdf5" stroke="#5eead4"/>
+  <circle cx="1350" cy="64" r="6" fill="#0f766e"/>
+  <text class="badge" x="1366" y="69">NO PUBLIC INBOUND</text>
+
+  <rect x="420" y="145" width="1128" height="720" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text class="zone-title" x="445" y="174">ENTERPRISE PRIVATE NETWORK</text>
+  <text class="zone-note" x="672" y="174">Internal DNS · Private CA · LAN / VPN / ZTNA</text>
+
+  <rect x="50" y="145" width="330" height="720" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+  <text class="zone-title" x="75" y="177">AUTHORIZED DEVICE</text>
+  <text class="zone-note" x="75" y="198">明文与 Workspace 的主要信任边界</text>
+
+  <rect class="blue-card" x="76" y="225" width="130" height="72" rx="8"/>
+  <text class="card-title" x="94" y="255">Desktop</text>
+  <text class="card-note" x="94" y="278">完整执行端</text>
+  <rect class="card" x="222" y="225" width="132" height="72" rx="8"/>
+  <text class="card-title" x="240" y="255">Web / Mobile</text>
+  <text class="card-note" x="240" y="278">聊天 · 审批 · 观察</text>
+
+  <rect class="card" x="76" y="326" width="278" height="90" rx="8"/>
+  <rect x="76" y="326" width="6" height="90" rx="3" fill="#2563eb"/>
+  <text class="card-title" x="99" y="357">Local Message Service</text>
+  <text class="card-note" x="99" y="380">单写者 · Context API · Policy Check</text>
+  <text class="card-note" x="99" y="399">UDS / Named Pipe · Protobuf</text>
+
+  <rect class="violet-card" x="76" y="444" width="278" height="76" rx="8"/>
+  <text class="card-title" x="99" y="474">Encrypted SQLite</text>
+  <text class="card-note" x="99" y="497">Messages · Outbox · Cursor · Local FTS</text>
+
+  <rect class="teal-card" x="76" y="550" width="278" height="112" rx="8"/>
+  <rect x="76" y="550" width="6" height="112" rx="3" fill="#0f766e"/>
+  <text class="card-title" x="99" y="581">Local Agent Runtime</text>
+  <text class="card-note" x="99" y="605">Task · Run · Tools · Model Adapter</text>
+  <text class="card-note" x="99" y="628">Capability Grant · Lease · Fencing Token</text>
+  <text class="tiny" x="99" y="648">仅主动连接内网，不开放入站端口</text>
+
+  <rect class="amber-card" x="76" y="691" width="278" height="91" rx="8"/>
+  <text class="card-title" x="99" y="722">Workspace Connector</text>
+  <text class="card-note" x="99" y="745">授权路径 · Repo / Files · Sandbox</text>
+  <text class="card-note" x="99" y="765">高影响动作需要审批</text>
+
+  <path class="internal-line" d="M215 416 L215 444"/>
+  <path class="teal-line" d="M215 550 L215 520"/>
+  <path class="teal-line" d="M215 662 L215 691"/>
+
+  <rect x="450" y="202" width="670" height="92" rx="8" fill="#eef4ff" stroke="#93c5fd" stroke-width="1.3"/>
+  <text class="zone-title" x="474" y="228">INTERNAL ACCESS</text>
+  <text class="card-title" x="474" y="256">Internal Ingress · API Gateway · Realtime Gateway</text>
+  <text class="card-note" x="474" y="279">WSS / HTTPS · Protobuf-first · enterprise identity session</text>
+  <rect x="962" y="222" width="130" height="44" rx="8" fill="#ffffff" stroke="#bfdbfe"/>
+  <text class="protocol" x="984" y="249">NO PUBLIC IP</text>
+
+  <rect x="450" y="320" width="670" height="345" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text class="zone-title" x="474" y="348">IM &amp; CONTROL PLANE · INTERNAL KUBERNETES / VM CLUSTER</text>
+
+  <rect class="blue-card" x="474" y="370" width="194" height="78" rx="8"/>
+  <text class="card-title" x="493" y="400">Realtime Gateway</text>
+  <text class="card-note" x="493" y="424">Session · Backpressure</text>
+  <rect class="card" x="689" y="370" width="194" height="78" rx="8"/>
+  <text class="card-title" x="708" y="400">Identity &amp; Policy</text>
+  <text class="card-note" x="708" y="424">Organization · Capability</text>
+  <rect class="blue-card" x="904" y="370" width="192" height="78" rx="8"/>
+  <text class="card-title" x="923" y="400">Message Sequencer</text>
+  <text class="card-note" x="923" y="424">Auth · Order · Commit</text>
+
+  <rect class="card" x="474" y="470" width="194" height="78" rx="8"/>
+  <text class="card-title" x="493" y="500">Sync Query</text>
+  <text class="card-note" x="493" y="524">Cursor · Gap Recovery</text>
+  <rect class="teal-card" x="689" y="470" width="194" height="78" rx="8"/>
+  <text class="card-title" x="708" y="500">Task &amp; Approval</text>
+  <text class="card-note" x="708" y="524">Lease · Audit · Artifact</text>
+  <rect class="violet-card" x="904" y="470" width="192" height="78" rx="8"/>
+  <text class="card-title" x="923" y="500">Device &amp; MLS</text>
+  <text class="card-note" x="923" y="524">KeyPackage · Epoch</text>
+
+  <rect class="card" x="474" y="570" width="194" height="70" rx="8"/>
+  <text class="card-title" x="493" y="599">Notification</text>
+  <text class="card-note" x="493" y="621">Presence · Push Hint</text>
+  <rect class="amber-card" x="689" y="570" width="194" height="70" rx="8"/>
+  <text class="card-title" x="708" y="599">Model Gateway</text>
+  <text class="card-note" x="708" y="621">Discovery · Egress Policy</text>
+  <rect class="card" x="904" y="570" width="192" height="70" rx="8"/>
+  <text class="card-title" x="923" y="599">Outbox Relay</text>
+  <text class="card-note" x="923" y="621">Committed Events Only</text>
+
+  <rect x="450" y="690" width="670" height="140" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text class="zone-title" x="474" y="716">INTERNAL DATA PLANE</text>
+
+  <rect class="card" x="470" y="737" width="140" height="69" rx="8"/>
+  <text class="card-title" x="488" y="766">PostgreSQL HA</text>
+  <text class="tiny" x="488" y="788">Event source of truth</text>
+  <rect class="card" x="622" y="737" width="116" height="69" rx="8"/>
+  <text class="card-title" x="640" y="766">JetStream</text>
+  <text class="tiny" x="640" y="788">Domain events</text>
+  <rect class="card" x="750" y="737" width="128" height="69" rx="8"/>
+  <text class="card-title" x="768" y="766">Object Store</text>
+  <text class="tiny" x="768" y="788">Encrypted blobs</text>
+  <rect class="card" x="890" y="737" width="94" height="69" rx="8"/>
+  <text class="card-title" x="908" y="766">Redis</text>
+  <text class="tiny" x="908" y="788">Ephemeral</text>
+  <rect class="card" x="996" y="737" width="104" height="69" rx="8"/>
+  <text class="card-title" x="1014" y="766">Vault / HSM</text>
+  <text class="tiny" x="1014" y="788">Keys · secrets</text>
+
+  <path class="line" d="M354 260 C395 260 408 248 450 248"/>
+  <path class="teal-line" d="M354 606 L420 606 L420 559 L786 559 L786 548"/>
+  <rect x="470" y="550" width="216" height="18" rx="4" fill="#ffffff"/>
+  <text class="tiny" x="480" y="563">outbound mTLS · capability-scoped</text>
+  <path class="internal-line" d="M786 294 L786 320"/>
+  <path class="internal-line" d="M1096 409 L1110 409 L1110 605 L1096 605"/>
+  <path class="internal-line" d="M1000 640 L1000 690"/>
+  <path class="internal-line" d="M571 640 L571 690"/>
+  <path class="internal-line" d="M786 640 L786 690"/>
+
+  <rect x="1150" y="202" width="370" height="628" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text class="zone-title" x="1175" y="232">ENTERPRISE INTEGRATIONS</text>
+  <text class="zone-note" x="1175" y="252">全部使用内网地址与企业身份</text>
+
+  <rect class="card" x="1175" y="278" width="320" height="80" rx="8"/>
+  <text class="card-title" x="1196" y="308">Enterprise Identity</text>
+  <text class="card-note" x="1196" y="333">OIDC · SAML · LDAP / AD · SCIM</text>
+  <rect class="amber-card" x="1175" y="380" width="320" height="88" rx="8"/>
+  <text class="card-title" x="1196" y="411">Internal Model Endpoints</text>
+  <text class="card-note" x="1196" y="436">Model registry · Router · On-prem inference</text>
+  <text class="tiny" x="1196" y="455">远程外部模型默认关闭</text>
+  <rect class="card" x="1175" y="490" width="320" height="80" rx="8"/>
+  <text class="card-title" x="1196" y="520">Code &amp; Knowledge</text>
+  <text class="card-note" x="1196" y="545">Git · File server · Internal knowledge base</text>
+  <rect class="teal-card" x="1175" y="592" width="320" height="80" rx="8"/>
+  <text class="card-title" x="1196" y="622">Internal Observability</text>
+  <text class="card-note" x="1196" y="647">OpenTelemetry · Metrics · Logs · Traces</text>
+  <rect class="violet-card" x="1175" y="694" width="320" height="104" rx="8"/>
+  <text class="card-title" x="1196" y="724">Backup &amp; Offline Delivery</text>
+  <text class="card-note" x="1196" y="749">PITR · Encrypted backup · Restore drill</text>
+  <text class="card-note" x="1196" y="772">Signed OCI bundle · SBOM · Rollback</text>
+
+  <path class="internal-line" d="M1120 318 L1175 318"/>
+  <path class="amber-line" d="M786 640 L786 675 L1136 675 L1136 424 L1175 424"/>
+  <path class="internal-line" d="M1120 530 L1175 530"/>
+  <path class="teal-line" d="M1120 632 L1175 632"/>
+
+  <rect x="1085" y="890" width="435" height="72" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.3" stroke-dasharray="7 6"/>
+  <text class="zone-title" x="1108" y="918" fill="#92400e">OPTIONAL CONTROLLED EGRESS</text>
+  <text class="card-note" x="1108" y="943">APNs / FCM · approved external model · disabled in air-gapped mode</text>
+  <path class="amber-line" d="M1335 830 L1335 890"/>
+
+  <rect x="50" y="890" width="990" height="72" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text class="zone-title" x="74" y="918">PRIVACY &amp; RELIABILITY CONTRACT</text>
+  <text class="card-note" x="74" y="943">Local Runtime ≠ local model · ACK after durable replicated commit · At-least-once + idempotency · E2EE content, minimized metadata</text>
+
+  <circle cx="62" cy="984" r="4" fill="#2563eb"/>
+  <text class="tiny" x="74" y="988">实线：企业内网流量</text>
+  <line x1="220" y1="984" x2="258" y2="984" stroke="#b45309" stroke-width="2" stroke-dasharray="7 6"/>
+  <text class="tiny" x="270" y="988">虚线：可选受控出网</text>
+  <text class="tiny" x="1418" y="988">v1 · 2026-07-23</text>
+</svg>

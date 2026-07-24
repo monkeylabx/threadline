@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Threadline product architecture</title>
+  <desc id="desc">Product capability architecture for enterprise collaboration and local Agent execution.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.07"/>
+    </filter>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#0f766e"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172033; letter-spacing: 0; }
+      .eyebrow { font-size: 13px; font-weight: 700; fill: #2563eb; }
+      .title { font-size: 31px; font-weight: 720; }
+      .subtitle { font-size: 16px; fill: #64748b; }
+      .zone-title { font-size: 13px; font-weight: 700; fill: #475569; }
+      .card-title { font-size: 17px; font-weight: 700; }
+      .card-note { font-size: 13px; fill: #64748b; }
+      .item { font-size: 13px; fill: #475569; }
+      .principle { font-size: 12px; font-weight: 650; fill: #334155; }
+      .badge { font-size: 12px; font-weight: 700; fill: #2563eb; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+      .blue { fill: #eff6ff; stroke: #93c5fd; stroke-width: 1.2; }
+      .teal { fill: #ecfdf5; stroke: #99f6e4; stroke-width: 1.2; }
+      .amber { fill: #fffbeb; stroke: #fcd34d; stroke-width: 1.2; }
+      .violet { fill: #f5f3ff; stroke: #c4b5fd; stroke-width: 1.2; }
+      .blue-line { fill: none; stroke: #2563eb; stroke-width: 2; marker-end: url(#arrow-blue); }
+      .teal-line { fill: none; stroke: #0f766e; stroke-width: 2; marker-end: url(#arrow-teal); }
+      .thin-line { fill: none; stroke: #94a3b8; stroke-width: 1.5; marker-end: url(#arrow-blue); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f6f8fb"/>
+  <rect x="0" y="0" width="1600" height="8" fill="#2563eb"/>
+  <text class="eyebrow" x="52" y="50">THREADLINE / PRODUCT CAPABILITY ARCHITECTURE</text>
+  <text class="title" x="52" y="88">产品架构图</text>
+  <text class="subtitle" x="52" y="118">回答“产品为谁解决什么问题”：可靠企业 IM 是主界面，本地 Agent Runtime 将讨论转成可治理的执行。</text>
+  <rect x="1320" y="43" width="225" height="42" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
+  <text class="badge" x="1354" y="69">WHAT THE PRODUCT DOES</text>
+
+  <rect x="50" y="150" width="1500" height="156" rx="8" fill="#ffffff" stroke="#cbd5e1" filter="url(#shadow)"/>
+  <text class="zone-title" x="76" y="179">EXPERIENCE LAYER</text>
+
+  <rect class="blue" x="76" y="198" width="450" height="82" rx="8"/>
+  <text class="card-title" x="99" y="228">日常协作 / Everyday IM</text>
+  <text class="card-note" x="99" y="253">组织、私聊、Channel、Thread、消息、搜索、文件与通知</text>
+  <rect class="teal" x="575" y="198" width="450" height="82" rx="8"/>
+  <text class="card-title" x="598" y="228">Agent 工作 / Agent Work</text>
+  <text class="card-note" x="598" y="253">从消息创建 Task，观察 Run，审批动作，接收可验证 Artifact</text>
+  <rect class="violet" x="1074" y="198" width="450" height="82" rx="8"/>
+  <text class="card-title" x="1097" y="228">组织治理 / Administration</text>
+  <text class="card-note" x="1097" y="253">成员、设备、权限、策略、保留、审计、配额与部署管理</text>
+
+  <rect x="50" y="332" width="1500" height="392" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+  <text class="zone-title" x="76" y="362">PRODUCT DOMAINS</text>
+
+  <rect class="blue" x="76" y="385" width="340" height="285" rx="8"/>
+  <text class="card-title" x="100" y="421">协作领域</text>
+  <text class="card-note" x="100" y="444">Collaboration Domain</text>
+  <line x1="100" y1="463" x2="392" y2="463" stroke="#bfdbfe"/>
+  <text class="item" x="100" y="492">Organization · Actor · Space</text>
+  <text class="item" x="100" y="521">Channel · DM · Membership</text>
+  <text class="item" x="100" y="550">Message · Thread · Reaction</text>
+  <text class="item" x="100" y="579">File · Mention · Notification</text>
+  <text class="item" x="100" y="608">Search · Read Cursor · Offline</text>
+  <rect x="100" y="630" width="190" height="24" rx="6" fill="#dbeafe"/>
+  <text class="principle" x="112" y="647">Runtime 离线，IM 仍可用</text>
+
+  <rect class="amber" x="448" y="385" width="296" height="285" rx="8"/>
+  <text class="card-title" x="472" y="421">上下文与知识</text>
+  <text class="card-note" x="472" y="444">Context &amp; Knowledge</text>
+  <line x1="472" y1="463" x2="720" y2="463" stroke="#fde68a"/>
+  <text class="item" x="472" y="492">Selected Message / File Refs</text>
+  <text class="item" x="472" y="521">Context Manifest · Version</text>
+  <text class="item" x="472" y="550">Permission Filtering</text>
+  <text class="item" x="472" y="579">Local Search · Bounded Retrieval</text>
+  <text class="item" x="472" y="608">Citation · Provenance</text>
+  <rect x="472" y="630" width="203" height="24" rx="6" fill="#fef3c7"/>
+  <text class="principle" x="484" y="647">Channel 不是 Agent Session</text>
+
+  <rect class="teal" x="776" y="385" width="340" height="285" rx="8"/>
+  <text class="card-title" x="800" y="421">工作编排领域</text>
+  <text class="card-note" x="800" y="444">Work Orchestration</text>
+  <line x1="800" y1="463" x2="1092" y2="463" stroke="#99f6e4"/>
+  <text class="item" x="800" y="492">Task · Context Manifest</text>
+  <text class="item" x="800" y="521">Run · Attempt · Event Stream</text>
+  <text class="item" x="800" y="550">Approval · Cancellation</text>
+  <text class="item" x="800" y="579">Artifact · Result · Audit Link</text>
+  <text class="item" x="800" y="608">Lease · Recovery · Delegation</text>
+  <rect x="800" y="630" width="205" height="24" rx="6" fill="#ccfbf1"/>
+  <text class="principle" x="812" y="647">讨论转成受治理的执行</text>
+
+  <rect class="violet" x="1148" y="385" width="376" height="285" rx="8"/>
+  <text class="card-title" x="1172" y="421">权限与治理领域</text>
+  <text class="card-note" x="1172" y="444">Policy &amp; Governance</text>
+  <line x1="1172" y1="463" x2="1500" y2="463" stroke="#ddd6fe"/>
+  <text class="item" x="1172" y="492">Identity · Role · Resource ACL</text>
+  <text class="item" x="1172" y="521">Capability Grant · Delegation Limit</text>
+  <text class="item" x="1172" y="550">Device Trust · E2EE / Managed</text>
+  <text class="item" x="1172" y="579">Retention · Legal Hold · Export</text>
+  <text class="item" x="1172" y="608">Audit · Budget · Model Egress</text>
+  <rect x="1172" y="630" width="211" height="24" rx="6" fill="#ede9fe"/>
+  <text class="principle" x="1184" y="647">Agent 是受权限约束的 Actor</text>
+
+  <path class="blue-line" d="M301 280 L301 385"/>
+  <path class="teal-line" d="M800 280 L946 385"/>
+  <path class="thin-line" d="M1299 280 L1336 385"/>
+  <path class="blue-line" d="M416 527 L448 527"/>
+  <path class="teal-line" d="M744 527 L776 527"/>
+  <path class="thin-line" d="M1148 594 L1116 594"/>
+
+  <rect x="50" y="756" width="1500" height="148" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text class="zone-title" x="76" y="785">EXECUTION &amp; TRUST BOUNDARIES</text>
+
+  <rect class="blue" x="76" y="808" width="258" height="70" rx="8"/>
+  <text class="card-title" x="96" y="837">Local Message Service</text>
+  <text class="card-note" x="96" y="860">加密消息、Outbox、Cursor、Context API</text>
+  <rect class="teal" x="354" y="808" width="258" height="70" rx="8"/>
+  <text class="card-title" x="374" y="837">Local Agent Runtime</text>
+  <text class="card-note" x="374" y="860">Task / Run / Tools 在授权设备执行</text>
+  <rect class="amber" x="632" y="808" width="258" height="70" rx="8"/>
+  <text class="card-title" x="652" y="837">Workspace Connector</text>
+  <text class="card-note" x="652" y="860">路径级授权，不挂载整个本地文件系统</text>
+  <rect class="violet" x="910" y="808" width="258" height="70" rx="8"/>
+  <text class="card-title" x="930" y="837">Model Egress Policy</text>
+  <text class="card-note" x="930" y="860">本地 Runtime 不等于数据不出本地</text>
+  <rect class="card" x="1188" y="808" width="336" height="70" rx="8"/>
+  <text class="card-title" x="1208" y="837">Central IM Coordination</text>
+  <text class="card-note" x="1208" y="860">组织、排序、同步、Task 派发与审计</text>
+
+  <path class="blue-line" d="M246 670 L205 808"/>
+  <path class="teal-line" d="M946 670 L483 808"/>
+  <path class="teal-line" d="M612 843 L632 843"/>
+  <path class="thin-line" d="M890 843 L910 843"/>
+  <path class="blue-line" d="M1336 670 L1356 808"/>
+
+  <rect x="50" y="928" width="1500" height="50" rx="8" fill="#eef2f7" stroke="#cbd5e1"/>
+  <text class="principle" x="76" y="958">产品契约：</text>
+  <text class="card-note" x="158" y="958">IM 与 Runtime 解耦</text>
+  <circle cx="326" cy="954" r="3" fill="#94a3b8"/>
+  <text class="card-note" x="342" y="958">上下文必须显式选择</text>
+  <circle cx="528" cy="954" r="3" fill="#94a3b8"/>
+  <text class="card-note" x="544" y="958">本地文件必须授权</text>
+  <circle cx="707" cy="954" r="3" fill="#94a3b8"/>
+  <text class="card-note" x="723" y="958">高影响动作必须审批</text>
+  <circle cx="906" cy="954" r="3" fill="#94a3b8"/>
+  <text class="card-note" x="922" y="958">所有执行可观察、可撤销、可审计</text>
+  <text class="card-note" x="1392" y="958">v1 · 2026-07-23</text>
+</svg>
