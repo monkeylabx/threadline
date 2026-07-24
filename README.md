@@ -16,6 +16,8 @@ Agent 是组织内受治理的正式协作者，不是需要 `@` 才能工作的
 - [产品需求文档](./docs/product-requirements.md)
 - [系统架构与通信协议](./docs/architecture/system-architecture.md)
 - [P0 服务目录](./docs/architecture/service-catalog.md)
+- [Private Enterprise v1.0 交付计划](./docs/delivery-plan.md)
+- [Agent 并行工作流](./docs/agent-workstreams.md)
 - [产品架构图](./docs/architecture/assets/threadline-product-architecture.svg)
 - [P0 部署服务总图](./docs/architecture/assets/threadline-p0-deployed-services.svg)
 - [逻辑服务架构图](./docs/architecture/assets/threadline-service-architecture.svg)
