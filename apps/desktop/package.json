@@ -1,0 +1,10 @@
+{
+  "name": "@threadline/desktop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --experimental-strip-types --check src/main.ts",
+    "lint": "node --experimental-strip-types --check src/main.ts",
+    "test": "node --experimental-strip-types --test test/smoke.test.ts"
+  }
+}

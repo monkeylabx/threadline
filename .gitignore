@@ -3,6 +3,10 @@
 .env.*
 !.env.example
 node_modules/
+.pnpm-store/
+.swiftpm/
+.build/
+.gradle/
 .next/
 dist/
 build/

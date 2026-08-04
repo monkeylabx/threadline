@@ -1,0 +1,16 @@
+{
+  "name": "threadline-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/workspace.mjs build",
+    "doctor": "node scripts/workspace.mjs doctor",
+    "doctor:strict": "node scripts/workspace.mjs doctor --strict",
+    "lint": "node scripts/workspace.mjs lint",
+    "test": "node scripts/workspace.mjs test",
+    "verify": "node scripts/workspace.mjs verify"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
