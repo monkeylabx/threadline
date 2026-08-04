@@ -29,7 +29,7 @@ jobs:
           node-version-file: .node-version
       - name: Set up pnpm
         run: |
-          npm install --global corepack@0.35.0
+          npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Set up Go
@@ -95,7 +95,7 @@ jobs:
           node-version-file: .node-version
       - name: Set up pnpm
         run: |
-          npm install --global corepack@0.35.0
+          npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Install JavaScript dependencies
@@ -118,7 +118,7 @@ jobs:
           node-version-file: .node-version
       - name: Set up pnpm
         run: |
-          npm install --global corepack@0.35.0
+          npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Install JavaScript dependencies
@@ -151,7 +151,7 @@ jobs:
           node-version-file: .node-version
       - name: Set up pnpm
         run: |
-          npm install --global corepack@0.35.0
+          npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Set up Java
@@ -164,11 +164,13 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Install pinned Android SDK packages
-        run: >-
-          sdkmanager
-          'platforms;android-37'
-          'build-tools;36.0.0'
-          'ndk;28.2.13676358'
+        run: |
+          SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${SDKMANAGER}"
+          "${SDKMANAGER}" \
+            'platforms;android-37' \
+            'build-tools;36.0.0' \
+            'ndk;28.2.13676358'
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify pins and Android toolchain

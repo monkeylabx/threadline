@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
 function read(relative) {
-  return readFileSync(join(root, relative), "utf8");
+  return readFileSync(join(root, relative), "utf8").replaceAll("\r\n", "\n");
 }
 
 function readJson(relative) {
@@ -138,6 +138,7 @@ function probe(label, command, args, expected, options = {}) {
     cwd: options.cwd ?? root,
     encoding: "utf8",
     env: { ...process.env, ...options.env },
+    shell: process.platform === "win32",
     stdio: ["ignore", "pipe", "pipe"],
   });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
@@ -177,9 +178,20 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
   if (selected.has("android")) {
     valid = probe("Java", "java", ["-version"], [pins.android.java, pins.android.javaVendor]) && valid;
     const gradle = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
+    const sdkmanager = process.env.ANDROID_SDK_ROOT
+      ? join(
+          process.env.ANDROID_SDK_ROOT,
+          "cmdline-tools",
+          "latest",
+          "bin",
+          process.platform === "win32" ? "sdkmanager.bat" : "sdkmanager",
+        )
+      : process.platform === "win32"
+        ? "sdkmanager.bat"
+        : "sdkmanager";
     valid = probe("Gradle", gradle, ["--version", "--no-daemon"], [`Gradle ${pins.android.gradle}`]) && valid;
     valid =
-      probe("Android SDK", "sdkmanager", ["--list_installed"], [
+      probe("Android SDK", sdkmanager, ["--list_installed"], [
         `platforms;android-${pins.android.compileSdk}`,
         `build-tools;${pins.android.buildTools}`,
         `ndk;${pins.android.ndk}`,
