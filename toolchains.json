@@ -23,6 +23,7 @@
     "agp": "9.3.1",
     "gradle": "9.5.1",
     "compileSdk": "37",
+    "sdkPlatformPackage": "platforms;android-37.0",
     "buildTools": "36.0.0",
     "ndk": "28.2.13676358"
   },

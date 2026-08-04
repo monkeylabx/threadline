@@ -168,7 +168,7 @@ jobs:
           SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
           test -x "${SDKMANAGER}"
           "${SDKMANAGER}" \
-            'platforms;android-37' \
+            'platforms;android-37.0' \
             'build-tools;36.0.0' \
             'ndk;28.2.13676358'
       - name: Install JavaScript dependencies

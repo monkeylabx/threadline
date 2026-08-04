@@ -172,7 +172,7 @@ xcodebuild -version
 xcrun --sdk iphoneos --show-sdk-version
 ```
 
-Android job 还应校验安装清单中存在 `platforms;android-37`、`build-tools;36.0.0` 和 `ndk;28.2.13676358`；Apple job记录 runner image version；Windows job记录 `cl` 和 Windows SDK 版本。doctor 的人类可读提示可以给安装建议，`--strict` 在 CI 中必须以非零状态拒绝漂移。
+Android job 还应校验安装清单中存在 API 37 的精确 SDK 包 `platforms;android-37.0`、`build-tools;36.0.0` 和 `ndk;28.2.13676358`；`compileSdk = 37` 与可安装包名分开锁定，以兼容 Android 17 引入的 minor SDK package 命名。Apple job记录 runner image version；Windows job记录 `cl` 和 Windows SDK 版本。doctor 的人类可读提示可以给安装建议，`--strict` 在 CI 中必须以非零状态拒绝漂移。
 
 仓库内 pin 的单一真相关系为：
 

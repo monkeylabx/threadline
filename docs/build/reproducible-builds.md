@@ -20,7 +20,7 @@ rustup show
 
 Install Go 1.26.5 from the official archive or through the CI setup action. Set `GOTOOLCHAIN=local` in CI so the Go command cannot silently download a different toolchain. Rustup reads `rust-toolchain.toml` and installs Rust 1.97.1 with rustfmt and clippy.
 
-Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, API 37, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
+Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
 ## Commands by target
 

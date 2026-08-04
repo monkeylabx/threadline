@@ -81,7 +81,7 @@ export function verifyPins() {
     errors,
     "Android SDK platform install",
     workflow,
-    `'platforms;android-${pins.android.compileSdk}'`,
+    `'${pins.android.sdkPlatformPackage}'`,
   );
   assertIncludes(
     errors,
@@ -192,7 +192,7 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
     valid = probe("Gradle", gradle, ["--version", "--no-daemon"], [`Gradle ${pins.android.gradle}`]) && valid;
     valid =
       probe("Android SDK", sdkmanager, ["--list_installed"], [
-        `platforms;android-${pins.android.compileSdk}`,
+        pins.android.sdkPlatformPackage,
         `build-tools;${pins.android.buildTools}`,
         `ndk;${pins.android.ndk}`,
       ]) && valid;
