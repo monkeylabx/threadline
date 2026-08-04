@@ -13,15 +13,22 @@ Run commands from the repository root:
 
 ```text
 npm run doctor
+npm run doctor:workspace
+npm run doctor:desktop
+npm run doctor:apple
+npm run doctor:android
 npm run build
 npm run test
 npm run lint
 npm run verify
+npm run toolchain:verify
 ```
 
-`make doctor|build|test|lint` is an equivalent convenience entry on systems with Make. The root Node script invokes each language tool without a shell so the command semantics remain portable.
+`make doctor|build|test|lint|verify` is an equivalent convenience entry on systems with Make. The root Node script invokes each language tool without a shell so the command semantics remain portable.
 
-T008 intentionally has no external package dependency and does not pin the final toolchain. T009 owns exact Node/pnpm, Rust, Go, Swift/Xcode, Java/Gradle/Kotlin versions, Gradle Wrapper files, platform CI images, and the first reproducible lockfiles.
+T009 freezes every toolchain in `toolchains.json` and its native version file. Run `npm run toolchain:verify` after changing any version, lockfile, Gradle Wrapper, platform runner, or GitHub Action. Upgrades must update all repeated pins and checksums in one Integration-owned change; never replace a pin with `latest`, a moving major tag, `^`, or `~`.
+
+Platform setup and unsigned build commands are documented in `docs/build/reproducible-builds.md`. Research sources and compatibility reasoning live in `docs/build/toolchain-research.md`.
 
 ## Ownership rules
 

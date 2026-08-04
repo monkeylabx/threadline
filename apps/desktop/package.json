@@ -4,7 +4,15 @@
   "type": "module",
   "scripts": {
     "build": "node --experimental-strip-types --check src/main.ts",
+    "build:native": "tauri build --no-bundle -- --locked",
     "lint": "node --experimental-strip-types --check src/main.ts",
-    "test": "node --experimental-strip-types --test test/smoke.test.ts"
+    "test": "node --experimental-strip-types --test test/smoke.test.ts",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4"
   }
 }

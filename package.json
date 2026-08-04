@@ -2,15 +2,22 @@
   "name": "threadline-workspace",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
     "build": "node scripts/workspace.mjs build",
     "doctor": "node scripts/workspace.mjs doctor",
     "doctor:strict": "node scripts/workspace.mjs doctor --strict",
+    "doctor:android": "node scripts/toolchain.mjs doctor --scope=android",
+    "doctor:apple": "node scripts/toolchain.mjs doctor --scope=apple",
+    "doctor:desktop": "node scripts/toolchain.mjs doctor --scope=desktop",
+    "doctor:workspace": "node scripts/toolchain.mjs doctor --scope=workspace",
     "lint": "node scripts/workspace.mjs lint",
     "test": "node scripts/workspace.mjs test",
+    "toolchain:verify": "node scripts/toolchain.mjs verify",
     "verify": "node scripts/workspace.mjs verify"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.19.0",
+    "pnpm": "11.20.0"
   }
 }

@@ -1,0 +1,188 @@
+name: Five-platform build baseline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  GOTOOLCHAIN: local
+
+jobs:
+  workspace-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable
+          corepack install --global pnpm@11.20.0
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify pins and installed tools
+        run: |
+          node scripts/toolchain.mjs verify
+          node scripts/toolchain.mjs doctor --scope=workspace
+      - name: Check TypeScript skeleton
+        run: |
+          pnpm --filter @threadline/desktop build
+          pnpm --filter @threadline/desktop test
+          pnpm --filter @threadline/desktop lint
+      - name: Check Rust workspace
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --exclude threadline-desktop-host --all-targets --locked -- -D warnings
+          cargo test --workspace --exclude threadline-desktop-host --locked
+      - name: Check Go services
+        working-directory: services
+        run: |
+          test -z "$(gofmt -l .)"
+          go test ./...
+          go build ./...
+
+  desktop:
+    name: desktop-${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-24.04
+          - name: windows
+            os: windows-2025
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install Linux WebView prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable
+          corepack install --global pnpm@11.20.0
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify desktop toolchain
+        run: node scripts/toolchain.mjs doctor --scope=desktop
+      - name: Build unsigned Tauri host
+        run: pnpm --filter @threadline/desktop build:native
+
+  apple:
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable
+          corepack install --global pnpm@11.20.0
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify Apple and desktop toolchains
+        run: node scripts/toolchain.mjs doctor --scope=apple,desktop
+      - name: Test Swift package
+        run: swift test --package-path apps/ios --scratch-path "${RUNNER_TEMP}/threadline-swift"
+      - name: Cross-compile version-only FFI facade for iOS Simulator
+        run: |
+          rustup target add aarch64-apple-ios-sim
+          cargo build --package threadline-client-ffi --release --target aarch64-apple-ios-sim --locked
+      - name: Build iOS simulator target without signing
+        working-directory: apps/ios
+        run: >-
+          xcodebuild -scheme ThreadlineIOSHost
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
+      - name: Build unsigned macOS Tauri host
+        run: pnpm --filter @threadline/desktop build:native
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        run: |
+          npm install --global corepack@0.35.0
+          corepack enable
+          corepack install --global pnpm@11.20.0
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: 17.0.19+10
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@16f3e46a58d2b926c34615132d7969a96bccb22b # v6.0.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Install pinned Android SDK packages
+        run: >-
+          sdkmanager
+          'platforms;android-37'
+          'build-tools;36.0.0'
+          'ndk;28.2.13676358'
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify pins and Android toolchain
+        run: node scripts/toolchain.mjs doctor --scope=android
+      - name: Cross-compile version-only FFI facade for Android
+        run: |
+          rustup target add aarch64-linux-android
+          RUST_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
+          test -x "${RUST_LINKER}"
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${RUST_LINKER}" cargo build --package threadline-client-ffi --release --target aarch64-linux-android --locked
+      - name: Build and test Android skeleton
+        run: >-
+          ./gradlew
+          :apps:android:assembleDebug
+          :apps:android:testDebugUnitTest
+          :apps:android:lintDebug
+          --no-daemon

@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 node_modules/
+.tooling/
 .pnpm-store/
 .swiftpm/
 .build/
@@ -10,8 +11,11 @@ node_modules/
 .next/
 dist/
 build/
+!docs/build/
+!docs/build/**
 coverage/
 target/
+apps/desktop/src-tauri/gen/
 *.log
 *.swp
 *.tmp
