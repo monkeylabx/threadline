@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
@@ -25,6 +25,112 @@ function assertIncludes(errors, label, text, expected) {
   if (!text.includes(expected)) errors.push(`${label}: missing ${expected}`);
 }
 
+function capturedValues(text, pattern) {
+  return [...text.matchAll(pattern)].map((match) => match[1]);
+}
+
+function assertEveryCapturedValue(errors, label, text, pattern, expected) {
+  const values = capturedValues(text, pattern);
+  if (values.length === 0) {
+    errors.push(`${label}: missing ${expected}`);
+    return values;
+  }
+  for (const value of values) {
+    if (value !== expected) errors.push(`${label}: expected ${expected}, got ${value}`);
+  }
+  return values;
+}
+
+export function validateWorkflowPins(workflow, expectedPins = pins) {
+  const errors = [];
+  const corepackValues = assertEveryCapturedValue(
+    errors,
+    "CI Corepack",
+    workflow,
+    /npm install --global corepack@([^\s'\"]+)/g,
+    expectedPins.corepack,
+  );
+  const pnpmValues = assertEveryCapturedValue(
+    errors,
+    "CI pnpm",
+    workflow,
+    /corepack install --global pnpm@([^\s'\"]+)/g,
+    expectedPins.pnpm,
+  );
+  assertEveryCapturedValue(
+    errors,
+    "CI Go",
+    workflow,
+    /^\s*go-version:\s*([^\s#]+)/gm,
+    expectedPins.goToolchain,
+  );
+  assertEveryCapturedValue(
+    errors,
+    "CI Java",
+    workflow,
+    /^\s*java-version:\s*([^\s#]+)/gm,
+    expectedPins.android.java,
+  );
+
+  const references = capturedValues(workflow, /^\s*uses:\s*([^\s#]+)/gm);
+  const setupNodeCount = references.filter((reference) =>
+    reference.startsWith("actions/setup-node@"),
+  ).length;
+  assertEqual(errors, "CI Corepack occurrence count", corepackValues.length, setupNodeCount);
+  assertEqual(errors, "CI pnpm occurrence count", pnpmValues.length, setupNodeCount);
+  for (const [action, sha] of Object.entries(expectedPins.actions)) {
+    const actionReferences = references.filter((reference) => reference.startsWith(`${action}@`));
+    if (actionReferences.length === 0) {
+      errors.push(`CI action ${action}: missing ${sha}`);
+      continue;
+    }
+    for (const reference of actionReferences) {
+      assertEqual(errors, `CI action ${action}`, reference, `${action}@${sha}`);
+    }
+  }
+  for (const reference of references) {
+    if (reference.startsWith("./")) continue;
+    const separator = reference.lastIndexOf("@");
+    const action = separator === -1 ? reference : reference.slice(0, separator);
+    if (!(action in expectedPins.actions)) {
+      errors.push(`CI action is not recorded in toolchains.json: ${reference}`);
+    }
+    if (separator === -1 || !/@[0-9a-f]{40}$/.test(reference)) {
+      errors.push(`CI action is not pinned to a full SHA: ${reference}`);
+    }
+  }
+  return errors;
+}
+
+function findWindowsCorepackEntrypoint(pathValue, nodeExecutable) {
+  const directories = (pathValue ?? "").split(";").filter(Boolean);
+  directories.push(dirname(nodeExecutable));
+  for (const directory of new Set(directories)) {
+    const entrypoint = join(directory, "node_modules", "corepack", "dist", "corepack.js");
+    if (existsSync(entrypoint)) return entrypoint;
+  }
+  return undefined;
+}
+
+export function resolveProbeInvocation(command, args, options = {}) {
+  const platform = options.platform ?? process.platform;
+  if (platform !== "win32" || command !== "corepack") return { command, args };
+
+  const nodeExecutable = options.nodeExecutable ?? process.execPath;
+  const entrypoint = findWindowsCorepackEntrypoint(
+    options.pathValue ?? process.env.PATH,
+    nodeExecutable,
+  );
+  if (!entrypoint) {
+    return {
+      command: undefined,
+      args,
+      error: "unable to locate node_modules/corepack/dist/corepack.js on PATH",
+    };
+  }
+  return { command: nodeExecutable, args: [entrypoint, ...args] };
+}
+
 export function verifyPins() {
   const errors = [];
   const rootPackage = readJson("package.json");
@@ -37,6 +143,7 @@ export function verifyPins() {
   const pnpmLock = read("pnpm-lock.yaml");
   const gradleRoot = read("build.gradle.kts");
   const android = read("apps/android/build.gradle.kts");
+  const gradleLock = read("apps/android/gradle.lockfile");
   const wrapper = read("gradle/wrapper/gradle-wrapper.properties");
   const workflow = read(".github/workflows/build.yml");
 
@@ -77,6 +184,8 @@ export function verifyPins() {
   assertIncludes(errors, "compileSdk", android, `compileSdk = ${pins.android.compileSdk}`);
   assertIncludes(errors, "buildTools", android, `buildToolsVersion = "${pins.android.buildTools}"`);
   assertIncludes(errors, "NDK", android, `ndkVersion = "${pins.android.ndk}"`);
+  assertIncludes(errors, "Gradle strict dependency lock", gradleRoot, "LockMode.STRICT");
+  assertIncludes(errors, "Gradle dependency lock", gradleLock, "junit:junit:4.13.2");
   assertIncludes(
     errors,
     "Android SDK platform install",
@@ -90,10 +199,7 @@ export function verifyPins() {
     `'build-tools;${pins.android.buildTools}'`,
   );
   assertIncludes(errors, "Android NDK install", workflow, `'ndk;${pins.android.ndk}'`);
-  assertIncludes(errors, "CI Corepack", workflow, `corepack@${pins.corepack}`);
-  assertIncludes(errors, "CI pnpm", workflow, `pnpm@${pins.pnpm}`);
-  assertIncludes(errors, "CI Go", workflow, `go-version: ${pins.goToolchain}`);
-  assertIncludes(errors, "CI Java", workflow, `java-version: ${pins.android.java}`);
+  errors.push(...validateWorkflowPins(workflow));
   assertIncludes(errors, "CI Go auto-download guard", workflow, "GOTOOLCHAIN: local");
   assertIncludes(errors, "Gradle distribution", wrapper, `gradle-${pins.android.gradle}-bin.zip`);
   assertIncludes(
@@ -115,16 +221,6 @@ export function verifyPins() {
       errors.push(`CI runner: missing ${runner}`);
     }
   }
-  for (const [action, sha] of Object.entries(pins.actions)) {
-    assertIncludes(errors, `CI action ${action}`, workflow, `uses: ${action}@${sha}`);
-  }
-  for (const match of workflow.matchAll(/^\s*uses:\s*([^\s#]+).*$/gm)) {
-    const reference = match[1];
-    if (!/@[0-9a-f]{40}$/.test(reference)) {
-      errors.push(`CI action is not pinned to a full SHA: ${reference}`);
-    }
-  }
-
   if (errors.length > 0) {
     for (const error of errors) console.error(`[pin] ${error}`);
     return false;
@@ -134,11 +230,15 @@ export function verifyPins() {
 }
 
 function probe(label, command, args, expected, options = {}) {
-  const result = spawnSync(command, args, {
+  const invocation = resolveProbeInvocation(command, args);
+  if (!invocation.command) {
+    console.log(`${"missing".padEnd(9)} ${label.padEnd(10)} ${invocation.error}`);
+    return false;
+  }
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd: options.cwd ?? root,
     encoding: "utf8",
     env: { ...process.env, ...options.env },
-    shell: process.platform === "win32",
     stdio: ["ignore", "pipe", "pipe"],
   });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
@@ -153,7 +253,7 @@ function probe(label, command, args, expected, options = {}) {
 export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
   const selected = new Set(scopes);
   let valid = verifyPins();
-  valid = probe("Node", "node", ["--version"], [`v${pins.node}`]) && valid;
+  valid = probe("Node", process.execPath, ["--version"], [`v${pins.node}`]) && valid;
   valid = probe("Corepack", "corepack", ["--version"], [pins.corepack]) && valid;
   valid = probe("pnpm", "corepack", ["pnpm", "--version"], [pins.pnpm]) && valid;
 

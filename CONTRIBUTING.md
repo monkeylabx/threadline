@@ -21,6 +21,7 @@ npm run build
 npm run test
 npm run lint
 npm run verify
+npm run toolchain:test
 npm run toolchain:verify
 ```
 

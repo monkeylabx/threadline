@@ -1,3 +1,5 @@
+import org.gradle.api.artifacts.dsl.LockMode
+
 plugins {
     base
     id("com.android.library") version "9.3.1" apply false
@@ -6,6 +8,7 @@ plugins {
 allprojects {
     dependencyLocking {
         lockAllConfigurations()
+        lockMode.set(LockMode.STRICT)
     }
 }
 

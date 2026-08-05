@@ -13,6 +13,7 @@
     "doctor:workspace": "node scripts/toolchain.mjs doctor --scope=workspace",
     "lint": "node scripts/workspace.mjs lint",
     "test": "node scripts/workspace.mjs test",
+    "toolchain:test": "node --test scripts/toolchain.test.mjs",
     "toolchain:verify": "node scripts/toolchain.mjs verify",
     "verify": "node scripts/workspace.mjs verify"
   },

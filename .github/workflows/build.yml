@@ -41,6 +41,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify pins and installed tools
         run: |
+          node --test scripts/toolchain.test.mjs
           node scripts/toolchain.mjs verify
           node scripts/toolchain.mjs doctor --scope=workspace
       - name: Check TypeScript skeleton
