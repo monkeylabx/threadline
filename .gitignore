@@ -15,3 +15,7 @@ target/
 *.log
 *.swp
 *.tmp
+
+# Local agent skills
+.agents/
+skills-lock.json
