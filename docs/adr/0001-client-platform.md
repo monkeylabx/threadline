@@ -1,253 +1,163 @@
-# ADR-0001: Desktop、原生 Mobile 与 Shared Rust Client Core
+# ADR-0001：Desktop、原生 Mobile 与 Shared Rust Client Core
 
-- 状态：Accepted
-- 日期：2026-07-25
-- 决策者：Threadline Architecture Workstream
-- 关联：Issue #17、Epic #5、`docs/acceptance/scope.md` D-007
+- 状态：Accepted，受 T010 Native Bridge Spike 验证门约束
+- 日期：2026-08-05
+- 决策者：Product / Architecture
+- 关联 Issue：[#17 T003](https://github.com/monkeylabx/threadline/issues/17)
+- 产品基线：[Frozen Scope 1.1](../acceptance/scope.md)
 
 ## 背景
 
-Threadline v1 必须交付 macOS、Windows、Linux、iOS 和 Android 五个平台。客户端既要提供符合各平台习惯的消息、文件、通知、后台和企业分发体验，也要在离线 Outbox、Cursor Sync、加密 SQLite、搜索和 E2EE 状态上保持同一套可验证语义。
+Threadline Private Enterprise v1.0 同时交付 macOS、Windows、Linux、iOS 和 Android 客户端。客户端必须在服务端只持有密文的前提下完成 E2EE、加密本地存储、离线 Outbox、同步归并、本地搜索和附件加密。Desktop 还承载本地 Agent Runtime 与 Workspace 访问；Mobile 只负责沟通、发起和观察 Task、中断 Run 与审批，不执行长任务，也不运行 `agentd` 或 `connectord`。
 
-产品范围已经冻结为 Tauri Desktop、原生 iOS/Android UI 和 Shared Rust Client Core。本 ADR 不重新评估“跨端 Web UI 还是原生 UI”，而是明确该决策下的进程、模块、数据、并发、Bridge 和发布边界。
+Frozen Scope 1.1 已接受以下产品选择，本 ADR 不重新比较跨端 Web UI 与原生 UI：Desktop 使用 Tauri 2、React 和 TypeScript；iOS 使用 Swift/SwiftUI，必要时使用 UIKit；Android 使用 Kotlin 和 Jetpack Compose；三端共享版本化 Rust Client Core，但不共享页面代码。
 
-客户端必须同时遵守以下信任边界：
-
-- IM 在模型和 Agent Runtime 离线时仍然可用。
-- Desktop UI、Mobile UI 不直接写消息数据库。
-- Agent Runtime 不挂载或读取 IM 数据库，只能通过显式 Context API 获取被授权的有限明文。
-- 本地 Workspace 只能通过用户授权的 Connector 访问。
-- Mobile 可以发起、观察、中断和审批 Task，但不运行长任务。
+本 ADR 决定这些客户端的进程、模块、数据、并发、Bridge、打包和迁移边界。具体密码协议和 Recovery Envelope 由 Crypto ADR 负责，公开消息与同步字段由 Protobuf Contract 负责。
 
 ## 决策驱动因素
 
-- 五个平台上的消息事实、离线恢复和密码状态必须一致且可做 Contract Test。
-- 消息列表、系统导航、输入法、通知、后台调度、安全存储和企业分发需要原生平台能力。
-- 任何一个 UI 进程崩溃或窗口并发都不能破坏本地消息状态。
-- Swift/Kotlin 不应依赖 Rust 内部类型、线程模型或密码库 API。
-- Desktop 的 IM、Agent Runtime 和 Workspace 权限必须是可独立故障、升级和审计的边界。
-- Bridge 和 Shared Core 是高风险、难逆转决策，必须具备明确的 M0 验证和退出条件。
+- E2EE、同步和本地事实在三个客户端实现中必须具有相同语义，不能形成三套安全实现。
+- iOS 和 Android 必须保留平台原生的生命周期、后台、通知、密钥存储、文件与无障碍能力。
+- Desktop 必须隔离 IM 本地事实、本地 Agent Runtime 和任意 Workspace 文件访问。
+- FFI 必须明确版本、错误、取消、流、线程和内存所有权，失败可被 Contract/Fault Test 复现。
+- 五个平台需要独立签名、升级、回滚和兼容窗口，不能要求同日升级。
+- IM 在 Runtime、Connector 或模型离线时仍必须独立工作。
 
 ## 决策
 
-### 1. 平台与页面层
+### 1. 平台与模块边界
 
-| 平台 | 页面与宿主 | Shared Core 接入 | 平台专属能力 |
+| 表面 | 实现 | 拥有的职责 | 禁止承担 |
 | --- | --- | --- | --- |
-| macOS | Tauri 2 + React + TypeScript + Vite | 通过版本化 Desktop IPC 访问 `locald` | Keychain、通知、文件选择器、签名/公证、Universal Link |
-| Windows | Tauri 2 + React + TypeScript + Vite | 通过版本化 Desktop IPC 访问 `locald` | Credential Manager/DPAPI、Toast、文件选择器、MSIX/企业签名 |
-| Linux | Tauri 2 + React + TypeScript + Vite | 通过版本化 Desktop IPC 访问 `locald` | Secret Service、桌面通知、Portal、发行版制品与签名 |
-| iOS | Swift + SwiftUI，复杂列表可局部使用 UIKit | 进程内版本化 Rust FFI Facade | Keychain/Secure Enclave、APNs、Background Tasks、File Provider、企业分发 |
-| Android | Kotlin + Jetpack Compose | 进程内版本化 Rust FFI Facade | Keystore、FCM、WorkManager、Storage Access Framework、企业分发 |
+| Desktop UI | Tauri 2 + React + TypeScript | 窗口、导航、渲染、用户意图、Runtime 状态展示 | 直接写 SQLite、持有 Channel Key、直接访问任意 Workspace |
+| Desktop `locald` | Rust sidecar | Client Core Actor、加密 SQLite、Outbox、Sync、Search、附件加密、本地 IPC | Agent Loop、模型调用、任意 Workspace 访问 |
+| Desktop `agentd` | 独立本地进程 | Agent Loop、Run Session、取消、有限 Context 消费 | 读取 IM 数据库、使用恢复私钥 |
+| Desktop `connectord` | 独立本地进程 | 基于短期 Path Grant 的 Workspace 操作 | 浏览未授权路径、读取 IM 数据库 |
+| iOS Host | Swift/SwiftUI/UIKit | 原生 UI、生命周期、APNs、Keychain、文件、后台恢复 | `agentd`、`connectord`、长任务执行 |
+| Android Host | Kotlin/Compose | 原生 UI、生命周期、FCM、Keystore、文件、后台恢复 | `agentd`、`connectord`、长任务执行 |
+| Shared Rust Client Core | Rust | E2EE Adapter、加密 SQLite、Outbox、Cursor/Sync、Search、附件加密 | UI、平台凭据实现、密码协议发明、Agent Runtime |
+| Native Bridge | 版本化窄 Facade | Command、事件流、取消、错误和稳定数据传输 | 暴露内部 Rust 类型、数据库句柄或密码库对象 |
 
-页面代码不跨 Desktop、iOS 和 Android 共享。三端共享协议契约、领域语义、测试向量和 Rust Core；视觉 Token 可由各平台生成或消费，但原生交互和无障碍实现留在各自页面层。
+Desktop UI 只能通过版本化本地 IPC 调用 `locald`。`agentd` 获取消息上下文时必须使用受 Capability Grant 限制的 Context API，不能挂载或查询 Client SQLite。`connectord` 只消费明确路径、动作和期限的 Path Grant。三者崩溃和升级相互隔离；`locald` 不依赖 Runtime 才能完成消息同步。
 
-Desktop 是同一套 Tauri 前端的三个编译目标，不允许用平台条件分支改变消息或权限语义。平台条件代码只处理 OS Adapter、窗口、更新、通知、安全存储和文件选择等宿主差异。
+iOS 和 Android 在应用进程中各自持有一个 Client Core Actor。每台设备拥有独立数据库、设备身份和缓存；禁止在设备间复制 SQLite 文件。
 
-### 2. 模块、进程与信任边界
+### 2. 数据所有权
 
-#### Desktop
+Client Core 是以下本地事实的唯一 writer：加密 SQLite、Durable Outbox、同步 Cursor、消息物化、E2EE 状态、本地搜索索引和加密附件缓存元数据。Host 只持有可丢弃的 View State、导航状态和由 Core 返回的不可变 DTO。
 
-```text
-Tauri WebView / React UI
-        |
-        | versioned local IPC; commands, queries, event stream
-        v
-locald (Rust, single writer)
-  |- client-core actors
-  |- encrypted SQLite / local search / blob cache
-  |- server Connect RPC + realtime WSS
-  `- authorization-checked Context API
+平台安全存储分别由 Keychain、Android Keystore 和 Desktop OS Credential Store Adapter 实现。安全存储只保存设备身份或数据库密钥的包装材料；Channel Key、消息明文、Prompt、Token 和恢复私钥不得进入普通配置、日志、崩溃报告或诊断包。Enterprise Recovery 私钥只存在于企业 KMS/HSM，不属于任何 Client API。
 
-agentd (separate process) <---- runtime stream ----> Runtime Gateway
-  |                                      |
-  | capability-scoped Context API        `- route grant only
-  v
-locald                         approved model endpoint
-  ^                                      ^
-  | capability-scoped tool calls         | prompt sent directly
-connectord (separate process) <----------- agentd
-  `- user-authorized workspace roots and audit log
-```
+### 3. 并发和线程边界
 
-- `locald` 是 Desktop 本地消息事实的唯一写者。UI 多窗口只能通过 IPC 提交命令和订阅投影，不能打开 SQLite 文件。
-- `agentd` 与 `connectord` 是独立进程、独立 OS Identity 和最小文件权限。二者不得访问消息数据库或其密钥。
-- `agentd` 只能用短期 Capability 通过 `locald` Context API 请求有限消息上下文，通过 `connectord` 请求有限 Workspace 操作。
-- `locald`、`agentd`、`connectord` 可独立崩溃和重启。`agentd`/`connectord` 不可用不得阻塞普通 IM、Outbox 或 Sync。
-- Tauri Rust 宿主只负责窗口生命周期、Sidecar 启停、IPC 权限和 OS Adapter，不复制 `locald` 的消息状态机。
+每个设备只运行一个逻辑 Client Core Actor，并由它串行化数据库写入、Epoch 变更、Outbox 状态转换和 Cursor 提交。网络、密码运算、索引和附件 I/O 可以在受控 worker 上执行，但结果必须回到 Actor 后才能改变本地事实。
 
-#### Mobile
+FFI 调用不得阻塞 Swift MainActor 或 Android Main Dispatcher。Host 在 UI 线程发起 Command，Bridge 立即返回 Request Handle；结果和事件通过平台异步机制投递。回调进入 Host 前切换到 Host 指定的 Executor/Dispatcher，Core 不假设回调线程。
 
-```text
-SwiftUI/UIKit or Compose UI
-        |
-        | generated language binding
-        v
-versioned client-ffi Facade
-        |
-        v
-client-core actor runtime (in process)
-  |- encrypted SQLite (single writer)
-  |- Outbox / Sync / Search / E2EE state
-  `- OS adapters supplied by the host
-```
-
-- 每个 Mobile App 进程内只创建一个 Core Runtime；它拥有数据库连接、Actor 调度器和网络会话。
-- UI 通过 Facade 提交命令、执行分页查询并订阅事件，不持有 SQLite、密码库或网络客户端对象。
-- iOS Extension、Android 辅助进程或 Widget 不直接打开主数据库。它们通过受限 App Group/平台 IPC 交付输入，主 Runtime 再导入；共享数据库文件不作为进程间协议。
-- Mobile 不打包、不启动 `agentd` 或 `connectord`，不直接执行长任务，也不接受 Workspace Path Grant。
-- Mobile 的 Task 操作是发送到服务端的控制命令；执行所有权属于已注册且获授权的 Desktop/Workstation Runtime。
-
-### 3. 数据所有权与 Actor 模型
-
-`client-core` 共享下列语义和实现：E2EE 状态适配、加密 SQLite Schema 与 Migration、Durable Local Outbox、ACK Merge、Cursor/Gap Repair、事件物化、本地权限复检、Search 和附件加密/缓存。密码协议算法由独立的 reviewed adapter 提供，不在 FFI 或 UI 中实现。
-
-Core Runtime 使用显式 Actor 边界：
-
-- `StoreActor` 独占 SQLite 写连接并串行执行事务；读取使用受控快照，不把连接或行引用暴露出 Core。
-- `SyncActor` 拥有 Cursor、重连和补洞状态，只通过 Store 命令提交持久化变化。
-- `CryptoActor` 拥有密码会话与敏感内存，只接收值对象和不透明标识；密钥不进入 UI、日志或跨语言异常。
-- `OutboxActor` 负责重试、幂等键和 ACK 归并，UI 只能观察 Pending/Committed/Failed 投影。
-- `SearchActor` 只查询本机已授权且已解密的索引；撤权触发删除或重建。
-
-Actor Handle 绑定一个 Runtime 实例。Host 可以从任意 UI 线程发起异步调用，但 Core 在内部调度；回调只在 Host 注册的 Dispatcher/Executor 上投递。不得假设 Rust 执行线程就是 Main Thread。
+同一 `client_instance_id` 的事件具有单调 `event_seq`。事件流断开、Host 进入后台或消费落后时，Host 使用 Cursor 从 Core 恢复；事件通知不是事实源。Core 对有界队列实施背压，低价值状态通知可以合并，但消息、审批、错误和最终状态不能静默丢弃。
 
 ### 4. 版本化 Native Bridge
 
-`client-ffi` 是 Swift 和 Kotlin 唯一可见的 Rust API。Desktop 不调用该 ABI，而使用语义等价、版本化的 `locald` IPC。两种边界必须运行同一套 Core Contract Fixture。
+Bridge 以一个显式 ABI major 和一个可查询的 capability set 开始握手。Host 在创建 Client 前比较支持范围；major 不兼容时拒绝启动数据路径并显示可恢复的升级错误，不能尝试部分调用。
 
-#### 版本和兼容
+Bridge 版本采用 `major.minor`：major 只在删除、重命名或改变既有语义等破坏性变更时递增；minor 只允许新增可选 Command、字段、错误 code 或 capability。Host 必须忽略未知 Envelope 字段；缺少必需 capability 时拒绝对应功能并返回稳定的 `unsupported_capability`，缺少可选 capability 时使用文档化降级路径，不能猜测调用。每个 Core release 声明支持的 Host major、最低 Host minor 和 capability set；每个 Host release 声明可消费的 Core major/minor 范围。弃用项至少保留一个 N-1 Host 发布窗口，并由 Contract Test 同时验证当前与 N-1 组合后才能删除。
 
-- Facade 使用独立的 `major.minor` Bridge Contract Version，并在启动时协商 `min_supported`、`max_supported` 和 feature flags。
-- 同一 App 制品固定绑定一个经过测试的 Rust Core 版本；不支持从网络单独热替换动态库。
-- Minor 版本只能新增可选字段、枚举 unknown fallback 或能力；删除、改义、所有权变化和必填字段属于 Major 变更。
-- Swift/Kotlin 生成 Binding，不手写镜像 Rust Struct；生成器版本、Schema Hash 和 Core Build ID 写入诊断信息。
-- 持久化 Schema 和 Wire Protocol 各自版本化，不以 Bridge 版本替代 Migration 或协议兼容策略。
+公开 Facade 只包含：
 
-#### 值、错误与未知数据
+- 使用稳定标量、字节缓冲和带版本 Envelope 的 Command/Response。
+- `request_id`、`stream_id`、`client_instance_id` 和单调 `event_seq`。
+- `cancel(request_id)` 与幂等 `close(stream_id)`。
+- 结构化错误 Envelope：稳定 code、retryability、safe user message key、可选 redacted diagnostic id。
+- 明确的 create/retain/release 或语言绑定生成的等价生命周期；不跨 FFI 暴露 Rust 引用。
 
-- 跨边界只传固定宽度标量、UTF-8/byte buffer、不可变值对象和不透明 Handle；不暴露 Rust 泛型、Borrow、Trait、Pointer 或内部枚举布局。
-- 所有调用返回稳定错误 Envelope：`domain`、`code`、`retryable`、安全的用户提示键、可选 trace ID。Swift/Kotlin 映射为受控错误类型。
-- 未知错误码必须映射为 `unknown`，不得导致 Binding 崩溃；错误文本不得包含消息正文、Prompt、Token、Key、路径内容或底层 SQL。
-- Panic 不得穿越 FFI。Facade 捕获边界故障、使相关 Handle 失效并返回稳定的内部错误；debug build 可额外终止以暴露缺陷。
+取消是尽力而为但结果确定：尚未提交的操作返回 `cancelled`；已经跨过持久化提交点的操作返回其真实最终状态，不能伪报取消。Host 释放 Request、Stream 或 Client 后，Core 不再回调该对象。重复取消和关闭必须安全。
 
-#### 取消、流与背压
+Rust panic 不得跨越 FFI。Bridge 将可恢复失败映射为稳定错误；不可恢复 panic 终止当前 Client Instance，保留崩溃安全的数据库恢复标记，并在下次启动执行完整性检查。错误和诊断不得包含消息正文、密钥、Prompt、Token 或用户文件内容。
 
-- 每个长调用返回 `OperationHandle`；Host 的取消是幂等请求，不承诺撤销已提交事务。最终完成事件明确区分 `cancelled_before_commit`、`completed` 和 `failed`。
-- Host 页面销毁时必须取消订阅和不再需要的操作；Runtime Shutdown 会取消所有未提交操作并等待有界 drain。
-- 事件流使用有界缓冲和显式 demand/ack。可合并的 Presence/Typing/进度事件允许 coalesce；Message、ACK、Approval 等可靠事件不能静默丢弃，消费者落后时关闭流并要求按 Cursor 重订阅。
-- 每条 Stream Event 带单调序号或业务 Cursor；断流恢复依赖持久化 Cursor/重新查询，而不是无限内存队列。
+### 5. 平台绑定与发布
 
-#### 内存所有权
+- iOS：Rust 产物和生成绑定由版本化 SwiftPM binary target 消费；签名、Keychain entitlement、后台模式和企业分发属于 iOS Host。
+- Android：Rust `.so` 与生成 Kotlin/JNI 绑定由 Android Gradle module 消费；ABI splits、Keystore、后台限制和企业分发属于 Android Host。
+- Desktop：Tauri shell 与 `locald`、`agentd`、`connectord` 使用独立版本 Manifest 打包。Tauri 权限 Manifest 只授予启动和访问所需 IPC 的最小权限。
 
-- 创建方释放：Core 返回的 Buffer/Handle 只能由配套的 Facade release 函数释放；Swift/Kotlin Wrapper 负责 exactly-once close，并提供自动生命周期兜底。
-- 传入数据在同步调用返回前复制或完成消费；若异步保留，Facade 必须复制，绝不借用 Host 临时内存。
-- 回调只携带在回调期间有效的不可变值，Binding 在交给应用层前转换为语言所有值。
-- Handle 包含 generation，释放、Runtime 重启或版本不匹配后继续使用必须返回 `invalid_handle`，不能 use-after-free。
-- Secret Buffer 使用专用类型、尽早清零且不实现调试打印；跨边界的普通 DTO 不携带原始密钥。
+以上是 T010 需要验证的发布边界，不冻结具体绑定生成器或二进制容器格式；T010 可以在不改变 Facade Contract 的前提下选择更可靠的 SwiftPM/Gradle 集成方式。
 
-### 5. 构建、打包与发布边界
+生成绑定、FFI headers、Rust Core library 和 Fault Fixture 必须来自同一 Core release。禁止 Host 手改生成文件。制品必须固定版本、校验和并进入各平台签名/SBOM 流程。
 
-#### SwiftPM
+Host 与 Core 支持 N-1 兼容窗口。升级顺序为：先验证数据库迁移和 Bridge compatibility，再原子替换 Core/Sidecar，最后启动新 Host。失败时回滚二进制；若已执行不可逆数据库迁移，则必须由迁移策略提供前向修复或恢复副本，不能让旧二进制打开未知 schema。
 
-- `client-ffi` 产出版本固定的 XCFramework，覆盖项目支持的 iOS device/simulator 架构；Swift Package 只公开生成的 Facade Wrapper 和资源清单。
-- App、Extension 和测试 Host 显式链接同一 XCFramework 版本。Code Signing、Entitlement、Privacy Manifest、最低系统版本和 dSYM 由 iOS 发布流水线验证。
-- Core Schema Migration 随 App 版本发布；失败必须保留旧库并进入可诊断的只读/恢复状态，不能由 App Store 回滚假设兜底。
+### 6. 五平台能力差异
 
-#### Gradle
+| 能力 | Desktop：macOS/Windows/Linux | iOS | Android |
+| --- | --- | --- | --- |
+| 完整 IM、E2EE、Outbox、Sync、Search | 是，通过 `locald` | 是，进程内 Core | 是，进程内 Core |
+| Agent 长任务 | 是，通过授权 `agentd` | 否 | 否 |
+| 任意 Workspace 操作 | 仅经 `connectord` Path Grant | 否 | 否 |
+| Task 发起、观察、中断、审批 | 是 | 是 | 是 |
+| 密钥包装 | OS Credential Store | Keychain | Keystore |
+| 后台执行 | Sidecar 生命周期 | 受 iOS Background Task 限制 | 受 Android 后台/WorkManager 限制 |
+| Push | Desktop 通知/内网连接 | APNs；Air-gap 明确降级 | FCM；Air-gap 明确降级 |
+| UI 代码 | React/TypeScript | SwiftUI/UIKit | Compose |
 
-- `client-ffi` 产出版本固定的 AAR，包含受支持 ABI 的 `.so`、生成 Kotlin Facade、consumer rules 和 native symbols 映射。
-- 构建按 ABI 检查缺失和重复库；R8/ProGuard 不得移除 JNI 入口。签名、最低 SDK、target SDK、native debug symbols 和 Play/企业分发元数据由 Android 发布流水线验证。
-- Core Schema Migration 随 App 版本发布，Android 进程回收和后台限制纳入恢复测试。
+平台后台限制只影响连接和恢复时机，不改变 Durable Outbox、ACK、Cursor 和 E2EE 状态语义。
 
-#### Tauri Sidecar
+### 7. 五平台构建和原生发布差异
 
-- `locald`、`agentd`、`connectord` 按 `{product version, target triple}` 与 Desktop App 一起签名和发布，不从网络独立下载可执行代码。
-- Tauri Capability/Permission Manifest 只允许访问明确 IPC 命令和 Sidecar；UI 不能传任意可执行路径、数据库路径或 Connector Root。
-- 启动时校验 Sidecar 签名/哈希和 IPC Contract 范围；版本不兼容时普通 IM 优先以安全降级模式启动，Agent/Connector 单独标为不可用。
-- Auto Update 必须把 App、Sidecar、Schema Migration 和回滚元数据视为一个发布单元。不得在数据库已不可逆迁移后仅回滚 UI。
+| 平台 | 构建/制品边界 | 签名与系统集成 | 本地安全存储和生命周期 |
+| --- | --- | --- | --- |
+| macOS | Tauri `.app`/安装制品 + 同版本 sidecars | Developer ID、Notarization、Keychain、通知和登录项权限 | Keychain adapter；由 app/sidecar supervisor 管理退出与恢复 |
+| Windows | Tauri Windows 安装制品 + 同版本 sidecars | Authenticode、安装/卸载、通知与防火墙提示 | Credential Manager/DPAPI adapter；处理会话退出和服务终止 |
+| Linux | Tauri 发行制品 + 同版本 sidecars；按支持发行版验证 WebView/system library | 仓库/制品签名、桌面入口与通知集成 | Secret Service adapter；处理桌面会话和进程 supervisor 差异 |
+| iOS | Xcode Host + SwiftPM 消费的 Core/binding 制品 | Apple signing、entitlement、APNs、Background Task、企业/MDM 分发 | Keychain adapter；遵守 foreground/background/termination 生命周期 |
+| Android | Gradle Host + JNI/Kotlin binding + ABI 对应 `.so` | Android signing、FCM、WorkManager、企业/MDM 分发 | Keystore adapter；遵守 Activity/Process 和后台执行限制 |
 
-#### 五平台发布门
+五个平台分别产生和签名制品，但必须消费同一 Core release manifest、Facade Contract 和 Fault Fixture。平台 adapter 只能实现安全存储、通知、后台调度和生命周期接口，不得改变 E2EE、Outbox、Sync 或错误语义。
 
-每个候选版本至少验证：可重复构建、Binding/IPC Contract、安装/升级/失败迁移、Crash/Resume、离线 Outbox、后台/进程回收、安全存储、通知/深链接、符号化诊断和制品签名。macOS、Windows、Linux 分别验证 Sidecar 权限；iOS、Android 分别在真机验证 FFI 的调用、流、取消、错误和内存压力。
+## 备选方案
 
-## 替代方案
+### 全平台共享 Web UI
 
-### A. 全平台共享 Web UI（包括 Mobile）
+拒绝。它与 Frozen Scope 1.1 的原生 Mobile 决策冲突，并削弱后台、通知、密钥存储、文件和无障碍集成。本 ADR不重新打开该产品决策。
 
-不采用。它能提高页面代码复用率，但会把复杂消息列表、输入法、系统返回/手势、后台、Push、安全存储、文件和企业分发差异集中到 Web 容器适配层，并削弱 iOS/Android 的原生性能与无障碍体验。此选项也会重新打开已冻结的产品决策。
+### Swift、Kotlin 和 Desktop 分别实现 Client Core
 
-### B. Tauri 2 同时承载 Desktop 和 Mobile
+拒绝。三套 E2EE、Outbox 和同步状态机会放大安全审计与兼容成本，并使跨端 Golden Vector 不能覆盖同一实现。代价是 Rust Bridge 成为关键风险，因此必须由 T010 真机 Spike 提前验证。
 
-不采用。单一框架看似减少工程数量，但 Mobile 仍需要大量平台插件和生命周期处理，且会把 M0 的 Native Bridge 与 UI 容器风险耦合。v1 保留 Tauri Desktop、原生 Mobile 的边界。
+### 在 Mobile 运行 `locald` sidecar
 
-### C. 三端各自实现完整 Client Core
+拒绝。移动平台不提供与 Desktop 等价的常驻 sidecar 生命周期。Mobile 使用进程内 Actor，但消费相同版本化 Core Facade 和 Fault Fixture。
 
-不采用。Swift、Kotlin、Rust 三套 Outbox、Sync、E2EE 和 Migration 会扩大协议漂移与安全审计面，难以证明离线和密码行为一致。原生 UI 带来的收益不要求复制状态机。
+### 将 Agent Runtime 合入 Client Core
 
-### D. Desktop 将 Core 静态链接进每个 Tauri 窗口
+拒绝。它会让 IM 可用性依赖模型和 Workspace 执行，并扩大明文、文件与密钥信任边界。Runtime 必须是 Desktop 独立进程且通过受限 API 获取上下文。
 
-不采用。多窗口会形成多个数据库写者和重复网络会话，UI 崩溃也会扩大到消息事实。独立 `locald` 提供稳定的单写者与故障隔离。
+## 代价与风险
 
-### E. Mobile 通过本机守护进程访问 Core
+- Rust FFI、生成绑定和跨平台发布链增加工程复杂度，需要真机、内存、取消、Fault 和 Crash/Resume 测试。
+- Desktop 采用 sidecar、Mobile 采用进程内 Actor，部署形态不同；必须用同一 Facade Contract 验证语义而不是假设进程模型一致。
+- 原生 UI 形成三套页面实现，但平台行为清晰，且页面不复制密码、存储和同步逻辑。
+- N-1、数据库迁移和独立签名要求增加发布成本，但避免强制五个平台同步升级。
+- Mobile 后台限制会延迟同步和 Task 状态刷新；最终一致性由 Durable Local State 和恢复协议保证。
 
-不采用。iOS 不提供可靠的常驻 Sidecar 模型，Android 后台限制也会使其脆弱。Mobile 使用进程内 Actor，并通过 Durable Storage 在进程重启后恢复。
+## 重新评审和迁移边界
 
-## 代价与后果
+出现以下任一条件时必须停止相关实现，把本 ADR 状态改为 `Rejected by validation`，并用替代 ADR 重新决策：
 
-### 正面后果
+- T010 在 iOS 与 Android 真机上无法证明无 use-after-free、无 UI 主线程阻塞，并且取消、事件流、错误映射或 Crash/Resume 无法形成确定 Contract。
+- Bridge 的稳定性或性能无法满足消息列表、同步和加密附件基线，且通过批处理、有界流或绑定生成仍无法修复。
+- Shared Core 需要暴露内部数据库、密码库对象或平台 UI 类型才能工作。
+- 需要更换 Bridge 技术、放弃 Shared Rust Core、改变 Desktop/Mobile 进程模型或共享页面代码。
+- 任何实现允许 Server、Runtime、Model Control 或 Host UI 绕过 Client Core 读取密钥/数据库，或允许 Mobile 执行长任务。
 
-- 高风险的同步、密码、存储和恢复逻辑只有一套实现与测试语义。
-- iOS/Android 保留平台原生交互、性能、无障碍和企业能力。
-- Desktop 的消息、Agent 和 Workspace 权限边界可独立故障与审计。
-- FFI Facade 隔离 Rust 内部重构，Swift/Kotlin 只依赖稳定 Contract。
-- Mobile 明确不具备本地长任务与任意文件访问能力，减少权限面。
+若 Bridge 失败，允许评估更窄的 C ABI、UniFFI 等生成方案，或缩小 Shared Core 边界；不得静默复制 E2EE 协议或退化为服务端明文。更换 Bridge 预计触发交付计划中的 8–14 周重新排期，并重新执行 Threat Model、兼容测试和平台发布评审。
 
-### 负面后果
+## 验证门
 
-- 团队必须维护 React、SwiftUI/UIKit、Compose 三套页面实现和五平台发布流水线。
-- Rust FFI、生成 Binding、跨语言异步/内存测试形成额外工程成本。
-- Desktop IPC 与 Mobile FFI 是两种宿主边界，需要共享 Fixture 防止语义漂移。
-- 原生 Crash、符号化、Schema Migration 和后台恢复必须分别验证，不能只靠 Rust 单元测试。
-- UI 功能到 Core Contract 的变化需要跨 Workstream 排期，短期开发速度可能低于直接调用内部 API。
+本 ADR 的 Accepted 表示架构方向被接受，不代表 Native Bridge 已证明可生产使用。T010 必须在 iOS 与 Android 至少各一台真机验证：
 
-## 迁移与实施边界
+- Facade 版本握手、Command/Response、事件流和背压。
+- 取消提交点、重复 cancel/close 和 Host 释放后的零回调。
+- 错误映射、panic 隔离、Crash/Resume、数据库恢复和资源释放。
+- UI 主线程不阻塞，内存增长有界，敏感内容不进入日志或诊断。
 
-1. M0 先建立最小 `client-core`、`client-ffi` 和 Host Harness，只验证调用、错误、取消、可靠流、背压、Crash/Resume 与内存所有权；不在 Spike 中承诺完整 UI。
-2. 同一 Core Contract Test 必须运行于 Rust、Swift 真机 Host、Kotlin 真机 Host 和 Desktop `locald` Harness。
-3. M1 建立加密 SQLite、单写者、Migration、OS Secure Storage Adapter 和可重复的 XCFramework/AAR/Sidecar 构建。
-4. M2 先由 Desktop 完成 Message -> Local Agent -> Approval -> Artifact 垂直切片；普通 IM 对 Agent 服务故障保持独立。
-5. iOS/Android 先交付 Enrollment、消息和进程恢复，再接 Task 控制；不得为赶进度在 Mobile 引入 `agentd`/`connectord`。
-6. Bridge Contract 的破坏性变化必须先作为 Client-core Contract Task 合入，再由 Swift/Kotlin 消费；UI Workstream 不直接修改 Rust FFI Public Facade。
-
-数据库迁移必须支持至少一个发布窗口的兼容读取或明确的不可逆门禁。Bridge 迁移不能假设服务端、数据库和 App 同步升级；每层独立协商版本并提供安全失败状态。
-
-## 重新评审与退出条件
-
-以下任一条件满足时，本 ADR 退回 Proposed，阻断依赖该能力的 Gate，并由 Architecture、Client-core、Mobile、Security 和 Release Owner 共同重新评审：
-
-- M0 真机 Spike 无法在 iOS 和 Android 稳定通过错误、取消、流、Crash/Resume 与内存压力 Contract Test。
-- 发现无法通过 Facade 隔离的 Rust ABI、运行时、链接、App Store/Play/企业签名或许可证限制。
-- FFI 在代表性 Timeline/Sync 负载下相对平台预算产生不可接受的延迟、内存或电量开销，且批处理/背压优化后仍不达标。
-- Shared Core 无法满足任一平台的安全存储、后台恢复、数据库 Migration 或无障碍所需数据语义。
-- `locald` Sidecar 无法在 macOS、Windows、Linux 的签名、沙箱、更新或最小权限模型下可靠运行。
-- Shared Core 迫使 UI 获得数据库、原始密钥或内部密码状态访问权，或迫使 Mobile 运行长任务/Workspace Connector。
-- Bridge Major 版本无法提供可操作的双版本迁移窗口，导致升级必须清库、丢 Outbox 或丢密码状态。
-
-优先回退顺序是：更换 Binding 生成器或 Bridge 技术但保留 Facade Contract；其次按平台替换 Host Adapter；最后才评估放弃 Shared Core。放弃 Shared Core 或改用非原生 Mobile UI 属于 Scope、Threat Model、交付计划和外部安全评审的重大变更，不能由单个实现 Issue 决定。
-
-## 验证要求
-
-- ADR 文档检查：决策、替代方案、代价、迁移边界和重新评审条件完整。
-- M0 技术验证：Swift/iOS 与 Kotlin/Android 真机调用、流、取消、错误、Crash/Resume 和内存测试。
-- Desktop Harness：三个目标平台验证 Sidecar 启动、版本协商、单写者、Agent/Connector 故障隔离和签名/权限。
-- Contract/Golden Fixture：Rust、Desktop IPC、Swift、Kotlin 对相同输入产生相同状态与稳定错误码。
-- Release Gate：XCFramework、AAR、三个 Desktop target 制品可重复构建，升级/失败迁移/回滚路径有证据。
-
-## 安全与可观测性约束
-
-- FFI、IPC、Crash Report、Metric 和 Trace 不记录消息正文、Prompt、Token、Key 或用户文件内容。
-- 诊断只记录稳定错误码、版本、Schema Hash、匿名化 Handle/Operation ID、耗时和队列水位。
-- 任何新增 IPC/FFI 能力都作为授权决策评审；“本机调用”不等于可信调用。
-- Secret Material 只存在于 OS Secure Storage 或 `CryptoActor` 的受控内存中，不通过普通 DTO、UI State 或日志传播。
-
+T010 通过后，本 ADR 状态更新为 `Accepted / Validated`；失败时更新为 `Rejected by validation`，并在新 ADR 中记录替代 Bridge 或缩小后的 Shared Core 边界。替代 ADR 合入前不得继续依赖本决策实施 Native Bridge。
