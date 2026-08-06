@@ -5,7 +5,7 @@ import org.junit.Test
 
 class ThreadlineAndroidSkeletonTest {
     @Test
-    fun bridgeContractVersionIsStable() {
-        assertEquals(1u, ThreadlineAndroidSkeleton.BRIDGE_CONTRACT_VERSION)
+    fun bridgeContractVersionComesFromRustFacade() {
+        assertEquals(1u, ThreadlineAndroidSkeleton.bridgeContractVersion)
     }
 }
