@@ -2,7 +2,7 @@ import XCTest
 @testable import ThreadlineIOSHost
 
 final class ThreadlineIOSHostTests: XCTestCase {
-    func testBridgeContractVersionIsStable() {
+    func testBridgeContractVersionComesFromRustFacade() {
         XCTAssertEqual(ThreadlineIOSHostSkeleton.bridgeContractVersion, 1)
     }
 }

@@ -1,5 +1,12 @@
 package com.threadline.android
 
 object ThreadlineAndroidSkeleton {
-    const val BRIDGE_CONTRACT_VERSION: UInt = 1u
+    init {
+        System.loadLibrary("threadline_client_ffi")
+    }
+
+    private external fun nativeBridgeContractVersion(): Int
+
+    val bridgeContractVersion: UInt
+        get() = nativeBridgeContractVersion().toUInt()
 }

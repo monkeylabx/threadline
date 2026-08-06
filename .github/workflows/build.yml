@@ -126,7 +126,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify Apple and desktop toolchains
         run: node scripts/toolchain.mjs doctor --scope=apple,desktop
-      - name: Test Swift package
+      - name: Build host FFI facade for Swift tests
+        run: cargo build --package threadline-client-ffi --locked
+      - name: Test Swift package through the Rust facade
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: swift test --package-path apps/ios --scratch-path "${RUNNER_TEMP}/threadline-swift"
       - name: Cross-compile version-only FFI facade for iOS Simulator
         run: |
@@ -182,7 +186,11 @@ jobs:
           RUST_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
           test -x "${RUST_LINKER}"
           CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${RUST_LINKER}" cargo build --package threadline-client-ffi --release --target aarch64-linux-android --locked
+      - name: Build host FFI facade for Kotlin tests
+        run: cargo build --package threadline-client-ffi --locked
       - name: Build and test Android skeleton
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: >-
           ./gradlew
           :apps:android:assembleDebug

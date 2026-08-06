@@ -18,6 +18,12 @@ android {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    val ffiLibraryDirectory = System.getenv("THREADLINE_FFI_LIBRARY_DIR")
+        ?: error("THREADLINE_FFI_LIBRARY_DIR must point to the Rust cdylib")
+    systemProperty("java.library.path", ffiLibraryDirectory)
+}
+
 dependencies {
     testImplementation("junit:junit:4.13.2")
 }
