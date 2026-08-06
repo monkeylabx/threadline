@@ -14,6 +14,17 @@ test("the checked-in workflow has no toolchain pin drift", () => {
   assert.deepEqual(validateWorkflowPins(workflow), []);
 });
 
+const gradleLock = readFileSync(join(root, "apps", "android", "gradle.lockfile"), "utf8");
+
+test("Android strict lock contains the SDK API configuration", () => {
+  const emptyLock = gradleLock.split("\n").find((line) => line.startsWith("empty="));
+  assert.ok(emptyLock, "missing empty Gradle lock state");
+  assert.ok(
+    emptyLock.slice("empty=".length).split(",").includes("androidApis"),
+    "missing androidApis Gradle lock state",
+  );
+});
+
 test("one drifted repeated Corepack pin fails verification", () => {
   const drifted = workflow.replace(`corepack@${pins.corepack}`, "corepack@0.0.0");
   assert.match(validateWorkflowPins(drifted).join("\n"), /CI Corepack: expected .* got 0\.0\.0/);
