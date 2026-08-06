@@ -1,33 +1,18 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { doctor as toolchainDoctor, verifyPins } from "./toolchain.mjs";
+
 const root = fileURLToPath(new URL("../", import.meta.url));
 const action = process.argv[2] ?? "doctor";
-const strictDoctor = process.argv.includes("--strict");
 const swiftScratch = join(tmpdir(), "threadline-swift-skeleton");
-const kotlinBuild = join(root, "build", "android-kotlin");
-
-const tools = [
-  ["Node", "node", ["--version"]],
-  ["Corepack", "corepack", ["--version"]],
-  ["pnpm", "pnpm", ["--version"]],
-  ["Rust", "cargo", ["--version"]],
-  ["Go", "go", ["version"]],
-  ["Swift", "swift", ["--version"]],
-  ["Java", "java", ["-version"]],
-  ["Gradle", "gradle", ["--version"]],
-  ["Kotlin", "kotlinc", ["-version"]],
-];
+const gradleCommand = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
 
 const desktopSource = "apps/desktop/src/main.ts";
 const desktopTest = "apps/desktop/test/smoke.test.ts";
-const kotlinSource =
-  "apps/android/src/main/kotlin/com/threadline/android/ThreadlineAndroidSkeleton.kt";
-const kotlinTest =
-  "apps/android/src/test/kotlin/com/threadline/android/ThreadlineAndroidSkeletonTest.kt";
 const goSources = [
   "agentd/main.go",
   "core/main.go",
@@ -38,36 +23,11 @@ const goSources = [
   "worker/main.go",
 ];
 
-function probe(command, args) {
-  const result = spawnSync(command, args, {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`
-    .trim()
-    .split("\n")[0];
-  return { available: result.status === 0, output };
-}
-
-function doctor() {
-  let missing = false;
-  for (const [label, command, args] of tools) {
-    const result = probe(command, args);
-    missing ||= !result.available;
-    const status = result.available ? "ok" : "missing";
-    console.log(`${status.padEnd(8)} ${label.padEnd(10)} ${result.output}`.trimEnd());
-  }
-  if (missing) {
-    console.log("\nT009 owns exact versions, wrappers, and five-platform CI installation.");
-  }
-  if (strictDoctor && missing) process.exitCode = 1;
-}
-
 function run(label, command, args, options = {}) {
   console.log(`\n[${label}] ${command} ${args.join(" ")}`);
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
+    env: { ...process.env, ...options.env },
     stdio: "inherit",
   });
   if (result.status !== 0) {
@@ -83,6 +43,7 @@ function runWithEmptyOutput(label, command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     encoding: "utf8",
+    env: { ...process.env, ...options.env },
     stdio: ["ignore", "pipe", "inherit"],
   });
   if (result.status !== 0) {
@@ -101,29 +62,42 @@ function runWithEmptyOutput(label, command, args, options = {}) {
 function textLint() {
   const extensions = new Set([
     ".go",
+    ".html",
     ".json",
     ".kt",
     ".kts",
     ".md",
     ".mjs",
+    ".properties",
     ".rs",
     ".swift",
     ".toml",
     ".ts",
+    ".xml",
     ".yaml",
     ".yml",
   ]);
-  const ignored = new Set([".git", ".gradle", ".build", "build", "target"]);
+  const ignored = new Set([".git", ".gradle", ".build", "build", "gen", "target"]);
   const files = [
     "Cargo.toml",
+    "Cargo.lock",
     "CONTRIBUTING.md",
     "Makefile",
+    ".java-version",
+    ".node-version",
+    ".nvmrc",
+    ".xcode-version",
     "build.gradle.kts",
     "go.work",
+    "gradlew",
+    "gradlew.bat",
     "gradle.properties",
     "package.json",
+    "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
+    "rust-toolchain.toml",
     "settings.gradle.kts",
+    "toolchains.json",
   ];
 
   function walk(relative) {
@@ -143,9 +117,12 @@ function textLint() {
   }
 
   for (const directory of [
+    ".github",
     "apps",
     "crates",
     "deploy",
+    "docs/build",
+    "gradle",
     "packages",
     "proto",
     "scripts",
@@ -166,11 +143,13 @@ function textLint() {
 }
 
 function build() {
-  mkdirSync(kotlinBuild, { recursive: true });
   return [
     run("typescript", "node", ["--experimental-strip-types", "--check", desktopSource]),
-    run("rust", "cargo", ["build", "--workspace"]),
-    run("go", "go", ["build", "./..."], { cwd: join(root, "services") }),
+    run("rust", "cargo", ["build", "--workspace", "--locked"]),
+    run("go", "go", ["build", "./..."], {
+      cwd: join(root, "services"),
+      env: { GOTOOLCHAIN: "local" },
+    }),
     run("swift", "swift", [
       "build",
       "--package-path",
@@ -178,16 +157,18 @@ function build() {
       "--scratch-path",
       swiftScratch,
     ]),
-    run("kotlin", "kotlinc", [kotlinSource, "-d", join(kotlinBuild, "skeleton.jar")]),
+    run("android", gradleCommand, [":apps:android:assembleDebug", "--no-daemon"]),
   ].every(Boolean);
 }
 
 function test() {
-  mkdirSync(kotlinBuild, { recursive: true });
   return [
     run("typescript", "node", ["--experimental-strip-types", "--test", desktopTest]),
-    run("rust", "cargo", ["test", "--workspace"]),
-    run("go", "go", ["test", "./..."], { cwd: join(root, "services") }),
+    run("rust", "cargo", ["test", "--workspace", "--locked"]),
+    run("go", "go", ["test", "./..."], {
+      cwd: join(root, "services"),
+      env: { GOTOOLCHAIN: "local" },
+    }),
     run("swift", "swift", [
       "test",
       "--package-path",
@@ -195,42 +176,49 @@ function test() {
       "--scratch-path",
       swiftScratch,
     ]),
-    run("kotlin-compile-test", "kotlinc", [
-      kotlinSource,
-      kotlinTest,
-      "-include-runtime",
-      "-d",
-      join(kotlinBuild, "skeleton-test.jar"),
-    ]),
-    run("kotlin-test", "java", ["-jar", join(kotlinBuild, "skeleton-test.jar")]),
+    run("android", gradleCommand, [":apps:android:testDebugUnitTest", "--no-daemon"]),
   ].every(Boolean);
 }
 
 function lint() {
-  mkdirSync(kotlinBuild, { recursive: true });
   return [
     textLint(),
+    verifyPins(),
     run("node", "node", ["--check", "scripts/workspace.mjs"]),
     run("typescript", "node", ["--experimental-strip-types", "--check", desktopSource]),
     run("rust", "cargo", ["fmt", "--all", "--check"]),
     runWithEmptyOutput("go", "gofmt", ["-d", ...goSources], {
       cwd: join(root, "services"),
+      env: { GOTOOLCHAIN: "local" },
     }),
     run("swift", "swift", ["package", "--package-path", "apps/ios", "dump-package"]),
-    run("kotlin", "kotlinc", [kotlinSource, "-d", join(kotlinBuild, "lint.jar")]),
+    run("android", gradleCommand, [":apps:android:lintDebug", "--no-daemon"]),
   ].every(Boolean);
 }
 
 function verifyStructure() {
   const required = [
     "Cargo.toml",
+    "Cargo.lock",
+    "toolchains.json",
+    "rust-toolchain.toml",
+    "pnpm-lock.yaml",
+    "gradlew",
+    "gradle/wrapper/gradle-wrapper.jar",
+    "gradle/wrapper/gradle-wrapper.properties",
+    "apps/android/gradle.lockfile",
     "go.work",
     "package.json",
     "pnpm-workspace.yaml",
     "settings.gradle.kts",
     "apps/desktop/package.json",
+    "apps/desktop/src-tauri/Cargo.toml",
+    "apps/desktop/src-tauri/tauri.conf.json",
+    "apps/desktop/src-tauri/icons/icon.png",
+    "apps/desktop/src-tauri/icons/icon.ico",
     "apps/ios/Package.swift",
     "apps/android/build.gradle.kts",
+    "apps/android/src/main/AndroidManifest.xml",
     "crates/client-core/Cargo.toml",
     "crates/client-crypto/Cargo.toml",
     "crates/client-ffi/Cargo.toml",
@@ -247,12 +235,16 @@ function verifyStructure() {
     "proto/README.md",
     "deploy/README.md",
     "test/README.md",
+    ".github/workflows/build.yml",
+    "docs/build/reproducible-builds.md",
+    "docs/build/toolchain-research.md",
   ];
   const missing = required.filter((path) => !existsSync(join(root, path)));
   if (missing.length > 0) {
     for (const path of missing) console.error(`[structure] missing: ${path}`);
     return false;
   }
+  if (!verifyPins()) return false;
   if (!textLint()) return false;
   console.log(`workspace structure ok (${required.length} required surfaces)`);
   return true;
@@ -260,7 +252,7 @@ function verifyStructure() {
 
 switch (action) {
   case "doctor":
-    doctor();
+    if (!toolchainDoctor()) process.exitCode = 1;
     break;
   case "build":
     if (!build()) process.exitCode = 1;

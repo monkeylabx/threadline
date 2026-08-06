@@ -1,5 +1,11 @@
 package com.threadline.android
 
-fun main() {
-    check(ThreadlineAndroidSkeleton.BRIDGE_CONTRACT_VERSION == 1u)
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class ThreadlineAndroidSkeletonTest {
+    @Test
+    fun bridgeContractVersionIsStable() {
+        assertEquals(1u, ThreadlineAndroidSkeleton.BRIDGE_CONTRACT_VERSION)
+    }
 }
