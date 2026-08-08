@@ -10,6 +10,7 @@ android {
 
     defaultConfig {
         minSdk = 28
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
     }
 
     compileOptions {
