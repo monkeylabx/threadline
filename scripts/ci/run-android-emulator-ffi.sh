@@ -47,9 +47,30 @@ printf 'no\n' | "${avdmanager}" create avd \
   >"${emulator_log}" 2>&1 &
 emulator_pid=$!
 
-"${adb}" wait-for-device
+"${adb}" start-server
+device_state=""
+for _ in $(seq 1 60); do
+  if ! kill -0 "${emulator_pid}" 2>/dev/null; then
+    echo "Android Emulator exited before registering with adb" >&2
+    exit 1
+  fi
+  device_state="$("${adb}" get-state 2>/dev/null || true)"
+  if [[ "${device_state}" == "device" ]]; then
+    break
+  fi
+  sleep 2
+done
+if [[ "${device_state}" != "device" ]]; then
+  echo "Android Emulator did not register with adb within two minutes" >&2
+  exit 1
+fi
+
 boot_completed=""
 for _ in $(seq 1 180); do
+  if ! kill -0 "${emulator_pid}" 2>/dev/null; then
+    echo "Android Emulator exited before completing boot" >&2
+    exit 1
+  fi
   boot_completed="$("${adb}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
   if [[ "${boot_completed}" == "1" ]]; then
     break
