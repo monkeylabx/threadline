@@ -7,12 +7,16 @@ set -euo pipefail
 avd_name="threadline-t010a"
 system_image="system-images;android-35;google_apis;x86_64"
 emulator_log="${RUNNER_TEMP}/threadline-android-emulator.log"
+avd_home="${RUNNER_TEMP}/threadline-android-avd"
 avdmanager="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
 emulator="${ANDROID_SDK_ROOT}/emulator/emulator"
 adb="${ANDROID_SDK_ROOT}/platform-tools/adb"
+export ANDROID_AVD_HOME="${avd_home}"
+
+mkdir -p "${ANDROID_AVD_HOME}"
 
 cleanup() {
-  "${adb}" emu kill >/dev/null 2>&1 || true
+  timeout 5s "${adb}" emu kill >/dev/null 2>&1 || true
   if [[ -n "${emulator_pid:-}" ]]; then
     kill "${emulator_pid}" >/dev/null 2>&1 || true
   fi
@@ -22,7 +26,7 @@ diagnostics() {
   if [[ ${exit_code} -ne 0 ]]; then
     echo "Android Emulator diagnostics (last 200 lines):"
     tail -n 200 "${emulator_log}" 2>/dev/null || true
-    "${adb}" logcat -d -t 300 2>/dev/null || true
+    timeout 10s "${adb}" logcat -d -t 300 2>/dev/null || true
   fi
   cleanup
   trap - EXIT
