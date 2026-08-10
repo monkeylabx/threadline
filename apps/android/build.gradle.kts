@@ -17,6 +17,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    useLibrary("android.test.runner")
+    useLibrary("android.test.base")
 }
 
 tasks.withType<Test>().configureEach {
@@ -27,5 +30,4 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("junit:junit:4.13.2")
 }
