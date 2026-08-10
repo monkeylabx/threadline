@@ -27,4 +27,5 @@ tasks.withType<Test>().configureEach {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("junit:junit:4.13.2")
 }
