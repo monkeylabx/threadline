@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "canaryFieldNumber": 50000,
+  "fixtures": [
+    {
+      "contract": "ciphertext-envelope/v1",
+      "file": "ciphertext-envelope.canary.hex",
+      "payloadUtf8": "threadline-ciphertext-golden-v1",
+      "sha256": "5a08185d598e3a3bf24acd17e97400275a027af2799d40bcedacf7e6ca6c62ea"
+    },
+    {
+      "contract": "crypto-envelope/v1",
+      "file": "crypto-envelope.canary.hex",
+      "payloadUtf8": "threadline-crypto-golden-v1",
+      "sha256": "d1ef5c38238e345005af3b85b0e3e965aa8326966f42294c9be7699aa97f86c6"
+    }
+  ]
+}

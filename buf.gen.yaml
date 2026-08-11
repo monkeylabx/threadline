@@ -1,0 +1,25 @@
+version: v2
+
+# All generators are local, version-pinned tools. Do not replace these entries
+# with BSR remote plugins. See proto/toolchain.lock.json and docs/contracts/codegen.md.
+plugins:
+  - local: protoc-gen-go
+    out: services/gen/proto
+    opt:
+      - paths=source_relative
+  - local: protoc-gen-es
+    out: packages/generated-ts/src
+    opt:
+      - target=ts
+  - local: protoc-gen-prost
+    out: crates/generated-proto/src/generated
+    opt:
+      - bytes=.
+  - local: protoc-gen-swift
+    out: packages/generated-swift/Sources/ThreadlineGenerated
+  - protoc_builtin: kotlin
+    protoc_path: protoc
+    out: packages/generated-kotlin/src/main/kotlin
+
+inputs:
+  - directory: proto
