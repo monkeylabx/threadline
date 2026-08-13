@@ -1,0 +1,105 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  filter/telemetry_guard:
+    error_mode: propagate
+    traces:
+      span:
+        # Span-link attributes do not have an individual transform context in
+        # Collector 0.107. Reject linked spans instead of forwarding fields
+        # that the allowlist below cannot inspect.
+        - Len(links) > 0
+    metrics:
+      metric:
+        - name != "threadline.dev.operation.duration" and name != "threadline.dev.operation.count" and name != "threadline.dev.operation.errors"
+      datapoint:
+        # Exemplars can carry filtered attributes. This private stack does not
+        # accept them until an exemplar-level allowlist is available.
+        - Len(exemplars) > 0
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  transform/telemetry_guard:
+    # Any OTTL parse or runtime error drops the payload instead of bypassing
+    # the guard and exporting unreviewed fields.
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - keep_keys(attributes, ["service.name", "deployment.environment.name"])
+          - set(attributes["service.name"], "threadline-dev")
+          - set(attributes["deployment.environment.name"], "development")
+      - context: scope
+        statements:
+          - keep_keys(attributes, ["threadline.telemetry.guard"])
+          - set(attributes["threadline.telemetry.guard"], "v1")
+          - set(name, "threadline.instrumentation")
+          - set(version, "")
+      - context: span
+        statements:
+          - keep_keys(attributes, ["threadline.telemetry.class"])
+          - set(attributes["threadline.telemetry.class"], "operation")
+          - set(name, "threadline.operation")
+          - set(status.message, "")
+          - set(trace_state, "")
+      - context: spanevent
+        statements:
+          - keep_keys(attributes, ["threadline.telemetry.class"])
+          - set(attributes["threadline.telemetry.class"], "event")
+          - set(name, "threadline.event")
+    metric_statements:
+      - context: resource
+        statements:
+          - keep_keys(attributes, ["service.name", "deployment.environment.name"])
+          - set(attributes["service.name"], "threadline-dev")
+          - set(attributes["deployment.environment.name"], "development")
+      - context: scope
+        statements:
+          - keep_keys(attributes, ["threadline.telemetry.guard"])
+          - set(attributes["threadline.telemetry.guard"], "v1")
+          - set(name, "threadline.instrumentation")
+          - set(version, "")
+      - context: metric
+        statements:
+          - set(description, "")
+          - set(unit, "ms") where name == "threadline.dev.operation.duration"
+          - set(unit, "1") where name != "threadline.dev.operation.duration"
+      - context: datapoint
+        statements:
+          - keep_keys(attributes, ["threadline.telemetry.class"])
+          - set(attributes["threadline.telemetry.class"], "metric")
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: 0.0.0.0:8889
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/telemetry_guard, transform/telemetry_guard, batch]
+      exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/telemetry_guard, transform/telemetry_guard, batch]
+      exporters: [otlp/jaeger]
+  telemetry:
+    logs:
+      level: info
