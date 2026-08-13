@@ -11,6 +11,8 @@ Every persisted message reserves field `50000`. The field is absent from the sch
 
 Their names identify the contract families; they do not define the concrete Envelope fields assigned to T015 and T019. `manifest.json` pins the payload and SHA-256 of each raw frame.
 
+T014 currently provides only the executable, schema-independent canary baseline: canonical bytes, field `50000`, payload, and digest are checked now. Concrete Ciphertext/Crypto messages do not yet exist, so this does not satisfy Issue #28's concrete Envelope Golden Frame acceptance item and does not claim cross-language decode/re-encode or N-1 success. Issue #28 remains open until those items exist, or Contracts and Product explicitly approve and record an Issue scope change moving them to T015/T019. The Integration Owner must run every concrete historical frame through every generated adapter before committing generated SDKs; failure remains a contract gate.
+
 ## Test contract
 
 When a concrete persisted Envelope is introduced, its owner must add a canonical binary/hex frame containing representative known fields followed by the appropriate canary. Each generated-language adapter must prove:

@@ -36,3 +36,5 @@ Any Protobuf message stored in PostgreSQL, SQLite, object storage, a local outbo
 5. document storage migration and rollback behavior before a package-major change.
 
 Ciphertext, MLS/application crypto, history, and recovery envelopes are persisted contracts. T015 and T019 must add their concrete canonical frames when they define those messages; T014 deliberately does not guess their business or cryptographic fields.
+
+Accordingly, T014 proves only the library-independent field-50000 canary encoding and manifest integrity. This is not yet a pass for Issue #28's concrete Envelope Golden Frame acceptance item. Cross-language unknown-field preservation and N-1 evidence become executable only when concrete message schemas and representative known fields exist; the Integration Owner must record that evidence before their generated SDK update can merge. Assigning that missing acceptance work to T015/T019 requires explicit Contracts and Product approval plus an Issue update.

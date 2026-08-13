@@ -1,6 +1,23 @@
 {
   "schemaVersion": 1,
   "canaryFieldNumber": 50000,
+  "acceptanceBoundary": {
+    "issue": 28,
+    "issueMayClose": false,
+    "status": "blocked-on-concrete-envelope-schemas-and-approval",
+    "satisfiedHere": [
+      "schema-independent-field-50000-canary-encoding",
+      "fixture-digest-validation"
+    ],
+    "notSatisfiedHere": [
+      "concrete-ciphertext-envelope-frame",
+      "concrete-crypto-envelope-frame",
+      "cross-language-unknown-field-roundtrip",
+      "n-minus-one-compatibility"
+    ],
+    "candidateFollowups": ["T015", "T019"],
+    "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
+  },
   "fixtures": [
     {
       "contract": "ciphertext-envelope/v1",

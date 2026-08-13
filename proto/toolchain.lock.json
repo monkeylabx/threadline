@@ -1,25 +1,171 @@
 {
   "schemaVersion": 1,
-  "verifiedOn": "2026-08-10",
+  "verifiedOn": "2026-08-13",
+  "scope": "Contract-specific code generation artifacts; root toolchains.json remains the workspace toolchain source of truth.",
   "tools": {
     "buf": "1.72.0",
     "protoc": "35.1",
+    "javaRuntime": "17.0.19+10",
+    "javaVendor": "Eclipse Adoptium",
     "protoc-gen-go": "1.36.11",
     "protoc-gen-es": "2.12.0",
     "protoc-gen-prost": "0.5.0",
-    "protoc-gen-swift": "1.38.1"
+    "protoc-gen-swift": "1.38.1",
+    "git": "2.50.1",
+    "kotlin-compiler": "2.4.10",
+    "protobuf-java": "4.35.1",
+    "protobuf-kotlin": "4.35.1",
+    "kotlin-stdlib": "2.4.10"
+  },
+  "integrity": {
+    "toolManifestSchemaVersion": 4,
+    "toolManifestSchema": {
+      "manifestKeys": ["schemaVersion", "platform", "profile", "sources", "closures", "tools"],
+      "sourceKeys": ["kind", "file", "url", "sha256"],
+      "builderSourceKeys": ["kind", "file", "url", "sha256", "authentication"],
+      "rustChecksumAuthenticationKeys": ["kind", "file", "url", "sha256"],
+      "appleInstallerAuthenticationKeys": ["kind", "signer"],
+      "closureKeys": ["root", "sources", "treeSha256", "files"],
+      "toolKeys": ["path", "sha256", "closure", "provenance", "invocation"],
+      "officialProvenanceKeys": ["kind", "sources"],
+      "sourceBuiltProvenanceKeys": ["kind", "source", "builders", "buildCommand", "reproducibility"],
+      "protocolStubProvenanceKeys": ["kind", "sources"],
+      "sourceKinds": [
+        "builder-toolchain",
+        "official-binary",
+        "official-package",
+        "protocol-fixture",
+        "source-archive"
+      ],
+      "provenanceKinds": [
+        "official-binary",
+        "official-package",
+        "protocol-stub",
+        "source-built"
+      ],
+      "sourceBuiltReproducibility": "single-build-output-verified"
+    },
+    "runtimeJars": {
+      "protobuf-java-4.35.1.jar": {
+        "sha256": "a4345ba2aa009912ff6f90467fea2d104605256b72c50840d75f13256638a472",
+        "source": "https://repo1.maven.org/maven2/com/google/protobuf/protobuf-java/4.35.1/protobuf-java-4.35.1.jar",
+        "sourceSha1": "b933d3f9fc35b0356f28980c2ffc5892d297eebf"
+      },
+      "protobuf-kotlin-4.35.1.jar": {
+        "sha256": "391506e351ba194ab07b48ba559aa29896eb86001f45c43ce22ab80a215ddb0a",
+        "source": "https://repo1.maven.org/maven2/com/google/protobuf/protobuf-kotlin/4.35.1/protobuf-kotlin-4.35.1.jar",
+        "sourceSha1": "d53ed3a4b5a6d24120ce838c25fe0d823d4222db"
+      },
+      "kotlin-stdlib-2.4.10.jar": {
+        "sha256": "4ec0293bc3751423b203f1d8493251c57c42e73eb6377a6b8560d0974ff0a6df",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.4.10/kotlin-stdlib-2.4.10.jar",
+        "sourceSha1": "8943c84ddc6d5cc00a10dbc3736c397066eeaab5"
+      }
+    },
+    "kotlinCompilerClasspath": {
+      "annotations-13.0.jar": {
+        "sha256": "ace2a10dc8e2d5fd34925ecac03e4988b2c0f851650c94b8cef49ba1bd111478",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/annotations/13.0/annotations-13.0.jar",
+        "sourceSha1": "919f0dfe192fb4e063e7dacadee7f8bb9a2672a9"
+      },
+      "kotlin-build-tools-api-2.4.10.jar": {
+        "sha256": "3953d283e7710c990672e403a87df393d9726a9bf3e172194ebb5c33e062fcb0",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-build-tools-api/2.4.10/kotlin-build-tools-api-2.4.10.jar",
+        "sourceSha1": "c88fe54d8d8c568de500b26fd459853c7202de39"
+      },
+      "kotlin-compiler-embeddable-2.4.10.jar": {
+        "sha256": "9309638a2ee03e6bde9ef4b7444055a94b84ab906563675d71ff9aecb64da913",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-compiler-embeddable/2.4.10/kotlin-compiler-embeddable-2.4.10.jar",
+        "sourceSha1": "cac44a5a360313427c693a9de295017bc76d6e4e"
+      },
+      "kotlin-daemon-embeddable-2.4.10.jar": {
+        "sha256": "547d969a2eab602fe0bdfd9fcb1b563a5c6d30099d3351394d6427eba8288467",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-daemon-embeddable/2.4.10/kotlin-daemon-embeddable-2.4.10.jar",
+        "sourceSha1": "266ea1db63e2a3d5f471a4d5e72cc40c2ff23c29"
+      },
+      "kotlin-reflect-1.6.10.jar": {
+        "sha256": "3277ac102ae17aad10a55abec75ff5696c8d109790396434b496e75087854203",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-reflect/1.6.10/kotlin-reflect-1.6.10.jar",
+        "sourceSha1": "1cbe9c92c12a94eea200d23c2bbaedaf3daf5132"
+      },
+      "kotlin-script-runtime-2.4.10.jar": {
+        "sha256": "f4a5b30c2fdfbe386b097101b7989dbeea3743c06396136664784e08e15c6899",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-script-runtime/2.4.10/kotlin-script-runtime-2.4.10.jar",
+        "sourceSha1": "8365e84d1043a759f868135e8146ed949698804a"
+      },
+      "kotlin-stdlib-2.4.10.jar": {
+        "sha256": "4ec0293bc3751423b203f1d8493251c57c42e73eb6377a6b8560d0974ff0a6df",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.4.10/kotlin-stdlib-2.4.10.jar",
+        "sourceSha1": "8943c84ddc6d5cc00a10dbc3736c397066eeaab5"
+      },
+      "kotlinx-coroutines-core-jvm-1.8.0.jar": {
+        "sha256": "9860906a1937490bf5f3b06d2f0e10ef451e65b95b269f22daf68a3d1f5065c5",
+        "source": "https://repo1.maven.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.8.0/kotlinx-coroutines-core-jvm-1.8.0.jar",
+        "sourceSha1": "ac1dc37a30a93150b704022f8d895ee1bd3a36b3"
+      }
+    }
   },
   "outputs": {
     "go": "services/gen/proto",
     "typescript": "packages/generated-ts/src",
     "rust": "crates/generated-proto/src/generated",
     "swift": "packages/generated-swift/Sources/ThreadlineGenerated",
-    "kotlin": "packages/generated-kotlin/src/main/kotlin"
+    "kotlin": {
+      "javaMessages": "packages/generated-kotlin/src/main/java",
+      "kotlinDsl": "packages/generated-kotlin/src/main/kotlin"
+    }
+  },
+  "generationChecks": {
+    "go": {
+      "extensions": [".pb.go"],
+      "expectedRelativePaths": ["threadline/common/v1/error.pb.go"],
+      "signatureRegex": ["Code generated by protoc-gen-go\\. DO NOT EDIT\\.", "protoc-gen-go v1\\.36\\.11"],
+      "structureRegex": ["type ErrorEnvelope struct"]
+    },
+    "typescript": {
+      "extensions": [".ts"],
+      "expectedRelativePaths": ["threadline/common/v1/error_pb.ts"],
+      "signatureRegex": ["@generated by protoc-gen-es v2\\.12\\.0"],
+      "structureRegex": ["ErrorEnvelope", "threadline\\.common\\.v1\\.ErrorEnvelope"]
+    },
+    "rust": {
+      "extensions": [".rs"],
+      "expectedRelativePaths": ["threadline/common/v1/threadline.common.v1.rs"],
+      "signatureRegex": ["This file is @generated by prost-build\\."],
+      "structureRegex": ["pub struct ErrorEnvelope"]
+    },
+    "swift": {
+      "extensions": [".swift"],
+      "expectedRelativePaths": ["threadline/common/v1/error.pb.swift"],
+      "signatureRegex": ["Generated by the Swift generator plugin for the protocol buffer compiler\\."],
+      "structureRegex": ["struct TLErrorEnvelope"]
+    },
+    "kotlinJava": {
+      "extensions": [".java"],
+      "expectedRelativePaths": [
+        "com/monkeylabx/threadline/generated/common/v1/ErrorEnvelope.java",
+        "com/monkeylabx/threadline/generated/common/v1/ErrorEnvelopeOrBuilder.java",
+        "com/monkeylabx/threadline/generated/common/v1/ErrorProto.java"
+      ],
+      "signatureRegex": ["Generated by the protocol buffer compiler\\..*DO NOT EDIT!"],
+      "structureRegex": ["class ErrorEnvelope"]
+    },
+    "kotlinDsl": {
+      "extensions": [".kt"],
+      "expectedRelativePaths": [
+        "com/monkeylabx/threadline/generated/common/v1/ErrorEnvelopeKt.kt",
+        "com/monkeylabx/threadline/generated/common/v1/ErrorProtoKt.proto.kt"
+      ],
+      "signatureRegex": ["Generated by the protocol buffer compiler\\..*DO NOT EDIT!"],
+      "structureRegex": ["fun errorEnvelope"]
+    }
   },
   "commands": {
     "lint": "buf lint",
     "breaking": "buf breaking --against '.git#branch=main'",
-    "generate": "buf generate",
-    "verify": "node proto/tools/verify-contracts.mjs"
+    "generate": "<approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=repository",
+    "verify": "node proto/tools/verify-contracts.mjs",
+    "verifyCodegen": "<approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=verify-only",
+    "protocolSmoke": "<approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=protocol-smoke"
   }
 }
