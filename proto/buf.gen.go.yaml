@@ -1,0 +1,22 @@
+version: v2
+
+# Go for the seven server workloads. Output lands inside the `services` Go
+# module so `go build ./...` picks it up with no extra workspace entry.
+clean: true
+
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/monkeylabx/threadline/services/gen
+
+plugins:
+  - local: protoc-gen-go
+    out: ../services/gen
+    opt: paths=source_relative
+
+  # Connect handlers and clients. First-party APIs are Connect over HTTPS;
+  # service-to-service calls use gRPC over mTLS. Both come from these stubs.
+  - local: protoc-gen-connect-go
+    out: ../services/gen
+    opt: paths=source_relative

@@ -1,0 +1,231 @@
+syntax = "proto3";
+
+// Channel, DM and Workspace Binding services, served by threadline-core.
+package threadline.channel.v1;
+
+import "threadline/channel/v1/channel.proto";
+import "threadline/type/v1/common.proto";
+
+// ChannelService manages conversations and their membership.
+//
+// Membership changes here are application-level facts. Their cryptographic
+// effect is completed separately by an accepted MLS Commit: this service orders
+// the change and authorizes it, and never handles group secrets.
+service ChannelService {
+  rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse);
+
+  rpc GetChannel(GetChannelRequest) returns (GetChannelResponse);
+
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse);
+
+  rpc UpdateChannel(UpdateChannelRequest) returns (UpdateChannelResponse);
+
+  // Archives a Channel. Members who still hold keys keep reading; no new events
+  // are sequenced.
+  rpc ArchiveChannel(ArchiveChannelRequest) returns (ArchiveChannelResponse);
+
+  rpc AddMembers(AddMembersRequest) returns (AddMembersResponse);
+
+  // Removes members. The E2EE Group enters `rekey_required` and new application
+  // messages wait in senders' local Outboxes until a Commit establishes the
+  // successor Epoch.
+  rpc RemoveMembers(RemoveMembersRequest) returns (RemoveMembersResponse);
+
+  rpc ListMemberships(ListMembershipsRequest) returns (ListMembershipsResponse);
+
+  // Sets which Agent Actors may be triggered, and in what mode. This never
+  // grants an Agent standing read access to the conversation.
+  rpc SetAgentPolicy(SetAgentPolicyRequest) returns (SetAgentPolicyResponse);
+
+  // Creates a DM. If a DM with exactly this participant set already exists it is
+  // returned unchanged; a different participant set is always a new DM with a
+  // new E2EE Group, never an edit of an existing one.
+  rpc CreateDirectMessage(CreateDirectMessageRequest) returns (CreateDirectMessageResponse);
+
+  rpc ListDirectMessages(ListDirectMessagesRequest) returns (ListDirectMessagesResponse);
+
+  rpc BindWorkspace(BindWorkspaceRequest) returns (BindWorkspaceResponse);
+
+  rpc ListWorkspaceBindings(ListWorkspaceBindingsRequest) returns (ListWorkspaceBindingsResponse);
+
+  rpc CreateThread(CreateThreadRequest) returns (CreateThreadResponse);
+}
+
+message CreateChannelRequest {
+  string space_id = 1;
+
+  string name = 2;
+
+  threadline.type.v1.EncryptedField topic = 3;
+
+  ChannelVisibility visibility = 4;
+
+  RetentionPolicy retention_policy = 5;
+
+  // Initial members besides the creator.
+  repeated threadline.type.v1.ActorRef members = 6;
+
+  // Crypto Profile for the new E2EE Group, e.g. "tl-mls-1". Fixed at creation:
+  // changing it later requires reinitialization into a successor generation.
+  string crypto_profile = 7;
+}
+
+message CreateChannelResponse {
+  Channel channel = 1;
+}
+
+message GetChannelRequest {
+  string channel_id = 1;
+}
+
+message GetChannelResponse {
+  Channel channel = 1;
+}
+
+message ListChannelsRequest {
+  // Restrict to one Space. Empty lists across every Space the caller may see.
+  string space_id = 1;
+
+  // Include Channels the caller may join but has not joined. Their contents
+  // remain unreadable until membership and key access are established.
+  bool include_discoverable = 2;
+
+  threadline.type.v1.PageRequest page = 3;
+}
+
+message ListChannelsResponse {
+  repeated Channel channels = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message UpdateChannelRequest {
+  string channel_id = 1;
+
+  // Only the fields present are changed. An absent field is untouched, which is
+  // why topic is a message rather than a bare string.
+  string name = 2;
+
+  threadline.type.v1.EncryptedField topic = 3;
+
+  RetentionPolicy retention_policy = 4;
+}
+
+message UpdateChannelResponse {
+  Channel channel = 1;
+}
+
+message ArchiveChannelRequest {
+  string channel_id = 1;
+}
+
+message ArchiveChannelResponse {
+  Channel channel = 1;
+}
+
+message AddMembersRequest {
+  string channel_id = 1;
+
+  repeated threadline.type.v1.ActorRef actors = 2;
+
+  ChannelMemberRole role = 3;
+}
+
+message AddMembersResponse {
+  repeated ChannelMembership memberships = 1;
+
+  // Authorization a Committer Device must act on to add the new Devices to the
+  // E2EE Group. Until that Commit is accepted the additions are pending and
+  // existing members continue on the current Epoch.
+  string membership_change_authorization_id = 2;
+}
+
+message RemoveMembersRequest {
+  string channel_id = 1;
+
+  repeated threadline.type.v1.ActorRef actors = 2;
+}
+
+message RemoveMembersResponse {
+  string membership_change_authorization_id = 1;
+}
+
+message ListMembershipsRequest {
+  string channel_id = 1;
+
+  // Include memberships that have ended, for audit views.
+  bool include_departed = 2;
+
+  threadline.type.v1.PageRequest page = 3;
+}
+
+message ListMembershipsResponse {
+  repeated ChannelMembership memberships = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message SetAgentPolicyRequest {
+  string channel_id = 1;
+
+  ChannelAgentPolicy agent_policy = 2;
+}
+
+message SetAgentPolicyResponse {
+  Channel channel = 1;
+}
+
+message CreateDirectMessageRequest {
+  repeated threadline.type.v1.ActorRef participants = 1;
+
+  string crypto_profile = 2;
+}
+
+message CreateDirectMessageResponse {
+  DirectMessage direct_message = 1;
+
+  // True when an existing DM with this exact participant set was returned.
+  bool already_existed = 2;
+}
+
+message ListDirectMessagesRequest {
+  threadline.type.v1.PageRequest page = 1;
+}
+
+message ListDirectMessagesResponse {
+  repeated DirectMessage direct_messages = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message BindWorkspaceRequest {
+  string channel_id = 1;
+
+  string display_name = 2;
+
+  string remote_uri = 3;
+
+  string branch_policy = 4;
+}
+
+message BindWorkspaceResponse {
+  WorkspaceBinding binding = 1;
+}
+
+message ListWorkspaceBindingsRequest {
+  string channel_id = 1;
+}
+
+message ListWorkspaceBindingsResponse {
+  repeated WorkspaceBinding bindings = 1;
+}
+
+message CreateThreadRequest {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  string root_event_id = 3;
+}
+
+message CreateThreadResponse {
+  Thread thread = 1;
+}

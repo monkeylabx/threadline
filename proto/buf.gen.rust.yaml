@@ -1,0 +1,24 @@
+version: v2
+
+# Rust for the shared client core (crates/client-core, client-crypto, locald).
+#
+# Messages only. The Rust core speaks Connect and WSS through its own transport
+# layer, so generated service traits would add a dependency without a consumer.
+clean: true
+
+managed:
+  enabled: true
+
+plugins:
+  - local: protoc-gen-prost
+    out: ../crates/client-proto/src/generated
+    opt:
+      - bytes=.
+      - compile_well_known_types=false
+
+  # Emits the `mod` tree so the crate needs no hand-written module wiring, which
+  # would otherwise be hand-edited generated code.
+  - local: protoc-gen-prost-crate
+    out: ../crates/client-proto/src/generated
+    opt:
+      - no_features

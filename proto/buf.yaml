@@ -1,0 +1,23 @@
+version: v2
+
+# Threadline first-party contract module.
+#
+# No `name:` and no `deps:` on purpose: the delivery plan requires Buf to run
+# entirely offline against a local checkout, without the public BSR.
+modules:
+  - path: .
+
+lint:
+  use:
+    - STANDARD
+  # No `except:` entries. A rule that needs suppressing here is a signal that a
+  # domain boundary is wrong, not that the rule is wrong.
+  disallow_comment_ignores: true
+
+breaking:
+  use:
+    # WIRE_JSON, not FILE: `channel_seq`, the Ciphertext Envelope and the
+    # persisted plaintext payloads are Golden Frame surfaces. Renaming a Go
+    # package is allowed; changing a field number or JSON name is not.
+    - WIRE_JSON
+  ignore_unstable_packages: false

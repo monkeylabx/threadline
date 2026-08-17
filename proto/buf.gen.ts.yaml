@@ -1,0 +1,17 @@
+version: v2
+
+# TypeScript for apps/desktop and apps/admin-web.
+#
+# Connect-ES v2 builds clients directly from these descriptors, so no separate
+# service-stub plugin is needed.
+clean: true
+
+managed:
+  enabled: true
+
+plugins:
+  - local: protoc-gen-es
+    out: ../packages/generated-ts/src
+    opt:
+      - target=ts
+      - import_extension=.js

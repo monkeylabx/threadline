@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+// Runtime Gateway service.
+//
+// Served by threadline-runtime-gateway over mTLS streams that the Desktop
+// Runtime always initiates. The gateway relays; it stores nothing. Every state
+// change it carries commits in Core, so it can never become a second source of
+// truth for Task or Run state.
+package threadline.runtime.v1;
+
+import "threadline/capability/v1/capability.proto";
+import "threadline/runtime/v1/runtime.proto";
+import "threadline/task/v1/run.proto";
+import "threadline/type/v1/common.proto";
+
+// RuntimeGatewayService is the Desktop Runtime's only server-facing API.
+service RuntimeGatewayService {
+  // Registers an `agentd` on an already-authorized Device. Enrollment fails if
+  // the Device is not AUTHORIZED: Runtime authority is derived from Device
+  // authority and never granted independently.
+  rpc EnrollRuntime(EnrollRuntimeRequest) returns (EnrollRuntimeResponse);
+
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // Long-lived stream on which the Runtime receives dispatched work.
+  //
+  // The Runtime dials out and holds this open; the gateway never connects
+  // inbound to a workstation. When the stream drops, queued Runs wait for the
+  // Runtime to return rather than moving elsewhere.
+  rpc ReceiveDispatch(ReceiveDispatchRequest) returns (stream ReceiveDispatchResponse);
+
+  // Reports Run activity. Events carry the fencing token they were produced
+  // under; Core rejects any whose token is below the current one, so a resumed
+  // old writer cannot append to a Run it no longer owns.
+  rpc SubmitRunEvents(SubmitRunEventsRequest) returns (SubmitRunEventsResponse);
+
+  // Raises an Approval request before performing a protected action. The Run
+  // pauses in WAITING_APPROVAL until a decision arrives.
+  rpc RequestApproval(RequestApprovalRequest) returns (RequestApprovalResponse);
+
+  // Renews a Workspace Lease while a Run is alive. A lapsed lease is not
+  // renewed in place; the Run stops and the lease may be transferred.
+  rpc RenewLease(RenewLeaseRequest) returns (RenewLeaseResponse);
+
+  // Reports terminal Run state. Idempotent by `run_id` and state, so a
+  // reconnecting Runtime can safely repeat it.
+  rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
+}
+
+message EnrollRuntimeRequest {
+  string device_id = 1;
+
+  string agentd_version = 2;
+
+  repeated string available_tool_ids = 3;
+
+  bool connector_available = 4;
+}
+
+message EnrollRuntimeResponse {
+  RuntimeInstance runtime = 1;
+}
+
+message HeartbeatRequest {
+  RuntimeHeartbeat heartbeat = 1;
+}
+
+message HeartbeatResponse {
+  // Set when the gateway wants the Runtime to stop taking new work, for
+  // draining or after revocation.
+  bool quiesce = 1;
+
+  // Seconds until the next expected heartbeat.
+  uint32 next_heartbeat_seconds = 2;
+}
+
+message ReceiveDispatchRequest {
+  string runtime_id = 1;
+
+  // Dispatch identifiers the Runtime already holds, so a reconnect does not
+  // redeliver work in flight.
+  repeated string known_dispatch_ids = 2;
+}
+
+message ReceiveDispatchResponse {
+  TaskDispatch dispatch = 1;
+}
+
+message SubmitRunEventsRequest {
+  string run_id = 1;
+
+  // Fencing token the Runtime currently holds. Core compares it against the
+  // Run's current token before accepting anything.
+  uint64 fencing_token = 2;
+
+  repeated threadline.task.v1.RunEvent events = 3;
+}
+
+message SubmitRunEventsResponse {
+  // Highest sequence Core committed. A Runtime resumes from here after a
+  // reconnect rather than replaying from the start.
+  uint64 last_committed_sequence = 1;
+}
+
+message RequestApprovalRequest {
+  string run_id = 1;
+
+  // Action being requested, e.g. "workspace.write".
+  string requested_action = 2;
+
+  repeated threadline.capability.v1.Capability requested_capabilities = 3;
+
+  threadline.capability.v1.ResourceScope requested_scope = 4;
+
+  // Reason and expected effect, authored by the Agent and shown to the
+  // approver. Class C3, so it is encrypted before it leaves the Device.
+  threadline.type.v1.EncryptedField justification = 5;
+}
+
+message RequestApprovalResponse {
+  string approval_id = 1;
+}
+
+message RenewLeaseRequest {
+  string lease_id = 1;
+
+  uint64 fencing_token = 2;
+}
+
+message RenewLeaseResponse {
+  threadline.capability.v1.WorkspaceLease lease = 1;
+}
+
+message CompleteRunRequest {
+  string run_id = 1;
+
+  uint64 fencing_token = 2;
+
+  // Terminal state: COMPLETED, FAILED or CANCELLED.
+  threadline.task.v1.RunState state = 3;
+
+  // Stable machine-readable reason when not COMPLETED.
+  string failure_reason = 4;
+
+  threadline.task.v1.UsageLedger usage = 5;
+}
+
+message CompleteRunResponse {
+  threadline.task.v1.Run run = 1;
+}
+
+// RuntimeAdminService serves the administrative view of the Runtime fleet.
+service RuntimeAdminService {
+  rpc ListRuntimes(ListRuntimesRequest) returns (ListRuntimesResponse);
+
+  rpc GetRuntime(GetRuntimeRequest) returns (GetRuntimeResponse);
+
+  // Revokes a Runtime. In-flight Runs stop at their next protected action; the
+  // Runtime cannot enroll again without a new Device authorization.
+  rpc RevokeRuntime(RevokeRuntimeRequest) returns (RevokeRuntimeResponse);
+}
+
+message ListRuntimesRequest {
+  // Restrict to one operator's Runtimes. Empty lists the tenant's fleet.
+  string actor_id = 1;
+
+  RuntimeState state = 2;
+
+  threadline.type.v1.PageRequest page = 3;
+}
+
+message ListRuntimesResponse {
+  repeated RuntimeInstance runtimes = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message GetRuntimeRequest {
+  string runtime_id = 1;
+}
+
+message GetRuntimeResponse {
+  RuntimeInstance runtime = 1;
+}
+
+message RevokeRuntimeRequest {
+  string runtime_id = 1;
+
+  string reason = 2;
+}
+
+message RevokeRuntimeResponse {
+  RuntimeInstance runtime = 1;
+}

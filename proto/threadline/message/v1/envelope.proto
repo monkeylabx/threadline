@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+// The Ciphertext Envelope: the only representation of a conversation event that
+// a Threadline server workload ever holds.
+//
+// This file is a Golden Frame surface. Every field here is metadata the server
+// is explicitly permitted to observe, and adding a field is a decision about
+// what the operator can learn, not a convenience. Anything a member authored
+// belongs in threadline/message/v1/payload.proto, which is encrypted before it
+// leaves the Device.
+//
+// ADR-0003 records the accepted limit: v1 does not hide communication
+// relationships, frequency or message size.
+package threadline.message.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/crypto/v1/crypto.proto";
+import "threadline/crypto/v1/recovery.proto";
+
+// EventCategory is the coarse class the server needs in order to route, order,
+// enforce retention and deliver handshake material.
+//
+// It is deliberately coarse. Creating a message, editing it, reacting to it and
+// pinning it are all APPLICATION, because the server has no reason to tell them
+// apart and every reason not to.
+enum EventCategory {
+  EVENT_CATEGORY_UNSPECIFIED = 0;
+
+  // An encrypted application event: message created, edited, reaction, pin,
+  // thread reply, or a Task status projection. Fully opaque.
+  EVENT_CATEGORY_APPLICATION = 1;
+
+  // A redaction. Distinct from APPLICATION because the server must act on it:
+  // retention policy decides whether the target's ciphertext and Recovery
+  // Envelope are destroyed. This is an accepted metadata disclosure: the
+  // operator learns that a specific earlier event was withdrawn.
+  EVENT_CATEGORY_REDACTION = 2;
+
+  // An MLS Commit or Proposal. Ordered by the server, validated by clients.
+  EVENT_CATEGORY_MLS_HANDSHAKE = 3;
+
+  // An MLS Welcome, delivered only to the joining Devices named in the message.
+  EVENT_CATEGORY_MLS_WELCOME = 4;
+
+  // A membership change notice. The control plane already owns this fact, so
+  // projecting it costs no additional disclosure.
+  EVENT_CATEGORY_MEMBERSHIP = 5;
+}
+
+// AgentAttribution binds an event published on an Agent's behalf to the
+// authority that produced it.
+//
+// An Agent Actor is never a cryptographic sender. When an Agent produces a
+// result, `locald` on the executing Device encrypts and signs it with that
+// Device's identity, and records here which Agent, Task, Run and Capability
+// Grant it acted under.
+//
+// The claim is checked twice and trusted at neither end alone: the server
+// re-verifies the Agent/Task/Run/Grant relationship without reading the body,
+// and the receiving client verifies that the signing Device was authorized to
+// act for this Agent. A bare `agent_actor_id` asserted by a client is not
+// attribution.
+message AgentAttribution {
+  string agent_actor_id = 1;
+
+  string task_id = 2;
+
+  string run_id = 3;
+
+  // The Grant in force when the result was produced. Lets an auditor answer
+  // "under what authority was this written" after the Grant has expired.
+  string capability_grant_id = 4;
+}
+
+// ServerCommit holds the fields the control plane assigns at commit time.
+//
+// These are separated from the rest of the envelope because they are assigned
+// after the sender signs. They are outside the signature and outside the AEAD
+// associated data, and a client must never treat them as authenticated.
+message ServerCommit {
+  // Monotonically increasing position within the conversation. Allocated in the
+  // same PostgreSQL transaction that persists the event and its Outbox row, so
+  // a Durable ACK implies a durable sequence number.
+  uint64 channel_seq = 1;
+
+  google.protobuf.Timestamp committed_at = 2;
+
+  // Tamper-evidence chain over committed events:
+  //
+  //	chain_hash = H(channel_id | channel_seq | previous_chain_hash |
+  //	               content_hash | category)
+  //
+  // The server periodically signs a checkpoint over the head, letting clients
+  // detect a substituted history. This is an append-only log with a hash chain,
+  // not a blockchain: there is no consensus and no mining.
+  bytes chain_hash = 3;
+
+  bytes previous_chain_hash = 4;
+}
+
+// ChannelEventEnvelope is one ordered, encrypted event in a Channel or DM.
+//
+// Associated data for the AEAD protecting `application_ciphertext`, and the
+// input to `sender_signature`, are the canonical encoding of the sender-authored
+// fields only: 1-6, 8-12, 14-15, 18, 20-23. `server_commit` is excluded because
+// it does not exist yet when the sender seals the event. The exact canonical
+// encoding is frozen by the Golden Vectors under test/crypto/ and must pass the
+// three-language check in P00-08 before this contract is treated as stable.
+message ChannelEventEnvelope {
+  // Client-generated, tenant-unique. The identity of the logical event across
+  // retries, so a command retried a hundred times yields one event.
+  string event_id = 1;
+
+  string tenant_id = 2;
+
+  // The conversation this event belongs to. Exactly one is set.
+  oneof conversation {
+    string channel_id = 3;
+    string dm_id = 4;
+  }
+
+  // E2EE Group whose Epoch key protects the body. Bound into the associated
+  // data so a ciphertext replayed into another conversation fails to open.
+  string e2ee_group_id = 5;
+
+  // Epoch in effect at seal time. After a removal or revocation the Group is
+  // `rekey_required` and senders must wait for the successor Epoch rather than
+  // continuing to send under this one.
+  uint64 epoch = 6;
+
+  // Assigned by the control plane. Absent on a client's pending Outbox copy and
+  // present once the Durable ACK arrives.
+  ServerCommit server_commit = 7;
+
+  EventCategory category = 8;
+
+  // The Device that sealed and signed this event. This is the cryptographic
+  // sender, always a Device, never an Actor.
+  string sender_device_id = 9;
+
+  // The Actor the sending Device belongs to. For an Agent result this is the
+  // operating Human, with the Agent recorded in `agent_attribution`.
+  string sender_actor_id = 10;
+
+  // Deduplication key for the send command. Retrying with the same key and a
+  // different body is rejected with ERROR_CODE_IDEMPOTENCY_CONFLICT; the first
+  // write stands.
+  string idempotency_key = 11;
+
+  // Sender's clock. Advisory for display only: ordering comes from
+  // `server_commit.channel_seq`, never from this value.
+  google.protobuf.Timestamp client_sent_at = 12;
+
+  // Reserved for a field removed before first release. Kept so the number is
+  // never reused.
+  reserved 13;
+
+  // Crypto Profile name, e.g. "tl-mls-1".
+  string crypto_profile = 14;
+
+  // Envelope format version within `crypto_profile`. Unknown fields are
+  // preserved on persistence and re-emitted verbatim, so an older client never
+  // silently drops material a newer one added.
+  uint32 envelope_version = 15;
+
+  // Exactly one body form is set, determined by `category`.
+  oneof body {
+    // Sealed threadline.message.v1.MessagePayload. Opaque to every server
+    // workload and to the Agent Runtime.
+    bytes application_ciphertext = 16;
+
+    // MLS handshake material for MLS_HANDSHAKE and MLS_WELCOME.
+    threadline.crypto.v1.MlsWireMessage mls_message = 17;
+  }
+
+  // Hash of the body, computed by the sender. Used for integrity and for
+  // detecting a duplicate delivery without decrypting.
+  bytes content_hash = 18;
+
+  reserved 19;
+
+  // Enterprise recovery material for this event's Content Key.
+  //
+  // Present under the organization's recovery policy. The protocol permits its
+  // absence so a future strictly unrecoverable Channel needs no wire break;
+  // v1 does not expose that option to users.
+  threadline.crypto.v1.RecoveryEnvelope recovery_envelope = 20;
+
+  // Set only when `category` is REDACTION: the event being withdrawn.
+  //
+  // Cleartext by necessity, because the server has to know which stored
+  // ciphertext retention applies to. Redaction appends an event; it does not
+  // rewrite history.
+  string redaction_target_event_id = 21;
+
+  // Encrypted attachment blobs referenced by this event.
+  //
+  // Cleartext by necessity, so object lifecycle, ACL checks and retention can
+  // reach the blobs. The file names, types and content keys stay inside the
+  // encrypted payload.
+  repeated string attachment_blob_ids = 22;
+
+  // Present when this event was published as the result of Agent work.
+  AgentAttribution agent_attribution = 23;
+
+  // Sender Device's signature over the canonical encoding described above.
+  // Verified by receiving clients; the server checks Device authorization but
+  // is not the authority on this signature.
+  bytes sender_signature = 24;
+}

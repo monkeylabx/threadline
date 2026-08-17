@@ -1,0 +1,181 @@
+syntax = "proto3";
+
+// History Sharing and Enterprise Recovery, per ADR-0003 sections 6 and 7.
+//
+// Both are Threadline application-layer protocols layered above MLS. Neither
+// modifies MLS itself, and neither may become a general server-side decryption
+// interface for search, DLP, summarization or model input.
+package threadline.crypto.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/crypto/v1/crypto.proto";
+import "threadline/type/v1/common.proto";
+
+// HistorySharingGrant is an explicit, auditable transfer of retained pre-join
+// history access to a newly authorized Member.
+//
+// The server routes this envelope but cannot open it. It must never hand out
+// history keys on the strength of current membership alone.
+message HistorySharingGrant {
+  string grant_id = 1;
+
+  string e2ee_group_id = 2;
+
+  // Device that re-wrapped the History Keys. An existing authorized Device of a
+  // current member, never a server workload.
+  string source_device_id = 3;
+
+  // Device receiving history access.
+  string target_device_id = 4;
+
+  // Epoch range covered, inclusive. Bounded by retention and by what the source
+  // Device still holds; a source cannot share what it has already erased.
+  uint64 first_epoch = 5;
+  uint64 last_epoch = 6;
+
+  // History Keys for `first_epoch`..`last_epoch`, sealed to the target Device.
+  // Opaque outside client-crypto. This is not an MLS Ratchet Secret and not a
+  // reusable Channel key.
+  bytes wrapped_history_keys = 7;
+
+  // Profile under which the wrapping was performed.
+  CryptoProfile crypto_profile = 8;
+
+  // Policy version that authorized the share, retained so an auditor can
+  // explain the decision after the policy changes.
+  string policy_version = 9;
+
+  google.protobuf.Timestamp created_at = 10;
+
+  // History access is bounded by retention. After this instant a correctly
+  // operating client erases the keys even while offline.
+  google.protobuf.Timestamp retention_expires_at = 11;
+}
+
+// RecoveryCaseState is the Recovery Case lifecycle.
+//
+//	DRAFT -> PENDING_APPROVAL -> APPROVED -> EXECUTED
+//	              |                  |
+//	              +-> REJECTED       +-> EXPIRED
+//	              +-> EXPIRED        +-> REVOKED
+//
+// There is no transition back into APPROVED. A lapsed case must be requested
+// and approved again from DRAFT.
+enum RecoveryCaseState {
+  RECOVERY_CASE_STATE_UNSPECIFIED = 0;
+  RECOVERY_CASE_STATE_DRAFT = 1;
+  RECOVERY_CASE_STATE_PENDING_APPROVAL = 2;
+  RECOVERY_CASE_STATE_APPROVED = 3;
+  // The KMS/HSM performed the scope-bound unwrap and the result was delivered
+  // to the Recovery Recipient Device. Terminal.
+  RECOVERY_CASE_STATE_EXECUTED = 4;
+  RECOVERY_CASE_STATE_REJECTED = 5;
+  RECOVERY_CASE_STATE_EXPIRED = 6;
+  // Withdrawn before execution.
+  RECOVERY_CASE_STATE_REVOKED = 7;
+}
+
+// RecoveryApproval is one approver's decision on a Recovery Case.
+//
+// v1 requires at least two distinct approvers and forbids self-approval. An
+// organization may raise the threshold but never lower it to one.
+message RecoveryApproval {
+  string approval_id = 1;
+
+  threadline.type.v1.ActorRef approver = 2;
+
+  bool approved = 3;
+
+  // Free-text justification, entered by the approver. Data class C3: it may
+  // describe the incident, so it is stored encrypted and never logged.
+  threadline.type.v1.EncryptedField note = 4;
+
+  google.protobuf.Timestamp decided_at = 5;
+
+  // Organization policy version in force at decision time.
+  string policy_version = 6;
+}
+
+// RecoveryCase is a time-bounded, auditable request to recover a defined set of
+// retained Epochs for exactly one designated recipient Device.
+//
+// It is not standing access to a Tenant, Channel or DM, and it is not a device
+// sync path: a new Device that has no eligible source Device starts from its
+// current authorization point unless a case like this is separately approved.
+message RecoveryCase {
+  string recovery_case_id = 1;
+
+  string tenant_id = 2;
+
+  threadline.type.v1.ActorRef requester = 3;
+
+  // Why recovery is being requested. Data class C3, stored encrypted: the
+  // reason routinely names people and incidents.
+  threadline.type.v1.EncryptedField reason = 4;
+
+  // E2EE Groups in scope. A case that names no group is invalid; there is no
+  // tenant-wide recovery.
+  repeated string e2ee_group_ids = 5;
+
+  // Epoch range per group, inclusive, and the time window it must intersect.
+  // Both bounds are enforced: an Epoch outside `time_range` is not unwrapped.
+  uint64 first_epoch = 6;
+  uint64 last_epoch = 7;
+  threadline.type.v1.TimeRange time_range = 8;
+
+  // The one explicitly approved Device that receives the result end to end.
+  // Recovery Control and administrator interfaces are never recipients.
+  string recovery_recipient_device_id = 9;
+
+  RecoveryCaseState state = 10;
+
+  // Threshold in force when the case was created, so a later policy change
+  // cannot retroactively make an under-approved case valid.
+  uint32 required_approvals = 11;
+
+  repeated RecoveryApproval approvals = 12;
+
+  google.protobuf.Timestamp created_at = 13;
+
+  // After this instant the authorization and any temporary material are dead.
+  // Recovering again requires a fresh case and fresh approvals.
+  google.protobuf.Timestamp expires_at = 14;
+
+  google.protobuf.Timestamp executed_at = 15;
+}
+
+// RecoveryEnvelope is versioned material that binds recoverability to one E2EE
+// Group, Epoch and enterprise recovery-key version.
+//
+// It is stored alongside the ciphertext it covers. It does not contain, and
+// cannot be used to derive, a reusable group master key. Only the isolated
+// KMS/HSM identity can unwrap it, and only inside an approved Recovery Case.
+message RecoveryEnvelope {
+  string tenant_id = 1;
+
+  string e2ee_group_id = 2;
+
+  uint64 epoch = 3;
+
+  CryptoProfile crypto_profile = 4;
+
+  // Enterprise recovery key version used for wrapping. Rotation applies to new
+  // Epochs only: Threadline does not batch-rewrite existing messages.
+  uint32 recovery_key_version = 5;
+
+  // Scope-bound wrapped material for `epoch`. Opaque to every application
+  // service, including Recovery Control itself, which orchestrates approvals
+  // but never sees recovery private key bytes.
+  bytes wrapped_material = 6;
+
+  // Format version of `wrapped_material` within `crypto_profile`.
+  uint32 envelope_version = 7;
+
+  // Whether this envelope was produced at all.
+  //
+  // v1 does not expose strictly unrecoverable Channels to users, but the
+  // protocol must keep room to omit the enterprise recovery recipient later.
+  // A false value here is the version boundary that makes that possible without
+  // a wire break.
+  bool recovery_recipient_present = 8;
+}

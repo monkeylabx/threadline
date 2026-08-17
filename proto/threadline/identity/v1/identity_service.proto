@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+// Identity, directory and Device services, served by threadline-core.
+//
+// Every RPC here derives the tenant from the caller's authenticated session.
+// Tenant is never a request parameter: making it one would turn a missing
+// authorization check into cross-tenant access.
+package threadline.identity.v1;
+
+import "threadline/identity/v1/device.proto";
+import "threadline/identity/v1/identity.proto";
+import "threadline/type/v1/common.proto";
+
+// IdentityService serves the organization directory.
+service IdentityService {
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
+
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+
+  rpc GetMember(GetMemberRequest) returns (GetMemberResponse);
+
+  // Lists Agent Actors with their owner, responsibility, default participation
+  // mode and health, so an administrator sees an Agent's boundaries before
+  // adding it to a Channel.
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+}
+
+message GetOrganizationRequest {}
+
+message GetOrganizationResponse {
+  Organization organization = 1;
+}
+
+message ListMembersRequest {
+  threadline.type.v1.PageRequest page = 1;
+
+  // Optional filters. An unset filter matches everything the caller may see;
+  // results are always re-authorized on read.
+  MemberState state = 2;
+  string org_unit_path = 3;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message GetMemberRequest {
+  string actor_id = 1;
+}
+
+message GetMemberResponse {
+  Member member = 1;
+}
+
+message ListAgentsRequest {
+  threadline.type.v1.PageRequest page = 1;
+}
+
+message ListAgentsResponse {
+  repeated AgentProfile agents = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+// DeviceService manages Device enrollment and revocation.
+//
+// It cannot, by itself, create a Cryptographic Member. Enrollment always
+// requires an endorsement from the Device Authority or an existing authorized
+// Device, and this service records that endorsement rather than substituting
+// for it.
+service DeviceService {
+  // Submits a Device for enrollment. Returns a PENDING_ENROLLMENT Device; it
+  // becomes AUTHORIZED only once an endorsement arrives.
+  rpc EnrollDevice(EnrollDeviceRequest) returns (EnrollDeviceResponse);
+
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+
+  // Revokes a Device: invalidates its credential and unused KeyPackages, and
+  // queues its removal from every E2EE Group it belongs to. Terminal.
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse);
+
+  // Returns the tenant's append-only Device/Key log from a given position.
+  //
+  // Clients replay this to verify that no Device was inserted without a valid
+  // approval chain. A gap or a broken hash link is a hard failure, not a
+  // warning to be dismissed.
+  rpc ListDeviceLog(ListDeviceLogRequest) returns (ListDeviceLogResponse);
+
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+  // Revokes a Session. This stops API calls; it does not remove the Device from
+  // any E2EE Group, which requires RevokeDevice.
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+}
+
+message EnrollDeviceRequest {
+  string display_name = 1;
+
+  DevicePlatform platform = 2;
+
+  KeyProtectionLevel key_protection_level = 3;
+
+  // Device Identity public key, generated on the Device. The private half never
+  // leaves OS secure storage and is never sent here.
+  bytes identity_public_key = 4;
+
+  repeated string supported_crypto_profiles = 5;
+}
+
+message EnrollDeviceResponse {
+  Device device = 1;
+
+  DeviceEnrollment enrollment = 2;
+}
+
+message ListDevicesRequest {
+  // Devices of this Actor. Empty means the caller's own Devices.
+  string actor_id = 1;
+
+  threadline.type.v1.PageRequest page = 2;
+}
+
+message ListDevicesResponse {
+  repeated Device devices = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message RevokeDeviceRequest {
+  string device_id = 1;
+
+  // Machine-readable reason, e.g. "lost_device" or "employee_offboarded".
+  string reason = 2;
+}
+
+message RevokeDeviceResponse {
+  Device device = 1;
+}
+
+message ListDeviceLogRequest {
+  // Returns entries with `device_log_seq` strictly greater than this.
+  uint64 after_seq = 1;
+
+  threadline.type.v1.PageRequest page = 2;
+}
+
+message ListDeviceLogResponse {
+  repeated DeviceEnrollment entries = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message ListSessionsRequest {
+  threadline.type.v1.PageRequest page = 1;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+}
+
+message RevokeSessionResponse {}

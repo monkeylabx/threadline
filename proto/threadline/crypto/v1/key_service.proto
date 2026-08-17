@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+// Key directory, membership change and enterprise recovery services.
+//
+// KeyDirectoryService and MembershipService are served by threadline-core.
+// RecoveryService is served by threadline-recovery-control, which runs in a
+// separate namespace with its own identity, network policy, database role and
+// audit sink; Core, Realtime, Worker, Runtime Gateway, Model Control and model
+// Endpoints cannot call it.
+package threadline.crypto.v1;
+
+import "threadline/crypto/v1/crypto.proto";
+import "threadline/crypto/v1/recovery.proto";
+import "threadline/type/v1/common.proto";
+
+// KeyDirectoryService publishes and consumes public KeyPackages.
+//
+// The directory holds public material only. It cannot mint a KeyPackage,
+// because it has no access to the corresponding private key.
+service KeyDirectoryService {
+  // Publishes KeyPackages for the calling Device. Devices keep a small supply
+  // available; exhaustion blocks others from adding them to a Group.
+  rpc PublishKeyPackages(PublishKeyPackagesRequest) returns (PublishKeyPackagesResponse);
+
+  // Claims one KeyPackage per target Device for an upcoming Commit. Claiming is
+  // atomic: a package handed out here is marked consumed and never returned to
+  // a second caller.
+  rpc ClaimKeyPackages(ClaimKeyPackagesRequest) returns (ClaimKeyPackagesResponse);
+
+  rpc GetE2eeGroup(GetE2eeGroupRequest) returns (GetE2eeGroupResponse);
+}
+
+message PublishKeyPackagesRequest {
+  repeated KeyPackage key_packages = 1;
+}
+
+message PublishKeyPackagesResponse {
+  // Number of packages now available for this Device, so a client knows when to
+  // replenish.
+  uint32 available_count = 1;
+}
+
+message ClaimKeyPackagesRequest {
+  string e2ee_group_id = 1;
+
+  repeated string target_device_ids = 2;
+}
+
+message ClaimKeyPackagesResponse {
+  repeated KeyPackage key_packages = 1;
+
+  // Devices with no package available. They cannot be added to the Group until
+  // they publish more; the caller must not proceed as though they were added.
+  repeated string unavailable_device_ids = 2;
+}
+
+message GetE2eeGroupRequest {
+  string e2ee_group_id = 1;
+}
+
+message GetE2eeGroupResponse {
+  E2EEGroup group = 1;
+}
+
+// MembershipService orders membership changes and authorizes a Committer
+// Device to produce the corresponding MLS Commit.
+//
+// The control plane owns the ordering of membership changes and holds no group
+// keys. Concurrent changes are resolved by the sequence assigned here, not by
+// whichever Commit lands first.
+service MembershipService {
+  // Records a membership change and returns an authorization naming the
+  // Committer Device, the expected Epoch and the KeyPackages to consume. The
+  // response contains no key material.
+  rpc AuthorizeMembershipChange(AuthorizeMembershipChangeRequest) returns (AuthorizeMembershipChangeResponse);
+
+  // Returns pending authorizations for the calling Device, so a Device that was
+  // offline picks up work it was elected to commit.
+  rpc ListPendingAuthorizations(ListPendingAuthorizationsRequest) returns (ListPendingAuthorizationsResponse);
+}
+
+message AuthorizeMembershipChangeRequest {
+  string e2ee_group_id = 1;
+
+  MembershipChangeKind kind = 2;
+
+  // Actors whose Devices should be added. The service expands these to Devices
+  // and claims their KeyPackages, so a caller cannot target a Device the
+  // membership decision did not cover.
+  repeated threadline.type.v1.ActorRef add_actors = 3;
+
+  repeated threadline.type.v1.ActorRef remove_actors = 4;
+
+  // Individual Devices to remove, for revocation rather than membership change.
+  repeated string remove_device_ids = 5;
+}
+
+message AuthorizeMembershipChangeResponse {
+  MembershipChangeAuthorization authorization = 1;
+
+  // KeyPackages claimed for the additions in this change.
+  repeated KeyPackage claimed_key_packages = 2;
+}
+
+message ListPendingAuthorizationsRequest {
+  string e2ee_group_id = 1;
+}
+
+message ListPendingAuthorizationsResponse {
+  repeated MembershipChangeAuthorization authorizations = 1;
+}
+
+// HistoryService carries History Sharing grants between Devices.
+//
+// The server routes sealed grants and enforces policy on who may request one.
+// It cannot open a grant, and it must never return history keys on the strength
+// of current membership alone.
+service HistoryService {
+  // Requests that an eligible source Device share retained history. Returns
+  // pending: the actual sharing is performed end to end by that Device.
+  rpc RequestHistorySharing(RequestHistorySharingRequest) returns (RequestHistorySharingResponse);
+
+  // Submits a sealed grant produced by a source Device.
+  rpc SubmitHistorySharing(SubmitHistorySharingRequest) returns (SubmitHistorySharingResponse);
+
+  // Returns grants addressed to the calling Device.
+  rpc ListHistorySharing(ListHistorySharingRequest) returns (ListHistorySharingResponse);
+}
+
+message RequestHistorySharingRequest {
+  string e2ee_group_id = 1;
+
+  // Device that should receive history. Must belong to the calling Actor, or
+  // the caller must be authorized to act for its owner.
+  string target_device_id = 2;
+
+  uint64 first_epoch = 3;
+  uint64 last_epoch = 4;
+}
+
+message RequestHistorySharingResponse {
+  string request_id = 1;
+
+  // Devices that could serve this request. Empty means no eligible source
+  // exists: the target then starts from its current authorization point, and
+  // recovering earlier history requires a separate approved Recovery Case.
+  repeated string eligible_source_device_ids = 2;
+}
+
+message SubmitHistorySharingRequest {
+  HistorySharingGrant grant = 1;
+}
+
+message SubmitHistorySharingResponse {
+  string grant_id = 1;
+}
+
+message ListHistorySharingRequest {
+  string e2ee_group_id = 1;
+}
+
+message ListHistorySharingResponse {
+  repeated HistorySharingGrant grants = 1;
+}
+
+// RecoveryService orchestrates enterprise recovery in an isolated security
+// domain.
+//
+// It approves and audits; it never holds recovery private key bytes, a reusable
+// group master key or standing browse capability. There is deliberately no RPC
+// here that decrypts arbitrary content, and none may be added: enterprise
+// recovery must not become an interface for search, DLP, summarization or model
+// input.
+service RecoveryService {
+  rpc CreateRecoveryCase(CreateRecoveryCaseRequest) returns (CreateRecoveryCaseResponse);
+
+  // Records one approver's decision. The requester cannot approve their own
+  // case, and an organization can raise the threshold above two but never
+  // lower it to one.
+  rpc DecideRecoveryCase(DecideRecoveryCaseRequest) returns (DecideRecoveryCaseResponse);
+
+  // Executes an approved case: the KMS/HSM performs the scope-bound unwrap and
+  // re-encrypts the result to the designated Recovery Recipient Device.
+  rpc ExecuteRecoveryCase(ExecuteRecoveryCaseRequest) returns (ExecuteRecoveryCaseResponse);
+
+  rpc GetRecoveryCase(GetRecoveryCaseRequest) returns (GetRecoveryCaseResponse);
+
+  rpc ListRecoveryCases(ListRecoveryCasesRequest) returns (ListRecoveryCasesResponse);
+}
+
+message CreateRecoveryCaseRequest {
+  threadline.type.v1.EncryptedField reason = 1;
+
+  repeated string e2ee_group_ids = 2;
+
+  uint64 first_epoch = 3;
+  uint64 last_epoch = 4;
+
+  threadline.type.v1.TimeRange time_range = 5;
+
+  string recovery_recipient_device_id = 6;
+}
+
+message CreateRecoveryCaseResponse {
+  RecoveryCase recovery_case = 1;
+}
+
+message DecideRecoveryCaseRequest {
+  string recovery_case_id = 1;
+
+  bool approved = 2;
+
+  threadline.type.v1.EncryptedField note = 3;
+}
+
+message DecideRecoveryCaseResponse {
+  RecoveryCase recovery_case = 1;
+}
+
+message ExecuteRecoveryCaseRequest {
+  string recovery_case_id = 1;
+}
+
+message ExecuteRecoveryCaseResponse {
+  RecoveryCase recovery_case = 1;
+
+  // Material re-encrypted to the Recovery Recipient Device, one entry per
+  // recovered Epoch. Only that Device can open these.
+  repeated RecoveryEnvelope delivered_envelopes = 2;
+}
+
+message GetRecoveryCaseRequest {
+  string recovery_case_id = 1;
+}
+
+message GetRecoveryCaseResponse {
+  RecoveryCase recovery_case = 1;
+}
+
+message ListRecoveryCasesRequest {
+  RecoveryCaseState state = 1;
+
+  threadline.type.v1.PageRequest page = 2;
+}
+
+message ListRecoveryCasesResponse {
+  repeated RecoveryCase recovery_cases = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
