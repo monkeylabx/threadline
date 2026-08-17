@@ -163,6 +163,18 @@ message RecoveryEnvelope {
   // Epochs only: Threadline does not batch-rewrite existing messages.
   uint32 recovery_key_version = 5;
 
+  // KMS/HSM identifier of the recovery key this envelope was wrapped to, e.g.
+  // "recovery-key-2026-q3". The version above orders rotations; this names the
+  // key an approved Recovery Case must ask the KMS/HSM to use, which a number
+  // cannot do. Matches `recovery.recipient_key_id` in the T011 interop vector.
+  string recovery_key_id = 9;
+
+  // Digest over the binding fields (tenant, group, epoch, profile, key id) that
+  // a recipient checks before unwrapping, so material re-pointed at a different
+  // group, Epoch or tenant fails closed. Asserted as `recovery.binding_sha256`
+  // in test/crypto/e2ee-interop-v1.vector.
+  bytes binding_hash = 10;
+
   // Scope-bound wrapped material for `epoch`. Opaque to every application
   // service, including Recovery Control itself, which orchestrates approvals
   // but never sees recovery private key bytes.

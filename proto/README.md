@@ -94,6 +94,11 @@ contract review.
 - Server-assigned values live in `ServerCommit`, outside the sender's signature
   and outside the AEAD associated data. A client must not treat them as
   authenticated.
+- `threadline.type.v1.ErrorCode` must be able to express every failure the
+  merged crypto contract defines. Each `TL_E2EE_*` condition in
+  `test/crypto/e2ee-interop-v1.vector` has a corresponding code, and
+  `RecoveryEnvelope` carries the `recovery_key_id` and `binding_hash` that
+  vector binds on. Extending the vector means extending this enum.
 
 ## Not yet in this module
 
