@@ -5,9 +5,9 @@
   "metadata": {
     "component": {
       "type": "application",
-      "name": "threadline-e2ee-interop",
+      "name": "threadline-e2ee-interop-mls-rs",
       "version": "0.0.0",
-      "bom-ref": "pkg:cargo/threadline-e2ee-interop@0.0.0"
+      "bom-ref": "pkg:cargo/threadline-e2ee-interop-mls-rs@0.0.0"
     }
   },
   "components": [
@@ -70,6 +70,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/async-trait@0.1.92",
+      "name": "async-trait",
+      "version": "0.1.92",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
+        }
+      ],
+      "purl": "pkg:cargo/async-trait@0.1.92",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/async-trait/0.1.92/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/autocfg@1.5.1",
       "name": "autocfg",
       "version": "1.5.1",
@@ -103,25 +122,6 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/base16ct/0.2.0/download"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "pkg:cargo/base64@0.22.1",
-      "name": "base64",
-      "version": "0.22.1",
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
-        }
-      ],
-      "purl": "pkg:cargo/base64@0.22.1",
-      "externalReferences": [
-        {
-          "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/base64/0.22.1/download"
         }
       ]
     },
@@ -260,6 +260,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/const-oid@0.10.2",
+      "name": "const-oid",
+      "version": "0.10.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+        }
+      ],
+      "purl": "pkg:cargo/const-oid@0.10.2",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/const-oid/0.10.2/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/const-oid@0.9.6",
       "name": "const-oid",
       "version": "0.9.6",
@@ -312,6 +331,25 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/cpufeatures/0.2.17/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/critical-section@1.2.0",
+      "name": "critical-section",
+      "version": "1.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "790eea4361631c5e7d22598ecd5723ff611904e3344ce8720784c93e3d83d40b"
+        }
+      ],
+      "purl": "pkg:cargo/critical-section@1.2.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/critical-section/1.2.0/download"
         }
       ]
     },
@@ -469,6 +507,82 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/darling_core@0.20.11",
+      "name": "darling_core",
+      "version": "0.20.11",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "0d00b9596d185e565c2207a0b01f8bd1a135483d02d9b7b0a54b11da8d53412e"
+        }
+      ],
+      "purl": "pkg:cargo/darling_core@0.20.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/darling_core/0.20.11/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/darling_macro@0.20.11",
+      "name": "darling_macro",
+      "version": "0.20.11",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fc34b93ccb385b40dc71c6fceac4b2ad23662c7eeb248cf10d529b7e055b6ead"
+        }
+      ],
+      "purl": "pkg:cargo/darling_macro@0.20.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/darling_macro/0.20.11/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/darling@0.20.11",
+      "name": "darling",
+      "version": "0.20.11",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "fc7f46116c46ff9ab3eb1597a45688b6715c6e628b5c133e288e709a29bcb4ee"
+        }
+      ],
+      "purl": "pkg:cargo/darling@0.20.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/darling/0.20.11/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/debug_tree@0.4.0",
+      "name": "debug_tree",
+      "version": "0.4.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2d1ec383f2d844902d3c34e4253ba11ae48513cdaddc565cf1a6518db09a8e57"
+        }
+      ],
+      "purl": "pkg:cargo/debug_tree@0.4.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/debug_tree/0.4.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/der@0.7.10",
       "name": "der",
       "version": "0.7.10",
@@ -483,6 +597,25 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/der/0.7.10/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/der@0.8.1",
+      "name": "der",
+      "version": "0.8.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a69dedd701da44b0536442edf09c81a64b0ab97a7a4a5e3d1971f00027cbc63d"
+        }
+      ],
+      "purl": "pkg:cargo/der@0.8.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/der/0.8.1/download"
         }
       ]
     },
@@ -640,58 +773,153 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/futures-core@0.3.33",
+      "bom-ref": "pkg:cargo/fnv@1.0.7",
+      "name": "fnv",
+      "version": "1.0.7",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
+        }
+      ],
+      "purl": "pkg:cargo/fnv@1.0.7",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/fnv/1.0.7/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/futures-channel@0.3.34",
+      "name": "futures-channel",
+      "version": "0.3.34",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
+        }
+      ],
+      "purl": "pkg:cargo/futures-channel@0.3.34",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/futures-channel/0.3.34/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/futures-core@0.3.34",
       "name": "futures-core",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "2cd50c473c80f6d7c3670a752354b8e569b1a7cbfdc0419ec88e5edad85e0dc7"
+          "content": "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e"
         }
       ],
-      "purl": "pkg:cargo/futures-core@0.3.33",
+      "purl": "pkg:cargo/futures-core@0.3.34",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/futures-core/0.3.33/download"
+          "url": "https://crates.io/api/v1/crates/futures-core/0.3.34/download"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/futures-task@0.3.33",
+      "bom-ref": "pkg:cargo/futures-io@0.3.34",
+      "name": "futures-io",
+      "version": "0.3.34",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed"
+        }
+      ],
+      "purl": "pkg:cargo/futures-io@0.3.34",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/futures-io/0.3.34/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/futures-sink@0.3.34",
+      "name": "futures-sink",
+      "version": "0.3.34",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1944426bf7d03f1d14f708785e4b33efd750b36d48a157b836b3efc15ede8e1d"
+        }
+      ],
+      "purl": "pkg:cargo/futures-sink@0.3.34",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/futures-sink/0.3.34/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/futures-task@0.3.34",
       "name": "futures-task",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "b231ed28831efb4a61a08580c4bc233ec56bc009f4cd8f52da2c3cb97df0c109"
+          "content": "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd"
         }
       ],
-      "purl": "pkg:cargo/futures-task@0.3.33",
+      "purl": "pkg:cargo/futures-task@0.3.34",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/futures-task/0.3.33/download"
+          "url": "https://crates.io/api/v1/crates/futures-task/0.3.34/download"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/futures-util@0.3.33",
+      "bom-ref": "pkg:cargo/futures-util@0.3.34",
       "name": "futures-util",
-      "version": "0.3.33",
+      "version": "0.3.34",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "a77a90a256fce34da66415271e30f94ee91c57b04b8a2c042d9cf3220179deaa"
+          "content": "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
         }
       ],
-      "purl": "pkg:cargo/futures-util@0.3.33",
+      "purl": "pkg:cargo/futures-util@0.3.34",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/futures-util/0.3.33/download"
+          "url": "https://crates.io/api/v1/crates/futures-util/0.3.34/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/futures@0.3.34",
+      "name": "futures",
+      "version": "0.3.34",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
+        }
+      ],
+      "purl": "pkg:cargo/futures@0.3.34",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/futures/0.3.34/download"
         }
       ]
     },
@@ -1001,6 +1229,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/ident_case@1.0.1",
+      "name": "ident_case",
+      "version": "1.0.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+        }
+      ],
+      "purl": "pkg:cargo/ident_case@1.0.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/ident_case/1.0.1/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/inout@0.1.4",
       "name": "inout",
       "version": "0.1.4",
@@ -1015,6 +1262,25 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/inout/0.1.4/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/itertools@0.14.0",
+      "name": "itertools",
+      "version": "0.14.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+        }
+      ],
+      "purl": "pkg:cargo/itertools@0.14.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/itertools/0.14.0/download"
         }
       ]
     },
@@ -1476,6 +1742,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/maybe-async@0.2.11",
+      "name": "maybe-async",
+      "version": "0.2.11",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "746873a384ad60adc5db74471dfaba74bd278afbdcfd81db93fafcdfc8b5ca0c"
+        }
+      ],
+      "purl": "pkg:cargo/maybe-async@0.2.11",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/maybe-async/0.2.11/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/memchr@2.8.3",
       "name": "memchr",
       "version": "2.8.3",
@@ -1490,6 +1775,158 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/memchr/2.8.3/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-codec-derive@0.2.0",
+      "name": "mls-rs-codec-derive",
+      "version": "0.2.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c8b31fb579767147e96686889f1e7459d6bd41a131b11d7cd130776cffadb1c3"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-codec-derive@0.2.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-codec-derive/0.2.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-codec@0.7.0",
+      "name": "mls-rs-codec",
+      "version": "0.7.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "45bd834f164dc06c1fed805540ae307a460b7ed7c2769a35a376f1de577a0dc1"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-codec@0.7.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-codec/0.7.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-core@0.27.0",
+      "name": "mls-rs-core",
+      "version": "0.27.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e282079e5bd2fe95a009ac8af6a8e510924d876234ee494cd97f15f52de53cb0"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-core@0.27.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-core/0.27.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-crypto-hpke@0.21.0",
+      "name": "mls-rs-crypto-hpke",
+      "version": "0.21.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "b53db9a20568dec53e4f280ec8152c862b98efe105894e378d996be3305f32f2"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-crypto-hpke@0.21.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-crypto-hpke/0.21.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-crypto-rustcrypto@0.22.1",
+      "name": "mls-rs-crypto-rustcrypto",
+      "version": "0.22.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "eda8f08b88f84c46924dc0d1cf50c9d3ea2a6e2ac5192c38d8de465724032a2c"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-crypto-rustcrypto@0.22.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-crypto-rustcrypto/0.22.1/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-crypto-traits@0.22.0",
+      "name": "mls-rs-crypto-traits",
+      "version": "0.22.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "49171fd5c7c77cd29ec452dcc6f537b8c568084b97023dcc5c0d41140da8ceb4"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-crypto-traits@0.22.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-crypto-traits/0.22.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs-identity-x509@0.21.0",
+      "name": "mls-rs-identity-x509",
+      "version": "0.21.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ec1ecb6a61a296b8240cea19171477293663dcc6540353dc8cbcda2d9f61039b"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs-identity-x509@0.21.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs-identity-x509/0.21.0/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/mls-rs@0.55.3",
+      "name": "mls-rs",
+      "version": "0.55.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "41e7caf5b4ef0e27f7fc05147d9dda2d1c4e424549985f798db38a600de26e42"
+        }
+      ],
+      "purl": "pkg:cargo/mls-rs@0.55.3",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/mls-rs/0.55.3/download"
         }
       ]
     },
@@ -1514,20 +1951,20 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/num-integer@0.1.46",
+      "bom-ref": "pkg:cargo/num-integer@0.1.47",
       "name": "num-integer",
-      "version": "0.1.46",
+      "version": "0.1.47",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
+          "content": "7ce2d95d4b3734dc35aa2f45e1aa22cd416814592a4f9d9205e11affd5b8e10b"
         }
       ],
-      "purl": "pkg:cargo/num-integer@0.1.46",
+      "purl": "pkg:cargo/num-integer@0.1.47",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/num-integer/0.1.46/download"
+          "url": "https://crates.io/api/v1/crates/num-integer/0.1.47/download"
         }
       ]
     },
@@ -1832,6 +2269,44 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/polyval/0.6.2/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/portable-atomic-util@0.2.7",
+      "name": "portable-atomic-util",
+      "version": "0.2.7",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c2a106d1259c23fac8e543272398ae0e3c0b8d33c88ed73d0cc71b0f1d902618"
+        }
+      ],
+      "purl": "pkg:cargo/portable-atomic-util@0.2.7",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/portable-atomic-util/0.2.7/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/portable-atomic@1.15.0",
+      "name": "portable-atomic",
+      "version": "1.15.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "05c8b63e8d9609db387f0324918f81d68fe27748f084ef092fb35954d0539a85"
+        }
+      ],
+      "purl": "pkg:cargo/portable-atomic@1.15.0",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/portable-atomic/1.15.0/download"
         }
       ]
     },
@@ -2274,6 +2749,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/sec1@0.8.1",
+      "name": "sec1",
+      "version": "0.8.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d56d437c2f19203ce5f7122e507831de96f3d2d4d3be5af44a0b0a09d8a80e4d"
+        }
+      ],
+      "purl": "pkg:cargo/sec1@0.8.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/sec1/0.8.1/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/semver@1.0.28",
       "name": "semver",
       "version": "1.0.28",
@@ -2445,6 +2939,25 @@
     },
     {
       "type": "library",
+      "bom-ref": "pkg:cargo/spin@0.10.1",
+      "name": "spin",
+      "version": "0.10.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "023a211cb3138dbc438680b32560ad89f699977624c9f8dbb95a47d5b4c07dd3"
+        }
+      ],
+      "purl": "pkg:cargo/spin@0.10.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/spin/0.10.1/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pkg:cargo/spki@0.7.3",
       "name": "spki",
       "version": "0.7.3",
@@ -2459,6 +2972,25 @@
         {
           "type": "distribution",
           "url": "https://crates.io/api/v1/crates/spki/0.7.3/download"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:cargo/strsim@0.11.1",
+      "name": "strsim",
+      "version": "0.11.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+        }
+      ],
+      "purl": "pkg:cargo/strsim@0.11.1",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://crates.io/api/v1/crates/strsim/0.11.1/download"
         }
       ]
     },
@@ -2654,20 +3186,20 @@
     },
     {
       "type": "library",
-      "bom-ref": "pkg:cargo/uuid@1.24.0",
+      "bom-ref": "pkg:cargo/uuid@1.24.1",
       "name": "uuid",
-      "version": "1.24.0",
+      "version": "1.24.1",
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "bf3923a6f5c4c6382e0b653c4117f48d631ea17f38ed86e2a828e6f7412f5239"
+          "content": "2cefc03fd367c0c6d4305de1b312cf00248c4114f4a0418ce6a6af769e3b0bd9"
         }
       ],
-      "purl": "pkg:cargo/uuid@1.24.0",
+      "purl": "pkg:cargo/uuid@1.24.1",
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://crates.io/api/v1/crates/uuid/1.24.0/download"
+          "url": "https://crates.io/api/v1/crates/uuid/1.24.1/download"
         }
       ]
     },

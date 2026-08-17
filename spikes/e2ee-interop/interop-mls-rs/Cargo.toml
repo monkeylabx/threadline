@@ -1,5 +1,5 @@
 [package]
-name = "threadline-e2ee-interop"
+name = "threadline-e2ee-interop-mls-rs"
 version = "0.0.0"
 edition = "2021"
 license = "UNLICENSED"
@@ -8,16 +8,13 @@ publish = false
 [workspace]
 
 [dependencies]
-sha2 = "=0.10.9"
 
 [dev-dependencies]
-hex = "=0.4.3"
+mls-rs = "=0.55.3"
+mls-rs-crypto-rustcrypto = "=0.22.1"
 openmls = "=0.8.1"
 openmls_basic_credential = "=0.5.0"
-openmls_memory_storage = { version = "=0.5.0", features = ["persistence"] }
 openmls_rust_crypto = "=0.5.1"
-openmls_traits = "=0.5.0"
-serde_json = "=1.0.151"
 
 [lints.rust]
 unsafe_code = "deny"

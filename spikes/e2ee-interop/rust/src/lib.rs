@@ -87,6 +87,14 @@ impl GoldenVector {
         self.expect("mls_library", "openmls")?;
         self.expect("mls_library_version", "0.8.1")?;
         self.expect("vector_class", "semantic-contract")?;
+
+        // Pinned by the P00-08 cross-implementation evidence: neither library's
+        // defaults are interoperable, so tl-mls-1 fixes the handshake wire
+        // format and the leaf-node lifetime policy explicitly.
+        self.expect("wire_format.handshake", "private-message")?;
+        self.expect("leaf_lifetime.not_before_skew_seconds", "3600")?;
+        self.expect("leaf_lifetime.max_range_seconds", "7261200")?;
+        self.expect("interop.independent_implementation", "mls-rs")?;
         self.expect("recovery.wrapper", "optional")?;
         self.expect("recovery.private_key_location", "external-kms-hsm-only")?;
         self.expect("output.classification", "public-metadata-and-digests-only")?;
