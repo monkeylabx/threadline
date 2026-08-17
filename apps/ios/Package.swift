@@ -15,6 +15,7 @@ let package = Package(
     ],
     products: [
         .library(name: "ThreadlineIOSHost", targets: ["ThreadlineIOSHost"]),
+        .executable(name: "ThreadlineFFIHarness", targets: ["ThreadlineFFIHarness"]),
     ],
     targets: [
         .target(
@@ -28,6 +29,13 @@ let package = Package(
         ),
         .testTarget(
             name: "ThreadlineIOSHostTests",
+            dependencies: ["ThreadlineIOSHost"]
+        ),
+        // Runs the same contract points as ThreadlineIOSHostTests without
+        // XCTest, so the Swift -> Rust boundary can be exercised on a machine
+        // that has the Swift toolchain but not a full Xcode install.
+        .executableTarget(
+            name: "ThreadlineFFIHarness",
             dependencies: ["ThreadlineIOSHost"]
         ),
     ]
