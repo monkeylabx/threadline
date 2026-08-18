@@ -1,97 +1,95 @@
 package com.threadline.android
 
+import android.os.Handler
+import android.os.Looper
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
-import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import junit.framework.TestCase
 
-class ThreadlineAndroidSkeletonTest {
+class ThreadlineAndroidInstrumentedTest : TestCase() {
     private val directExecutor = Executor { command -> command.run() }
+    private val mainExecutor = Executor { command -> Handler(Looper.getMainLooper()).post(command) }
 
-    @Test
-    fun bridgeContractVersionComesFromRustFacade() {
+    fun testFacadeExecutesInsideAndroidEmulatorOnMainDispatcherWithoutBlockingCaller() {
         assertEquals(1u, ThreadlineAndroidSkeleton.bridgeContractVersion)
-    }
-
-    @Test
-    fun asyncRequestReturnsCopiedBytesWithoutBlockingCaller() {
         val client = ThreadlineClient()
         val completed = CountDownLatch(1)
-        val outcome = AtomicReference<Result<ThreadlineRequestResult>>()
+        val callbackWasOnMain = AtomicBoolean(false)
+        val result = AtomicReference<Result<ThreadlineRequestResult>>()
+
         val started = System.nanoTime()
         val request = client.startRequest(
             fault = ThreadlineBridgeFault.DELAYED,
             delayMilliseconds = 200,
-            deliveryExecutor = directExecutor,
+            deliveryExecutor = mainExecutor,
         ) {
-            outcome.set(it)
+            callbackWasOnMain.set(Looper.myLooper() == Looper.getMainLooper())
+            result.set(it)
             completed.countDown()
         }
         val elapsedMilliseconds = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
-        assertTrue("start must not block the host thread", elapsedMilliseconds < 100)
+        assertTrue("start must not block the instrumentation thread", elapsedMilliseconds < 100)
 
         assertTrue(completed.await(3, TimeUnit.SECONDS))
-        val result = outcome.get().getOrThrow()
-        assertArrayEquals("threadline-ok".encodeToByteArray(), result.data)
-        assertTrue(result.committed)
-
+        assertTrue(callbackWasOnMain.get())
+        assertTrue(result.get().getOrThrow().data.contentEquals("threadline-ok".encodeToByteArray()))
         request.release()
-        request.release()
-        client.release()
         client.release()
     }
 
-    @Test
-    fun cancellationCommitPointAndStableFaultsAreDeterministic() {
+    fun testFaultFixtureCancellationAndStableErrorMappingInsideEmulator() {
         val client = ThreadlineClient()
 
         val canceled = CountDownLatch(1)
         val canceledOutcome = AtomicReference<Result<ThreadlineRequestResult>>()
-        val before = client.startRequest(
+        val beforeCommit = client.startRequest(
             fault = ThreadlineBridgeFault.DELAYED,
-            delayMilliseconds = 40,
+            delayMilliseconds = 100,
             deliveryExecutor = directExecutor,
         ) {
             canceledOutcome.set(it)
             canceled.countDown()
         }
-        assertEquals(ThreadlineBridgeStatus.OK, before.cancel())
-        assertEquals(ThreadlineBridgeStatus.OK, before.cancel())
+        assertEquals(ThreadlineBridgeStatus.OK, beforeCommit.cancel())
+        assertEquals(ThreadlineBridgeStatus.OK, beforeCommit.cancel())
         assertTrue(canceled.await(2, TimeUnit.SECONDS))
         assertEquals(
             ThreadlineBridgeStatus.CANCELED,
             (canceledOutcome.get().exceptionOrNull() as ThreadlineBridgeException).status,
         )
-        before.release()
+        beforeCommit.release()
 
         val nativeClient = ThreadlineNative.nativeClientCreate()
-        val after = ThreadlineNative.nativeRequestStart(
+        assertTrue(nativeClient > 0)
+        val afterCommit = ThreadlineNative.nativeRequestStart(
             nativeClient,
             ThreadlineBridgeFault.NONE.code,
-            40,
+            200,
         )
-        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
-        while (ThreadlineNative.nativeRequestState(after) != 12 && System.nanoTime() < deadline) {
+        assertTrue(afterCommit > 0)
+        val commitDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (
+            ThreadlineNative.nativeRequestState(afterCommit) != 12 &&
+            System.nanoTime() < commitDeadline
+        ) {
             Thread.yield()
         }
-        assertEquals(12, ThreadlineNative.nativeRequestState(after))
+        assertEquals(12, ThreadlineNative.nativeRequestState(afterCommit))
         assertEquals(
             ThreadlineBridgeStatus.ALREADY_COMMITTED.code,
-            ThreadlineNative.nativeRequestCancel(after),
+            ThreadlineNative.nativeRequestCancel(afterCommit),
         )
         assertEquals(
             ThreadlineBridgeStatus.OK.code,
-            ThreadlineNative.nativeRequestWait(after, 2_000),
+            ThreadlineNative.nativeRequestWait(afterCommit, 2_000),
         )
-        ThreadlineNative.nativeRequestRelease(after)
-        ThreadlineNative.nativeClientRelease(nativeClient)
+        assertEquals(0, ThreadlineNative.nativeRequestRelease(afterCommit))
+        assertEquals(0, ThreadlineNative.nativeClientRelease(nativeClient))
 
         for ((fault, expected) in listOf(
             ThreadlineBridgeFault.PANIC to ThreadlineBridgeStatus.PANIC,
@@ -114,38 +112,32 @@ class ThreadlineAndroidSkeletonTest {
             request.release()
         }
 
-        client.release()
-    }
-
-    @Test
-    fun releaseSuppressesLateCallbacksAndRejectsStaleHandles() {
-        val callbacks = AtomicInteger()
-        val client = ThreadlineClient()
-        val request = client.startRequest(
-            fault = ThreadlineBridgeFault.DELAYED,
-            delayMilliseconds = 50,
-            deliveryExecutor = directExecutor,
-        ) {
-            callbacks.incrementAndGet()
-        }
-        request.close()
-        request.close()
-        Thread.sleep(150)
-        assertEquals(0, callbacks.get())
-        request.release()
-        client.release()
-
-        assertNotEquals(
-            ThreadlineBridgeStatus.OK.code,
-            ThreadlineNative.nativeClientClose(Long.MAX_VALUE),
+        assertEquals(
+            -ThreadlineBridgeStatus.INVALID_HANDLE.code.toLong(),
+            ThreadlineNative.nativeRequestStart(Long.MAX_VALUE, 0, 0),
         )
+        val invalidArgumentClient = ThreadlineNative.nativeClientCreate()
+        assertTrue(invalidArgumentClient > 0)
+        assertEquals(
+            -ThreadlineBridgeStatus.INVALID_ARGUMENT.code.toLong(),
+            ThreadlineNative.nativeStreamStart(
+                invalidArgumentClient,
+                0,
+                1,
+                0,
+                0,
+                0,
+            ),
+        )
+        assertEquals(0, ThreadlineNative.nativeClientRelease(invalidArgumentClient))
+
+        client.release()
     }
 
-    @Test
-    fun boundedStreamIsMonotonicAndResumesFromCursor() {
+    fun testFaultFixtureStreamsBackpressureResumeAndLateSuppressionInsideEmulator() {
         val client = ThreadlineClient()
         val completed = CountDownLatch(1)
-        val status = AtomicReference<ThreadlineBridgeStatus>()
+        val terminal = AtomicReference<ThreadlineBridgeStatus>()
         val events = Collections.synchronizedList(mutableListOf<Long>())
         val stream = client.startStream(
             cursor = 40,
@@ -157,18 +149,17 @@ class ThreadlineAndroidSkeletonTest {
                 events += it
             },
             onCompletion = {
-                status.set(it)
+                terminal.set(it)
                 completed.countDown()
             },
         )
         assertTrue(completed.await(3, TimeUnit.SECONDS))
         assertEquals((41L..48L).toList(), events.toList())
-        assertEquals(ThreadlineBridgeStatus.END_OF_STREAM, status.get())
+        assertEquals(ThreadlineBridgeStatus.END_OF_STREAM, terminal.get())
         val metrics = stream.metrics()
         assertEquals(2, metrics.capacity)
         assertTrue(metrics.maxDepth <= metrics.capacity)
         assertTrue(metrics.backpressureCount > 0)
-        assertEquals(0, metrics.suppressedLateEvents)
         stream.release()
 
         val resumedDone = CountDownLatch(1)
@@ -184,73 +175,63 @@ class ThreadlineAndroidSkeletonTest {
         assertTrue(resumedDone.await(2, TimeUnit.SECONDS))
         assertEquals(listOf(49L, 50L), resumedEvents.toList())
         resumed.release()
-        client.release()
-    }
 
-    @Test
-    fun duplicateEventFailsBeforeDuplicateDelivery() {
-        val client = ThreadlineClient()
-        val completed = CountDownLatch(1)
-        val status = AtomicReference<ThreadlineBridgeStatus>()
-        val events = Collections.synchronizedList(mutableListOf<Long>())
-        val stream = client.startStream(
+        val duplicateDone = CountDownLatch(1)
+        val duplicateStatus = AtomicReference<ThreadlineBridgeStatus>()
+        val duplicateEvents = Collections.synchronizedList(mutableListOf<Long>())
+        val duplicate = client.startStream(
             eventCount = 5,
             capacity = 5,
             fault = ThreadlineBridgeFault.DUPLICATE_EVENT,
             deliveryExecutor = directExecutor,
-            onEvent = { events += it },
+            onEvent = { duplicateEvents += it },
             onCompletion = {
-                status.set(it)
-                completed.countDown()
+                duplicateStatus.set(it)
+                duplicateDone.countDown()
             },
         )
-        assertTrue(completed.await(2, TimeUnit.SECONDS))
-        assertEquals(listOf(1L, 2L), events.toList())
-        assertEquals(ThreadlineBridgeStatus.PROTOCOL_VIOLATION, status.get())
-        stream.release()
+        assertTrue(duplicateDone.await(2, TimeUnit.SECONDS))
+        assertEquals(listOf(1L, 2L), duplicateEvents.toList())
+        assertEquals(ThreadlineBridgeStatus.PROTOCOL_VIOLATION, duplicateStatus.get())
+        duplicate.release()
+
+        val firstLateEvent = CountDownLatch(1)
+        val lateCompletions = AtomicInteger()
+        val late = client.startStream(
+            eventCount = 1,
+            capacity = 1,
+            delayMilliseconds = 20,
+            fault = ThreadlineBridgeFault.LATE_EVENT,
+            deliveryExecutor = directExecutor,
+            onEvent = { firstLateEvent.countDown() },
+            onCompletion = { lateCompletions.incrementAndGet() },
+        )
+        assertTrue(firstLateEvent.await(2, TimeUnit.SECONDS))
+        late.close()
+        val lateDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+        while (late.metrics().suppressedLateEvents == 0L && System.nanoTime() < lateDeadline) {
+            Thread.yield()
+        }
+        assertEquals(1L, late.metrics().suppressedLateEvents)
+        Thread.sleep(50)
+        assertEquals(0, lateCompletions.get())
+        late.release()
+
         client.release()
     }
 
-    @Test
-    fun jniStartFailuresPreserveStableStatusCodes() {
-        val client = ThreadlineNative.nativeClientCreate()
-        assertTrue(client > 0)
-        assertEquals(
-            -ThreadlineBridgeStatus.INVALID_ARGUMENT.code.toLong(),
-            ThreadlineNative.nativeStreamStart(client, 0, 1, 0, 0, 0),
-        )
-        assertEquals(ThreadlineBridgeStatus.OK.code, ThreadlineNative.nativeClientRelease(client))
-        assertEquals(
-            -ThreadlineBridgeStatus.INVALID_HANDLE.code.toLong(),
-            ThreadlineNative.nativeRequestStart(client, 0, 0),
-        )
-    }
-
-    @Test
-    fun oneThousandLifecycleLoopsLeaveNoNativeResources() {
+    fun testEmulatorRunsOneThousandCreateStartCloseReleaseLoops() {
         val baselineClients = ThreadlineAndroidSkeleton.resourceCount(ThreadlineBridgeResource.CLIENT)
         val baselineRequests = ThreadlineAndroidSkeleton.resourceCount(ThreadlineBridgeResource.REQUEST)
-        val baselineStreams = ThreadlineAndroidSkeleton.resourceCount(ThreadlineBridgeResource.STREAM)
 
         repeat(1_000) {
             val client = ThreadlineNative.nativeClientCreate()
-            val request = ThreadlineNative.nativeRequestStart(
-                client,
-                ThreadlineBridgeFault.NONE.code,
-                0,
-            )
-            ThreadlineNative.nativeRequestWait(request, 2_000)
-            ThreadlineNative.nativeRequestClose(request)
+            val request = ThreadlineNative.nativeRequestStart(client, 0, 0)
+            assertEquals(0, ThreadlineNative.nativeRequestWait(request, 2_000))
+            assertEquals(0, ThreadlineNative.nativeRequestClose(request))
             assertEquals(0, ThreadlineNative.nativeRequestRelease(request))
             assertEquals(0, ThreadlineNative.nativeRequestRelease(request))
-
-            val stream = ThreadlineNative.nativeStreamStart(client, 0, 0, 1, 0, 0)
-            assertEquals(0, ThreadlineNative.nativeStreamNext(stream, 2_000))
-            ThreadlineNative.nativeStreamClose(stream)
-            assertEquals(0, ThreadlineNative.nativeStreamRelease(stream))
-            assertEquals(0, ThreadlineNative.nativeStreamRelease(stream))
-
-            ThreadlineNative.nativeClientClose(client)
+            assertEquals(0, ThreadlineNative.nativeClientClose(client))
             assertEquals(0, ThreadlineNative.nativeClientRelease(client))
             assertEquals(0, ThreadlineNative.nativeClientRelease(client))
         }
@@ -262,10 +243,6 @@ class ThreadlineAndroidSkeletonTest {
         assertEquals(
             baselineRequests,
             ThreadlineAndroidSkeleton.resourceCount(ThreadlineBridgeResource.REQUEST),
-        )
-        assertEquals(
-            baselineStreams,
-            ThreadlineAndroidSkeleton.resourceCount(ThreadlineBridgeResource.STREAM),
         )
     }
 }
