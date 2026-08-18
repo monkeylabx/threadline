@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+// Organization, Space, Actor and Member. Owned by threadline-core's
+// Identity/Organization module.
+package threadline.identity.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/type/v1/common.proto";
+
+// Organization is the enterprise identity, policy and data isolation boundary.
+// Every persisted object in Threadline is scoped to exactly one.
+message Organization {
+  string tenant_id = 1;
+
+  // Administrative display name. Organization names are enterprise directory
+  // data, not member content, so this is not encrypted.
+  string display_name = 2;
+
+  OrganizationState state = 3;
+
+  // Version of the organization policy document currently in force. Carried in
+  // authorization decisions and audit records so a denial stays explainable
+  // after the policy changes.
+  string policy_version = 4;
+
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// OrganizationState controls whether the tenant accepts new activity.
+enum OrganizationState {
+  ORGANIZATION_STATE_UNSPECIFIED = 0;
+  ORGANIZATION_STATE_ACTIVE = 1;
+  // Read-only. Existing content stays decryptable by authorized Devices; no new
+  // messages, Tasks or enrollments are accepted.
+  ORGANIZATION_STATE_FROZEN = 2;
+  // Scheduled for deletion. Retention-driven key destruction is in progress.
+  ORGANIZATION_STATE_PENDING_DELETION = 3;
+}
+
+// Role is the organization-level RBAC role. Effective permission is always the
+// intersection of role, Channel Membership, resource ACL and any Capability
+// Grant; a role alone never grants access to content.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_OWNER = 1;
+  ROLE_ADMIN = 2;
+  // Manages policy, audit and revocation. Deliberately distinct from ADMIN so
+  // an organization can separate operations from security review.
+  ROLE_SECURITY_ADMIN = 3;
+  ROLE_MEMBER = 4;
+  // Reaches only explicitly shared Spaces, Channels and resources. Guest access
+  // never implicitly extends to internal Agent memory.
+  ROLE_GUEST = 5;
+}
+
+// MemberState is the lifecycle of an Actor's participation in one tenant.
+enum MemberState {
+  MEMBER_STATE_UNSPECIFIED = 0;
+  MEMBER_STATE_INVITED = 1;
+  MEMBER_STATE_ACTIVE = 2;
+  // Suspended. All Devices are revoked and removed from E2EE Groups, but the
+  // Member record and audit history survive.
+  MEMBER_STATE_DEACTIVATED = 3;
+}
+
+// Member is an Actor's membership in one Organization.
+//
+// A Member is an application-level participant. Content access is exercised
+// through separately authorized Devices, and for Agent or Service Actors there
+// is no cryptographic access at all.
+message Member {
+  threadline.type.v1.ActorRef actor = 1;
+
+  string tenant_id = 2;
+
+  // Directory display name. Enterprise directory data, class C2.
+  string display_name = 3;
+
+  Role role = 4;
+
+  MemberState state = 5;
+
+  // Optional department or team path, e.g. "engineering/platform". Used for
+  // policy inheritance and directory browsing, not for permission decisions on
+  // its own.
+  string org_unit_path = 6;
+
+  google.protobuf.Timestamp joined_at = 7;
+}
+
+// AgentParticipationMode is how an Agent Actor may act inside a Channel.
+//
+// No mode causes ordinary messages to invoke a model. Agents are triggered by
+// Task creation, message-to-Task conversion, or an explicit rule; a rule in v1
+// may only create or assign a Task, never grant standing Channel read access.
+enum AgentParticipationMode {
+  AGENT_PARTICIPATION_MODE_UNSPECIFIED = 0;
+  // Runs only when explicitly delegated to.
+  AGENT_PARTICIPATION_MODE_MANUAL = 1;
+  // Enters only Tasks it has been assigned.
+  AGENT_PARTICIPATION_MODE_TASK_ONLY = 2;
+  // Membership is retained but no events are processed.
+  AGENT_PARTICIPATION_MODE_PAUSED = 3;
+}
+
+// AgentProfile is the directory record for an Agent Actor.
+//
+// An Agent is a formal, auditable participant with an owner, a stated
+// responsibility and bounded default capabilities. It is never a cryptographic
+// member of any E2EE Group.
+message AgentProfile {
+  threadline.type.v1.ActorRef actor = 1;
+
+  string display_name = 2;
+
+  // The Human accountable for this Agent's configuration and behavior. Required:
+  // an Agent without an owner cannot be added to a Channel.
+  threadline.type.v1.ActorRef owner = 3;
+
+  // Human-readable statement of what this Agent is for, shown before an
+  // administrator adds it to a Channel.
+  string responsibility = 4;
+
+  AgentParticipationMode default_participation_mode = 5;
+
+  // Capability names this Agent may request, as defined in
+  // threadline.capability.v1.Capability. This bounds requests; it does not
+  // pre-authorize them. Every execution still needs a Capability Grant.
+  repeated string default_capability_names = 6;
+
+  AgentHealthState health_state = 7;
+
+  google.protobuf.Timestamp last_active_at = 8;
+}
+
+// AgentHealthState summarizes whether an Agent can currently be dispatched.
+enum AgentHealthState {
+  AGENT_HEALTH_STATE_UNSPECIFIED = 0;
+  AGENT_HEALTH_STATE_HEALTHY = 1;
+  // No authorized Desktop Runtime is online for this Agent's owner, so Runs
+  // queue. They never drift to another device or to the server.
+  AGENT_HEALTH_STATE_NO_RUNTIME = 2;
+  // Administratively suspended.
+  AGENT_HEALTH_STATE_SUSPENDED = 3;
+  AGENT_HEALTH_STATE_DEGRADED = 4;
+}
+
+// Space is a department, project or cross-team collaboration boundary that owns
+// a set of Channels and the policies they inherit.
+message Space {
+  string space_id = 1;
+
+  string tenant_id = 2;
+
+  string display_name = 3;
+
+  // When true, any Member of the tenant may discover and join contained public
+  // Channels without an invitation.
+  bool discoverable = 4;
+
+  google.protobuf.Timestamp created_at = 5;
+}

@@ -16,6 +16,15 @@ build/
 coverage/
 target/
 apps/desktop/src-tauri/gen/
+
+# Generated protocol SDKs. Reproduced by `make proto-generate`; never edited by
+# hand, so committing them would only create merge conflicts nobody can resolve.
+packages/generated-ts/
+packages/generated-swift/
+packages/generated-kotlin/
+crates/client-proto/src/generated/
+services/gen/
+
 *.log
 *.swp
 *.tmp

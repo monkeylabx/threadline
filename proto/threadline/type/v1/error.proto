@@ -1,0 +1,153 @@
+syntax = "proto3";
+
+package threadline.type.v1;
+
+import "google/protobuf/duration.proto";
+
+// ErrorCode is the cross-service failure vocabulary.
+//
+// Transport status (Connect/gRPC code) says how to treat the response;
+// ErrorCode says what actually happened, so Desktop, iOS, Android and locald
+// can render the same explanation without parsing English messages.
+//
+// Codes are append-only. A retired code is `reserved`, never reused.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+
+  // -- Authorization -------------------------------------------------------
+  // Caller is authenticated but the current policy denies the operation.
+  ERROR_CODE_PERMISSION_DENIED = 1;
+  // Caller is not a Channel Member. Distinct from PERMISSION_DENIED so clients
+  // can offer "request access" instead of a dead end.
+  ERROR_CODE_NOT_A_MEMBER = 2;
+  // Object exists in another tenant, or the request mixed tenants. Never
+  // downgraded to NOT_FOUND: silently hiding it would mask a routing bug.
+  ERROR_CODE_TENANT_MISMATCH = 3;
+  // The object names a different E2EE Group than its parent conversation, so a
+  // ciphertext or envelope lifted from another group is refused rather than
+  // reinterpreted.
+  ERROR_CODE_GROUP_MISMATCH = 4;
+  // History Sharing was refused. Membership alone never entitles a participant
+  // to retained pre-join history: it takes an explicit, auditable grant, and
+  // this is what its absence looks like.
+  ERROR_CODE_HISTORY_SHARING_DENIED = 5;
+
+  // -- Capability Grant ----------------------------------------------------
+  ERROR_CODE_GRANT_EXPIRED = 10;
+  ERROR_CODE_GRANT_REVOKED = 11;
+  // The requested resource or operation falls outside the Grant's scope. The
+  // approver cannot widen a Grant beyond what the Runtime originally asked for.
+  ERROR_CODE_GRANT_OUT_OF_SCOPE = 12;
+  ERROR_CODE_APPROVAL_REQUIRED = 13;
+  ERROR_CODE_APPROVAL_DENIED = 14;
+
+  // -- Device and cryptographic state --------------------------------------
+  ERROR_CODE_DEVICE_NOT_ENROLLED = 20;
+  ERROR_CODE_DEVICE_REVOKED = 21;
+  // No unconsumed KeyPackage is available for the target Device, so it cannot
+  // be added to the E2EE Group yet. Retryable once the Device publishes more.
+  ERROR_CODE_KEY_PACKAGE_UNAVAILABLE = 22;
+  // KeyPackages are normally single-use; the directory already marked this one
+  // consumed. The caller must fetch a fresh one rather than reusing it.
+  ERROR_CODE_KEY_PACKAGE_CONSUMED = 23;
+  // The E2EE Group is in `rekey_required`: a member was removed or a Device
+  // revoked, and new application messages stay in the local Outbox until the
+  // successor Epoch is accepted.
+  ERROR_CODE_REKEY_REQUIRED = 24;
+  // The submitted Commit does not build on the Group's current Epoch. The
+  // Committer Device must apply accepted Commits and regenerate.
+  ERROR_CODE_EPOCH_STALE = 25;
+  // The caller referenced an Epoch this participant never held, or whose keys
+  // are past retention. Not retryable by the same caller.
+  ERROR_CODE_EPOCH_UNAVAILABLE = 26;
+  // The Crypto Profile is unknown or not supported by this participant. Clients
+  // enter an explicit incompatible state; they never guess or downgrade.
+  ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED = 27;
+  // The message builds on an Epoch this participant has not reached yet. Unlike
+  // EPOCH_STALE this is recoverable by waiting: the receiver queues the message
+  // until its predecessor Commit arrives, rather than discarding it.
+  ERROR_CODE_EPOCH_AHEAD = 28;
+  // The ciphertext, envelope or wrapped material failed integrity checking.
+  ERROR_CODE_CIPHERTEXT_CORRUPT = 29;
+
+  // -- Message, ordering and sync ------------------------------------------
+  // Same idempotency key, different payload. The first write stands.
+  ERROR_CODE_IDEMPOTENCY_CONFLICT = 30;
+  // The client cursor is unparseable, from another Channel, or older than the
+  // server's retained history. The client must restart from a known checkpoint.
+  ERROR_CODE_CURSOR_INVALID = 31;
+  // The requested range crosses a hole the server cannot serve. The client must
+  // stop advancing its cursor and repair the gap before applying further events.
+  ERROR_CODE_SEQUENCE_GAP = 32;
+  // Content is past its retention window. Keys are destroyed; this is terminal,
+  // not a transient read failure.
+  ERROR_CODE_RETENTION_EXPIRED = 33;
+  ERROR_CODE_PAYLOAD_TOO_LARGE = 34;
+  // The same sealed object was presented twice. Rejected rather than applied
+  // again, so a captured envelope cannot be replayed into a later Epoch.
+  ERROR_CODE_REPLAY_DETECTED = 35;
+  // The envelope format version is unknown to this participant. Distinct from
+  // CRYPTO_PROFILE_UNSUPPORTED: the Profile may be understood while a newer
+  // envelope encoding within it is not.
+  ERROR_CODE_ENVELOPE_VERSION_UNSUPPORTED = 36;
+
+  // -- Task, Run and Runtime -----------------------------------------------
+  // A Run has exactly one Execution Owner. The caller is not it.
+  ERROR_CODE_NOT_EXECUTION_OWNER = 40;
+  // The Workspace Lease expired or was transferred. The old writer must stop.
+  ERROR_CODE_LEASE_LOST = 41;
+  // The fencing token is older than the one the control plane has recorded. A
+  // resumed worker cannot overwrite a newer worker's state.
+  ERROR_CODE_FENCING_TOKEN_STALE = 42;
+  // The target Desktop Runtime is not connected. The Run waits; it never drifts
+  // to another device or to the server.
+  ERROR_CODE_RUNTIME_OFFLINE = 43;
+  // The requested transition is not legal from the current state.
+  ERROR_CODE_INVALID_STATE_TRANSITION = 44;
+
+  // -- Enterprise recovery -------------------------------------------------
+  // The Recovery Case has not reached the organization's approver threshold, or
+  // the requester tried to approve their own case.
+  ERROR_CODE_RECOVERY_APPROVAL_INSUFFICIENT = 50;
+  ERROR_CODE_RECOVERY_CASE_EXPIRED = 51;
+  // No Recovery Envelope covers the requested object or Epoch, so there is
+  // nothing to unwrap. Reached when a Channel was created with no enterprise
+  // recovery recipient.
+  ERROR_CODE_RECOVERY_UNAVAILABLE = 52;
+  // The KMS/HSM declined the unwrap. The case does not become executable by
+  // retrying; it must be re-approved or abandoned.
+  ERROR_CODE_RECOVERY_REFUSED = 53;
+
+  // -- Infrastructure ------------------------------------------------------
+  ERROR_CODE_RATE_LIMITED = 60;
+  // PostgreSQL could not meet the synchronous commit policy, so no Durable ACK
+  // was produced. The client retries with the same idempotency key. Threadline
+  // never trades a fake ACK for apparent availability.
+  ERROR_CODE_NOT_DURABLE = 61;
+}
+
+// ErrorDetail travels in the Connect/gRPC error details of a failed RPC.
+//
+// Data class C2: opaque identifiers and policy versions only. It must never
+// carry message plaintext, Prompt text, tokens, key material or file contents.
+message ErrorDetail {
+  ErrorCode code = 1;
+
+  // Stable, non-localized reason for logs and tests, e.g.
+  // "channel_seq_gap_detected". Clients render their own localized copy from
+  // `code`; they never parse this string.
+  string reason = 2;
+
+  // Identifier of the object that caused the failure, when naming it does not
+  // itself leak. Empty when disclosure would reveal an object the caller may
+  // not know exists.
+  string subject_id = 3;
+
+  // Policy or Crypto Profile version that produced the decision, so an operator
+  // can explain a denial after the policy has since changed.
+  string policy_version = 4;
+
+  // Set when the caller may retry the same request. Absent means terminal for
+  // this caller and this input.
+  google.protobuf.Duration retry_after = 5;
+}

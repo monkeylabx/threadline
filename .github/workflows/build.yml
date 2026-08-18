@@ -16,6 +16,32 @@ env:
   GOTOOLCHAIN: local
 
 jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history so the breaking-change gate can diff against main.
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Set up pnpm
+        run: |
+          npm install --global corepack@0.35.0 --force
+          corepack enable
+          corepack install --global pnpm@11.20.0
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check protocol contract
+        run: node scripts/proto.mjs check
+      - name: Check protocol compatibility
+        run: node scripts/proto.mjs breaking
+      - name: Generate TypeScript SDK
+        run: node scripts/proto.mjs generate ts
+
   workspace-linux:
     runs-on: ubuntu-24.04
     steps:
@@ -52,6 +78,24 @@ jobs:
           cargo fmt --all --check
           cargo clippy --workspace --exclude threadline-desktop-host --all-targets --locked -- -D warnings
           cargo test --workspace --exclude threadline-desktop-host --locked
+      - name: Verify native bridge process crash and cursor resume fixture
+        run: |
+          CURSOR_FIXTURE="${RUNNER_TEMP}/threadline-native-bridge.cursor"
+          CRASH_RESUME_LOG="${RUNNER_TEMP}/threadline-native-bridge-crash-resume.txt"
+          set +e
+          cargo run --package threadline-client-ffi --example crash_resume --locked -- write "${CURSOR_FIXTURE}"
+          CRASH_EXIT=$?
+          set -e
+          test "${CRASH_EXIT}" -eq 86
+          cargo run --package threadline-client-ffi --example crash_resume --locked -- resume "${CURSOR_FIXTURE}" | tee "${CRASH_RESUME_LOG}"
+      - name: Upload native bridge crash/resume evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-bridge-crash-resume
+          path: ${{ runner.temp }}/threadline-native-bridge-crash-resume.txt
+          if-no-files-found: warn
+          retention-days: 14
       - name: Check Go services
         working-directory: services
         run: |
@@ -124,23 +168,47 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify Apple and desktop toolchains
         run: node scripts/toolchain.mjs doctor --scope=apple,desktop
-      - name: Test Swift package
+      - name: Build host FFI facade for Swift tests
+        run: cargo build --package threadline-client-ffi --locked
+      - name: Test Swift package through the Rust facade
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: swift test --package-path apps/ios --scratch-path "${RUNNER_TEMP}/threadline-swift"
-      - name: Cross-compile version-only FFI facade for iOS Simulator
+      - name: Build universal FFI facade for iOS Simulator
         run: |
-          rustup target add aarch64-apple-ios-sim
+          rustup target add aarch64-apple-ios-sim x86_64-apple-ios
           cargo build --package threadline-client-ffi --release --target aarch64-apple-ios-sim --locked
-      - name: Build iOS simulator target without signing
-        working-directory: apps/ios
-        run: >-
-          xcodebuild -scheme ThreadlineIOSHost
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO build
+          cargo build --package threadline-client-ffi --release --target x86_64-apple-ios --locked
+          mkdir -p target/ios-simulator-universal/release
+          lipo -create \
+            target/aarch64-apple-ios-sim/release/libthreadline_client_ffi.a \
+            target/x86_64-apple-ios/release/libthreadline_client_ffi.a \
+            -output target/ios-simulator-universal/release/libthreadline_client_ffi.a
+      - name: Test Rust facade inside a booted iOS Simulator
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/ios-simulator-universal/release
+        run: bash scripts/ci/run-ios-simulator-ffi.sh
+      - name: Summarize iOS Simulator evidence
+        if: always()
+        run: |
+          RESULT_BUNDLE="${RUNNER_TEMP}/threadline-ios-simulator.xcresult"
+          if [[ -d "${RESULT_BUNDLE}" ]]; then
+            xcrun xcresulttool get test-results summary --path "${RESULT_BUNDLE}" || true
+          fi
+      - name: Upload iOS Simulator evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-bridge-ios-simulator
+          path: ${{ runner.temp }}/threadline-ios-simulator.xcresult
+          if-no-files-found: warn
+          retention-days: 14
       - name: Build unsigned macOS Tauri host
         run: pnpm --filter @threadline/desktop build:native
 
   android:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -169,21 +237,58 @@ jobs:
           "${SDKMANAGER}" \
             'platforms;android-37.0' \
             'build-tools;36.0.0' \
-            'ndk;28.2.13676358'
+            'ndk;28.2.13676358' \
+            'platform-tools' \
+            'emulator' \
+            'system-images;android-35;google_apis;x86_64'
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify pins and Android toolchain
         run: node scripts/toolchain.mjs doctor --scope=android
-      - name: Cross-compile version-only FFI facade for Android
+      - name: Cross-compile FFI facade for Android device and Emulator
         run: |
-          rustup target add aarch64-linux-android
-          RUST_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
-          test -x "${RUST_LINKER}"
-          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${RUST_LINKER}" cargo build --package threadline-client-ffi --release --target aarch64-linux-android --locked
+          rustup target add aarch64-linux-android x86_64-linux-android
+          AARCH64_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
+          X86_64_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang"
+          test -x "${AARCH64_LINKER}"
+          test -x "${X86_64_LINKER}"
+          CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="${AARCH64_LINKER}" cargo build --package threadline-client-ffi --release --target aarch64-linux-android --locked
+          CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${X86_64_LINKER}" cargo build --package threadline-client-ffi --release --target x86_64-linux-android --locked
+          install -D \
+            target/aarch64-linux-android/release/libthreadline_client_ffi.so \
+            apps/android/src/main/jniLibs/arm64-v8a/libthreadline_client_ffi.so
+          install -D \
+            target/x86_64-linux-android/release/libthreadline_client_ffi.so \
+            apps/android/src/main/jniLibs/x86_64/libthreadline_client_ffi.so
+      - name: Build host FFI facade for Kotlin tests
+        run: cargo build --package threadline-client-ffi --locked
       - name: Build and test Android skeleton
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: >-
           ./gradlew
           :apps:android:assembleDebug
           :apps:android:testDebugUnitTest
           :apps:android:lintDebug
           --no-daemon
+      - name: Allow the Android Emulator to use KVM
+        run: |
+          if [[ -e /dev/kvm ]]; then
+            sudo chown "${USER}" /dev/kvm
+          fi
+      - name: Test Rust facade inside a booted Android Emulator
+        env:
+          THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
+        run: bash scripts/ci/run-android-emulator-ffi.sh
+      - name: Upload Android JVM and Emulator evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-bridge-android-emulator
+          path: |
+            apps/android/build/test-results/
+            apps/android/build/reports/tests/
+            apps/android/build/outputs/androidTest-results/
+            apps/android/build/reports/androidTests/
+          if-no-files-found: warn
+          retention-days: 14
