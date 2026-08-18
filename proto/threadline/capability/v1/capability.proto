@@ -1,0 +1,205 @@
+syntax = "proto3";
+
+// Capability Grants, Workspace Leases and execution ownership.
+//
+// Effective Runtime authority is the intersection of organization policy,
+// Channel Membership, Actor role, Task Grant, resource ACL and the initiator's
+// own delegation limit. Nothing in this package can widen that intersection:
+// a Grant is always a narrowing of authority the initiator already had.
+package threadline.capability.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/type/v1/common.proto";
+
+// Capability is the base permission vocabulary. Default is deny: an operation
+// with no matching Capability is refused, not inferred.
+enum Capability {
+  CAPABILITY_UNSPECIFIED = 0;
+
+  // Read the specific messages named by the Grant's Context Manifest. This is
+  // not standing Channel read access.
+  CAPABILITY_MESSAGE_READ = 1;
+  // Read a bounded window of history around the referenced messages.
+  CAPABILITY_MESSAGE_READ_HISTORY = 2;
+  CAPABILITY_MESSAGE_PUBLISH = 3;
+  // Produce a draft for a human to send, without publishing it.
+  CAPABILITY_MESSAGE_PUBLISH_DRAFT = 4;
+
+  CAPABILITY_FILE_READ = 5;
+  CAPABILITY_FILE_WRITE = 6;
+
+  // Read within the granted local path scope, through connectord only.
+  CAPABILITY_WORKSPACE_READ = 7;
+  CAPABILITY_WORKSPACE_WRITE = 8;
+
+  CAPABILITY_TOOL_INVOKE = 9;
+  // Perform a protected side-effecting action. Normally paired with an
+  // Approval requirement.
+  CAPABILITY_ACTION_EXECUTE = 10;
+  CAPABILITY_AGENT_DELEGATE = 11;
+
+  // Retain derived memory past the Run. Bounded by the retention and access
+  // policy of the source content: Agent memory can never outlive what it was
+  // derived from.
+  CAPABILITY_MEMORY_RETAIN = 12;
+
+  CAPABILITY_TASK_APPROVE = 13;
+  CAPABILITY_AUDIT_READ = 14;
+}
+
+// ResourceScope names exactly which objects a Grant reaches.
+//
+// An empty scope grants nothing. There is no wildcard: a Grant that could match
+// "everything in this Channel" would defeat the Context Manifest.
+message ResourceScope {
+  // Conversations whose referenced messages may be read.
+  repeated string channel_ids = 1;
+  repeated string dm_ids = 2;
+
+  // Individual events the Runtime may decrypt.
+  repeated string event_ids = 3;
+
+  repeated string thread_ids = 4;
+
+  // File objects the Runtime may read or write.
+  repeated string file_ids = 5;
+
+  // Logical Workspace Bindings. The physical path a Device maps these to is
+  // resolved locally by connectord and never reported to the server.
+  repeated string workspace_binding_ids = 6;
+
+  // Path prefixes within the granted Workspace, relative to the local mapping
+  // root. connectord refuses any path that escapes these prefixes, including
+  // through symlinks and `..` traversal.
+  repeated string workspace_path_prefixes = 7;
+
+  // Tool identifiers the Runtime may invoke.
+  repeated string tool_ids = 8;
+}
+
+// GrantState is the Capability Grant lifecycle.
+//
+//	ACTIVE -> EXPIRED
+//	   |
+//	   +---> REVOKED
+//
+// Both terminal states take effect on the next check, not at the next refresh.
+// A Grant revoked mid-Run causes the Runtime's next protected action to fail.
+enum GrantState {
+  GRANT_STATE_UNSPECIFIED = 0;
+  GRANT_STATE_ACTIVE = 1;
+  GRANT_STATE_EXPIRED = 2;
+  GRANT_STATE_REVOKED = 3;
+}
+
+// CapabilityGrant is a short-lived authorization for one Actor to act on
+// defined resources for one Task.
+//
+// Data class C4. The Grant itself is a credential: log its identifier and the
+// allow/deny outcome, never its bytes.
+message CapabilityGrant {
+  string capability_grant_id = 1;
+
+  string tenant_id = 2;
+
+  // The Task this Grant serves. A Grant is always Task-bound; there is no
+  // standing Grant.
+  string task_id = 3;
+
+  // The Run, when the Grant is narrowed to a single execution attempt.
+  string run_id = 4;
+
+  // The Actor authorized to act, normally an Agent Actor.
+  threadline.type.v1.ActorRef grantee = 5;
+
+  // The Human whose authority is being delegated. The Grant cannot exceed what
+  // this Actor could do themselves.
+  threadline.type.v1.ActorRef initiator = 6;
+
+  repeated Capability capabilities = 7;
+
+  ResourceScope scope = 8;
+
+  GrantState state = 9;
+
+  google.protobuf.Timestamp issued_at = 10;
+
+  // Grants are short-lived by design. An expired Grant is not renewed in place;
+  // a new one is issued and audited.
+  google.protobuf.Timestamp expires_at = 11;
+
+  google.protobuf.Timestamp revoked_at = 12;
+
+  // Single-use value binding this Grant to one issuance, so a captured Grant
+  // cannot be replayed after revocation.
+  bytes nonce = 13;
+
+  // Policy version that authorized issuance, retained so a decision stays
+  // explainable after policy changes.
+  string policy_version = 14;
+
+  // Control plane signature over the canonical encoding of fields 1-14.
+  // connectord and locald verify this locally before honoring the Grant, so a
+  // compromised agentd cannot mint authority for itself.
+  bytes signature = 15;
+}
+
+// WorkspaceLease grants one Run exclusive write access to a workspace.
+//
+// Concurrency safety comes from the fencing token, not from the lease alone: an
+// expired lease holder that resumes after a pause must be rejected even though
+// it still believes it holds the lease.
+message WorkspaceLease {
+  string lease_id = 1;
+
+  string workspace_binding_id = 2;
+
+  string run_id = 3;
+
+  // The Device holding the lease. A lease is bound to a Device, not an Actor.
+  string device_id = 4;
+
+  // Monotonically increasing per workspace. Every state write carries the token
+  // it was issued under, and the control plane rejects a write whose token is
+  // below the current one. This is what stops a resumed old writer from
+  // overwriting a newer writer's state.
+  uint64 fencing_token = 5;
+
+  // Isolation directory, git worktree or sandbox this lease is bound to, so
+  // concurrent Runs against the same repository do not overwrite each other.
+  string isolation_path_id = 6;
+
+  google.protobuf.Timestamp acquired_at = 7;
+
+  // Leases expire and must be renewed while the Run is alive. Expiry does not
+  // silently transfer the lease; a transfer is explicit and re-issues both the
+  // lease and the Capability Grant.
+  google.protobuf.Timestamp expires_at = 8;
+}
+
+// ExecutionOwner identifies the single Device and Actor responsible for a Run.
+//
+// A Run has exactly one at a time. Other members observe, comment, approve or
+// interrupt, but they cannot write Run state. Handing a Run to another Device
+// is an explicit transfer that selects a new Device and Workspace, issues a new
+// Grant and invalidates the old lease.
+message ExecutionOwner {
+  string run_id = 1;
+
+  string device_id = 2;
+
+  threadline.type.v1.ActorRef actor = 3;
+
+  // Lease held by this owner. Its fencing token is the authority for every Run
+  // state write.
+  WorkspaceLease lease = 4;
+
+  google.protobuf.Timestamp assigned_at = 5;
+
+  // Set when ownership moved to another Device, retained so the handover is
+  // auditable.
+  google.protobuf.Timestamp released_at = 6;
+
+  // Previous owner, when this ownership came from a transfer.
+  string transferred_from_device_id = 7;
+}

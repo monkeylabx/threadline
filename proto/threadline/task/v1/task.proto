@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+// Task, Context Manifest and Approval.
+//
+// A Task is a collaboration unit that grew out of a conversation. It is not a
+// second chat window and not an Agent session: a Channel carries many Tasks,
+// and each Task may produce many Runs.
+package threadline.task.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/capability/v1/capability.proto";
+import "threadline/type/v1/common.proto";
+
+// TaskState is the Task lifecycle.
+//
+//	OPEN -> IN_PROGRESS -> COMPLETED
+//	  |         |    ^
+//	  |         v    |
+//	  |    WAITING_APPROVAL
+//	  |         |
+//	  |         v
+//	  |      BLOCKED
+//	  |         |
+//	  +---------+--> CANCELLED
+//
+// A failed Run does not fail the Task. The Task returns to IN_PROGRESS or
+// BLOCKED and may be retried with a new Run, because retry history is evidence
+// worth keeping.
+enum TaskState {
+  TASK_STATE_UNSPECIFIED = 0;
+  TASK_STATE_OPEN = 1;
+  TASK_STATE_IN_PROGRESS = 2;
+  // A Run is paused pending a human decision on a protected action.
+  TASK_STATE_WAITING_APPROVAL = 3;
+  // Progress is impossible until something outside the Run changes: a Grant was
+  // revoked, the target Runtime is offline, or a dependency is unmet.
+  TASK_STATE_BLOCKED = 4;
+  TASK_STATE_COMPLETED = 5;
+  TASK_STATE_CANCELLED = 6;
+}
+
+// TaskPriority is the requester's urgency signal. It orders human attention; it
+// does not preempt a running execution.
+enum TaskPriority {
+  TASK_PRIORITY_UNSPECIFIED = 0;
+  TASK_PRIORITY_LOW = 1;
+  TASK_PRIORITY_NORMAL = 2;
+  TASK_PRIORITY_HIGH = 3;
+  TASK_PRIORITY_URGENT = 4;
+}
+
+// ContextManifest is the versioned set of references a Task may use.
+//
+// It holds references and policy, never copied content. This is what keeps a
+// Task from becoming a transcript dump: the Runtime resolves these references
+// through the local Context API under a Capability Grant, and gets back only
+// the bounded window it asked for.
+message ContextManifest {
+  string context_manifest_id = 1;
+
+  string task_id = 2;
+
+  // The message the Task was created from, when it came out of a conversation.
+  string trigger_event_id = 3;
+
+  // Specific events selected as context. Enumerated, never a range: "the last
+  // 200 messages" is not a reference the Runtime can be given.
+  repeated string event_refs = 4;
+
+  repeated string thread_refs = 5;
+
+  repeated string file_refs = 6;
+
+  repeated string workspace_binding_refs = 7;
+
+  threadline.type.v1.ActorRef created_by = 8;
+
+  // Policy version in force when the manifest was built. A later policy change
+  // does not retroactively widen what these references resolve to; every
+  // resolution is re-authorized against current policy at read time.
+  string policy_version = 9;
+
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// TaskParticipant is an Actor involved in a Task.
+message TaskParticipant {
+  threadline.type.v1.ActorRef actor = 1;
+
+  TaskParticipantRole role = 2;
+
+  google.protobuf.Timestamp added_at = 3;
+}
+
+// TaskParticipantRole is what an Actor may do within a Task.
+enum TaskParticipantRole {
+  TASK_PARTICIPANT_ROLE_UNSPECIFIED = 0;
+  // Accountable for the outcome.
+  TASK_PARTICIPANT_ROLE_OWNER = 1;
+  // Performs the work. Human, Agent, or both on the same Task.
+  TASK_PARTICIPANT_ROLE_ASSIGNEE = 2;
+  // Receives updates and may comment or interrupt, but cannot approve.
+  TASK_PARTICIPANT_ROLE_OBSERVER = 3;
+  // May decide on Approvals raised by this Task's Runs.
+  TASK_PARTICIPANT_ROLE_APPROVER = 4;
+}
+
+// Task is a unit of collaborative work.
+//
+// Data class C2 for its structure, C3 for its authored text. `title` and `goal`
+// are what a person wrote, so they are stored encrypted under the parent
+// conversation's E2EE Group and the control plane never reads, indexes or
+// filters on them.
+message Task {
+  string task_id = 1;
+
+  string tenant_id = 2;
+
+  // Conversation this Task belongs to. Exactly one is set; a Task always has a
+  // parent conversation, which is what defines who can see it.
+  oneof conversation {
+    string channel_id = 3;
+    string dm_id = 4;
+  }
+
+  // Shared conversation surface for this Task. It inherits the parent's
+  // visibility and creates no private subgroup: v1 has no Task visible to only
+  // some members of its Channel. That requires a separate Channel or DM.
+  string task_thread_id = 5;
+
+  threadline.type.v1.EncryptedField title = 6;
+
+  threadline.type.v1.EncryptedField goal = 7;
+
+  TaskState state = 8;
+
+  TaskPriority priority = 9;
+
+  repeated TaskParticipant participants = 10;
+
+  ContextManifest context_manifest = 11;
+
+  // Desktop Runtime this Task is dispatched to. v1 executes only on an enrolled
+  // and authorized Desktop; when it is offline the Run waits rather than
+  // drifting to another device or to the server.
+  string target_runtime_id = 12;
+
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp due_at = 14;
+  google.protobuf.Timestamp completed_at = 15;
+}
+
+// ApprovalState is the Approval lifecycle.
+//
+//	PENDING -> APPROVED -> REVOKED
+//	   |
+//	   +-----> DENIED
+//	   +-----> EXPIRED
+//
+// REVOKED after APPROVED is deliberate: an approval can be withdrawn while a
+// Run is still using it, and the next protected action then fails.
+enum ApprovalState {
+  APPROVAL_STATE_UNSPECIFIED = 0;
+  APPROVAL_STATE_PENDING = 1;
+  APPROVAL_STATE_APPROVED = 2;
+  APPROVAL_STATE_DENIED = 3;
+  APPROVAL_STATE_EXPIRED = 4;
+  APPROVAL_STATE_REVOKED = 5;
+}
+
+// ApprovalScope is how far an approval reaches.
+enum ApprovalScope {
+  APPROVAL_SCOPE_UNSPECIFIED = 0;
+  // This one action only.
+  APPROVAL_SCOPE_ONCE = 1;
+  // Every matching action within this Task.
+  APPROVAL_SCOPE_TASK = 2;
+  // Every matching action until an explicit expiry.
+  APPROVAL_SCOPE_TIME_BOUNDED = 3;
+}
+
+// Approval is a human decision on a protected action a Run wants to perform.
+//
+// An approval can only narrow or accept what the Runtime asked for. There is no
+// field here that lets an approver grant more than `requested_capabilities` and
+// `requested_scope`, because silently widening a request is the failure mode
+// this whole surface exists to prevent.
+message Approval {
+  string approval_id = 1;
+
+  string task_id = 2;
+
+  string run_id = 3;
+
+  // The action being requested, e.g. "workspace.write" or "action.execute".
+  // Shown to the approver before any decision control is offered.
+  string requested_action = 4;
+
+  // Exactly what the Runtime asked for.
+  repeated threadline.capability.v1.Capability requested_capabilities = 5;
+
+  threadline.capability.v1.ResourceScope requested_scope = 6;
+
+  // Runtime's stated reason and expected effect, authored by the Agent. Class
+  // C3: it describes the work, so it is stored encrypted.
+  threadline.type.v1.EncryptedField justification = 7;
+
+  // Device where the action would run, so the approver knows where the effect
+  // lands, not just what it is.
+  string target_device_id = 8;
+
+  ApprovalState state = 9;
+
+  ApprovalScope scope = 10;
+
+  // Actors whose decision is accepted, computed from organization, Channel and
+  // resource policy at request time.
+  repeated threadline.type.v1.ActorRef eligible_approvers = 11;
+
+  threadline.type.v1.ActorRef decided_by = 12;
+
+  // Approver's comment. Class C3.
+  threadline.type.v1.EncryptedField decision_note = 13;
+
+  // Grant issued as a result of approval. Absent until APPROVED.
+  string issued_capability_grant_id = 14;
+
+  // Policy version used to compute `eligible_approvers`, so the decision stays
+  // explainable after the policy changes.
+  string policy_version = 15;
+
+  google.protobuf.Timestamp requested_at = 16;
+  google.protobuf.Timestamp decided_at = 17;
+
+  // When the authorization lapses. After this instant the next protected action
+  // fails, whether or not the Run is mid-step.
+  google.protobuf.Timestamp expires_at = 18;
+}

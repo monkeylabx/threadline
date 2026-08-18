@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+// Package threadline.crypto.v1 is the wire contract for MLS-backed group
+// encryption, per ADR-0003.
+//
+// Scope boundary: this package carries opaque, versioned cryptographic
+// material and the application metadata needed to route and order it. It never
+// exposes OpenMLS types, and no server-side workload can derive a group secret
+// from anything defined here. Only `crates/client-crypto/` interprets the byte
+// fields.
+package threadline.crypto.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// CipherSuite mirrors the RFC 9420 registry. v1 pins exactly one suite; the
+// enum exists so an unknown suite is an explicit incompatibility rather than a
+// silent reinterpretation.
+enum CipherSuite {
+  CIPHER_SUITE_UNSPECIFIED = 0;
+  // MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, the `tl-mls-1` suite.
+  CIPHER_SUITE_MLS_128_DHKEMX25519_AES128GCM_SHA256_ED25519 = 1;
+}
+
+// CryptoProfile is the immutable, named combination of protocol version, cipher
+// suite and Threadline envelope versions used by one E2EE Group.
+//
+// A library release is not a Crypto Profile: replacing OpenMLS must not change
+// `tl-mls-1` on the wire. A client that does not recognize `name` enters an
+// explicit incompatible state and never downgrades.
+message CryptoProfile {
+  // Profile identifier, e.g. "tl-mls-1". This is the value clients compare;
+  // the version fields below are descriptive, not negotiable.
+  string name = 1;
+
+  // MLS protocol version, e.g. "1.0" (RFC 9420).
+  string mls_protocol_version = 2;
+
+  CipherSuite cipher_suite = 3;
+
+  uint32 message_envelope_version = 4;
+  uint32 history_envelope_version = 5;
+  uint32 recovery_envelope_version = 6;
+}
+
+// DeviceCredential binds a Tenant, Actor, Device and Device Identity Key.
+//
+// It establishes cryptographic device identity independently of an OIDC login
+// session: a valid session proves someone logged in, never that a Device may
+// join an E2EE Group. Data class C2 (public half only); the private key never
+// leaves OS Secure Storage and never appears in this contract.
+message DeviceCredential {
+  string device_id = 1;
+  string actor_id = 2;
+
+  // Tenant binding, carried explicitly so a receiving client rejects a
+  // credential lifted from another tenant instead of trusting the transport.
+  string tenant_id = 3;
+
+  // Device Identity public key, encoded per `crypto_profile`.
+  bytes identity_public_key = 4;
+
+  // Monotonic per Device. A rotation issues version N+1 and advances the Epoch
+  // of every E2EE Group the Device belongs to.
+  uint32 credential_version = 5;
+
+  google.protobuf.Timestamp issued_at = 6;
+
+  // Credentials are time-bounded. An expired credential cannot commit, and its
+  // Device is removed from Groups at the next Membership Change.
+  google.protobuf.Timestamp expires_at = 7;
+
+  // Crypto Profile this credential was issued under.
+  CryptoProfile crypto_profile = 8;
+
+  // Signature by the Device Authority, or by an already-authorized Device of
+  // the same Member, over the canonical encoding of fields 1-8.
+  //
+  // This is the approval chain clients verify to detect a control plane that
+  // silently inserts a ghost device. The exact canonicalization is frozen by
+  // the Golden Vectors in test/crypto/ and validated by P00-08.
+  bytes approval_signature = 9;
+
+  // Identifier of the signer above: a Device Authority key ID, or the
+  // endorsing Device's ID.
+  string approved_by = 10;
+}
+
+// KeyPackage is the short-lived, normally single-use public package through
+// which a Device can be added to an MLS Group.
+//
+// The server Key Directory stores only these public packages and atomically
+// marks consumption. It cannot mint one, because it cannot produce the
+// corresponding private key.
+message KeyPackage {
+  string key_package_id = 1;
+
+  string device_id = 2;
+
+  // Serialized MLS KeyPackage, opaque to every workload except client-crypto.
+  bytes key_package_data = 3;
+
+  // Profile the Device declares support for in this package. A Device that does
+  // not support a Group's profile cannot be added to that Group.
+  CryptoProfile crypto_profile = 4;
+
+  google.protobuf.Timestamp published_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+
+  // False once the directory has handed this package to a Committer Device.
+  // Reuse is rejected with ERROR_CODE_KEY_PACKAGE_CONSUMED.
+  bool available = 7;
+}
+
+// E2eeGroupState is the safety state of one E2EE Group.
+enum E2eeGroupState {
+  E2EE_GROUP_STATE_UNSPECIFIED = 0;
+  // Normal operation: members may send under the current Epoch.
+  E2EE_GROUP_STATE_ACTIVE = 1;
+  // A member was removed or a Device revoked. New application messages stay in
+  // the Durable Local Outbox until a Commit establishes the successor Epoch.
+  // The old Epoch must not be used to send.
+  E2EE_GROUP_STATE_REKEY_REQUIRED = 2;
+  // The Group's Crypto Profile is unknown to this participant. Read-only or
+  // fully unavailable, depending on retained History Keys. Never downgraded.
+  E2EE_GROUP_STATE_INCOMPATIBLE = 3;
+  // The Group was reinitialized into a successor generation. Retained for
+  // history; new messages belong to the successor.
+  E2EE_GROUP_STATE_SUPERSEDED = 4;
+}
+
+// E2EEGroup is the cryptographic membership boundary corresponding to exactly
+// one Channel or DM. Threads and Task Threads inherit their parent's Group;
+// they never create a subgroup.
+message E2EEGroup {
+  // Tenant-scoped random identifier, not derived from the Channel ID. Clients
+  // reject an object whose Group and parent conversation disagree.
+  string e2ee_group_id = 1;
+
+  string tenant_id = 2;
+
+  // The Channel or DM this Group encrypts. Exactly one of these is set.
+  oneof parent {
+    string channel_id = 3;
+    string dm_id = 4;
+  }
+
+  // Fixed at creation. Changing it requires MLS Group Reinitialization into a
+  // new generation, not an in-place edit.
+  CryptoProfile crypto_profile = 5;
+
+  // Current Epoch as understood by the control plane's ordered Membership
+  // Change log. Clients still verify Epoch continuity against MLS group state;
+  // this field is a routing hint, not an authority.
+  uint64 current_epoch = 6;
+
+  E2eeGroupState state = 7;
+
+  // Set when `state` is SUPERSEDED.
+  string successor_e2ee_group_id = 8;
+
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// MembershipChangeKind enumerates the events that must advance an Epoch.
+enum MembershipChangeKind {
+  MEMBERSHIP_CHANGE_KIND_UNSPECIFIED = 0;
+  MEMBERSHIP_CHANGE_KIND_ADD_DEVICE = 1;
+  MEMBERSHIP_CHANGE_KIND_REMOVE_DEVICE = 2;
+  // Device credential rotation or MLS leaf key update.
+  MEMBERSHIP_CHANGE_KIND_UPDATE_DEVICE_KEY = 3;
+  // Scheduled self-update for post-compromise security, with no membership
+  // change. Cadence is policy, measured in M0, never hardcoded in workflows.
+  MEMBERSHIP_CHANGE_KIND_SELF_UPDATE = 4;
+  // The enterprise recovery key version changed.
+  MEMBERSHIP_CHANGE_KIND_RECOVERY_KEY_ROTATION = 5;
+  // Crypto Profile migration into a successor generation.
+  MEMBERSHIP_CHANGE_KIND_REINITIALIZE = 6;
+}
+
+// MembershipChangeAuthorization is issued by the IM Control Plane, which owns
+// the ordering of membership changes but holds no group keys.
+//
+// It authorizes a Committer Device to produce an MLS Commit. It contains no key
+// material: the server cannot generate group cryptographic state on a client's
+// behalf, and this message is the proof of that boundary.
+message MembershipChangeAuthorization {
+  string authorization_id = 1;
+
+  string e2ee_group_id = 2;
+
+  MembershipChangeKind kind = 3;
+
+  // Devices to add. Each entry names the KeyPackage the Committer must consume.
+  repeated string add_key_package_ids = 4;
+
+  // Devices to remove, by Device ID.
+  repeated string remove_device_ids = 5;
+
+  // Epoch this authorization was computed against. A Commit that does not build
+  // on it is rejected with ERROR_CODE_EPOCH_STALE.
+  uint64 expected_epoch = 6;
+
+  // Position in the control plane's total order of membership changes for this
+  // Group. Concurrent changes are resolved by this sequence, not by whichever
+  // Commit arrives first.
+  uint64 change_seq = 7;
+
+  // The Device authorized to commit. Another Device must request its own
+  // authorization rather than reusing this one.
+  string committer_device_id = 8;
+
+  google.protobuf.Timestamp issued_at = 9;
+  google.protobuf.Timestamp expires_at = 10;
+}
+
+// MlsWireMessageType names the MLS object carried in an MlsWireMessage.
+enum MlsWireMessageType {
+  MLS_WIRE_MESSAGE_TYPE_UNSPECIFIED = 0;
+  MLS_WIRE_MESSAGE_TYPE_COMMIT = 1;
+  MLS_WIRE_MESSAGE_TYPE_WELCOME = 2;
+  MLS_WIRE_MESSAGE_TYPE_PROPOSAL = 3;
+  // GroupInfo / ratchet tree material for external joins and recovery.
+  MLS_WIRE_MESSAGE_TYPE_GROUP_INFO = 4;
+}
+
+// MlsWireMessage transports MLS handshake material.
+//
+// The server accepts or orders these using only the fields below plus Device
+// authorization and size limits. Cryptographic validity is a client
+// responsibility: a malicious or faulty server can still delay, drop, replay or
+// fork delivery, and clients detect that through MLS transcript state, strict
+// Epoch continuity and gap repair. E2EE does not promise denial-of-service
+// resistance.
+message MlsWireMessage {
+  MlsWireMessageType message_type = 1;
+
+  // Serialized MLS message. Whether the public or private wire format is used
+  // is frozen by the Golden Vectors and P00-08 interop evidence.
+  bytes mls_data = 2;
+
+  // Epoch this message builds on, replicated outside `mls_data` so the server
+  // can order and reject stale Commits without parsing MLS.
+  uint64 epoch = 3;
+
+  // Epoch that results from applying this message. Set for COMMIT only.
+  uint64 successor_epoch = 4;
+
+  // Authorization consumed by a COMMIT. Empty for PROPOSAL and WELCOME.
+  string authorization_id = 5;
+
+  // Devices this message is addressed to. Set for WELCOME, which is delivered
+  // to joining Devices only. Empty means "all current members".
+  repeated string target_device_ids = 6;
+}

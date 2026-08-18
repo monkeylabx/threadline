@@ -13,10 +13,19 @@
     "doctor:desktop": "node scripts/toolchain.mjs doctor --scope=desktop",
     "doctor:workspace": "node scripts/toolchain.mjs doctor --scope=workspace",
     "lint": "node scripts/workspace.mjs lint",
+    "proto": "node scripts/proto.mjs check",
+    "proto:breaking": "node scripts/proto.mjs breaking",
+    "proto:generate": "node scripts/proto.mjs generate",
+    "proto:verify": "node scripts/proto.mjs verify",
     "test": "node scripts/workspace.mjs test",
     "toolchain:test": "node --test scripts/toolchain.test.mjs",
     "toolchain:verify": "node scripts/toolchain.mjs verify",
     "verify": "node scripts/workspace.mjs verify"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.72.0",
+    "@bufbuild/protobuf": "2.14.0",
+    "@bufbuild/protoc-gen-es": "2.14.0"
   },
   "engines": {
     "node": "24.19.0",

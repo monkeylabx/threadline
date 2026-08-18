@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+// Run, Step, Run Event and Artifact: one execution attempt of a Task by
+// `agent-core` on an authorized Desktop Runtime.
+//
+// Retrying a Task creates a new Run. A failed Run is never overwritten, because
+// what a previous attempt did is exactly what a reviewer needs to see.
+package threadline.task.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/capability/v1/capability.proto";
+import "threadline/type/v1/common.proto";
+
+// RunState is the Run lifecycle.
+//
+//	QUEUED -> RUNNING -> COMPLETED
+//	   |         |  ^
+//	   |         v  |
+//	   |    WAITING_APPROVAL
+//	   |         |
+//	   |         v
+//	   |      BLOCKED
+//	   |         |
+//	   +---------+--> FAILED
+//	   +---------+--> CANCELLED
+//
+// QUEUED is where a Run waits when its target Desktop Runtime is offline. It
+// does not time out into another device.
+enum RunState {
+  RUN_STATE_UNSPECIFIED = 0;
+  RUN_STATE_QUEUED = 1;
+  RUN_STATE_RUNNING = 2;
+  RUN_STATE_WAITING_APPROVAL = 3;
+  // A Grant or Approval was revoked, or a lease was lost, while the Run was
+  // live. The Run holds its state; it does not silently retry the denied action.
+  RUN_STATE_BLOCKED = 4;
+  RUN_STATE_COMPLETED = 5;
+  RUN_STATE_FAILED = 6;
+  RUN_STATE_CANCELLED = 7;
+}
+
+// StepState is the lifecycle of one step within a Run.
+enum StepState {
+  STEP_STATE_UNSPECIFIED = 0;
+  STEP_STATE_PENDING = 1;
+  STEP_STATE_RUNNING = 2;
+  STEP_STATE_WAITING_APPROVAL = 3;
+  STEP_STATE_COMPLETED = 4;
+  STEP_STATE_FAILED = 5;
+  STEP_STATE_SKIPPED = 6;
+}
+
+// Step is one unit of work inside a Run.
+message Step {
+  string step_id = 1;
+
+  string run_id = 2;
+
+  // Position within the Run, starting at 1.
+  uint32 sequence = 3;
+
+  // Short structured description of the activity, e.g. "read_file" or
+  // "run_tests". This is what the Task page renders. Raw command output is not
+  // projected into the UI and is not carried here.
+  string activity = 4;
+
+  StepState state = 5;
+
+  // Set when the step failed. A stable machine-readable reason, e.g.
+  // "tool_timeout"; never a stack trace and never tool output.
+  string failure_reason = 6;
+
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+// ArtifactKind classifies a Run output.
+enum ArtifactKind {
+  ARTIFACT_KIND_UNSPECIFIED = 0;
+  ARTIFACT_KIND_PATCH = 1;
+  ARTIFACT_KIND_DOCUMENT = 2;
+  ARTIFACT_KIND_REPORT = 3;
+  ARTIFACT_KIND_IMAGE = 4;
+  ARTIFACT_KIND_BUILD_OUTPUT = 5;
+  // Redacted diagnostic bundle. Produced only on explicit request and scanned
+  // before it leaves the Device.
+  ARTIFACT_KIND_DIAGNOSTIC = 6;
+}
+
+// Artifact is a Run output: a patch, document, report, image or build result.
+//
+// Plaintext exists only on the executing Device. What reaches object storage is
+// an encrypted blob, and what reaches PostgreSQL is provenance and ACL.
+message Artifact {
+  string artifact_id = 1;
+
+  string run_id = 2;
+
+  // Step that produced it, so an output can be traced to the activity that
+  // created it rather than just to the Run.
+  string step_id = 3;
+
+  ArtifactKind kind = 4;
+
+  // Encrypted object in blob storage.
+  string blob_id = 5;
+
+  // Display name. Class C3, since artifact names describe content, so it is
+  // stored encrypted like any other authored text.
+  threadline.type.v1.EncryptedField display_name = 6;
+
+  string mime_type = 7;
+
+  uint64 byte_size = 8;
+
+  // Hash over the plaintext, computed before encryption. This is the value a
+  // reviewer checks to confirm that what they approved is what was produced.
+  bytes plaintext_hash = 9;
+
+  // Content Key wrapped for the parent conversation's audience.
+  bytes wrapped_content_key = 10;
+
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// RunEventType is the structured activity vocabulary projected into the Task
+// page. Run events are typed facts, not chat messages, and clients render them
+// as status, approvals, activity or artifacts rather than as timeline text.
+enum RunEventType {
+  RUN_EVENT_TYPE_UNSPECIFIED = 0;
+  RUN_EVENT_TYPE_RUN_STARTED = 1;
+  RUN_EVENT_TYPE_STEP_STARTED = 2;
+  RUN_EVENT_TYPE_STEP_COMPLETED = 3;
+  RUN_EVENT_TYPE_STEP_FAILED = 4;
+  RUN_EVENT_TYPE_APPROVAL_REQUIRED = 5;
+  RUN_EVENT_TYPE_APPROVAL_DECIDED = 6;
+  RUN_EVENT_TYPE_ARTIFACT_CREATED = 7;
+  RUN_EVENT_TYPE_RUN_COMPLETED = 8;
+  RUN_EVENT_TYPE_RUN_FAILED = 9;
+  RUN_EVENT_TYPE_RUN_CANCELLED = 10;
+  // A Grant, Approval or lease was withdrawn while the Run was live.
+  RUN_EVENT_TYPE_AUTHORITY_REVOKED = 11;
+  // Ownership moved to a different Device.
+  RUN_EVENT_TYPE_OWNERSHIP_TRANSFERRED = 12;
+}
+
+// RunEvent is one append-only entry in a Run's activity stream.
+//
+// Data class C2. It carries identifiers, types and outcomes. It must not carry
+// Prompt text, model responses, tool output, file contents or context snippets:
+// those stay on the executing Device.
+message RunEvent {
+  string run_event_id = 1;
+
+  string run_id = 2;
+
+  // Monotonic position within the Run. Consumers resume from the last sequence
+  // they applied, so an at-least-once redelivery is deduplicated rather than
+  // replayed as new activity.
+  uint64 sequence = 3;
+
+  RunEventType event_type = 4;
+
+  // Subject of the event: a step, approval or artifact identifier, depending on
+  // `event_type`.
+  string subject_id = 5;
+
+  // Fencing token held when this event was emitted. The control plane rejects
+  // an event whose token is below the current one, which is what stops a
+  // resumed old writer from appending to a Run it no longer owns.
+  uint64 fencing_token = 6;
+
+  google.protobuf.Timestamp occurred_at = 7;
+}
+
+// UsageLedger is the cost and consumption record for a Run.
+//
+// It records how much was spent, never what was sent. Prompt and response text
+// never leave the executing Device and the approved model Endpoint.
+message UsageLedger {
+  uint64 input_tokens = 1;
+  uint64 output_tokens = 2;
+
+  // Cost in the organization's accounting currency, in minor units, to avoid
+  // floating-point drift in a ledger.
+  int64 cost_minor_units = 3;
+
+  string currency_code = 4;
+
+  // Model identifier and version pinned for this Run. A Run does not drift
+  // between models mid-execution; fallback uses a pre-approved candidate and is
+  // recorded here.
+  string model_id = 5;
+  string model_version = 6;
+
+  uint64 wall_clock_millis = 7;
+}
+
+// Run is one execution attempt of a Task.
+message Run {
+  string run_id = 1;
+
+  string task_id = 2;
+
+  string tenant_id = 3;
+
+  // Attempt number within the Task, starting at 1.
+  uint32 attempt = 4;
+
+  RunState state = 5;
+
+  // The Agent Actor performing the work.
+  threadline.type.v1.ActorRef agent = 6;
+
+  // The single Device and Actor authorized to write this Run's state.
+  threadline.capability.v1.ExecutionOwner execution_owner = 7;
+
+  // Grant this Run executes under. Reissued on transfer, never extended in
+  // place.
+  string capability_grant_id = 8;
+
+  repeated Step steps = 9;
+
+  repeated Artifact artifacts = 10;
+
+  UsageLedger usage = 11;
+
+  // Stable machine-readable failure reason, e.g. "grant_revoked" or
+  // "runtime_offline". Set when `state` is FAILED or BLOCKED.
+  string failure_reason = 12;
+
+  // Highest RunEvent sequence committed for this Run, so a reconnecting
+  // observer knows where to resume.
+  uint64 last_event_sequence = 13;
+
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp started_at = 15;
+  google.protobuf.Timestamp finished_at = 16;
+}
