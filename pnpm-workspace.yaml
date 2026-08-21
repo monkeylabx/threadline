@@ -2,4 +2,10 @@ packages:
   - apps/desktop
   - packages/*
 
+allowBuilds:
+  # The Buf CLI package resolves its platform binary at run time, so its
+  # postinstall is an optimization we can skip. Denying it keeps installs
+  # script-free, which is the point of the empty onlyBuiltDependencies below.
+  '@bufbuild/buf': false
+
 onlyBuiltDependencies: []

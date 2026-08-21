@@ -41,3 +41,7 @@ Agent 是组织内受治理的正式协作者，不是需要 `@` 才能工作的
 
 此仓库目前包含 PRD、系统架构与交互原型。下一步需要通过架构评审确认协议契约、威胁模型和
 第一阶段部署拓扑，再进入实现。
+
+## License
+
+Licensed under the [Apache License 2.0](./LICENSE).

@@ -20,6 +20,11 @@ OpenMLS 能完成本次 Rust 运行时场景，但当前证据不能批准生产
 
 因此 ADR-0003 不应转为 Accepted。后续必须重新打开候选库/版本比较；服务端明文回退继续被禁止。
 
+> **续做结论(2026-08-18)**:候选库/版本比较已在 `docs/spikes/e2ee-library-selection.md` 完成。
+> 上述第 1、2 条阻断项属于 `0.8.1` 版本线，均已在 OpenMLS `0.9.0-rc.2` 上游修复;第 3 条已由
+> OpenMLS ↔ mls-rs 双向互操作补齐。协议与库不变，版本线改为跟踪 `0.9.0`,见
+> `docs/adr/0004-e2ee-crypto-library-selection.md`。第 4 条(Recovery 只验证语义)保持不变。
+
 ## 交付物
 
 - 公共 Golden Vector: `test/crypto/e2ee-interop-v1.vector`

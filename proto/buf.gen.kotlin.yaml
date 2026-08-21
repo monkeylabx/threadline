@@ -1,0 +1,23 @@
+version: v2
+
+# Kotlin for apps/android.
+#
+# protoc-gen-kotlin emits DSL builders that sit on top of the Java runtime
+# types, so protoc-gen-java is required alongside it rather than optional.
+clean: true
+
+managed:
+  enabled: true
+  override:
+    - file_option: java_package_prefix
+      value: com.threadline.proto
+
+plugins:
+  - local: protoc-gen-java
+    out: ../packages/generated-kotlin/src/main/java
+
+  - local: protoc-gen-kotlin
+    out: ../packages/generated-kotlin/src/main/kotlin
+
+  - local: protoc-gen-connect-kotlin
+    out: ../packages/generated-kotlin/src/main/kotlin

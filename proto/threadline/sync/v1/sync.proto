@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+// Cursors, gap repair and tamper-evidence checkpoints.
+//
+// Reliability lives here and in the client's Durable Local Outbox, never in the
+// realtime connection. A WSS notification is a hint that something arrived;
+// what actually happened is decided by cursor sync against PostgreSQL.
+package threadline.sync.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/message/v1/envelope.proto";
+
+// SyncCursor is one Device's applied position in one conversation.
+//
+// Each Device maintains its own cursor. Devices never converge by copying a
+// SQLite file to each other; they converge by applying the same ordered events.
+message SyncCursor {
+  // Conversation this cursor tracks. Exactly one is set.
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  // Highest `channel_seq` applied with no hole beneath it.
+  //
+  // This advances only over a contiguous run. On detecting a gap the client
+  // stops advancing and repairs, rather than skipping ahead and quietly losing
+  // an event.
+  uint64 last_applied_seq = 3;
+
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// ReadCursor is a member's read position, shared across their Devices.
+//
+// Distinct from SyncCursor: sync is about what a Device holds, read state is
+// about what a person has seen. Multiple Devices converge on the maximum.
+message ReadCursor {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  uint64 last_read_seq = 3;
+
+  // Device that last moved this cursor, retained so a client can tell its own
+  // update from another Device's.
+  string updated_by_device_id = 4;
+
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// SequenceGap is a hole a client found in its applied range.
+//
+// Reported so the server can serve exactly the missing span. The client does not
+// advance its cursor past `first_missing_seq` until the gap is filled.
+message SequenceGap {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  uint64 first_missing_seq = 3;
+
+  // Highest sequence the client has seen above the hole. 0 when the client knows
+  // only that it is behind, not how far.
+  uint64 last_known_seq = 4;
+}
+
+// SyncCheckpoint is a server-signed statement about the head of a conversation's
+// hash chain.
+//
+// A client verifies that its own applied chain reaches the same `chain_hash` at
+// the same sequence. A mismatch means history was substituted, and the client
+// fails loudly rather than reconciling to the server's version. This is tamper
+// evidence, not consensus.
+message SyncCheckpoint {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  uint64 channel_seq = 3;
+
+  bytes chain_hash = 4;
+
+  google.protobuf.Timestamp signed_at = 5;
+
+  // Signature over the canonical encoding of fields 1-5, by the tenant's
+  // checkpoint signing key.
+  bytes signature = 6;
+
+  // Identifier of the signing key, so rotation does not invalidate previously
+  // issued checkpoints.
+  string signing_key_id = 7;
+}
+
+// EventBatch is an ordered run of events with no holes between them.
+//
+// A batch always begins where the caller's cursor ended. Delivering a run with
+// an internal gap would defeat the point of the cursor, so the server truncates
+// at the hole instead.
+message EventBatch {
+  repeated threadline.message.v1.ChannelEventEnvelope events = 1;
+
+  // Cursor position after applying every event in `events`.
+  uint64 next_seq = 2;
+
+  // True when more events are already available past `next_seq`.
+  bool has_more = 3;
+
+  // Optional checkpoint covering the last event in this batch.
+  SyncCheckpoint checkpoint = 4;
+}

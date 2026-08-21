@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+// The WSS binary frame contract between clients and threadline-realtime.
+//
+// This is a Golden Frame surface: the same bytes must decode identically in Go,
+// Rust, TypeScript, Swift and Kotlin, and the fixtures under test/contract/
+// assert exactly that.
+//
+// Realtime carries no durability. It authenticates the connection, forwards
+// commands to Core and relays hints. A frame that arrives here is not a fact
+// until Core has committed it and returned a Durable ACK; a frame that is lost
+// here is recovered by cursor sync, not by retransmission.
+package threadline.realtime.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/message/v1/envelope.proto";
+import "threadline/sync/v1/sync.proto";
+import "threadline/type/v1/error.proto";
+
+// ClientHello opens a connection.
+//
+// The connection is authenticated per Device, not per Actor: two Devices of the
+// same person are two connections with two cursors.
+message ClientHello {
+  // Bearer credential for the session established through enterprise OIDC.
+  // Never logged, never placed in a URL.
+  string session_token = 1;
+
+  string device_id = 2;
+
+  // Protocol version the client speaks. The server does not silently adapt to
+  // an unknown version; it closes with a stated reason.
+  uint32 protocol_version = 3;
+
+  // Resume token from a previous ServerHello, if reconnecting. Empty starts a
+  // fresh connection.
+  string resume_token = 4;
+}
+
+// ServerHello accepts a connection.
+message ServerHello {
+  string connection_id = 1;
+
+  // Opaque token for resuming this connection after a drop. It shortcuts
+  // re-subscription; it never substitutes for cursor sync, and a client must
+  // still reconcile its cursors after resuming.
+  string resume_token = 2;
+
+  // Server-negotiated protocol version, always one the client offered.
+  uint32 protocol_version = 3;
+
+  // Interval at which the client should send Ping. Reconnect backoff is
+  // exponential with jitter, so a Realtime restart does not produce a
+  // synchronized reconnect storm.
+  uint32 heartbeat_seconds = 4;
+}
+
+// SendEvent submits a sealed event for sequencing.
+//
+// The client has already written this to its Durable Local Outbox and shown it
+// as pending. It stays pending until a Durable ACK arrives.
+message SendEvent {
+  threadline.message.v1.ChannelEventEnvelope envelope = 1;
+}
+
+// DurableAck confirms that Core committed an event.
+//
+// Emitted only after the ciphertext event, its `channel_seq` and its Outbox row
+// are committed in one PostgreSQL transaction meeting the synchronous commit
+// policy. If durability cannot be met the client receives an error with
+// ERROR_CODE_NOT_DURABLE and retries with the same idempotency key.
+message DurableAck {
+  string event_id = 1;
+
+  string idempotency_key = 2;
+
+  threadline.message.v1.ServerCommit server_commit = 3;
+}
+
+// EventDelivery pushes a committed event to a connected Device.
+//
+// Delivery is a latency optimization. A Device that misses this frame learns
+// the same fact from its next sync, which is why the frame carries no
+// acknowledgement obligation.
+message EventDelivery {
+  threadline.message.v1.ChannelEventEnvelope envelope = 1;
+}
+
+// SyncHint tells a Device that it is behind without sending the events.
+//
+// Used for large backfills and for conversations the Device is not actively
+// viewing, so a reconnecting client is not flooded.
+message SyncHint {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  uint64 latest_seq = 3;
+}
+
+// PresenceState is a short-lived, best-effort liveness signal.
+enum PresenceState {
+  PRESENCE_STATE_UNSPECIFIED = 0;
+  PRESENCE_STATE_ONLINE = 1;
+  PRESENCE_STATE_AWAY = 2;
+  PRESENCE_STATE_OFFLINE = 3;
+}
+
+// PresenceUpdate reports liveness. Backed by Redis and freely discardable:
+// losing all presence data must not affect messaging.
+message PresenceUpdate {
+  string actor_id = 1;
+
+  PresenceState state = 2;
+
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// TypingUpdate reports composing activity. Ephemeral, never persisted.
+message TypingUpdate {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  string actor_id = 3;
+
+  bool typing = 4;
+}
+
+// SubscribeConversations sets which conversations receive EventDelivery frames
+// rather than SyncHint frames.
+message SubscribeConversations {
+  repeated string channel_ids = 1;
+  repeated string dm_ids = 2;
+}
+
+// CursorReport tells the server where this Device is, so it can choose between
+// delivering events and hinting.
+message CursorReport {
+  repeated threadline.sync.v1.SyncCursor cursors = 1;
+}
+
+// Ping is a client liveness probe.
+message Ping {
+  uint64 nonce = 1;
+}
+
+// Pong answers a Ping.
+message Pong {
+  uint64 nonce = 1;
+}
+
+// Backpressure tells a client to slow down.
+//
+// Realtime sheds load rather than buffering without bound: a slow client must
+// not be able to degrade the gateway for everyone else. The client reduces its
+// send rate and falls back to cursor sync for reads.
+message Backpressure {
+  // How long to hold off, in milliseconds.
+  uint32 retry_after_millis = 1;
+
+  // Conversations whose deliveries were downgraded to hints. Empty means the
+  // whole connection is throttled.
+  repeated string channel_ids = 2;
+}
+
+// StreamError reports a failure attributable to a specific client frame.
+//
+// It does not close the connection unless `fatal` is set.
+message StreamError {
+  threadline.type.v1.ErrorDetail error = 1;
+
+  // Correlates with the `request_id` of the offending ClientFrame.
+  string request_id = 2;
+
+  // When true the server closes the connection after this frame.
+  bool fatal = 3;
+}
+
+// ClientFrame is every message a client may send over WSS.
+message ClientFrame {
+  // Client-generated correlation identifier, echoed in DurableAck and
+  // StreamError. Distinct from an event's idempotency key: this identifies the
+  // frame, that identifies the logical command.
+  string request_id = 1;
+
+  oneof frame {
+    ClientHello hello = 2;
+    SendEvent send_event = 3;
+    SubscribeConversations subscribe = 4;
+    CursorReport cursor_report = 5;
+    PresenceUpdate presence = 6;
+    TypingUpdate typing = 7;
+    Ping ping = 8;
+  }
+}
+
+// ServerFrame is every message the server may send over WSS.
+message ServerFrame {
+  // Echoes the `request_id` of the frame this responds to. Empty for
+  // server-initiated frames.
+  string request_id = 1;
+
+  oneof frame {
+    ServerHello hello = 2;
+    DurableAck durable_ack = 3;
+    EventDelivery event_delivery = 4;
+    SyncHint sync_hint = 5;
+    PresenceUpdate presence = 6;
+    TypingUpdate typing = 7;
+    Backpressure backpressure = 8;
+    StreamError error = 9;
+    Pong pong = 10;
+  }
+}
