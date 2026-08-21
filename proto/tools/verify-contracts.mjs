@@ -131,9 +131,9 @@ assert(manifest.schemaVersion === 1, "Golden Frame manifest schemaVersion must b
 assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary must remain field 50000");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-concrete-envelope-schemas-and-approval", "T014 Golden Frame blocker must remain explicit");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("concrete-ciphertext-envelope-frame"), "concrete Ciphertext Envelope frame must remain an explicit blocker");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("concrete-crypto-envelope-frame"), "concrete Crypto Envelope frame must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.status === "blocked-on-representative-frames-and-cross-language-evidence", "T014 Golden Frame blocker must remain explicit");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "cross-language unknown-field evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "N-1 evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");

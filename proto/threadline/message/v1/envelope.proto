@@ -107,6 +107,11 @@ message ServerCommit {
 // encoding is frozen by the Golden Vectors under test/crypto/ and must pass the
 // three-language check in P00-08 before this contract is treated as stable.
 message ChannelEventEnvelope {
+  // Golden Frame unknown-field canary. This number must remain unknown to
+  // generated adapters so compatibility tests can prove decode/re-encode
+  // preservation across versions.
+  reserved 50000;
+
   // Client-generated, tenant-unique. The identity of the logical event across
   // retries, so a command retried a hundred times yields one event.
   string event_id = 1;

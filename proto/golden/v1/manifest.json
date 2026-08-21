@@ -4,18 +4,18 @@
   "acceptanceBoundary": {
     "issue": 28,
     "issueMayClose": false,
-    "status": "blocked-on-concrete-envelope-schemas-and-approval",
+    "status": "blocked-on-representative-frames-and-cross-language-evidence",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
       "fixture-digest-validation"
     ],
     "notSatisfiedHere": [
-      "concrete-ciphertext-envelope-frame",
-      "concrete-crypto-envelope-frame",
+      "representative-channel-event-envelope-frame",
+      "representative-recovery-envelope-frame",
       "cross-language-unknown-field-roundtrip",
       "n-minus-one-compatibility"
     ],
-    "candidateFollowups": ["T015", "T019"],
+    "candidateFollowups": [],
     "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
   },
   "fixtures": [

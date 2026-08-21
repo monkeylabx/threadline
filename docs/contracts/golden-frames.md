@@ -9,13 +9,24 @@ Every persisted message reserves field `50000`. The field is absent from the sch
 - `proto/golden/v1/ciphertext-envelope.canary.hex`
 - `proto/golden/v1/crypto-envelope.canary.hex`
 
-Their names identify the contract families; they do not define the concrete Envelope fields assigned to T015 and T019. `manifest.json` pins the payload and SHA-256 of each raw frame.
+Their names identify the contract families; they do not define the concrete
+Envelope fields. `manifest.json` pins the payload and SHA-256 of each raw
+canary.
 
-T014 currently provides only the executable, schema-independent canary baseline: canonical bytes, field `50000`, payload, and digest are checked now. Concrete Ciphertext/Crypto messages do not yet exist, so this does not satisfy Issue #28's concrete Envelope Golden Frame acceptance item and does not claim cross-language decode/re-encode or N-1 success. Issue #28 remains open until those items exist, or Contracts and Product explicitly approve and record an Issue scope change moving them to T015/T019. The Integration Owner must run every concrete historical frame through every generated adapter before committing generated SDKs; failure remains a contract gate.
+T014 currently provides only the executable, schema-independent canary
+baseline: canonical bytes, field `50000`, payload, and digest are checked now.
+The merged protocol now defines `threadline.message.v1.ChannelEventEnvelope`
+and `threadline.crypto.v1.RecoveryEnvelope`, but representative frames for
+those messages and cross-language decode/re-encode and N-1 evidence are still
+missing. Issue #28 therefore remains open. The Integration Owner must run every
+concrete historical frame through every generated adapter before committing
+generated SDKs; failure remains a contract gate.
 
 ## Test contract
 
-When a concrete persisted Envelope is introduced, its owner must add a canonical binary/hex frame containing representative known fields followed by the appropriate canary. Each generated-language adapter must prove:
+For each concrete persisted Envelope, its owner must add a canonical binary/hex
+frame containing representative known fields followed by the appropriate
+canary. Each generated-language adapter must prove:
 
 1. decode succeeds without knowing field `50000`;
 2. known fields have the expected semantic values;

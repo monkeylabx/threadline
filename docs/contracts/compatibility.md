@@ -15,15 +15,20 @@ A breaking change requires a new package major version and a migration plan. Bre
 
 Fields are never silently removed. If a field is retired, its number and name remain `reserved` in the same message. Enum zero values end in `_UNSPECIFIED`; clients must handle unknown enum and error-code values without crashing or downgrading.
 
-`buf.yaml` enforces Buf's conservative `FILE` category. The fixed baseline command is:
+`proto/buf.yaml` enforces Buf's `WIRE_JSON` category for the merged protocol
+baseline. The fixed repository command is:
 
 ```sh
-buf breaking --against '.git#branch=main'
+make proto-breaking
 ```
 
 The check supplements design review. It cannot detect semantic reinterpretation, authorization expansion, secret exposure, or unsafe absent-field defaults.
 
-The only bootstrap exception is T014 itself: the pre-T014 `main` tree contains no Protobuf module, so Buf correctly reports that there is nothing to compare. T014 must pass `buf build`; from the first follow-up contract onward, a missing or skipped breaking baseline is a failure.
+The bootstrap exception has expired: `main` now contains the complete M0
+protocol baseline under `proto/threadline/`. A missing, skipped, or empty
+breaking baseline is a failure. The lower-level command executed by the
+repository wrapper is `buf breaking --against '.git#branch=main'` from the
+`proto/` module.
 
 ## Persistent data
 
@@ -35,6 +40,16 @@ Any Protobuf message stored in PostgreSQL, SQLite, object storage, a local outbo
 4. pass N-1 read/current-write and current-read/N-1-write tests in every consuming language;
 5. document storage migration and rollback behavior before a package-major change.
 
-Ciphertext, MLS/application crypto, history, and recovery envelopes are persisted contracts. T015 and T019 must add their concrete canonical frames when they define those messages; T014 deliberately does not guess their business or cryptographic fields.
+Ciphertext, MLS/application crypto, history, and recovery envelopes are
+persisted contracts. `ChannelEventEnvelope` and `RecoveryEnvelope` now exist in
+the merged protocol, so the remaining T014 work is evidence rather than schema
+invention: representative frames, five-language unknown-field preservation,
+and N-1 read/write results must be recorded against those exact messages.
 
-Accordingly, T014 proves only the library-independent field-50000 canary encoding and manifest integrity. This is not yet a pass for Issue #28's concrete Envelope Golden Frame acceptance item. Cross-language unknown-field preservation and N-1 evidence become executable only when concrete message schemas and representative known fields exist; the Integration Owner must record that evidence before their generated SDK update can merge. Assigning that missing acceptance work to T015/T019 requires explicit Contracts and Product approval plus an Issue update.
+Accordingly, the current T014 branch proves only the library-independent
+field-50000 canary encoding and manifest integrity. This is not yet a pass for
+Issue #28's concrete Envelope Golden Frame acceptance item. The Integration
+Owner must add the representative frames and record cross-language and N-1
+evidence before the generated SDK update can merge. Assigning that missing
+acceptance work elsewhere requires explicit Contracts and Product approval plus
+an Issue update.

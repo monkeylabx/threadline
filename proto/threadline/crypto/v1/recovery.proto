@@ -151,6 +151,11 @@ message RecoveryCase {
 // cannot be used to derive, a reusable group master key. Only the isolated
 // KMS/HSM identity can unwrap it, and only inside an approved Recovery Case.
 message RecoveryEnvelope {
+  // Golden Frame unknown-field canary. This number must remain unknown to
+  // generated adapters so compatibility tests can prove decode/re-encode
+  // preservation across versions.
+  reserved 50000;
+
   string tenant_id = 1;
 
   string e2ee_group_id = 2;

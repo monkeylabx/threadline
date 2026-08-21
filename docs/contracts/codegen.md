@@ -1,6 +1,15 @@
 # Local code generation
 
-Code generation is deliberately local and deterministic. `buf.gen.yaml` contains no `remote:` entry, and `buf.yaml` contains no BSR module name or dependency.
+Code generation is deliberately local and deterministic. The merged templates
+under `proto/buf.gen.*.yaml` contain no `remote:` entries, and
+`proto/buf.yaml` contains no public BSR module name or dependency.
+
+The root `buf.gen.yaml` in this Draft branch is an earlier formal-verifier
+candidate, not the merged product generation plan. Its output mapping and
+single-message assertions predate the current multi-domain protocol. Formal or
+repository mode must remain HOLD until the verifier consumes the merged five
+templates (including their Connect plugins and managed options) without a
+second, drifting topology.
 
 ## Pinned toolchain
 
@@ -84,7 +93,22 @@ Manifest schema 4 records the exact platform/profile, bundle-local source archiv
 
 The ellipses are schematic, not accepted values. Provenance is one of four exact forms. `official-binary` and `official-package` reference all applicable source names. `source-built` records one source archive, every authenticated builder archive, the exact build command, and only the evidence claim `single-build-output-verified`; it does **not** call the resulting binary an upstream release or claim reproducible builds. The verifier proves that the reviewed bundle contains those exact inputs and output, and rejects a builder whose pinned checksum metadata does not contain its digest or whose pinned Swift installer identity is invalid. It still does not independently observe the historical build command; the release record must retain the clean-runner build log separately. `protocol-stub` references protocol fixtures and is rejected by both formal modes. An invalid, unverifiable, or incompletely sourced builder cannot be promoted by adding a self-authored attestation.
 
-The verifier rejects missing/extra source, closure, provenance, or tool fields; a missing bundle-local source archive; digest or platform drift; overlapping/escaping closures; an unpinned archive; missing/extra tools; symlink escape; version drift; Java vendor/runtime drift; or Node/JDK drift from `toolchains.json`. The v4 formal release profile is currently restricted to the protected `macos-26` Integration runner on `darwin-arm64`, because Swift source builds require the pinned macOS installer identity; Linux or Windows formal generation requires a reviewed builder-authentication schema extension first. Cross-platform protocol-smoke bundles may still use native Windows `.exe` files, but `.cmd` wrappers are forbidden because they introduce an unverified command-interpreter dependency. The checked-in `buf.gen.yaml` is JSON-form YAML and is the single generation-plan source. The verifier parses that exact plan, replaces only plugin/protoc commands with absolute verified invocations, and gives the resulting in-memory template to Buf. A JavaScript generator is invoked as `[verified-node, verified-plugin]`, so its `env node` shebang is never used for version inspection or generation; native generators and `protoc` are also invoked by verified absolute paths.
+The verifier rejects missing/extra source, closure, provenance, or tool fields;
+a missing bundle-local source archive; digest or platform drift;
+overlapping/escaping closures; an unpinned archive; missing/extra tools;
+symlink escape; version drift; Java vendor/runtime drift; or Node/JDK drift
+from `toolchains.json`. The v4 formal release profile is currently restricted
+to the protected `macos-26` Integration runner on `darwin-arm64`, because Swift
+source builds require the pinned macOS installer identity; Linux or Windows
+formal generation requires a reviewed builder-authentication schema extension
+first. Cross-platform protocol-smoke bundles may still use native Windows
+`.exe` files, but `.cmd` wrappers are forbidden because they introduce an
+unverified command-interpreter dependency. A JavaScript generator is invoked
+as `[verified-node, verified-plugin]`, so its `env node` shebang is never used
+for version inspection or generation; native generators and `protoc` are also
+invoked by verified absolute paths. Before formal mode is enabled, the same
+replacement must be applied to the merged templates rather than to the stale
+root candidate plan.
 
 Formal verification has a bootstrap trust boundary outside JavaScript. An approved clean-environment launcher must first authenticate the reviewed manifest digest, verify the bundle's absolute Node executable, clear preload/search-path variables, and only then start that absolute Node. A check inside `verify-codegen.mjs` can reject a suspicious environment after startup, but it cannot prove that `NODE_OPTIONS`, `LD_PRELOAD`, or an equivalent preload did not already execute. Invoking the script with a bare `node`, a shell-discovered launcher, or the current environment is therefore diagnostic only, never formal release evidence.
 
@@ -92,7 +116,16 @@ After startup, every child receives a minimal environment: only verified tool di
 
 The committed SHA-256 values for the Kotlin compiler classpath and Protobuf/Kotlin runtime JARs live in `proto/toolchain.lock.json`. Each supplied JAR must match both the committed SHA-256 and the recorded Maven Central SHA-1. The compiler directory is an exact set: missing, extra, renamed, symlinked, or changed JARs fail.
 
-Formal release verification requires a `release` manifest; protocol stubs are rejected. It generates to a temporary directory using the provenance-recorded plugins, requires the exact expected file set for every output surface, checks each source's generator signature and expected `ErrorEnvelope` structure, then compiles all generated Java messages and Kotlin DSL plus a Kotlin consumer. Replace the two angle-bracket launcher arguments below with values from the approved release runner; they are trust-root placeholders, not shell commands:
+Formal release verification requires a `release` manifest; protocol stubs are
+rejected. Once reconciled, it must generate to a temporary directory using the
+provenance-recorded plugins, require the exact expected file set for every
+output surface, check each source's generator signature and a real merged
+message structure, then compile all generated Java messages and Kotlin DSL plus
+a Kotlin consumer. The present exact-set assertions still target the obsolete
+branch-local `ErrorEnvelope`, so the command below is documented for the final
+workflow but is not currently an acceptance result. Replace the two
+angle-bracket launcher arguments with values from the approved release runner;
+they are trust-root placeholders, not shell commands:
 
 ```sh
 THREADLINE_PROTO_TOOL_MANIFEST=/reviewed-bundle/proto-tools.json \
@@ -106,16 +139,21 @@ THREADLINE_PROTOBUF_KOTLIN_JAR=/path/to/protobuf-kotlin-4.35.1.jar \
 
 `--mode=protocol-smoke` is a deliberately weaker harness for exercising the plugin protocol with declared stubs. Its output is labelled `PROTOCOL-SMOKE ONLY` and is never release evidence. `--mode=verify-only` requires non-stub provenance. Go, TypeScript, Rust, and Swift native package compilation, plus descriptor-driven five-language unknown-field round trips, remain required Integration Owner checks when generated SDKs and concrete persisted schemas are committed. T014 checks exact generated source identities and Java/Kotlin compilation; it does not claim those four native builds, concrete Envelope round trips, or N-1 evidence.
 
-The Kotlin generator extends Java-generated message classes; it does not replace them. `buf.gen.yaml` therefore emits both `src/main/java` and `src/main/kotlin` inside the single Kotlin SDK. Its compile classpath separately names `kotlin-stdlib`, `protobuf-java`, and `protobuf-kotlin`; it never relies on compiler-process internals leaking into the compiled SDK. Missing inputs are failures, not skips.
+The Kotlin generator extends Java-generated message classes; it does not
+replace them. `proto/buf.gen.kotlin.yaml` therefore emits both
+`src/main/java` and `src/main/kotlin` inside the single Kotlin SDK. Its compile
+classpath separately names `kotlin-stdlib`, `protobuf-java`, and
+`protobuf-kotlin`; it never relies on compiler-process internals leaking into
+the compiled SDK. Missing inputs are failures, not skips.
 
 ## Outputs
 
 | Language | Generated directory |
 | --- | --- |
-| Go | `services/gen/proto` |
+| Go | `services/gen` |
 | TypeScript | `packages/generated-ts/src` |
-| Rust | `crates/generated-proto/src/generated` |
-| Swift | `packages/generated-swift/Sources/ThreadlineGenerated` |
+| Rust | `crates/client-proto/src/generated` |
+| Swift | `packages/generated-swift/Sources/ThreadlineProto` |
 | Kotlin | Java messages: `packages/generated-kotlin/src/main/java`; Kotlin DSL: `packages/generated-kotlin/src/main/kotlin` |
 
 The directories are adapters around the versioned Protobuf seam. Application code should expose domain-level interfaces rather than pass generator-specific reflection objects across module boundaries.
@@ -139,7 +177,9 @@ THREADLINE_PROTOBUF_KOTLIN_JAR=/reviewed-bundle/protobuf-kotlin-4.35.1.jar \
 
 Repository mode requires a clean worktree and the explicit Integration Owner acknowledgement. The clean check runs through the Git binary and runtime closure already verified from the repository-mode manifest, never a `git` discovered from `PATH`. It first performs the same formal temporary generation and checks as `verify-only`, prints before/after tree digests, then synchronizes only the six declared output directories with per-directory atomic renames and rollback on a handled failure. It never follows with a second naked `buf generate`, so the bytes checked are the bytes installed. `node proto/tools/verify-contracts.mjs` runs fault-injection coverage for lock contention, a failure between backup and installation rename, and destination symlink escape. A process crash or `SIGKILL` can still leave `.git/threadline-codegen-*.lock`; after confirming no codegen process is alive, the Integration Owner may remove that exact lock and rerun from a clean worktree. A process or filesystem failure between directory renames is still recoverable Git worktree state, not a claimed cross-directory transaction; review the printed digests and `git diff` before commit.
 
-For the T014 bootstrap only, replace the breaking line with `buf build` because the pre-T014 `main` branch has no `.proto` baseline. This exception expires when T014 merges. The T014 feature worktree itself does not run repository mode or edit generated SDKs.
+The T014 bootstrap exception has expired because the complete protocol baseline
+is already on `main`. T014 must run the normal breaking check. The T014 feature
+worktree itself does not run repository mode or edit generated SDKs.
 
 Generated files are never hand-edited. A contract PR changes `proto/`, fixtures, and contract documentation first. The Integration Owner then regenerates all five outputs in one commit, runs their native builds/tests, records tool versions and schema diff, and rejects any unexplained output drift. Feature worktrees consume the merged generated commit; they do not layer a second generator or handwritten mirror on top.
 
@@ -147,6 +187,14 @@ The current T014 task defines output locations and provides the verified generat
 
 ## T014 acceptance blocker
 
-The current schema contains only `ErrorEnvelope`; the concrete persisted Ciphertext and Crypto Envelopes belong to the still-unfrozen T015/T019 contracts. Therefore the schema-independent field-50000 canaries do not, by themselves, satisfy Issue #28's requirement for concrete Ciphertext/Crypto Envelope Golden Frames. `proto/golden/v1/manifest.json` records this as `issueMayClose: false`.
+The merged schema now contains `ChannelEventEnvelope` and `RecoveryEnvelope`.
+The remaining blocker is executable evidence: the current branch has only
+schema-independent field-50000 canaries, not representative frames,
+descriptor-driven five-language unknown-field round trips, or N-1 results.
+`proto/golden/v1/manifest.json` records this as `issueMayClose: false`.
 
-Issue #28 must remain open unless one of two things happens: concrete schemas, representative frames, five-language unknown-field evidence, and N-1 results are added; or Contracts and Product explicitly approve moving those exact acceptance items to T015/T019 and update the Issue. Merely naming T015/T019 in this document is not approval.
+Issue #28 must remain open unless one of two things happens: representative
+frames, five-language unknown-field evidence, N-1 results, and a formal plan
+reconciled with the merged templates are added; or Contracts and Product
+explicitly approve moving exact acceptance items elsewhere and update the
+Issue. Merely naming a follow-up task in this document is not approval.
