@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+// Cursor sync, gap repair and read state, served by threadline-core.
+//
+// This is the recovery path a client trusts after any disconnect. A missed
+// realtime notification costs nothing here: the client asks where it is and
+// gets back exactly what it has not applied.
+package threadline.sync.v1;
+
+import "threadline/sync/v1/sync.proto";
+import "threadline/type/v1/common.proto";
+
+// SyncService serves ordered catch-up and cursor state.
+service SyncService {
+  // Returns the next contiguous batch of events after the caller's cursors.
+  //
+  // Each batch begins where the caller's cursor ended and stops at the first
+  // hole, so applying it in order can never leave a gap behind.
+  rpc SyncEvents(SyncEventsRequest) returns (SyncEventsResponse);
+
+  // Streams events as they commit, starting from the caller's cursors.
+  //
+  // Used for long catch-up and by `locald` while connected. The stream is an
+  // optimization over repeated SyncEvents calls; a dropped stream is repaired by
+  // reconnecting with the same cursors, not by retransmission.
+  rpc StreamEvents(StreamEventsRequest) returns (stream StreamEventsResponse);
+
+  // Reports a detected hole and asks for exactly the missing span.
+  //
+  // A client that finds a gap stops advancing its cursor and calls this. It does
+  // not skip ahead: an event applied out of order is a lost event.
+  rpc RepairGap(RepairGapRequest) returns (RepairGapResponse);
+
+  rpc GetCursors(GetCursorsRequest) returns (GetCursorsResponse);
+
+  // Persists this Device's applied positions, so a reinstalled or restarted
+  // client resumes without replaying from the beginning.
+  rpc UpdateCursors(UpdateCursorsRequest) returns (UpdateCursorsResponse);
+
+  // Advances read state, which converges across a member's Devices on the
+  // maximum rather than on the last writer.
+  rpc UpdateReadCursor(UpdateReadCursorRequest) returns (UpdateReadCursorResponse);
+
+  rpc ListReadCursors(ListReadCursorsRequest) returns (ListReadCursorsResponse);
+
+  // Returns signed checkpoints so a client can verify its applied hash chain
+  // against the server's. A mismatch means history was substituted and is a
+  // hard failure, not something to reconcile toward the server's version.
+  rpc GetCheckpoints(GetCheckpointsRequest) returns (GetCheckpointsResponse);
+}
+
+message SyncEventsRequest {
+  // Where this Device currently is. An empty list syncs every conversation the
+  // caller may read, starting from the beginning of retained history.
+  repeated SyncCursor cursors = 1;
+
+  // Maximum events across all conversations in one response. Server clamps.
+  uint32 max_events = 2;
+}
+
+message SyncEventsResponse {
+  // One batch per conversation that had events to deliver.
+  repeated EventBatch batches = 1;
+}
+
+message StreamEventsRequest {
+  repeated SyncCursor cursors = 1;
+}
+
+message StreamEventsResponse {
+  EventBatch batch = 1;
+}
+
+message RepairGapRequest {
+  repeated SequenceGap gaps = 1;
+}
+
+message RepairGapResponse {
+  repeated EventBatch batches = 1;
+
+  // Gaps the server could not fill because the events are past retention. The
+  // client marks the range permanently unavailable rather than retrying
+  // forever.
+  repeated SequenceGap unrecoverable_gaps = 2;
+}
+
+message GetCursorsRequest {
+  // Restrict to specific conversations. Empty returns every cursor this Device
+  // holds.
+  repeated string channel_ids = 1;
+  repeated string dm_ids = 2;
+}
+
+message GetCursorsResponse {
+  repeated SyncCursor cursors = 1;
+}
+
+message UpdateCursorsRequest {
+  repeated SyncCursor cursors = 1;
+}
+
+message UpdateCursorsResponse {
+  // Cursors the server rejected, with its own view of the position. A cursor
+  // ahead of what the server has committed is a client bug, and returning the
+  // server's value lets the client correct itself instead of stalling.
+  repeated SyncCursor rejected_cursors = 1;
+}
+
+message UpdateReadCursorRequest {
+  ReadCursor read_cursor = 1;
+}
+
+message UpdateReadCursorResponse {
+  // The converged value, which may be ahead of the request if another Device of
+  // the same member had already read further.
+  ReadCursor read_cursor = 1;
+}
+
+message ListReadCursorsRequest {
+  threadline.type.v1.PageRequest page = 1;
+}
+
+message ListReadCursorsResponse {
+  repeated ReadCursor read_cursors = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message GetCheckpointsRequest {
+  repeated string channel_ids = 1;
+  repeated string dm_ids = 2;
+}
+
+message GetCheckpointsResponse {
+  repeated SyncCheckpoint checkpoints = 1;
+}

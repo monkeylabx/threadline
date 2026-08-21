@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+// The plaintext schema sealed inside ChannelEventEnvelope.application_ciphertext.
+//
+// Nothing in this file is ever transmitted or persisted unencrypted. It lives in
+// the shared contract because Desktop, iOS, Android and `locald` must agree
+// byte-for-byte on what they seal and open; it does not live here because a
+// server may read it. No Threadline service workload links this schema.
+//
+// Data class C3 throughout. Values decoded from this file must not appear in
+// logs, traces, crash dumps, diagnostic bundles or server-bound telemetry.
+package threadline.message.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// MessageFormat is how `MessageBody.text` should be rendered.
+enum MessageFormat {
+  MESSAGE_FORMAT_UNSPECIFIED = 0;
+  MESSAGE_FORMAT_PLAIN = 1;
+  // A restricted Markdown subset. Renderers must not fetch remote resources
+  // while rendering: doing so would leak read receipts to an outside host.
+  MESSAGE_FORMAT_MARKDOWN = 2;
+}
+
+// Mention marks a span of `MessageBody.text` that references an Actor.
+//
+// Offsets are in UTF-8 bytes over `text`, so Rust, Go, Swift, Kotlin and
+// TypeScript agree without a shared string representation.
+message Mention {
+  string actor_id = 1;
+
+  uint32 start_offset = 2;
+  uint32 byte_length = 3;
+}
+
+// AttachmentRef points at an encrypted blob and carries the material needed to
+// open it. Everything identifying about a file lives here, inside the encrypted
+// payload, rather than in the envelope.
+message AttachmentRef {
+  // Object-storage identifier. This value also appears in cleartext in
+  // ChannelEventEnvelope.attachment_blob_ids so lifecycle and ACL enforcement
+  // can reach the object without opening it.
+  string blob_id = 1;
+
+  // Original file name. Class C3: file names routinely disclose content, which
+  // is why they are sealed here and why object keys must not embed them.
+  string file_name = 2;
+
+  string mime_type = 3;
+
+  uint64 byte_size = 4;
+
+  // The attachment's own random Content Key, wrapped for this event's audience.
+  // Every attachment gets an independent key; none reuse the database key or an
+  // Epoch key directly.
+  bytes wrapped_content_key = 5;
+
+  // Chunk size used for the chunked content encryption, in bytes. Needed for
+  // ranged download and resumable transfer.
+  uint32 chunk_size = 6;
+
+  // Checksum over the plaintext, verified after decryption.
+  bytes plaintext_checksum = 7;
+}
+
+// MessageBody is the authored content of a message.
+message MessageBody {
+  string text = 1;
+
+  MessageFormat format = 2;
+
+  repeated Mention mentions = 3;
+
+  repeated AttachmentRef attachments = 4;
+}
+
+// MessageCreated introduces a new message.
+message MessageCreated {
+  MessageBody body = 1;
+
+  // Thread this message belongs to. Empty means the conversation root.
+  string thread_id = 2;
+
+  // Event being replied to. A reply is an ordinary message with a back
+  // reference, not a distinct event kind.
+  string reply_to_event_id = 3;
+}
+
+// MessageEdited replaces the body of an earlier message.
+//
+// Edits are expressed as new events and never rewrite the original, so history
+// stays replayable and the hash chain stays intact.
+message MessageEdited {
+  string target_event_id = 1;
+
+  MessageBody body = 2;
+}
+
+// MessageRedacted withdraws an earlier message.
+//
+// Whether the target's ciphertext is actually destroyed is a retention decision
+// made by the server from the envelope's REDACTION category. This payload
+// carries only what members should see about the withdrawal.
+message MessageRedacted {
+  string target_event_id = 1;
+
+  // Optional member-visible reason.
+  string reason = 2;
+}
+
+// ReactionAdded attaches an emoji reaction.
+message ReactionAdded {
+  string target_event_id = 1;
+
+  // Unicode emoji sequence, not a shortcode, so clients need no shared name
+  // table to agree on identity.
+  string emoji = 2;
+}
+
+// ReactionRemoved withdraws a reaction previously added by the same sender.
+message ReactionRemoved {
+  string target_event_id = 1;
+
+  string emoji = 2;
+}
+
+// PinChanged pins or unpins an event in its conversation.
+message PinChanged {
+  string target_event_id = 1;
+
+  bool pinned = 2;
+}
+
+// TaskStatusProjected is the key Task state change written back into the source
+// conversation.
+//
+// Only meaningful transitions are projected. Tool activity, command output,
+// retries and cost belong on the Task page; flooding the timeline with
+// execution detail is exactly what Threadline is built to avoid.
+message TaskStatusProjected {
+  string task_id = 1;
+
+  string run_id = 2;
+
+  // Name of the threadline.task.v1.TaskState value reached. Carried as a string
+  // so the payload schema does not depend on the Task package, keeping the
+  // encrypted format stable when Task state is extended.
+  string task_state = 3;
+
+  // Short member-facing summary, authored by the Agent. Class C3 like any other
+  // authored text.
+  string summary = 4;
+}
+
+// MessagePayload is the sealed body of an APPLICATION event.
+//
+// Exactly one variant is set. An unrecognized variant means the sender is
+// newer: clients render a neutral placeholder and preserve the unknown fields
+// on re-persist, so a downgrade never destroys content.
+message MessagePayload {
+  // Sender's clock at authoring time, sealed so it cannot be altered in transit
+  // the way ChannelEventEnvelope.client_sent_at can.
+  google.protobuf.Timestamp authored_at = 1;
+
+  oneof kind {
+    MessageCreated message_created = 2;
+    MessageEdited message_edited = 3;
+    MessageRedacted message_redacted = 4;
+    ReactionAdded reaction_added = 5;
+    ReactionRemoved reaction_removed = 6;
+    PinChanged pin_changed = 7;
+    TaskStatusProjected task_status_projected = 8;
+  }
+}

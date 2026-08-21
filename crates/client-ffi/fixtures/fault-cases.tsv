@@ -1,0 +1,7 @@
+# name	code	expected_terminal
+none	0	ok
+delayed	1	ok
+panic	2	panic
+unknown_error	3	unknown
+duplicate_event	4	protocol_violation
+late_event	5	closed_or_protocol_violation

@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+// Channel, DM, Thread and Channel Membership.
+//
+// A Channel is a long-lived shared conversation whose membership defines who
+// may participate. It is not an Agent session and not a unit of execution.
+package threadline.channel.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/identity/v1/identity.proto";
+import "threadline/type/v1/common.proto";
+
+// ChannelVisibility controls discovery, not decryption. A public Channel is
+// still end-to-end encrypted; "public" means any tenant Member may find and
+// join it, at which point history access is governed by History Sharing.
+enum ChannelVisibility {
+  CHANNEL_VISIBILITY_UNSPECIFIED = 0;
+  CHANNEL_VISIBILITY_PUBLIC = 1;
+  CHANNEL_VISIBILITY_PRIVATE = 2;
+}
+
+// ChannelState is the Channel lifecycle.
+enum ChannelState {
+  CHANNEL_STATE_UNSPECIFIED = 0;
+  CHANNEL_STATE_ACTIVE = 1;
+  // Read-only for members who still hold keys. No new events are sequenced.
+  CHANNEL_STATE_ARCHIVED = 2;
+  // Retention-driven erasure in progress: ciphertext, envelopes and keys are
+  // being destroyed across server storage and Devices.
+  CHANNEL_STATE_PENDING_DELETION = 3;
+}
+
+// RetentionPolicy bounds how long content and the ability to decrypt it remain
+// available, on the server and on every authorized Device.
+//
+// This is a cryptographic lifecycle policy, not an object-store TTL. A
+// correctly operating Device stops decrypting and erases keys at expiry even
+// while offline.
+message RetentionPolicy {
+  // Age at which content expires, in days. 0 means retain until explicitly
+  // deleted.
+  uint32 retention_days = 1;
+
+  // When true, expired content is unreadable but its audit metadata survives.
+  // Deleting the audit trail is never a retention outcome.
+  bool preserve_audit_metadata = 2;
+
+  // Version identifier of the policy document that produced these values.
+  string policy_version = 3;
+}
+
+// ChannelAgentPolicy states which Agent Actors may be triggered in a Channel
+// and under what mode.
+//
+// Displaying an Agent here does not mean it reads messages. It means a Task,
+// a message-to-Task conversion or an explicit rule may involve it.
+message ChannelAgentPolicy {
+  message Entry {
+    threadline.type.v1.ActorRef agent = 1;
+
+    threadline.identity.v1.AgentParticipationMode participation_mode = 2;
+
+    // The rule that permits triggering, shown in the UI so a member can see why
+    // an Agent is available. Empty means direct delegation only.
+    string trigger_rule_id = 3;
+  }
+
+  repeated Entry entries = 1;
+}
+
+// WorkspaceBinding is a logical reference to a repository, document set or
+// enterprise file location shared by a Channel.
+//
+// It holds no member's physical path. Each user maps this logical binding to a
+// local directory on each of their Desktops, and those paths are never reported
+// to the server.
+message WorkspaceBinding {
+  string workspace_binding_id = 1;
+
+  string channel_id = 2;
+
+  // Human-facing label, e.g. "client repo".
+  string display_name = 3;
+
+  // Remote repository URL or enterprise document-set locator. Absent for
+  // bindings that exist only as a local mapping target.
+  string remote_uri = 4;
+
+  // Branch policy expression for repository bindings, e.g. "feature/*".
+  string branch_policy = 5;
+
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// Channel is a long-lived shared conversation.
+message Channel {
+  string channel_id = 1;
+
+  string tenant_id = 2;
+
+  string space_id = 3;
+
+  // Channel name. Class C2: it is routing and directory data, so members can
+  // find a Channel before they hold its keys.
+  string name = 4;
+
+  // Channel topic, authored by a member. Class C3 content, so it is stored
+  // encrypted under the Channel's own E2EE Group and the server never reads it.
+  threadline.type.v1.EncryptedField topic = 5;
+
+  ChannelVisibility visibility = 6;
+
+  ChannelState state = 7;
+
+  // The E2EE Group encrypting this Channel. Exactly one Group per Channel;
+  // Threads and Task Threads inherit it.
+  string e2ee_group_id = 8;
+
+  RetentionPolicy retention_policy = 9;
+
+  ChannelAgentPolicy agent_policy = 10;
+
+  google.protobuf.Timestamp created_at = 11;
+}
+
+// DirectMessage is a private conversation among explicitly selected members.
+//
+// A DM has its own cryptographic membership boundary. Changing its participants
+// creates a new DM with a new E2EE Group rather than inheriting history, which
+// is why participants are immutable here.
+message DirectMessage {
+  string dm_id = 1;
+
+  string tenant_id = 2;
+
+  // Immutable participant set. Adding or removing anyone produces a new DM.
+  repeated threadline.type.v1.ActorRef participants = 3;
+
+  string e2ee_group_id = 4;
+
+  RetentionPolicy retention_policy = 5;
+
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// ChannelMembership is the application-level right of an Actor to participate.
+//
+// For a Human, content access is then exercised through separately authorized
+// Devices. For an Agent or Service Actor, membership creates no cryptographic
+// access at all.
+message ChannelMembership {
+  string channel_id = 1;
+
+  threadline.type.v1.ActorRef actor = 2;
+
+  ChannelMemberRole role = 3;
+
+  // When the Actor joined. History earlier than this is reachable only through
+  // an explicit, auditable History Sharing grant.
+  google.protobuf.Timestamp joined_at = 4;
+
+  // Set when membership ended. The record is retained for audit; it is not
+  // deleted on removal.
+  google.protobuf.Timestamp left_at = 5;
+}
+
+// ChannelMemberRole is the per-Channel role, intersected with the
+// organization Role to produce effective permission.
+enum ChannelMemberRole {
+  CHANNEL_MEMBER_ROLE_UNSPECIFIED = 0;
+  CHANNEL_MEMBER_ROLE_OWNER = 1;
+  CHANNEL_MEMBER_ROLE_MODERATOR = 2;
+  CHANNEL_MEMBER_ROLE_MEMBER = 3;
+  // May read and post but not invite, bind workspaces or change policy.
+  CHANNEL_MEMBER_ROLE_GUEST = 4;
+}
+
+// Thread is a focused conversation inside a Channel or DM.
+//
+// It inherits its parent's membership and cryptographic visibility. A Thread
+// never creates its own E2EE Group, so there is no way to make part of a
+// Channel visible to only some of its members; that requires a separate
+// Channel or DM.
+message Thread {
+  string thread_id = 1;
+
+  // Parent conversation. Exactly one is set.
+  oneof parent {
+    string channel_id = 2;
+    string dm_id = 3;
+  }
+
+  // Event that started the Thread.
+  string root_event_id = 4;
+
+  // Set when this Thread is the shared surface of a Task.
+  string task_id = 5;
+
+  google.protobuf.Timestamp created_at = 6;
+}

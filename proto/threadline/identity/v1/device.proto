@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+// Device identity, enrollment and login session.
+//
+// A login session and a cryptographic device identity are different things and
+// are deliberately modelled separately here: an OIDC session proves someone
+// authenticated, never that a Device may join an E2EE Group.
+package threadline.identity.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/crypto/v1/crypto.proto";
+
+// DevicePlatform is the host platform, which determines which secure storage
+// backing is available and therefore what protection level may be claimed.
+enum DevicePlatform {
+  DEVICE_PLATFORM_UNSPECIFIED = 0;
+  DEVICE_PLATFORM_MACOS = 1;
+  DEVICE_PLATFORM_WINDOWS = 2;
+  DEVICE_PLATFORM_LINUX = 3;
+  DEVICE_PLATFORM_IOS = 4;
+  DEVICE_PLATFORM_ANDROID = 5;
+}
+
+// KeyProtectionLevel is how the Device Identity Key is actually protected.
+//
+// This is reported honestly, not aspirationally. Where platform hardware does
+// not support the algorithms `tl-mls-1` needs, a software key wrapped by a
+// hardware-protected wrapping key is SOFTWARE_WRAPPED_BY_HARDWARE, never
+// HARDWARE_NON_EXPORTABLE, because the software key itself is exportable.
+enum KeyProtectionLevel {
+  KEY_PROTECTION_LEVEL_UNSPECIFIED = 0;
+  // Key generated in and non-exportable from a hardware element (Secure
+  // Enclave, StrongBox, TPM, HSM-backed provider).
+  KEY_PROTECTION_LEVEL_HARDWARE_NON_EXPORTABLE = 1;
+  // Software key sealed by a hardware-protected wrapping key in OS secure
+  // storage.
+  KEY_PROTECTION_LEVEL_SOFTWARE_WRAPPED_BY_HARDWARE = 2;
+  // Software key in OS secure storage with no hardware backing.
+  KEY_PROTECTION_LEVEL_SOFTWARE = 3;
+}
+
+// DeviceState is the Device lifecycle.
+//
+//	PENDING_ENROLLMENT -> AUTHORIZED -> REVOKED
+//	         |
+//	         +-> REJECTED
+//
+// REVOKED is terminal. Reinstating a device is a new enrollment with a new
+// Device ID, because restoring a backup to new hardware must never clone a
+// Device Identity Key or its credential.
+enum DeviceState {
+  DEVICE_STATE_UNSPECIFIED = 0;
+  DEVICE_STATE_PENDING_ENROLLMENT = 1;
+  DEVICE_STATE_AUTHORIZED = 2;
+  DEVICE_STATE_REJECTED = 3;
+  // Credential revoked, unused KeyPackages invalidated, and the leaf removed
+  // from every E2EE Group. The Device cannot enter any successor Epoch.
+  DEVICE_STATE_REVOKED = 4;
+}
+
+// Device is an independently authorized endpoint belonging to a Member.
+message Device {
+  string device_id = 1;
+
+  string tenant_id = 2;
+
+  string actor_id = 3;
+
+  // User-visible name, e.g. "Zoe's MacBook Pro". Class C2 directory data.
+  string display_name = 4;
+
+  DevicePlatform platform = 5;
+
+  DeviceState state = 6;
+
+  KeyProtectionLevel key_protection_level = 7;
+
+  // Public credential. Absent while the Device is PENDING_ENROLLMENT.
+  threadline.crypto.v1.DeviceCredential credential = 8;
+
+  // Crypto Profiles this Device can participate in. A Device that does not
+  // support a Group's Profile cannot be added to that Group and is not offered
+  // a downgrade.
+  repeated string supported_crypto_profiles = 9;
+
+  google.protobuf.Timestamp enrolled_at = 10;
+  google.protobuf.Timestamp last_seen_at = 11;
+  google.protobuf.Timestamp revoked_at = 12;
+}
+
+// EnrollmentApprovalKind records who vouched for a Device, which is the input
+// clients use to detect a control plane silently inserting a ghost device.
+enum EnrollmentApprovalKind {
+  ENROLLMENT_APPROVAL_KIND_UNSPECIFIED = 0;
+  // Approved by the enterprise Device Authority. Required for a Member's first
+  // Device; the ordinary application control plane cannot do this alone.
+  ENROLLMENT_APPROVAL_KIND_DEVICE_AUTHORITY = 1;
+  // End-to-end confirmed by an existing authorized Device of the same Member.
+  ENROLLMENT_APPROVAL_KIND_EXISTING_DEVICE = 2;
+  // Exceptional administrator path with hardware-protected credentials, used
+  // when a Member has lost every Device.
+  ENROLLMENT_APPROVAL_KIND_ADMIN_EXCEPTION = 3;
+}
+
+// DeviceEnrollment is the auditable approval chain that turns a Device into an
+// authorized cryptographic endpoint.
+message DeviceEnrollment {
+  string enrollment_id = 1;
+
+  string device_id = 2;
+
+  EnrollmentApprovalKind approval_kind = 3;
+
+  // Device Authority key ID or endorsing Device ID.
+  string approved_by = 4;
+
+  // Position in the tenant's append-only Device/Key log. Clients compare their
+  // view of this log across Devices; a gap or divergence is a hard failure, not
+  // a warning.
+  uint64 device_log_seq = 5;
+
+  // Hash chaining this entry to `device_log_seq - 1`, so a removed or reordered
+  // entry cannot be hidden.
+  bytes previous_log_hash = 6;
+
+  google.protobuf.Timestamp approved_at = 7;
+}
+
+// Session is an authenticated login, established through enterprise OIDC.
+//
+// Holding a Session never implies cryptographic access. Revoking a Session
+// stops API calls; it does not remove the Device from any E2EE Group, which
+// requires revoking the Device.
+message Session {
+  string session_id = 1;
+
+  string tenant_id = 2;
+
+  string actor_id = 3;
+
+  // The Device this session is bound to. Sessions are not transferable between
+  // Devices.
+  string device_id = 4;
+
+  google.protobuf.Timestamp created_at = 5;
+
+  google.protobuf.Timestamp expires_at = 6;
+
+  // Set when the session was explicitly revoked before expiry.
+  google.protobuf.Timestamp revoked_at = 7;
+}
