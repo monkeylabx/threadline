@@ -1,6 +1,11 @@
 // swift-tools-version: 6.0
 
+import Foundation
 import PackageDescription
+
+let ffiLibraryDirectory =
+    ProcessInfo.processInfo.environment["THREADLINE_FFI_LIBRARY_DIR"]
+    ?? "../../../target/debug"
 
 let package = Package(
     name: "ThreadlineIOSHost",
@@ -12,7 +17,15 @@ let package = Package(
         .library(name: "ThreadlineIOSHost", targets: ["ThreadlineIOSHost"]),
     ],
     targets: [
-        .target(name: "ThreadlineIOSHost"),
+        .target(
+            name: "ThreadlineIOSHost",
+            linkerSettings: [
+                .unsafeFlags([
+                    "-L", ffiLibraryDirectory,
+                    "-lthreadline_client_ffi",
+                ]),
+            ]
+        ),
         .testTarget(
             name: "ThreadlineIOSHostTests",
             dependencies: ["ThreadlineIOSHost"]
