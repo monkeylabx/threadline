@@ -16,13 +16,13 @@ Issue：[#31 T017](https://github.com/monkeylabx/threadline/issues/31)
 
 当前文本是可并行评审的 Draft，不表示任何 Gate 已通过：
 
-- T002 / Issue #16 的 `docs/acceptance/v1-scenarios.md` 仍是未合入的工作 Draft。本文按其 AC-001 至 AC-012 结构起草；T002 合入后必须逐项校验 ID、步骤、失败路径、证据包和签字 Owner，没有覆盖漂移才能定稿。
-- T014 / Issue #28 的 Proto Skeleton 与兼容规则仍是未合入 Draft。本文采用其本地生成、Buf `FILE` breaking、五语言生成、Golden Frame field `50000` canary 和未知字段保留方向；T014 合入后必须以主分支命令和路径重新验证。T014 当前 `proto/golden/v1/manifest.json` 与 T011 的 `test/crypto/e2ee-interop-v1.vector` 也尚未满足本文的 fixture manifest schema：它们是收敛 blocker，必须分别由 Contracts/Integration Owner 与 Crypto Owner 在其 Owned Paths 中补齐 schema 字段和迁移验证。T017 不越界修改、复制或重新解释这些文件。
+- T002 / Issue #16 的 `docs/acceptance/v1-scenarios.md` 已进入主分支。本文的 AC-001 至 AC-012 与其 Gate、步骤、失败路径、证据包和签字 Owner 已完成逐项校验；后续场景变更必须同时更新本矩阵，不能静默漂移。
+- 多域 Proto 基线与五语言本地生成模板已进入主分支，兼容策略为 Buf `WIRE_JSON`。T014 / Issue #28 的加固生成验证器、Golden Frame manifest 与正式生成证据仍在 Draft PR #44；其旧单消息生成计划尚未与主分支五套模板收敛。T014 的 `proto/golden/v1/manifest.json` 与 T011 的 `test/crypto/e2ee-interop-v1.vector` 也尚未满足本文的 fixture manifest schema：它们是收敛 blocker，必须分别由 Contracts/Integration Owner 与 Crypto Owner 在其 Owned Paths 中补齐 schema 字段和迁移验证。T017 不越界修改、复制或重新解释这些文件。
 - T005 已进入主分支，但 [ADR-0003](../adr/0003-group-e2ee-recovery.md) 仍是 `proposed`。T011 已明确判定 OpenMLS `0.8.1` 生产准入失败，见 [互操作 Spike](../spikes/e2ee-interop.md)。在 Security Owner 重新批准候选库、未豁免漏洞与损坏密文 panic 被解决、独立 RFC 9420 互操作及真机证据完成前，Crypto 相关 Gate 保持 `HOLD`。
-- T010-A 的 Simulator/Emulator FFI 证据不能替代 T010-B 的 iOS/Android 真机、签名、后台回收、安全存储和内存证据。
-- T019 尚未冻结 Device、Epoch、History 和 Recovery Envelope。本文只规定必须测试的外部语义，不猜测字段或错误契约。
+- T010-A 的 Simulator/Emulator FFI 实现与 CI 证据已进入主分支，但不能替代 T010-B / Issue #41 的 iOS/Android 真机、签名、后台回收、安全存储和内存证据；#41 当前为 `READY FOR HUMAN`。
+- 主分支已有 Device、Epoch、History 和 Recovery Envelope 候选 Schema；T019 / Issue #37 仍需完成最终契约冻结、Crypto Review 和 Golden/N-1 证据。本文引用已合入的外部语义，不把候选 Schema 冒充冻结完成。
 
-定稿收敛条件：上述输入均进入可获取的主分支 Commit；本文只引用已合入契约；所有测试 ID 可追溯到最终验收步骤；执行命令可由独立人员从干净 checkout 重复；Security、Contracts、Client-core、iOS、Android、Recovery 和 Quality Owner 完成评审。依赖未满足时只允许评审测试设计和合成 Fixture 方案，不允许把猜测接口合入实现或将 `NOT RUN` 报为 `PASS`。
+定稿收敛条件：仍处于 Draft/Human Gate 的输入完成并进入可获取的主分支 Commit；本文只引用已合入契约；所有测试 ID 可追溯到最终验收步骤；执行命令可由独立人员从干净 checkout 重复；Security、Contracts、Client-core、iOS、Android、Recovery 和 Quality Owner 完成评审。依赖未满足时只允许评审测试设计和合成 Fixture 方案，不允许把猜测接口合入实现或将 `NOT RUN` 报为 `PASS`。
 
 ## 2. 通过规则与证据强度
 
@@ -136,7 +136,7 @@ G1 的 required checks 至少包括 Build、Test、Secret Scan 和依赖来源/�
 
 必须验证：
 
-- `buf lint`、T014 后固定的 main breaking baseline、`buf generate` 和五语言 native compile/test；T014 bootstrap 例外只允许一次。
+- `buf lint`、固定的 main breaking baseline、`buf generate` 和五语言 native compile/test；主分支已有 Proto baseline，不再允许 bootstrap 例外。
 - 持久化 Envelope 保留未知字段 `50000` canary；decode/re-encode 和修改已知字段后 canary 仍存在。
 - Golden Frame 只含代表性公共字段、合成不透明字节和 canary，不含生产 ID、正文、Token、Key 或真实 Ciphertext。
 - Go、TypeScript、Rust、Swift、Kotlin 对已知字段、未知 enum/error fallback、absent field 和授权语义一致。

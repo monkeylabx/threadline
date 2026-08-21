@@ -10,7 +10,10 @@ Test plan: [Private Enterprise v1.0 test plan](../../docs/quality/test-plan.md)
 
 `test/fixtures/` is the registry and policy boundary for versioned cross-workstream test inputs. A fixture represents public contract data, a deterministic state transition, an expected stable result, or an irreversible digest. It is not a copy of a production Tenant, a plaintext conversation, an Agent Session, a credential store, or a key archive.
 
-This Draft intentionally does not add concrete T015/T019 envelopes before their contracts merge. Contract owners add those families only after the authoritative schema and error semantics are on `main`.
+This Draft intentionally does not add concrete Envelope fixtures merely
+because candidate schemas now exist on `main`. Contract owners add those
+families only after T019 freezes the authoritative schema/error semantics and
+T014's Golden/N-1 workflow is reconciled with the merged generation templates.
 
 ## Non-negotiable data rules
 
@@ -158,11 +161,11 @@ If only forbidden synthetic plaintext is found, fail the gate, remove it from al
 
 Before this policy is marked final:
 
-1. T002 acceptance scenarios must merge and every fixture family must map to the final AC IDs and evidence requirements.
+1. T002 acceptance scenarios are merged; every future fixture family must map to those final AC IDs and evidence requirements, and CI must detect drift.
 2. T011's Crypto Owner must migrate `test/crypto/e2ee-interop-v1.vector` into a fixture family with every required manifest field, without changing the semantic spike into production evidence.
-3. T014's Contracts/Integration Owner must extend `proto/golden/v1/manifest.json` with this registry's required schema fields and migration verification; its fixed local toolchain, five-language generation, Golden Frame and N-1 rules must then be exercised from `main`.
-4. T019 must define concrete Device/Epoch/History/Recovery contracts before those fixture files are created.
+3. T014's Contracts/Integration Owner must extend `proto/golden/v1/manifest.json` with this registry's required schema fields and migration verification; its hardened verifier must be reconciled with the merged five generation templates, and Golden Frame/N-1 rules must then be exercised from `main`.
+4. T019 must freeze the existing Device/Epoch/History/Recovery candidate contracts and their Crypto Review before those fixture files are created.
 5. Security must resolve ADR-0003's candidate status; the OpenMLS 0.8.1 spike remains a production failure until its recorded blockers are closed or a reviewed provider replaces it.
-6. T010-B must supply real-device FFI results; simulator/emulator fault fixtures remain useful but cannot satisfy the device Gate.
+6. T010-B / Issue #41, currently `READY FOR HUMAN`, must supply real-device FFI results; the merged simulator/emulator fault fixtures remain useful but cannot satisfy the device Gate.
 
 T017 owns only this policy and registry description. It must not edit T011/T014 contract artifacts, invent their schema values, or copy them into a parallel location to make convergence appear complete. Until the owners land those migrations, this directory contains policy only and must not become a parallel guessed contract.
