@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+// Package threadline.type.v1 holds primitives shared by every Threadline
+// domain. It must not depend on any other Threadline package.
+package threadline.type.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ActorType distinguishes the participant kinds defined in CONTEXT.md.
+// Actor identity alone never confers cryptographic access: only an authorized
+// Device is a Cryptographic Member of an E2EE Group.
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  ACTOR_TYPE_HUMAN = 1;
+  // An auditable non-human participant. Receives only Capability-scoped
+  // Context and never holds standing Channel or Epoch keys.
+  ACTOR_TYPE_AGENT = 2;
+  // A non-interactive automation identity owned by the organization.
+  ACTOR_TYPE_SERVICE = 3;
+}
+
+// ActorRef identifies a participant inside one tenant.
+//
+// Data class C2. Never carries a display name: names are tenant directory data
+// resolved through the identity service, not copied into every envelope.
+message ActorRef {
+  // Opaque tenant-scoped identifier. Stable for the lifetime of the Actor.
+  string actor_id = 1;
+
+  ActorType actor_type = 2;
+}
+
+// DeviceRef identifies one independently authorized endpoint of an Actor.
+//
+// A Device, not an Actor, is the unit of cryptographic membership. Authorizing
+// an Actor does not authorize every Device they operate.
+message DeviceRef {
+  string device_id = 1;
+
+  // Owning Actor. Redundant with the server-side device directory, but carried
+  // in envelopes so a receiving client can check Device/Actor binding without a
+  // second round trip.
+  string actor_id = 2;
+}
+
+// TimeRange is a half-open interval [start, end).
+//
+// An unset bound means unbounded on that side.
+message TimeRange {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+}
+
+// PageRequest is the standard forward-only pagination input.
+//
+// Threadline does not expose offset pagination: every list is re-authorized on
+// read, so a stable offset cannot be promised across ACL changes.
+message PageRequest {
+  // Server clamps to a per-RPC maximum. 0 means "server default".
+  int32 page_size = 1;
+
+  // Opaque cursor returned by the previous PageResponse. Empty starts at the
+  // beginning of the ordering defined by the RPC.
+  string page_token = 2;
+}
+
+// PageResponse is the standard pagination output.
+message PageResponse {
+  // Empty when the caller has reached the end of the current result set.
+  string next_page_token = 1;
+}
+
+// EncryptedField carries human-authored text that the control plane stores but
+// must never read: Task goals, Channel topics, file names and similar values
+// that are metadata to the system but content to the people who wrote them.
+//
+// Data class C3 in plaintext, C2 as stored here. The server treats this as an
+// opaque byte string; it never indexes, searches, filters or logs it.
+message EncryptedField {
+  // Ciphertext produced under the E2EE Group named by `e2ee_group_id` at
+  // `epoch`. Threadline never stores a plaintext fallback alongside it.
+  bytes ciphertext = 1;
+
+  // E2EE Group whose Epoch key protects this field. Bound into the AAD so a
+  // ciphertext lifted from another group fails to open rather than decoding to
+  // an attacker-chosen value.
+  string e2ee_group_id = 2;
+
+  // Epoch of `e2ee_group_id` in effect when the field was sealed. A client that
+  // no longer retains this Epoch's History Key renders the field as
+  // unavailable; it must not fall back to a different Epoch.
+  uint64 epoch = 3;
+
+  // Crypto Profile name, e.g. "tl-mls-1". A client that does not recognize the
+  // profile enters an explicit incompatible state and never downgrades.
+  string crypto_profile = 4;
+
+  // Envelope format version within `crypto_profile`. Independent of the profile
+  // so a field encoding fix does not force a group reinitialization.
+  uint32 envelope_version = 5;
+}

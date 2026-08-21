@@ -1,0 +1,24 @@
+version: v2
+
+# Swift for apps/ios.
+#
+# iOS consumes the contract directly for wire types and Connect clients; the
+# Rust core is reached separately through the versioned FFI facade, not through
+# these stubs.
+clean: true
+
+managed:
+  enabled: true
+
+plugins:
+  - local: protoc-gen-swift
+    out: ../packages/generated-swift/Sources/ThreadlineProto
+    opt:
+      - Visibility=Public
+      - FileNaming=PathToUnderscores
+
+  - local: protoc-gen-connect-swift
+    out: ../packages/generated-swift/Sources/ThreadlineProto
+    opt:
+      - Visibility=Public
+      - FileNaming=PathToUnderscores
