@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+// Message commands and history, served by threadline-core.
+//
+// This is the durable path. Realtime offers the same send over WSS for latency,
+// but a Durable ACK only ever comes from Core, and clients that lose their
+// connection fall back here rather than assuming a send succeeded.
+package threadline.message.v1;
+
+import "threadline/message/v1/envelope.proto";
+import "threadline/type/v1/common.proto";
+
+// MessageService sequences and serves conversation events.
+service MessageService {
+  // Submits a sealed event.
+  //
+  // The client has already written it to its Durable Local Outbox and rendered
+  // it as pending. Core authorizes, allocates `channel_seq`, and commits the
+  // event with its Outbox row in one transaction. Only then does it return a
+  // Durable ACK, at which point the client moves the event from pending to
+  // committed.
+  //
+  // Retrying with the same `idempotency_key` returns the original commit. A
+  // hundred retries produce one logical event.
+  rpc SendEvent(SendEventRequest) returns (SendEventResponse);
+
+  // Returns a page of history, newest-first or oldest-first.
+  //
+  // Permission is re-checked on every read: a caller who lost access stops
+  // seeing results immediately, without waiting for an index rebuild.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
+
+  // Returns events by identifier, for resolving a Context Manifest's references
+  // without fetching a range around them.
+  rpc BatchGetEvents(BatchGetEventsRequest) returns (BatchGetEventsResponse);
+}
+
+message SendEventRequest {
+  ChannelEventEnvelope envelope = 1;
+}
+
+message SendEventResponse {
+  // Commit position and timestamp assigned by Core. Present only on a durable
+  // commit; there is no partial success.
+  ServerCommit server_commit = 1;
+
+  string event_id = 2;
+
+  // True when this request matched an earlier commit by idempotency key and no
+  // new event was created.
+  bool deduplicated = 3;
+}
+
+// EventOrder selects the direction of a history page.
+enum EventOrder {
+  EVENT_ORDER_UNSPECIFIED = 0;
+  // Ascending `channel_seq`, for catching up forward.
+  EVENT_ORDER_OLDEST_FIRST = 1;
+  // Descending `channel_seq`, for opening a conversation at its newest events.
+  EVENT_ORDER_NEWEST_FIRST = 2;
+}
+
+message ListEventsRequest {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  EventOrder order = 3;
+
+  // Half-open sequence bound. For OLDEST_FIRST, return events with
+  // `channel_seq` > `after_seq`. For NEWEST_FIRST, return events with
+  // `channel_seq` < `before_seq`.
+  uint64 after_seq = 4;
+  uint64 before_seq = 5;
+
+  // Limit to one Thread. Empty returns the whole conversation.
+  string thread_id = 6;
+
+  threadline.type.v1.PageRequest page = 7;
+}
+
+message ListEventsResponse {
+  // Contiguous within the page: the server truncates at a hole rather than
+  // silently skipping it, so a client can trust that applying this page in
+  // order leaves no gap behind.
+  repeated ChannelEventEnvelope events = 1;
+
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message GetEventRequest {
+  string event_id = 1;
+}
+
+message GetEventResponse {
+  ChannelEventEnvelope event = 1;
+}
+
+message BatchGetEventsRequest {
+  repeated string event_ids = 1;
+}
+
+message BatchGetEventsResponse {
+  repeated ChannelEventEnvelope events = 1;
+
+  // Identifiers the caller may not read or that no longer exist, returned
+  // together so a partial result is explicit rather than a silently short list.
+  repeated string unavailable_event_ids = 2;
+}

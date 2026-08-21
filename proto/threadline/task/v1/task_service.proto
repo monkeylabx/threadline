@@ -1,0 +1,333 @@
+syntax = "proto3";
+
+// Task, Run and Approval services, served by threadline-core.
+//
+// Core is the single source of truth for Task and Run state. The Runtime
+// Gateway forwards work and relays events, but every lease acquisition,
+// approval decision and state transition commits here.
+package threadline.task.v1;
+
+import "threadline/capability/v1/capability.proto";
+import "threadline/task/v1/run.proto";
+import "threadline/task/v1/task.proto";
+import "threadline/type/v1/common.proto";
+
+// TaskService manages Tasks and their context.
+service TaskService {
+  // Creates a Task, optionally from selected messages.
+  //
+  // Selected events become references in the Context Manifest, not copied text:
+  // the Runtime resolves them later through the local Context API under a Grant.
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+
+  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+
+  rpc AddParticipants(AddParticipantsRequest) returns (AddParticipantsResponse);
+
+  // Replaces the Context Manifest. Produces a new manifest with a new
+  // identifier rather than editing in place, so what a completed Run was given
+  // stays reconstructable.
+  rpc UpdateContextManifest(UpdateContextManifestRequest) returns (UpdateContextManifestResponse);
+}
+
+message CreateTaskRequest {
+  oneof conversation {
+    string channel_id = 1;
+    string dm_id = 2;
+  }
+
+  threadline.type.v1.EncryptedField title = 3;
+
+  threadline.type.v1.EncryptedField goal = 4;
+
+  TaskPriority priority = 5;
+
+  repeated TaskParticipant participants = 6;
+
+  // Message this Task came from, when created by converting a conversation.
+  string trigger_event_id = 7;
+
+  // Additional events selected as context. Enumerated individually.
+  repeated string event_refs = 8;
+
+  repeated string file_refs = 9;
+
+  repeated string workspace_binding_refs = 10;
+
+  // Desktop Runtime to dispatch to. When it is offline the Run queues; it never
+  // drifts to another device or to the server.
+  string target_runtime_id = 11;
+}
+
+message CreateTaskResponse {
+  Task task = 1;
+}
+
+message GetTaskRequest {
+  string task_id = 1;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
+message ListTasksRequest {
+  // Restrict to one conversation. Empty lists across everything the caller may
+  // see.
+  string channel_id = 1;
+
+  // Restrict to Tasks this Actor participates in.
+  threadline.type.v1.ActorRef participant = 2;
+
+  repeated TaskState states = 3;
+
+  threadline.type.v1.PageRequest page = 4;
+}
+
+message ListTasksResponse {
+  repeated Task tasks = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message UpdateTaskRequest {
+  string task_id = 1;
+
+  threadline.type.v1.EncryptedField title = 2;
+
+  threadline.type.v1.EncryptedField goal = 3;
+
+  TaskPriority priority = 4;
+
+  // Requested state. Rejected with ERROR_CODE_INVALID_STATE_TRANSITION if the
+  // transition is not legal from the current state.
+  TaskState state = 5;
+}
+
+message UpdateTaskResponse {
+  Task task = 1;
+}
+
+message AddParticipantsRequest {
+  string task_id = 1;
+
+  repeated TaskParticipant participants = 2;
+}
+
+message AddParticipantsResponse {
+  Task task = 1;
+}
+
+message UpdateContextManifestRequest {
+  string task_id = 1;
+
+  repeated string event_refs = 2;
+  repeated string thread_refs = 3;
+  repeated string file_refs = 4;
+  repeated string workspace_binding_refs = 5;
+}
+
+message UpdateContextManifestResponse {
+  ContextManifest context_manifest = 1;
+}
+
+// RunService manages execution attempts.
+service RunService {
+  // Creates a Run and queues it for the Task's target Runtime.
+  //
+  // Retrying a Task always creates a new Run. A previous attempt is never
+  // overwritten: what it did is the evidence a reviewer needs.
+  rpc StartRun(StartRunRequest) returns (StartRunResponse);
+
+  rpc GetRun(GetRunRequest) returns (GetRunResponse);
+
+  rpc ListRuns(ListRunsRequest) returns (ListRunsResponse);
+
+  // Streams a Run's activity from a given sequence.
+  //
+  // Observers use this to watch execution without reading raw logs. Resuming
+  // from `after_sequence` deduplicates at-least-once redelivery.
+  rpc StreamRunEvents(StreamRunEventsRequest) returns (stream StreamRunEventsResponse);
+
+  // Requests cancellation. The Run reaches CANCELLED when its Execution Owner
+  // acknowledges; work already committed is not rolled back.
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+
+  // Moves a Run to a different Device.
+  //
+  // A transfer selects a new Device and Workspace, issues a fresh Capability
+  // Grant and a lease with a higher fencing token, and invalidates the old
+  // lease. The previous owner's subsequent writes are then rejected.
+  rpc TransferRun(TransferRunRequest) returns (TransferRunResponse);
+
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+}
+
+message StartRunRequest {
+  string task_id = 1;
+
+  // Runtime to execute on. Empty uses the Task's `target_runtime_id`.
+  string runtime_id = 2;
+
+  // Workspace this Run may write to. The Grant is narrowed to it.
+  string workspace_binding_id = 3;
+
+  // Capabilities the Run is expected to need. Core intersects these with the
+  // initiator's own authority; it never widens them.
+  repeated threadline.capability.v1.Capability requested_capabilities = 4;
+}
+
+message StartRunResponse {
+  Run run = 1;
+}
+
+message GetRunRequest {
+  string run_id = 1;
+}
+
+message GetRunResponse {
+  Run run = 1;
+}
+
+message ListRunsRequest {
+  string task_id = 1;
+
+  threadline.type.v1.PageRequest page = 2;
+}
+
+message ListRunsResponse {
+  repeated Run runs = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message StreamRunEventsRequest {
+  string run_id = 1;
+
+  // Resume position. Returns events with `sequence` strictly greater.
+  uint64 after_sequence = 2;
+}
+
+message StreamRunEventsResponse {
+  repeated RunEvent events = 1;
+}
+
+message CancelRunRequest {
+  string run_id = 1;
+
+  string reason = 2;
+}
+
+message CancelRunResponse {
+  Run run = 1;
+}
+
+message TransferRunRequest {
+  string run_id = 1;
+
+  string target_runtime_id = 2;
+
+  string workspace_binding_id = 3;
+}
+
+message TransferRunResponse {
+  Run run = 1;
+
+  // New owner, holding a lease with a higher fencing token than the previous
+  // one.
+  threadline.capability.v1.ExecutionOwner execution_owner = 2;
+}
+
+message ListArtifactsRequest {
+  string run_id = 1;
+
+  threadline.type.v1.PageRequest page = 2;
+}
+
+message ListArtifactsResponse {
+  repeated Artifact artifacts = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+// ApprovalService serves human decisions on protected actions.
+service ApprovalService {
+  rpc ListApprovals(ListApprovalsRequest) returns (ListApprovalsResponse);
+
+  rpc GetApproval(GetApprovalRequest) returns (GetApprovalResponse);
+
+  // Records a decision.
+  //
+  // An approver may accept or narrow what the Runtime asked for. There is no
+  // way to grant more: the issued Grant is always a subset of
+  // `requested_capabilities` and `requested_scope`.
+  rpc DecideApproval(DecideApprovalRequest) returns (DecideApprovalResponse);
+
+  // Withdraws a previously granted approval. The Run's next protected action
+  // fails immediately, even mid-step.
+  rpc RevokeApproval(RevokeApprovalRequest) returns (RevokeApprovalResponse);
+}
+
+message ListApprovalsRequest {
+  // Approvals this Actor may decide. Empty means the caller.
+  threadline.type.v1.ActorRef approver = 1;
+
+  string task_id = 2;
+
+  repeated ApprovalState states = 3;
+
+  threadline.type.v1.PageRequest page = 4;
+}
+
+message ListApprovalsResponse {
+  repeated Approval approvals = 1;
+  threadline.type.v1.PageResponse page = 2;
+}
+
+message GetApprovalRequest {
+  string approval_id = 1;
+}
+
+message GetApprovalResponse {
+  Approval approval = 1;
+}
+
+message DecideApprovalRequest {
+  string approval_id = 1;
+
+  bool approved = 2;
+
+  ApprovalScope scope = 3;
+
+  // Capabilities actually granted. Empty grants everything requested. Any entry
+  // outside `requested_capabilities` is rejected with
+  // ERROR_CODE_GRANT_OUT_OF_SCOPE.
+  repeated threadline.capability.v1.Capability granted_capabilities = 4;
+
+  // Resource scope actually granted, which may narrow but never widen the
+  // request.
+  threadline.capability.v1.ResourceScope granted_scope = 5;
+
+  threadline.type.v1.EncryptedField decision_note = 6;
+
+  // Expiry for TIME_BOUNDED scope, in seconds from the decision.
+  uint32 valid_for_seconds = 7;
+}
+
+message DecideApprovalResponse {
+  Approval approval = 1;
+
+  // Grant issued on approval. Absent on denial.
+  threadline.capability.v1.CapabilityGrant capability_grant = 2;
+}
+
+message RevokeApprovalRequest {
+  string approval_id = 1;
+
+  string reason = 2;
+}
+
+message RevokeApprovalResponse {
+  Approval approval = 1;
+}

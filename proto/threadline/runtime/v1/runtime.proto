@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+// Desktop Runtime enrollment, health and dispatch.
+//
+// A Runtime only ever dials out: enterprise workstations open no inbound port,
+// and threadline-runtime-gateway cannot reach into a Device. Everything below
+// travels over a client-initiated mTLS stream.
+package threadline.runtime.v1;
+
+import "google/protobuf/timestamp.proto";
+import "threadline/capability/v1/capability.proto";
+import "threadline/task/v1/task.proto";
+
+// RuntimeState is the Desktop Runtime lifecycle.
+//
+//	PENDING_ENROLLMENT -> AUTHORIZED -> REVOKED
+//
+// ONLINE and OFFLINE describe connectivity of an AUTHORIZED Runtime, not
+// authorization. An offline Runtime keeps its authority; its Runs simply wait.
+enum RuntimeState {
+  RUNTIME_STATE_UNSPECIFIED = 0;
+  RUNTIME_STATE_PENDING_ENROLLMENT = 1;
+  RUNTIME_STATE_AUTHORIZED_ONLINE = 2;
+  RUNTIME_STATE_AUTHORIZED_OFFLINE = 3;
+  RUNTIME_STATE_REVOKED = 4;
+}
+
+// RuntimeInstance is one enrolled `agentd` on one authorized Device.
+//
+// A Runtime is bound to a Device and an Actor. It never becomes a shared
+// execution pool: v1 has no Enterprise Runner, so there is no Runtime that is
+// not somebody's workstation.
+message RuntimeInstance {
+  string runtime_id = 1;
+
+  string tenant_id = 2;
+
+  // Device hosting this Runtime. Revoking the Device revokes the Runtime.
+  string device_id = 3;
+
+  // The Human who operates it. Agent work dispatched here executes under this
+  // Actor's delegated authority and never exceeds it.
+  string actor_id = 4;
+
+  RuntimeState state = 5;
+
+  // `agentd` build version, used to gate dispatch of features an older Runtime
+  // cannot honor.
+  string agentd_version = 6;
+
+  // Tool identifiers this Runtime can execute. Declares capacity, not
+  // permission: every invocation still needs a Capability Grant.
+  repeated string available_tool_ids = 7;
+
+  // Whether `connectord` is present and able to mediate local workspace access.
+  // False means this Runtime can take Tasks that need no local files.
+  bool connector_available = 8;
+
+  google.protobuf.Timestamp enrolled_at = 9;
+  google.protobuf.Timestamp last_heartbeat_at = 10;
+  google.protobuf.Timestamp revoked_at = 11;
+}
+
+// RuntimeHeartbeat reports liveness and capacity.
+//
+// It carries no workspace paths. Which local directory a logical Workspace
+// Binding maps to is resolved on the Device by `connectord` and is never
+// reported to the server.
+message RuntimeHeartbeat {
+  string runtime_id = 1;
+
+  // Runs currently executing on this Runtime.
+  uint32 active_run_count = 2;
+
+  // Concurrent Runs this Runtime will accept.
+  uint32 max_concurrent_runs = 3;
+
+  // Logical Workspace Bindings the operator has mapped locally and that are
+  // currently reachable. Identifiers only.
+  repeated string mapped_workspace_binding_ids = 4;
+
+  google.protobuf.Timestamp sent_at = 5;
+}
+
+// TaskDispatch hands one Run to a Runtime.
+//
+// The gateway forwards an envelope Core already authorized. It is not a second
+// source of truth for Tasks: every lease acquisition, approval and state change
+// goes back to Core, and the gateway holds none of it.
+message TaskDispatch {
+  string dispatch_id = 1;
+
+  string run_id = 2;
+
+  string task_id = 3;
+
+  // References the Runtime may resolve. It carries no message or file plaintext:
+  // the Runtime resolves these locally through `locald`'s Context API, which
+  // performs its own permission check before decrypting anything.
+  threadline.task.v1.ContextManifest context_manifest = 4;
+
+  // Authority for this Run, verified locally by `locald` and `connectord`
+  // before any protected action.
+  threadline.capability.v1.CapabilityGrant capability_grant = 5;
+
+  // Workspace lease, including the fencing token every state write must carry.
+  threadline.capability.v1.WorkspaceLease workspace_lease = 6;
+
+  // Model routing constraints for this Run. Model Control issues the route;
+  // the Runtime calls the approved Endpoint directly, and no Prompt passes
+  // through Model Control or any other Threadline workload.
+  ModelRoute model_route = 7;
+
+  google.protobuf.Timestamp dispatched_at = 8;
+
+  // After this instant the Runtime must not start the Run. An expired dispatch
+  // returns to the queue rather than starting late under stale authority.
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+// ModelRoute is the pinned model selection for one Run.
+//
+// A Run fixes its model and version. Fallback is limited to pre-approved
+// candidates so a Run cannot silently drift to a model with a different data
+// policy, and the operator may override the automatic choice.
+message ModelRoute {
+  // Enterprise-approved model Endpoint. This Endpoint sees the Prompt in
+  // plaintext and is therefore an explicit, separately audited data boundary.
+  string endpoint_id = 1;
+
+  string model_id = 2;
+  string model_version = 3;
+
+  // Pre-approved alternatives, in order, usable only if the primary is
+  // unhealthy.
+  repeated string fallback_model_ids = 4;
+
+  // Data policy this route satisfies, e.g. "local_only" or "internal_network".
+  // The Runtime refuses to call an Endpoint that does not satisfy the Task's
+  // policy, even if routing offered it.
+  string data_policy = 5;
+
+  // Short-lived credential grant identifier for the Endpoint call. Data class
+  // C4: never written to a Run Event, Artifact, log or diagnostic bundle.
+  string route_grant_id = 6;
+
+  google.protobuf.Timestamp expires_at = 7;
+}

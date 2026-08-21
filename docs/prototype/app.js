@@ -7,7 +7,7 @@ const routeMeta = {
   search: ["全局搜索", "消息、文件、任务与成员", ""],
   files: ["文件与产物", "1,284 个可访问文件", ""],
   "task-result": ["任务交付", "DES-088 · 等待人工确认", ""],
-  runtime: ["Runtime 设备", "2 台本地设备 · 2 个企业 Runner", ""],
+  runtime: ["Runtime 设备", "2 台获权 Desktop Runtime", ""],
   sync: ["同步与恢复", "本地数据库和设备游标", ""],
   organization: ["工作空间", "北辰科技 · 产品与工程", ""],
   admin: ["管理后台", "北辰科技 · 组织治理", ""],
@@ -125,7 +125,7 @@ document.querySelector("#accept-result").addEventListener("click", (event) => {
 document.querySelector("#simulate-offline").addEventListener("click", (event) => {
   event.currentTarget.textContent = "重新连接";
   document.querySelector(".runtime-detail-head .eyebrow").textContent = "本地 Runtime · 连接中断";
-  document.querySelector(".runtime-detail-head p").textContent = "最后心跳：刚刚 · 正在切换到企业 Runner";
+  document.querySelector(".runtime-detail-head p").textContent = "最后心跳：刚刚 · 当前 Run 等待本设备恢复，不会自动转移";
   document.querySelector(".runtime-detail-head").classList.add("is-offline");
 });
 
