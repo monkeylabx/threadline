@@ -89,7 +89,7 @@ message ServerCommit {
   // Tamper-evidence chain over committed events:
   //
   //	chain_hash = H(channel_id | channel_seq | previous_chain_hash |
-  //	               content_hash | category | retention_policy_version)
+  //	               content_hash | category)
   //
   // The server periodically signs a checkpoint over the head, letting clients
   // detect a substituted history. This is an append-only log with a hash chain,
@@ -97,11 +97,6 @@ message ServerCommit {
   bytes chain_hash = 3;
 
   bytes previous_chain_hash = 4;
-
-  // Version of the Channel or DM Retention Policy Core applied at commit. Core
-  // derives it from the conversation and `committed_at`; a sender cannot supply
-  // either this value or its own expiry timestamp.
-  string retention_policy_version = 5;
 }
 
 // ChannelEventEnvelope is one ordered, encrypted event in a Channel or DM.
@@ -216,8 +211,7 @@ message ChannelEventEnvelope {
   AgentAttribution agent_attribution = 23;
 
   // Sender Device's signature over the canonical encoding described above.
-  // Core verifies it with the enrolled Device Credential before sequencing,
-  // without opening `application_ciphertext`; receiving clients verify it
-  // independently and never treat the server as the signature authority.
+  // Verified by receiving clients; the server checks Device authorization but
+  // is not the authority on this signature.
   bytes sender_signature = 24;
 }

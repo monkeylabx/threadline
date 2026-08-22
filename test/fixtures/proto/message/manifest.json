@@ -23,7 +23,7 @@
   "nMinusOne": "Unknown-field byte preservation delegates to the T014 five-language bidirectional N-1 Golden Frame evidence.",
   "source": {
     "file": "scenarios.json",
-    "sha256": "9df804cfd447c76efc23ee03fc8ea6e31b5fe4ba7d264006da6fc84a31fb3e87"
+    "sha256": "763ee5121485349991aa3d2c041147ee27fbc4a816a0b26dd946174c71985dd4"
   },
   "contracts": [
     "threadline/identity/v1/identity.proto",
@@ -44,11 +44,15 @@
     "cross-tenant-envelope-rejected",
     "cross-group-envelope-rejected",
     "stale-epoch-envelope-rejected",
-    "invalid-device-signature-rejected-without-opening-body",
+    "rekey-required-keeps-application-event-pending",
+    "malformed-signature-metadata-rejected-without-opening-body",
     "resume-applies-only-contiguous-events",
     "resume-stops-before-gap",
     "gap-repair-is-contiguous-and-bounded",
     "invalid-ahead-cursor-resumes-from-server-position",
+    "past-retention-cursor-resumes-from-server-position",
+    "matching-signed-checkpoint-allows-cursor-advance",
+    "checkpoint-chain-mismatch-fails-closed",
     "unknown-envelope-extension-is-preserved"
   ],
   "goldenReference": {
@@ -61,8 +65,10 @@
     "idempotentRetryReturnsOriginalCommit": true,
     "cursorNeverAdvancesAcrossGap": true,
     "gapRepairIsBounded": true,
+    "checkpointMismatchFailsClosed": true,
     "tenantAndGroupMismatchFailClosed": true,
-    "signatureValidationDoesNotOpenPlaintext": true,
+    "rekeyRequiredFailsClosed": true,
+    "signatureMetadataValidationDoesNotOpenPlaintext": true,
     "unknownExtensionsRemainByteExact": true,
     "physicalDevices": "NOT RUN"
   }

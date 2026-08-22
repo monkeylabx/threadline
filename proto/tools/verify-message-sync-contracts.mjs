@@ -44,11 +44,12 @@ function evaluateSend(testCase) {
     return reject("ERROR_CODE_TENANT_MISMATCH");
   }
   if (envelope.e2eeGroupId !== conversation.e2eeGroupId) return reject("ERROR_CODE_GROUP_MISMATCH");
+  if (conversation.rekeyRequired && envelope.category === "EVENT_CATEGORY_APPLICATION") return reject("ERROR_CODE_REKEY_REQUIRED");
   if (envelope.epoch !== conversation.currentEpoch) return reject("ERROR_CODE_EPOCH_STALE");
   if (envelope.senderDeviceId !== session.deviceId || envelope.senderActorId !== session.actorId) {
     return reject("ERROR_CODE_PERMISSION_DENIED");
   }
-  if (!envelope.signatureValid || !envelope.contentHashValid || !envelope.categoryBodyConsistent) {
+  if (!envelope.signatureMetadataValid || !envelope.contentHashValid || !envelope.categoryBodyConsistent) {
     return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
   }
   if (priorCommit) {
@@ -59,7 +60,6 @@ function evaluateSend(testCase) {
       eventId: priorCommit.eventId,
       idempotencyKey: priorCommit.idempotencyKey,
       channelSeq: priorCommit.channelSeq,
-      retentionPolicyVersion: priorCommit.retentionPolicyVersion,
       deduplicated: true,
     };
   }
@@ -71,7 +71,6 @@ function evaluateSend(testCase) {
     eventId: envelope.eventId,
     idempotencyKey: envelope.idempotencyKey,
     channelSeq: transaction.channelSeq,
-    retentionPolicyVersion: transaction.retentionPolicyVersion,
     deduplicated: false,
   };
 }
@@ -114,11 +113,27 @@ function evaluateGapRepair(testCase) {
 
 function evaluateCursorRejection(testCase) {
   assert(testCase.cursor.channelId === testCase.serverCursor.channelId, `${testCase.id}: server cursor must name the same conversation`);
-  assert(testCase.cursor.lastAppliedSeq > testCase.serverHeadSeq, `${testCase.id}: fixture must exercise an ahead cursor`);
+  if (testCase.invalidReason === "ahead") {
+    assert(testCase.cursor.lastAppliedSeq > testCase.serverHeadSeq, `${testCase.id}: fixture must exercise an ahead cursor`);
+  } else if (testCase.invalidReason === "past-retention") {
+    assert(testCase.cursor.lastAppliedSeq < testCase.retentionFloorSeq, `${testCase.id}: fixture must exercise a past-retention cursor`);
+  } else {
+    throw new Error(`${testCase.id}: unsupported cursor rejection reason`);
+  }
   return {
     errorCode: "ERROR_CODE_CURSOR_INVALID",
     resumeFromSeq: testCase.serverCursor.lastAppliedSeq,
   };
+}
+
+function evaluateCheckpoint(testCase) {
+  const matches = testCase.checkpoint.signatureValid
+    && testCase.checkpoint.channelId === testCase.applied.channelId
+    && testCase.checkpoint.channelSeq === testCase.applied.channelSeq
+    && testCase.checkpoint.chainHash === testCase.applied.chainHash;
+  return matches
+    ? { status: "verified", cursorAdvances: true }
+    : { status: "rejected", errorCode: "ERROR_CODE_CIPHERTEXT_CORRUPT", cursorAdvances: false };
 }
 
 function decodeVarint(bytes, start) {
@@ -187,6 +202,7 @@ function evaluate(testCase) {
   if (testCase.kind === "resume") return evaluateResume(testCase);
   if (testCase.kind === "gap-repair") return evaluateGapRepair(testCase);
   if (testCase.kind === "cursor-rejection") return evaluateCursorRejection(testCase);
+  if (testCase.kind === "checkpoint") return evaluateCheckpoint(testCase);
   if (testCase.kind === "unknown-extension") return evaluateUnknownExtension(testCase);
   throw new Error(`${testCase.id}: unknown case kind ${testCase.kind}`);
 }
@@ -228,16 +244,18 @@ const errors = read("proto/threadline/type/v1/error.proto");
 assert(identityService.includes("authenticated,\n// Device-bound session"), "IdentityService must bind tenant and Actor to the Device session");
 assert(channelService.includes("ERROR_CODE_TENANT_MISMATCH"), "ChannelService must state its tenant mismatch boundary");
 assert(/message\s+ServerCommit\s*\{/u.test(envelope), "ServerCommit contract is missing");
-assert(/string\s+retention_policy_version\s*=\s*5;/u.test(envelope), "committed retention policy metadata is missing");
 assert(/bytes\s+application_ciphertext\s*=\s*16;/u.test(envelope), "opaque application ciphertext field is missing");
 assert(/bytes\s+sender_signature\s*=\s*24;/u.test(envelope), "sender signature field is missing");
 assert(/string\s+idempotency_key\s*=\s*4;/u.test(messageService), "Durable ACK response must echo the idempotency key");
 assert(/message\s+CursorRejection\s*\{/u.test(sync), "detailed cursor rejection contract is missing");
+assert(/message\s+SyncEventsResponse\s*\{[^}]*repeated\s+CursorRejection\s+cursor_rejections\s*=\s*2;/su.test(syncService), "unary sync cursor rejections are missing");
+assert(/message\s+StreamEventsResponse\s*\{[^}]*repeated\s+CursorRejection\s+cursor_rejections\s*=\s*2;/su.test(syncService), "streaming sync cursor rejections are missing");
 assert(/uint32\s+max_events_per_gap\s*=\s*2;/u.test(syncService), "bounded gap repair field is missing");
 assert(/repeated\s+CursorRejection\s+cursor_rejections\s*=\s*2;/u.test(syncService), "cursor rejection results are missing");
 for (const code of [
   "ERROR_CODE_TENANT_MISMATCH",
   "ERROR_CODE_GROUP_MISMATCH",
+  "ERROR_CODE_REKEY_REQUIRED",
   "ERROR_CODE_EPOCH_STALE",
   "ERROR_CODE_CIPHERTEXT_CORRUPT",
   "ERROR_CODE_IDEMPOTENCY_CONFLICT",

@@ -17,7 +17,7 @@
         "tenantId": "tenant-a",
         "e2eeGroupId": "group-a",
         "currentEpoch": 7,
-        "retentionPolicyVersion": "retention-a-v3"
+        "rekeyRequired": false
       },
       "envelope": {
         "eventId": "event-a-0001",
@@ -34,7 +34,7 @@
         "applicationCiphertext": "EjRWeJCrze8=",
         "contentHash": "ERERERERERE=",
         "senderSignature": "IiIiIiIiIiI=",
-        "signatureValid": true,
+        "signatureMetadataValid": true,
         "contentHashValid": true,
         "categoryBodyConsistent": true
       },
@@ -43,15 +43,13 @@
         "outboxPersisted": true,
         "synchronousCommit": true,
         "channelSeq": 41,
-        "chainHash": "MzMzMzMzMzM=",
-        "retentionPolicyVersion": "retention-a-v3"
+        "chainHash": "MzMzMzMzMzM="
       },
       "expected": {
         "status": "durable",
         "eventId": "event-a-0001",
         "idempotencyKey": "idem-a-0001",
         "channelSeq": 41,
-        "retentionPolicyVersion": "retention-a-v3",
         "deduplicated": false
       }
     },
@@ -80,15 +78,13 @@
         "eventId": "event-a-0001",
         "idempotencyKey": "idem-a-0001",
         "contentHash": "ERERERERERE=",
-        "channelSeq": 41,
-        "retentionPolicyVersion": "retention-a-v3"
+        "channelSeq": 41
       },
       "expected": {
         "status": "durable",
         "eventId": "event-a-0001",
         "idempotencyKey": "idem-a-0001",
         "channelSeq": 41,
-        "retentionPolicyVersion": "retention-a-v3",
         "deduplicated": true
       }
     },
@@ -161,11 +157,24 @@
       }
     },
     {
-      "id": "invalid-device-signature-rejected-without-opening-body",
+      "id": "rekey-required-keeps-application-event-pending",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "conversation": {
+        "rekeyRequired": true
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_REKEY_REQUIRED",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "malformed-signature-metadata-rejected-without-opening-body",
       "kind": "send",
       "extends": "durable-ack-after-atomic-commit",
       "envelope": {
-        "signatureValid": false
+        "signatureMetadataValid": false
       },
       "expected": {
         "status": "rejected",
@@ -233,9 +242,67 @@
         "lastAppliedSeq": 44
       },
       "serverHeadSeq": 47,
+      "invalidReason": "ahead",
       "expected": {
         "errorCode": "ERROR_CODE_CURSOR_INVALID",
         "resumeFromSeq": 44
+      }
+    },
+    {
+      "id": "past-retention-cursor-resumes-from-server-position",
+      "kind": "cursor-rejection",
+      "cursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 10
+      },
+      "serverCursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 44
+      },
+      "retentionFloorSeq": 20,
+      "invalidReason": "past-retention",
+      "expected": {
+        "errorCode": "ERROR_CODE_CURSOR_INVALID",
+        "resumeFromSeq": 44
+      }
+    },
+    {
+      "id": "matching-signed-checkpoint-allows-cursor-advance",
+      "kind": "checkpoint",
+      "applied": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo="
+      },
+      "checkpoint": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo=",
+        "signatureValid": true
+      },
+      "expected": {
+        "status": "verified",
+        "cursorAdvances": true
+      }
+    },
+    {
+      "id": "checkpoint-chain-mismatch-fails-closed",
+      "kind": "checkpoint",
+      "applied": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo="
+      },
+      "checkpoint": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "u7u7u7u7u7s=",
+        "signatureValid": true
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_CIPHERTEXT_CORRUPT",
+        "cursorAdvances": false
       }
     },
     {

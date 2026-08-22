@@ -15,7 +15,9 @@ service SyncService {
   // Returns the next contiguous batch of events after the caller's cursors.
   //
   // Each batch begins where the caller's cursor ended and stops at the first
-  // hole, so applying it in order can never leave a gap behind.
+  // hole, so applying it in order can never leave a gap behind. Invalid or
+  // stale cursors are returned individually; they do not hide valid progress
+  // for the other conversations in the same request.
   rpc SyncEvents(SyncEventsRequest) returns (SyncEventsResponse);
 
   // Streams events as they commit, starting from the caller's cursors.
@@ -62,6 +64,11 @@ message SyncEventsRequest {
 message SyncEventsResponse {
   // One batch per conversation that had events to deliver.
   repeated EventBatch batches = 1;
+
+  // Per-conversation cursor failures. If an N-1 server omits this additive
+  // field and instead fails the whole RPC, the client stops all affected
+  // cursors and restarts them from GetCursors or a verified checkpoint.
+  repeated CursorRejection cursor_rejections = 2;
 }
 
 message StreamEventsRequest {
@@ -70,6 +77,10 @@ message StreamEventsRequest {
 
 message StreamEventsResponse {
   EventBatch batch = 1;
+
+  // May be emitted for any invalid starting cursor while other conversations
+  // continue streaming. Absence has the same N-1 fallback as SyncEvents.
+  repeated CursorRejection cursor_rejections = 2;
 }
 
 message RepairGapRequest {
@@ -113,7 +124,9 @@ message UpdateCursorsResponse {
   repeated SyncCursor rejected_cursors = 1;
 
   // Cursors rejected as invalid, stale, non-contiguous, past retention or
-  // cross-tenant, together with the safe server position to resume from.
+  // cross-tenant, together with the safe server position to resume from. When
+  // an N-1 server omits details, clients pair `rejected_cursors` with a generic
+  // ERROR_CODE_CURSOR_INVALID and never infer a safe forward jump.
   repeated CursorRejection cursor_rejections = 2;
 }
 
