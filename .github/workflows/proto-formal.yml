@@ -259,7 +259,7 @@ jobs:
         run: |
           mkdir -p "${RUNNER_TEMP}/prepared"
           gh run download "${PREPARED_RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name proto-formal-bundle --dir "${RUNNER_TEMP}/prepared"
-          shasum -a 256 -c "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz.sha256"
+          (cd "${RUNNER_TEMP}/prepared" && shasum -a 256 -c proto-formal-bundle.tgz.sha256)
           tar -xzf "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz" -C "${RUNNER_TEMP}"
       - name: Verify artifact identity and formal generation
         env:
