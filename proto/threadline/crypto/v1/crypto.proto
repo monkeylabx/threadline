@@ -38,11 +38,17 @@ enum CipherSuite {
 // suite and Threadline envelope versions used by one E2EE Group.
 //
 // A library release is not a Crypto Profile: replacing OpenMLS must not change
-// `tl-mls-1` on the wire. A client that does not recognize `name` enters an
-// explicit incompatible state and never downgrades.
+// `tl-mls-1` on the wire. `tl-mls-1` is exactly the full tuple: name
+// "tl-mls-1", MLS protocol "1.0", cipher suite
+// MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, and message, History and
+// recovery envelope versions all equal to 1. The name is not an alias for any
+// other tuple. Unknown enum values, zero versions and any same-name mismatch
+// fail closed with ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED; clients never
+// negotiate individual tuple members or downgrade.
 message CryptoProfile {
-  // Profile identifier, e.g. "tl-mls-1". This is the value clients compare;
-  // the version fields below are descriptive, not negotiable.
+  // Profile identifier, e.g. "tl-mls-1". Clients compare the complete tuple;
+  // this name is neither authoritative by itself nor an alias. Every version
+  // and cipher field below is normative and non-negotiable.
   string name = 1;
 
   // MLS protocol version, e.g. "1.0" (RFC 9420).
@@ -93,8 +99,8 @@ message DeviceCredential {
   // changed without invalidating the signature.
   //
   // This is the approval chain clients verify to detect a control plane that
-  // silently inserts a ghost device. The exact canonicalization is frozen by
-  // the Golden Vectors in test/crypto/ and validated by P00-08.
+  // silently inserts a ghost device. Its signing-input digest uses the
+  // `credential` v1 canonical transcript frozen in the T019 vectors.
   bytes approval_signature = 9;
 
   // Identifier of the signer above: a Device Authority key ID, or the
@@ -167,7 +173,8 @@ message KeyPackage {
   // whether the resulting inclusive interval is currently usable.
   google.protobuf.Timestamp issued_at = 14;
 
-  // Digest over the immutable publication projection: fields 1-6, 8-10 and 14
+  // Digest over the `publication` v1 canonical transcript of the immutable
+  // projection: fields 1-6, 8-10 and 14
   // in field-number order. This includes the opaque MLS bytes, Profile, Tenant,
   // credential version and exact issuance/lifetime timestamps. Mutable
   // availability/consumption fields 7 and 11-13 are intentionally excluded.
@@ -299,7 +306,7 @@ message MembershipChangeAuthorization {
   // Policy snapshot that authorized the exact mutation and committer.
   string policy_version = 13;
 
-  // Stable digest over the canonical authorization projection: fields 1-13
+  // Stable digest over the `membership` v1 canonical transcript: fields 1-13
   // followed by fields 15-18, in field-number order. Field 14 is the digest
   // itself and is excluded. This binds policy_version, successor_crypto_profile,
   // update_device_ids, successor_recovery_key_version and
@@ -372,8 +379,9 @@ message MlsWireMessage {
   // Authorization consumed by a COMMIT. Empty for PROPOSAL and WELCOME.
   string authorization_id = 5;
 
-  // Devices this message is addressed to. Set for WELCOME, which is delivered
-  // to joining Devices only. Empty means "all current members".
+  // Devices this message is addressed to. Required and non-empty for WELCOME,
+  // which is delivered to joining Devices only. Empty means "all current
+  // members" only for non-WELCOME message types.
   repeated string target_device_ids = 6;
 
   // Required outer routing and ordering bindings. Servers validate these

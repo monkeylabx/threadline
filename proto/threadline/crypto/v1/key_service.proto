@@ -1,9 +1,13 @@
 syntax = "proto3";
 
-// Key directory, membership change and enterprise recovery services.
+// Key directory, membership change, History Sharing and enterprise recovery
+// services.
 //
-// KeyDirectoryService and MembershipService are served by threadline-core.
-// RecoveryService is served by threadline-recovery-control, which runs in a
+// KeyDirectoryService, MembershipService, HistoryService and the internal
+// RecoveryEvidenceService are served by threadline-core. Core only policy-checks
+// and routes opaque History grants; it cannot unwrap or derive History Keys.
+// RecoveryService is the only recovery-control service and is served by
+// service and is served by threadline-recovery-control, which runs in a
 // separate namespace with its own identity, network policy, database role and
 // audit sink; Core, Realtime, Worker, Runtime Gateway, Model Control and model
 // Endpoints cannot call it.
@@ -218,6 +222,11 @@ message ListHistorySharingResponse {
 // recovery must not become an interface for search, DLP, summarization or model
 // input.
 service RecoveryService {
+  // Server-first rollout gate. Current administrative clients must observe an
+  // explicit-target capability before Create/Decide/Execute. UNIMPLEMENTED from
+  // an N-1 server fails closed; clients never infer support from old scopes.
+  rpc GetRecoveryCapabilities(GetRecoveryCapabilitiesRequest) returns (GetRecoveryCapabilitiesResponse);
+
   rpc CreateRecoveryCase(CreateRecoveryCaseRequest) returns (CreateRecoveryCaseResponse);
 
   // Records one approver's decision. The requester cannot approve their own
@@ -234,9 +243,20 @@ service RecoveryService {
   rpc ListRecoveryCases(ListRecoveryCasesRequest) returns (ListRecoveryCasesResponse);
 }
 
+message GetRecoveryCapabilitiesRequest {}
+
+message GetRecoveryCapabilitiesResponse {
+  // Current v1 requires true and contract_version >= 1. Absence, false, zero,
+  // unknown versions or UNIMPLEMENTED make recovery read/audit-only.
+  bool explicit_protected_targets = 1;
+  uint32 contract_version = 2;
+}
+
 message CreateRecoveryCaseRequest {
   threadline.type.v1.EncryptedField reason = 1;
 
+  // Poisoned N-1 projection: current targetful writers leave fields 2-5 at
+  // empty/default values. An old server sees no Group and rejects the request.
   repeated string e2ee_group_ids = 2;
 
   uint64 first_epoch = 3;
@@ -248,9 +268,10 @@ message CreateRecoveryCaseRequest {
 
   // Canonical current-client scope. Empty is invalid. v1 entries must be unique,
   // sorted by Group ID and share exactly the same Epoch and TimeRange bounds.
-  // Current writers exactly double-write them to fields 2-5. An N-1 request is
-  // normalized into one RecoveryScope per sorted Group using those shared
-  // legacy bounds; heterogeneous bounds are never inferred or unioned.
+  // Current writers never double-write targetful authority to fields 2-5. An
+  // N-1 request may decode old shared bounds for audit only; without explicit
+  // protected_targets it cannot be created, approved or executed by current
+  // v1. Heterogeneous bounds are never inferred or unioned.
   repeated RecoveryScope scopes = 7;
 
   string request_id = 8;
@@ -292,6 +313,41 @@ message ExecuteRecoveryCaseRequest {
   string execution_id = 2;
 }
 
+// Internal Core evidence seam. Only the threadline-recovery-control workload
+// identity may call this service; clients, administrators and RecoveryService
+// callers cannot submit or substitute attestations. Core derives and signs the
+// response after discovering only exact object matches or contained History
+// ranges within a signed RecoveryEvidenceGrant in the single durable event
+// store. Recovery Control fetches these items during
+// Execute and passes the still-opaque wrapped material to the KMS/HSM. It
+// requires exactly one matching attestation per returned envelope and neither
+// service shares a database or accepts a client-supplied envelope.
+service RecoveryEvidenceService {
+  rpc GetRecoveryEvidence(GetRecoveryEvidenceRequest) returns (GetRecoveryEvidenceResponse);
+}
+
+message GetRecoveryEvidenceRequest {
+  // Signed by isolated Recovery Control after approval. Core verifies the mTLS
+  // caller, signature and expiry before discovering records; the caller need
+  // not and must not pre-supply envelope hashes.
+  RecoveryEvidenceGrant grant = 1;
+}
+
+message GetRecoveryEvidenceResponse {
+  repeated RecoveryEvidenceItem items = 1;
+}
+
+message RecoveryEvidenceItem {
+  // Exact persisted sender envelope, including the wrapped material that stays
+  // opaque to Core and Recovery Control and is passed only to the KMS/HSM.
+  RecoveryEnvelope envelope = 1;
+
+  // Core-produced proof for this exact envelope. The transcript hash in the
+  // attestation must match `envelope` one-for-one; missing or duplicate items
+  // fail closed.
+  RecoveryScopeCommitAttestation attestation = 2;
+}
+
 message ExecuteRecoveryCaseResponse {
   RecoveryCase recovery_case = 1;
 
@@ -301,7 +357,8 @@ message ExecuteRecoveryCaseResponse {
   // established field-2 result.
   //
   // A current client performing scoped Execute rejects an N-1 result whenever
-  // scope fields 11-12 or delivery metadata fields 13-17 are absent with
+  // scope fields 11-12, delivery metadata fields 13-17 or protected scope 18
+  // are absent with
   // ERROR_CODE_RECOVERY_UNAVAILABLE. It may decode, preserve and audit those
   // bytes, but must never infer object identity or time scope from legacy
   // Tenant/Group/Epoch fields. In the opposite direction, an N-1 client can

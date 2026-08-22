@@ -60,8 +60,9 @@ message HistorySharingGrant {
   // `retention_expires_at`. It never grants access to a successor Epoch.
   google.protobuf.Timestamp expires_at = 14;
 
-  // Signature by `source_device_id` over fields 1-14. The service routes this
-  // opaque grant; the target Device verifies it before unwrapping.
+  // Signature by `source_device_id` over the `history` v1 canonical transcript
+  // of fields 1-14. The service routes this opaque grant; the target Device
+  // verifies it before unwrapping.
   bytes source_signature = 15;
 }
 
@@ -91,6 +92,13 @@ message RecoveryScope {
   uint64 first_epoch = 2;
   uint64 last_epoch = 3;
   threadline.type.v1.TimeRange time_range = 4;
+
+  // Exact object identities or bounded History ranges authorized inside this
+  // Group/Epoch/time slice. Current v1 requires a non-empty list. Entries are
+  // unique and sorted: objects by kind wire number then resource_id; History
+  // by Group ID, first_epoch, then last_epoch. An object must match exactly;
+  // an envelope History range must be contained by an approved target.
+  repeated RecoveryProtectedScope protected_targets = 5;
 }
 
 // RecoveryCaseState is the Recovery Case lifecycle.
@@ -140,16 +148,18 @@ message RecoveryApproval {
   // with another decision fails with ERROR_CODE_REPLAY_DETECTED.
   string decision_id = 7;
 
-  // Digest of the authoritative canonical Recovery Case approval projection:
+  // Digest of the authoritative `recovery-case` v1 canonical transcript:
   // recovery_case_id, request_id, Tenant, requester ActorRef identity (actor_id
   // and actor_type), encrypted-reason digest, canonical `scopes`, one recipient
-  // Device, required approval count, expiry and policy. Legacy parallel scope
-  // fields 5-8 are an N-1 projection and are not inputs to this current hash.
+  // Device, required approval count, expiry and policy. Poisoned legacy fields
+  // 5-8 are included explicitly as empty/default values; filling them later
+  // invalidates the hash instead of creating an executable N-1 projection.
   // The Case is immutable after the first decision; a changed projection
   // invalidates every approval and cannot be replayed to another request/Case.
   bytes case_binding_hash = 8;
 
-  // Device signature over `case_binding_hash` followed by the canonical
+  // Device signature over the `recovery-decision` v1 canonical transcript of
+  // `case_binding_hash` followed by the canonical
   // DecideRecoveryCaseRequest fields 1-4 and 7: recovery_case_id, approved,
   // the complete encrypted note (ciphertext, e2ee_group_id, epoch,
   // crypto_profile and envelope_version), decision_id and approver_device_id.
@@ -179,12 +189,13 @@ message RecoveryCase {
   // reason routinely names people and incidents.
   threadline.type.v1.EncryptedField reason = 4;
 
-  // E2EE Groups in scope. A case that names no group is invalid; there is no
-  // tenant-wide recovery.
+  // Poisoned N-1 projection. Current targetful v1 writers MUST leave this empty.
+  // An N-1 reader/server therefore fails closed instead of interpreting a broad
+  // Group window. Non-empty on a current Case is invalid.
   repeated string e2ee_group_ids = 5;
 
-  // Epoch range per group, inclusive, and the time window it must intersect.
-  // Both bounds are enforced: an Epoch outside `time_range` is not unwrapped.
+  // Poisoned N-1 projection. Current targetful v1 writers set both Epochs to
+  // zero and omit time_range. These fields never authorize current recovery.
   uint64 first_epoch = 6;
   uint64 last_epoch = 7;
   threadline.type.v1.TimeRange time_range = 8;
@@ -212,10 +223,11 @@ message RecoveryCase {
   // Canonical v1 scope. Entries are unique by e2ee_group_id and serialized in
   // ascending bytewise e2ee_group_id order. Every entry binds its Group and the
   // same shared inclusive Epoch bounds and half-open TimeRange; heterogeneous
-  // bounds fail closed rather than being widened. Current writers exactly
-  // double-write sorted Group IDs and the shared bounds to legacy fields 5-8.
-  // Those legacy fields remain an N-1 projection and are not authoritative
-  // inputs to the current approval hash.
+  // bounds fail closed rather than being widened. Current writers do not
+  // double-write this targetful authority into legacy fields 5-8: they poison
+  // that projection with empty/default values so an N-1 binary fails closed.
+  // The canonical approval transcript binds those legacy empty/default values,
+  // preventing later code from filling in a broad executable window.
   repeated RecoveryScope scopes = 16;
 
   // Policy snapshot and stable replay identity for the high-impact request.
@@ -233,6 +245,95 @@ message RecoveryCase {
 // It is stored alongside the ciphertext it covers. It does not contain, and
 // cannot be used to derive, a reusable group master key. Only the isolated
 // KMS/HSM identity can unwrap it, and only inside an approved Recovery Case.
+// RecoveryProtectedHistoryRange identifies a bounded History slice. Both Epoch
+// bounds are inclusive and first_epoch must not exceed last_epoch.
+message RecoveryProtectedHistoryRange {
+  string e2ee_group_id = 1;
+  uint64 first_epoch = 2;
+  uint64 last_epoch = 3;
+}
+
+enum RecoveryObjectKind {
+  RECOVERY_OBJECT_KIND_UNSPECIFIED = 0;
+  RECOVERY_OBJECT_KIND_EVENT = 1;
+  RECOVERY_OBJECT_KIND_BLOB = 2;
+  RECOVERY_OBJECT_KIND_ARTIFACT = 3;
+}
+
+// Exact durable object protected by the envelope. Kind is part of the scope
+// binding so IDs from different resource namespaces cannot be substituted.
+message RecoveryObjectRef {
+  RecoveryObjectKind kind = 1;
+  string resource_id = 2;
+}
+
+// RecoveryProtectedScope is the authoritative wire description of what one
+// sender-authored RecoveryEnvelope protects. Exactly one target is present. It
+// contains no post-commit server fact or timestamp.
+message RecoveryProtectedScope {
+  oneof target {
+    RecoveryObjectRef object = 1;
+    RecoveryProtectedHistoryRange history_epoch_range = 2;
+  }
+}
+
+// Core-generated proof that the durable record carrying an envelope committed
+// at a particular point in the Channel chain. Core creates it only after the
+// durable commit. Recovery Control verifies the checkpoint signature and chain,
+// binds tenant/Group/Epoch/scope_hash to the unchanged sender envelope, and uses
+// server_committed_at as the sole Recovery Case TimeRange input.
+message RecoveryScopeCommitAttestation {
+  string tenant_id = 1;
+  string e2ee_group_id = 2;
+  uint64 epoch = 3;
+  bytes scope_hash = 4;
+  string event_id = 5;
+  uint64 channel_seq = 6;
+  google.protobuf.Timestamp server_committed_at = 7;
+  bytes chain_hash = 8;
+  string checkpoint_key_id = 9;
+
+  // Signature over the `recovery-commit-attestation` v1 canonical transcript
+  // of fields 1-9, 11 and 12. Algorithm/provider admission is outside this
+  // transcript contract.
+  bytes checkpoint_signature = 10;
+
+  // Digest of the `recovery-envelope` v1 canonical transcript of the exact
+  // persisted sender envelope: fields 1-12 and 18, with delivery-only fields
+  // 13-17 represented as absent/null. Recovery Control matches this digest to
+  // the approved envelope requested from Core.
+  bytes recovery_envelope_hash = 11;
+
+  // SHA-256 of the `channel-event-sender-binding` v1 JCS canonical transcript
+  // of T015 ChannelEventEnvelope sender-authored fields 1-6, 8-12, 14-15, 18,
+  // and 20-23. Field 20 contributes the domain-separated exact
+  // `recovery-envelope` hash. Core verifies sender_signature over this same
+  // projection before computing the digest. ServerCommit and sender_signature
+  // are excluded. This binds event_id to the authenticated sender event rather
+  // than accepting an administrator- or client-supplied event assertion.
+  bytes sender_event_binding_hash = 12;
+}
+
+// Minimal signed capability Recovery Control issues only after a Case is
+// APPROVED. It contains no reason, approval note or plaintext. Core verifies
+// the caller mTLS workload identity, signature, Grant expiry and Case expiry,
+// then discovers exact persisted records from its single durable event store
+// within these scopes. Grant expiry must not outlive Case expiry.
+message RecoveryEvidenceGrant {
+  string recovery_case_id = 1;
+  string tenant_id = 2;
+  repeated RecoveryScope approved_scopes = 3;
+  string recipient_device_id = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  string policy_version = 6;
+  string execution_id = 7;
+  bytes case_binding_hash = 8;
+
+  // Recovery Control signature over the `recovery-evidence-grant` v1
+  // canonical transcript of fields 1-8.
+  bytes recovery_control_signature = 9;
+}
+
 message RecoveryEnvelope {
   // Golden Frame unknown-field canary. This number must remain unknown to
   // generated adapters so compatibility tests can prove decode/re-encode
@@ -264,13 +365,14 @@ message RecoveryEnvelope {
   // in test/crypto/e2ee-interop-v1.vector.
   bytes binding_hash = 10;
 
-  // Digest of the exact protected object or bounded History-Key range.
+  // SHA-256 digest of the `recovery-protected-scope` v1 canonical transcript of
+  // field 18.
   bytes scope_hash = 11;
 
-  // Current scope-aware binding over the complete legacy binding projection
-  // above plus `scope_hash`. Current scoped execution requires both fields 11
-  // and 12; an N-1 envelope without them remains readable/preservable but is
-  // not executable as a current scoped recovery request.
+  // SHA-256 digest of the `recovery-scope-binding` v1 canonical transcript containing
+  // the complete legacy binding projection above plus `scope_hash`. Current
+  // scoped execution requires fields 11, 12 and 18; an N-1 envelope without
+  // them remains readable/preservable but is not executable as current scope.
   bytes scope_binding_hash = 12;
 
   // Scope-bound wrapped material for `epoch`. Opaque to every application
@@ -297,9 +399,13 @@ message RecoveryEnvelope {
   string delivery_policy_version = 15;
   google.protobuf.Timestamp delivery_expires_at = 16;
 
-  // Digest over the complete current delivery projection: fields 1-16 in
-  // field-number order. Field 17 is the digest itself and is excluded. This
+  // Digest over the `recovery-delivery` v1 canonical transcript of fields 1-16
+  // and 18 in field-number order. Field 17 is the digest itself and is excluded. This
   // binds the legacy tenant/Group/Epoch/Profile/key/material fields, both scope
   // bindings, Case, one recipient, policy and expiry against substitution.
   bytes delivery_binding_hash = 17;
+
+  // Authoritative sender-authored exact object or bounded History scope.
+  // Required for current stored frames and Execute results; absent on N-1.
+  RecoveryProtectedScope protected_scope = 18;
 }
