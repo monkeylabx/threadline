@@ -2,6 +2,9 @@ CLUSTER ?= threadline-dev
 ARCHIVE ?= threadline-kind-images.tar
 CHECKSUM ?= $(ARCHIVE).sha256
 PLATFORM_FILE ?= $(ARCHIVE).platform
+IDS ?= $(ARCHIVE).ids
+IDS_CHECKSUM ?= $(IDS).sha256
+OFFLINE_LOCK ?= $(CURDIR)/.threadline-loaded-image-ids
 DOCKER_VERSION ?= 29.6.2
 KIND_VERSION ?= v0.32.0
 KUBECTL_VERSION ?= v1.36.2
@@ -20,6 +23,9 @@ CORE_IMAGES := \
 
 PROBE_IMAGE := busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
 IMAGES := $(CORE_IMAGES) $(PROBE_IMAGE)
+TAG_IMAGES := $(foreach image,$(IMAGES),$(word 1,$(subst @, ,$(image))))
+TAG_NODE_IMAGE := $(word 1,$(subst @, ,$(NODE_IMAGE)))
+ARCHIVE_HELPER := $(CURDIR)/../../docs/development/dev-stack-image-archive.sh
 
 CONTEXT := kind-$(CLUSTER)
 
@@ -34,7 +40,6 @@ check: check-tools
 	@actual="$$(docker version --format '{{.Server.Version}}')"; test "$$actual" = "$(DOCKER_VERSION)" || { echo "Docker Engine $(DOCKER_VERSION) required; found $$actual" >&2; exit 1; }
 	@actual="$$(kind version | awk '{print $$2}')"; test "$$actual" = "$(KIND_VERSION)" || { echo "Kind $(KIND_VERSION) required; found $$actual" >&2; exit 1; }
 	@actual="$$(kubectl version --client --output=yaml | awk '/gitVersion:/ {print $$2; exit}')"; test "$$actual" = "$(KUBECTL_VERSION)" || { echo "kubectl $(KUBECTL_VERSION) required; found $$actual" >&2; exit 1; }
-	@docker info --format '{{json .DriverStatus}}' | grep -Fq 'io.containerd.snapshotter.v1' || { echo "Docker containerd image store is required" >&2; exit 1; }
 	@printf '%s\n' "$(PLATFORM)" | grep -Eq '^linux/(amd64|arm64)$$' || { echo "PLATFORM must be linux/amd64 or linux/arm64" >&2; exit 1; }
 
 verify-lock:
@@ -46,41 +51,50 @@ verify-lock:
 	@test "$$(printf '%s\n' "$(NODE_IMAGE)" | sed -E 's|^kindest/node:(v[0-9]+\.[0-9]+\.[0-9]+)@.*$$|\1|')" = "$(KUBERNETES_VERSION)" || { echo "NODE_IMAGE tag must match KUBERNETES_VERSION" >&2; exit 1; }
 
 check-images: check verify-lock
-	@for image in $(NODE_IMAGE) $(IMAGES); do \
-		digest="$${image##*@}"; \
-		docker image inspect "$$image" >/dev/null 2>&1 || { \
-			echo "missing local image: $$image" >&2; \
-			echo "run 'make -C deploy/kind images' while connected, or load-images" >&2; \
-			exit 1; \
-		}; \
-		docker image inspect --format '{{join .RepoDigests "\n"}}' "$$image" | grep -Fq "@$$digest" || { echo "RepoDigest mismatch: $$image" >&2; exit 1; }; \
-	done
+	@if [ -f "$(OFFLINE_LOCK)" ]; then \
+		sh "$(ARCHIVE_HELPER)" verify-ids "$(OFFLINE_LOCK)" $(NODE_IMAGE) $(IMAGES); \
+	else \
+		for image in $(NODE_IMAGE) $(IMAGES); do \
+			digest="$${image##*@}"; \
+			docker image inspect "$$image" >/dev/null 2>&1 || { echo "missing local image: $$image" >&2; echo "run 'make -C deploy/kind images' while connected, or load-images" >&2; exit 1; }; \
+			docker image inspect --format '{{join .RepoDigests "\n"}}' "$$image" | grep -Fq "@$$digest" || { echo "RepoDigest mismatch: $$image" >&2; exit 1; }; \
+		done; \
+	fi
 
 config: check verify-lock
 	@kubectl kustomize "$(CURDIR)" >/dev/null
 
 images: check verify-lock
+	@rm -f "$(OFFLINE_LOCK)"
 	@for image in $(NODE_IMAGE) $(IMAGES); do docker pull --platform "$(PLATFORM)" "$$image" || exit 1; done
+	@sh "$(ARCHIVE_HELPER)" tag $(NODE_IMAGE) $(IMAGES)
 
 save-images: check-images
-	@docker image save --platform "$(PLATFORM)" --output "$(ARCHIVE)" $(NODE_IMAGE) $(IMAGES)
+	@sh "$(ARCHIVE_HELPER)" write-ids "$(IDS)" $(NODE_IMAGE) $(IMAGES)
+	@docker image save --platform "$(PLATFORM)" --output "$(ARCHIVE)" $(TAG_NODE_IMAGE) $(TAG_IMAGES)
 	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; else shasum -a 256 "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; fi
+	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; else shasum -a 256 "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; fi
 	@printf '%s\n' "$(PLATFORM)" > "$(PLATFORM_FILE)"
+	@for image in $(TAG_NODE_IMAGE) $(TAG_IMAGES); do docker image rm "$$image" >/dev/null; done
 
 load-images: check
 	@test -f "$(ARCHIVE)" || { echo "archive not found: $(ARCHIVE)" >&2; exit 1; }
 	@test -f "$(CHECKSUM)" || { echo "checksum not found: $(CHECKSUM)" >&2; exit 1; }
 	@test -f "$(PLATFORM_FILE)" || { echo "platform metadata not found: $(PLATFORM_FILE)" >&2; exit 1; }
+	@test -f "$(IDS)" || { echo "image ID manifest not found: $(IDS)" >&2; exit 1; }
+	@test -f "$(IDS_CHECKSUM)" || { echo "image ID manifest checksum not found: $(IDS_CHECKSUM)" >&2; exit 1; }
 	@test "$$(tr -d '[:space:]' < "$(PLATFORM_FILE)")" = "$(PLATFORM)" || { echo "archive platform does not match $(PLATFORM)" >&2; exit 1; }
 	@expected="$$(tr -d '[:space:]' < "$(CHECKSUM)")"; if command -v sha256sum >/dev/null 2>&1; then actual="$$(sha256sum "$(ARCHIVE)" | awk '{print $$1}')"; else actual="$$(shasum -a 256 "$(ARCHIVE)" | awk '{print $$1}')"; fi; test "$$actual" = "$$expected" || { echo "archive SHA-256 mismatch" >&2; exit 1; }
+	@expected="$$(tr -d '[:space:]' < "$(IDS_CHECKSUM)")"; if command -v sha256sum >/dev/null 2>&1; then actual="$$(sha256sum "$(IDS)" | awk '{print $$1}')"; else actual="$$(shasum -a 256 "$(IDS)" | awk '{print $$1}')"; fi; test "$$actual" = "$$expected" || { echo "image ID manifest SHA-256 mismatch" >&2; exit 1; }
 	@docker image load --platform "$(PLATFORM)" --input "$(ARCHIVE)"
-	@$(MAKE) check-images
+	@sh "$(ARCHIVE_HELPER)" verify-ids "$(IDS)" $(NODE_IMAGE) $(IMAGES)
+	@cp "$(IDS)" "$(OFFLINE_LOCK)" && chmod 600 "$(OFFLINE_LOCK)"
 
 up: check-images config
 	@kind get clusters | grep -Fxq "$(CLUSTER)" || \
-		kind create cluster --name "$(CLUSTER)" --image "$(NODE_IMAGE)" --config "$(CURDIR)/cluster.yaml"
+		{ node_image="$(NODE_IMAGE)"; docker image inspect "$$node_image" >/dev/null 2>&1 || node_image="$(TAG_NODE_IMAGE)"; kind create cluster --name "$(CLUSTER)" --image "$$node_image" --config "$(CURDIR)/cluster.yaml"; }
 	@$(MAKE) verify-cluster
-	@for image in $(IMAGES); do kind load docker-image --name "$(CLUSTER)" "$$image" || exit 1; done
+	@archive="$$(mktemp -t threadline-kind-images.XXXXXX.tar)"; trap 'rm -f "$$archive"' EXIT HUP INT TERM; docker image save --platform "$(PLATFORM)" --output "$$archive" $(TAG_IMAGES); for node in $$(kind get nodes --name "$(CLUSTER)"); do docker exec --privileged -i "$$node" ctr --namespace=k8s.io images import --digests --snapshotter=overlayfs - < "$$archive" || exit 1; done
 	@kubectl --context "$(CONTEXT)" apply -k "$(CURDIR)"
 	@kubectl --context "$(CONTEXT)" --namespace threadline-dev rollout restart deployment/otel-collector deployment/prometheus
 	@kubectl --context "$(CONTEXT)" --namespace threadline-dev rollout status deployment/otel-collector --timeout=180s
@@ -90,7 +104,7 @@ up: check-images config
 
 verify-cluster: check verify-lock
 	@kind get clusters | grep -Fxq "$(CLUSTER)" || { echo "Kind cluster $(CLUSTER) does not exist; run make up" >&2; exit 1; }
-	@nodes="$$(kind get nodes --name "$(CLUSTER)")"; test "$$(printf '%s\n' "$$nodes" | sed '/^$$/d' | wc -l | tr -d ' ')" = 1 || { echo "Kind cluster topology does not match the pinned single-node cluster; run make destroy then make up" >&2; exit 1; }; node="$$nodes"; expected="$$(docker image inspect --format '{{.Id}}' "$(NODE_IMAGE)")"; actual="$$(docker inspect --format '{{.Image}}' "$$node")"; test -n "$$expected" && test "$$actual" = "$$expected" || { echo "Kind node image does not match NODE_IMAGE; run make destroy then make up" >&2; exit 1; }
+	@nodes="$$(kind get nodes --name "$(CLUSTER)")"; test "$$(printf '%s\n' "$$nodes" | sed '/^$$/d' | wc -l | tr -d ' ')" = 1 || { echo "Kind cluster topology does not match the pinned single-node cluster; run make destroy then make up" >&2; exit 1; }; node="$$nodes"; node_image="$(NODE_IMAGE)"; docker image inspect "$$node_image" >/dev/null 2>&1 || node_image="$(TAG_NODE_IMAGE)"; expected="$$(docker image inspect --format '{{.Id}}' "$$node_image")"; actual="$$(docker inspect --format '{{.Image}}' "$$node")"; test -n "$$expected" && test "$$actual" = "$$expected" || { echo "Kind node image does not match NODE_IMAGE; run make destroy then make up" >&2; exit 1; }
 	@actual="$$(kubectl --context "$(CONTEXT)" version --output=yaml | awk '/^serverVersion:/ { server=1; next } server && /^  gitVersion:/ { print $$2; exit }')"; test "$$actual" = "$(KUBERNETES_VERSION)" || { echo "Kind Kubernetes $(KUBERNETES_VERSION) required; found $${actual:-unknown}. Run make destroy then make up" >&2; exit 1; }
 
 verify-network-policy: verify-cluster

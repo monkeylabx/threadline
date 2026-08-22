@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+  nats:
+    image: nats:2.10.20-alpine
+  redis:
+    image: redis:7.4.0-alpine
+  minio:
+    image: minio/minio:RELEASE.2024-07-16T23-46-41Z
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.107.0
+  prometheus:
+    image: prom/prometheus:v2.54.1
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0
+  minio-readiness:
+    image: busybox:1.36.1
+  otel-readiness:
+    image: busybox:1.36.1
+  prometheus-readiness:
+    image: busybox:1.36.1
+  jaeger-readiness:
+    image: busybox:1.36.1

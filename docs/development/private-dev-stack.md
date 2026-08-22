@@ -73,10 +73,13 @@ and Kubernetes manifests before startup; local `RepoDigests` must match.
 The validated tool baseline is Docker Engine `29.6.2`, Docker Compose
 `5.4.0`, Kind `v0.32.0`, kubectl `v1.36.2`, and the Kind node image
 `kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5`.
-The Makefiles fail closed on a different version and require Docker's
-containerd image store so OCI indices and digest identities survive offline
-save/load. Update tools and image digests together in one reviewed change;
-never move a tag without its digest.
+The Makefiles fail closed on a different version. Connected preparation
+verifies each registry manifest-list digest. Because Docker archive import
+restores images and tags but not registry `RepoDigests`, the offline bundle
+also carries an exact image-ID manifest and checksum. Offline startup uses
+tag aliases only after the archive, platform, ID manifest, and exact locked
+image set have all been verified. Update tools and image digests together in
+one reviewed change; never move a tag without its digest.
 
 These checks validate tools that are already installed. T016 does not provide
 tool installers, binary packages, or their checksums, so it is not a complete
@@ -94,12 +97,15 @@ make -C deploy/kind images
 make -C deploy/kind save-images ARCHIVE=/tmp/threadline-kind-images.tar
 ```
 
-Each `save-images` command writes adjacent `.sha256` and `.platform` files.
-Copy all three files together. `linux/amd64` and `linux/arm64` are supported;
+Each `save-images` command writes adjacent `.sha256`, `.platform`, `.ids`, and
+`.ids.sha256` files. Copy all five files together. `linux/amd64` and
+`linux/arm64` are supported;
 the default follows the Docker daemon architecture and can be made explicit
 with `PLATFORM=linux/arm64` or `PLATFORM=linux/amd64`. `load-images` rejects a
-platform mismatch, verifies the archive SHA-256 before load, then verifies
-every imported `RepoDigest` before the archive can be used.
+platform mismatch, verifies both SHA-256 sidecars before load, then verifies
+every imported image ID against the exact committed lock set before the
+archive can be used. Treat the checksums and ID manifest as release evidence;
+distribute them through the organization's authenticated evidence channel.
 
 Copy the archive into the isolated environment, then load it:
 
@@ -111,6 +117,13 @@ make -C deploy/kind load-images ARCHIVE=/path/to/threadline-kind-images.tar
 Image acquisition is the only connected phase. The committed manifest-list
 digests were resolved from the official registries; still run vulnerability,
 license and provenance review before distributing an enterprise offline bundle.
+
+Kind `v0.32.0` imports a Docker image through containerd with
+`--all-platforms`, which fails when a native-only pull retains a multi-platform
+index whose other platform content is intentionally absent. The Makefile uses
+containerd's current-platform `--digests` import instead, while keeping the
+committed manifest-list lock and verifying the imported workload through the
+normal rollout and NetworkPolicy probes.
 
 ## Compose
 
