@@ -9,6 +9,7 @@ package threadline.sync.v1;
 
 import "google/protobuf/timestamp.proto";
 import "threadline/message/v1/envelope.proto";
+import "threadline/type/v1/error.proto";
 
 // SyncCursor is one Device's applied position in one conversation.
 //
@@ -111,4 +112,22 @@ message EventBatch {
 
   // Optional checkpoint covering the last event in this batch.
   SyncCheckpoint checkpoint = 4;
+}
+
+// CursorRejection explains why one requested Device cursor was not persisted.
+//
+// A batch may contain valid and invalid conversations, so a stable per-cursor
+// result prevents one stale cursor from hiding progress on every other Channel.
+message CursorRejection {
+  SyncCursor cursor = 1;
+
+  // ERROR_CODE_CURSOR_INVALID for a malformed, cross-conversation, regressing
+  // or past-retention cursor; ERROR_CODE_TENANT_MISMATCH for an identifier that
+  // resolves outside the authenticated tenant. Contains metadata only.
+  threadline.type.v1.ErrorDetail error = 2;
+
+  // Server's contiguous position for this Device and conversation. The client
+  // resumes from here or from a separately verified checkpoint; it never jumps
+  // to its rejected position.
+  SyncCursor server_cursor = 3;
 }

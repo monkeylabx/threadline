@@ -54,7 +54,8 @@ message SyncEventsRequest {
   // caller may read, starting from the beginning of retained history.
   repeated SyncCursor cursors = 1;
 
-  // Maximum events across all conversations in one response. Server clamps.
+  // Maximum events across all conversations in one response. Core clamps this;
+  // zero selects the server default and never means unbounded.
   uint32 max_events = 2;
 }
 
@@ -73,6 +74,10 @@ message StreamEventsResponse {
 
 message RepairGapRequest {
   repeated SequenceGap gaps = 1;
+
+  // Maximum events returned for each gap. Core clamps this to its configured
+  // bound. Zero selects the server default; it never means unbounded.
+  uint32 max_events_per_gap = 2;
 }
 
 message RepairGapResponse {
@@ -96,14 +101,20 @@ message GetCursorsResponse {
 }
 
 message UpdateCursorsRequest {
+  // Core derives the Device from the authenticated session. It accepts only
+  // monotonic contiguous positions at or below committed history and assigns
+  // `updated_at`; a client timestamp is never an ordering authority.
   repeated SyncCursor cursors = 1;
 }
 
 message UpdateCursorsResponse {
-  // Cursors the server rejected, with its own view of the position. A cursor
-  // ahead of what the server has committed is a client bug, and returning the
-  // server's value lets the client correct itself instead of stalling.
+  // Compatibility view for v1 clients that predate detailed rejection data.
+  // Same order as `cursor_rejections`; new clients use the detailed field.
   repeated SyncCursor rejected_cursors = 1;
+
+  // Cursors rejected as invalid, stale, non-contiguous, past retention or
+  // cross-tenant, together with the safe server position to resume from.
+  repeated CursorRejection cursor_rejections = 2;
 }
 
 message UpdateReadCursorRequest {
