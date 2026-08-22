@@ -50,6 +50,47 @@ message HistorySharingGrant {
   // History access is bounded by retention. After this instant a correctly
   // operating client erases the keys even while offline.
   google.protobuf.Timestamp retention_expires_at = 11;
+
+  // Explicit tenant and request binding prevent a sealed grant from being
+  // replayed into another tenant or a broader later request.
+  string tenant_id = 12;
+  string request_id = 13;
+
+  // The grant expires at the earlier of this value and
+  // `retention_expires_at`. It never grants access to a successor Epoch.
+  google.protobuf.Timestamp expires_at = 14;
+
+  // Signature by `source_device_id` over fields 1-14. The service routes this
+  // opaque grant; the target Device verifies it before unwrapping.
+  bytes source_signature = 15;
+}
+
+// HistorySharingRequest freezes the authorized range before any source Device
+// produces a grant. An unavailable source produces no grant and never widens
+// this request into automatic pre-join history access.
+message HistorySharingRequest {
+  string request_id = 1;
+  string tenant_id = 2;
+  string e2ee_group_id = 3;
+  string target_device_id = 4;
+  uint64 first_epoch = 5;
+  uint64 last_epoch = 6;
+  string policy_version = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  google.protobuf.Timestamp retention_expires_at = 10;
+}
+
+// RecoveryScope is one explicit Group/Epoch/time slice. Scopes cannot be
+// inferred from tenant membership, and an empty scope list is invalid. For v1
+// N-1 dual-write compatibility, every scope in one Case has exactly the same
+// Epoch bounds and TimeRange; heterogeneous bounds fail closed and are never
+// widened into a union.
+message RecoveryScope {
+  string e2ee_group_id = 1;
+  uint64 first_epoch = 2;
+  uint64 last_epoch = 3;
+  threadline.type.v1.TimeRange time_range = 4;
 }
 
 // RecoveryCaseState is the Recovery Case lifecycle.
@@ -94,6 +135,31 @@ message RecoveryApproval {
 
   // Organization policy version in force at decision time.
   string policy_version = 6;
+
+  // Client-generated idempotency key for this approver and case. Reusing it
+  // with another decision fails with ERROR_CODE_REPLAY_DETECTED.
+  string decision_id = 7;
+
+  // Digest of the authoritative canonical Recovery Case approval projection:
+  // recovery_case_id, request_id, Tenant, requester ActorRef identity (actor_id
+  // and actor_type), encrypted-reason digest, canonical `scopes`, one recipient
+  // Device, required approval count, expiry and policy. Legacy parallel scope
+  // fields 5-8 are an N-1 projection and are not inputs to this current hash.
+  // The Case is immutable after the first decision; a changed projection
+  // invalidates every approval and cannot be replayed to another request/Case.
+  bytes case_binding_hash = 8;
+
+  // Device signature over `case_binding_hash` followed by the canonical
+  // DecideRecoveryCaseRequest fields 1-4 and 7: recovery_case_id, approved,
+  // the complete encrypted note (ciphertext, e2ee_group_id, epoch,
+  // crypto_profile and envelope_version), decision_id and approver_device_id.
+  // Service-generated approval_id, approver ActorRef and decided_at are
+  // excluded. Policy is already covered by case_binding_hash.
+  bytes decision_signature = 9;
+
+  // Authorized Device that signed the decision. It is copied unchanged from
+  // the request after the service verifies that it matches the caller session.
+  string approver_device_id = 10;
 }
 
 // RecoveryCase is a time-bounded, auditable request to recover a defined set of
@@ -142,6 +208,23 @@ message RecoveryCase {
   google.protobuf.Timestamp expires_at = 14;
 
   google.protobuf.Timestamp executed_at = 15;
+
+  // Canonical v1 scope. Entries are unique by e2ee_group_id and serialized in
+  // ascending bytewise e2ee_group_id order. Every entry binds its Group and the
+  // same shared inclusive Epoch bounds and half-open TimeRange; heterogeneous
+  // bounds fail closed rather than being widened. Current writers exactly
+  // double-write sorted Group IDs and the shared bounds to legacy fields 5-8.
+  // Those legacy fields remain an N-1 projection and are not authoritative
+  // inputs to the current approval hash.
+  repeated RecoveryScope scopes = 16;
+
+  // Policy snapshot and stable replay identity for the high-impact request.
+  string policy_version = 17;
+  string request_id = 18;
+
+  // Set once at successful execution. Empty is invalid. The same non-empty ID
+  // is idempotent; another ID after execution is ERROR_CODE_REPLAY_DETECTED.
+  string execution_id = 19;
 }
 
 // RecoveryEnvelope is versioned material that binds recoverability to one E2EE
@@ -174,15 +257,26 @@ message RecoveryEnvelope {
   // cannot do. Matches `recovery.recipient_key_id` in the T011 interop vector.
   string recovery_key_id = 9;
 
-  // Digest over the binding fields (tenant, group, epoch, profile, key id) that
-  // a recipient checks before unwrapping, so material re-pointed at a different
+  // Legacy digest over exactly tenant, group, epoch, profile and recovery key
+  // ID. This v1 meaning is immutable and does not include additive scope fields.
+  // A recipient checks it before unwrapping so material re-pointed at another
   // group, Epoch or tenant fails closed. Asserted as `recovery.binding_sha256`
   // in test/crypto/e2ee-interop-v1.vector.
   bytes binding_hash = 10;
 
+  // Digest of the exact protected object or bounded History-Key range.
+  bytes scope_hash = 11;
+
+  // Current scope-aware binding over the complete legacy binding projection
+  // above plus `scope_hash`. Current scoped execution requires both fields 11
+  // and 12; an N-1 envelope without them remains readable/preservable but is
+  // not executable as a current scoped recovery request.
+  bytes scope_binding_hash = 12;
+
   // Scope-bound wrapped material for `epoch`. Opaque to every application
   // service, including Recovery Control itself, which orchestrates approvals
-  // but never sees recovery private key bytes.
+  // but never sees recovery private key bytes. This message is also the
+  // baseline ExecuteRecoveryCaseResponse delivery type.
   bytes wrapped_material = 6;
 
   // Format version of `wrapped_material` within `crypto_profile`.
@@ -195,4 +289,17 @@ message RecoveryEnvelope {
   // A false value here is the version boundary that makes that possible without
   // a wire break.
   bool recovery_recipient_present = 8;
+
+  // Additive current-delivery metadata. These fields are absent on stored
+  // RecoveryEnvelope frames and required on ExecuteRecoveryCase results.
+  string recovery_case_id = 13;
+  string recovery_recipient_device_id = 14;
+  string delivery_policy_version = 15;
+  google.protobuf.Timestamp delivery_expires_at = 16;
+
+  // Digest over the complete current delivery projection: fields 1-16 in
+  // field-number order. Field 17 is the digest itself and is excluded. This
+  // binds the legacy tenant/Group/Epoch/Profile/key/material fields, both scope
+  // bindings, Case, one recipient, policy and expiry against substitution.
+  bytes delivery_binding_hash = 17;
 }

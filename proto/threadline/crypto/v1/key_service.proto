@@ -24,13 +24,25 @@ service KeyDirectoryService {
 
   // Claims one KeyPackage per target Device for an upcoming Commit. Claiming is
   // atomic: a package handed out here is marked consumed and never returned to
-  // a second caller.
+  // a second caller. A limited N-1 migration package without additive fields
+  // 8-10 and 14-16 is eligible only when its authenticated Device-bound publish
+  // session supplies the Tenant/Device binding, its existing outer Device and
+  // Profile fields match, its published_at/expires_at window is current and no
+  // wider than 7,261,200 seconds. The server first claims it atomically and
+  // terminally, then returns its public bytes. Before forming a Commit, the
+  // current Committer validates the opaque MLS Credential/Profile/Leaf
+  // lifetime/signature. Validation failure leaves the package consumed or
+  // invalid, and no Commit is produced. Current-format packages must use the
+  // signed additive publication path.
   rpc ClaimKeyPackages(ClaimKeyPackagesRequest) returns (ClaimKeyPackagesResponse);
 
   rpc GetE2eeGroup(GetE2eeGroupRequest) returns (GetE2eeGroupResponse);
 }
 
 message PublishKeyPackagesRequest {
+  // The authenticated Device-bound session supplies Tenant, Actor and Device.
+  // Every package must match that Device and its current authorized credential;
+  // cross-tenant, revoked and unknown-profile inputs fail closed.
   repeated KeyPackage key_packages = 1;
 }
 
@@ -44,6 +56,14 @@ message ClaimKeyPackagesRequest {
   string e2ee_group_id = 1;
 
   repeated string target_device_ids = 2;
+
+  // The pending membership authorization that will consume these packages.
+  // A claim is committed atomically with its consumption markers.
+  string authorization_id = 3;
+
+  // Client-generated replay identity. An exact retry returns the original
+  // package set; a conflicting retry fails with ERROR_CODE_REPLAY_DETECTED.
+  string claim_id = 4;
 }
 
 message ClaimKeyPackagesResponse {
@@ -52,6 +72,8 @@ message ClaimKeyPackagesResponse {
   // Devices with no package available. They cannot be added to the Group until
   // they publish more; the caller must not proceed as though they were added.
   repeated string unavailable_device_ids = 2;
+
+  string claim_id = 3;
 }
 
 message GetE2eeGroupRequest {
@@ -67,7 +89,10 @@ message GetE2eeGroupResponse {
 //
 // The control plane owns the ordering of membership changes and holds no group
 // keys. Concurrent changes are resolved by the sequence assigned here, not by
-// whichever Commit lands first.
+// whichever Commit lands first. The resulting opaque MlsWireMessage is sent
+// through threadline.message.v1.MessageService.SendEvent, the single durable
+// sequencing path; this service deliberately does not create a second write
+// or ACK path.
 service MembershipService {
   // Records a membership change and returns an authorization naming the
   // Committer Device, the expected Epoch and the KeyPackages to consume. The
@@ -93,6 +118,23 @@ message AuthorizeMembershipChangeRequest {
 
   // Individual Devices to remove, for revocation rather than membership change.
   repeated string remove_device_ids = 5;
+
+  // Replay identity for the exact requested transition. A duplicate with the
+  // same body returns the original authorization; a conflict fails closed.
+  string request_id = 6;
+
+  // Required for REINITIALIZE and forbidden otherwise.
+  CryptoProfile successor_crypto_profile = 7;
+
+  // Exact targets for UPDATE_DEVICE_KEY, SELF_UPDATE or REVOKE_DEVICE.
+  repeated string update_device_ids = 8;
+
+  // Required only for RECOVERY_KEY_ROTATION.
+  uint32 successor_recovery_key_version = 9;
+
+  // Required only for REINITIALIZE; a random tenant-scoped identifier for the
+  // successor generation, never an in-place rename of the current Group.
+  string successor_e2ee_group_id = 10;
 }
 
 message AuthorizeMembershipChangeResponse {
@@ -136,6 +178,8 @@ message RequestHistorySharingRequest {
 
   uint64 first_epoch = 3;
   uint64 last_epoch = 4;
+
+  string request_id = 5;
 }
 
 message RequestHistorySharingResponse {
@@ -145,6 +189,8 @@ message RequestHistorySharingResponse {
   // exists: the target then starts from its current authorization point, and
   // recovering earlier history requires a separate approved Recovery Case.
   repeated string eligible_source_device_ids = 2;
+
+  HistorySharingRequest request = 3;
 }
 
 message SubmitHistorySharingRequest {
@@ -199,6 +245,15 @@ message CreateRecoveryCaseRequest {
   threadline.type.v1.TimeRange time_range = 5;
 
   string recovery_recipient_device_id = 6;
+
+  // Canonical current-client scope. Empty is invalid. v1 entries must be unique,
+  // sorted by Group ID and share exactly the same Epoch and TimeRange bounds.
+  // Current writers exactly double-write them to fields 2-5. An N-1 request is
+  // normalized into one RecoveryScope per sorted Group using those shared
+  // legacy bounds; heterogeneous bounds are never inferred or unioned.
+  repeated RecoveryScope scopes = 7;
+
+  string request_id = 8;
 }
 
 message CreateRecoveryCaseResponse {
@@ -211,6 +266,18 @@ message DecideRecoveryCaseRequest {
   bool approved = 2;
 
   threadline.type.v1.EncryptedField note = 3;
+
+  string decision_id = 4;
+
+  // Computed by the approver over the exact immutable Case/request projection.
+  // The service verifies these values and records them unchanged in the
+  // resulting RecoveryApproval.
+  bytes case_binding_hash = 5;
+  bytes decision_signature = 6;
+
+  // Authorized Device producing the signature. It must exactly match the
+  // authenticated caller session and is copied unchanged to the approval.
+  string approver_device_id = 7;
 }
 
 message DecideRecoveryCaseResponse {
@@ -219,13 +286,27 @@ message DecideRecoveryCaseResponse {
 
 message ExecuteRecoveryCaseRequest {
   string recovery_case_id = 1;
+
+  // Required client-generated idempotency key. Empty is invalid. A retry after
+  // execution succeeds only when this non-empty value equals the stored ID.
+  string execution_id = 2;
 }
 
 message ExecuteRecoveryCaseResponse {
   RecoveryCase recovery_case = 1;
 
   // Material re-encrypted to the Recovery Recipient Device, one entry per
-  // recovered Epoch. Only that Device can open these.
+  // recovered Epoch. Only that Device can open these. Current clients validate
+  // the additive delivery metadata; N-1 clients ignore it and still consume the
+  // established field-2 result.
+  //
+  // A current client performing scoped Execute rejects an N-1 result whenever
+  // scope fields 11-12 or delivery metadata fields 13-17 are absent with
+  // ERROR_CODE_RECOVERY_UNAVAILABLE. It may decode, preserve and audit those
+  // bytes, but must never infer object identity or time scope from legacy
+  // Tenant/Group/Epoch fields. In the opposite direction, an N-1 client can
+  // ignore additive metadata on a current field-2 result and consume it using
+  // its established semantics.
   repeated RecoveryEnvelope delivered_envelopes = 2;
 }
 
