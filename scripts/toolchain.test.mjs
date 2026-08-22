@@ -42,6 +42,26 @@ test("database pin verification rejects a drifted pgx dependency", () => {
   );
 });
 
+test("database pin verification rejects pgx text that appears only in a comment", () => {
+  const commented = {
+    ...databaseSources,
+    goModule: databaseSources.goModule.replace(
+      `require github.com/jackc/pgx/v5 v${pins.database.pgx}`,
+      `// github.com/jackc/pgx/v5 v${pins.database.pgx}`,
+    ),
+  };
+  assert.match(
+    validateDatabasePins(pins.database, commented).join("\n"),
+    /missing direct require/,
+  );
+});
+
+test("database pin verification rejects a well-formed but drifted sqlc digest", () => {
+  const database = structuredClone(pins.database);
+  database.sqlc.archives["linux-amd64"].sha256 = "0".repeat(64);
+  assert.match(validateDatabasePins(database, databaseSources).join("\n"), /linux-amd64 SHA-256/);
+});
+
 test("database pin verification rejects an incomplete sqlc archive set", () => {
   const database = structuredClone(pins.database);
   delete database.sqlc.archives["linux-arm64"];

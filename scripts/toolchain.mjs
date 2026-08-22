@@ -7,6 +7,29 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
+const sqlcReleaseArchives = Object.freeze({
+  "darwin-amd64": Object.freeze({
+    file: "sqlc_1.31.1_darwin_amd64.tar.gz",
+    sha256: "c5af76772e3785d21663a62697056b383f07629979b1bd25b93872e73dbd519b",
+  }),
+  "darwin-arm64": Object.freeze({
+    file: "sqlc_1.31.1_darwin_arm64.tar.gz",
+    sha256: "21602158c99eb1f2bae197a66abfb1941d1e9e50b23125bb193349c6b1acc71e",
+  }),
+  "linux-amd64": Object.freeze({
+    file: "sqlc_1.31.1_linux_amd64.tar.gz",
+    sha256: "497ae4fcdfa64c5b0c311ffe4c2bd991e43991e82e5367792ed78bc2dca27354",
+  }),
+  "linux-arm64": Object.freeze({
+    file: "sqlc_1.31.1_linux_arm64.tar.gz",
+    sha256: "b7cae247740d0c51a1e657479e5b2d21e6fef428f596682a01bc55bf4ab8a23d",
+  }),
+  "windows-amd64": Object.freeze({
+    file: "sqlc_1.31.1_windows_amd64.zip",
+    sha256: "352711fa7dcb05dcdfefca0ad71b2c9a74fd090f8d7fc609419de4cbc725429f",
+  }),
+});
+
 function read(relative) {
   return readFileSync(join(root, relative), "utf8").replaceAll("\r\n", "\n");
 }
@@ -104,13 +127,6 @@ export function validateWorkflowPins(workflow, expectedPins = pins) {
 
 export function validateDatabasePins(databasePins, sources) {
   const errors = [];
-  const platforms = [
-    ["darwin-amd64", "darwin_amd64", "tar.gz"],
-    ["darwin-arm64", "darwin_arm64", "tar.gz"],
-    ["linux-amd64", "linux_amd64", "tar.gz"],
-    ["linux-arm64", "linux_arm64", "tar.gz"],
-    ["windows-amd64", "windows_amd64", "zip"],
-  ];
   if (!/^\d+\.\d+\.\d+$/.test(databasePins.sqlc.version)) {
     errors.push(`sqlc version is not exact: ${databasePins.sqlc.version}`);
   }
@@ -118,32 +134,48 @@ export function validateDatabasePins(databasePins, sources) {
     errors.push(`pgx version is not exact: ${databasePins.pgx}`);
   }
   const actualPlatforms = Object.keys(databasePins.sqlc.archives).sort();
-  const expectedPlatforms = platforms.map(([platform]) => platform).sort();
+  const expectedPlatforms = Object.keys(sqlcReleaseArchives).sort();
   assertEqual(
     errors,
     "sqlc archive platform set",
     actualPlatforms.join(","),
     expectedPlatforms.join(","),
   );
-  for (const [platform, releasePlatform, extension] of platforms) {
+  for (const platform of expectedPlatforms) {
     const archive = databasePins.sqlc.archives[platform];
     if (!archive) continue;
     assertEqual(
       errors,
       `sqlc ${platform} archive`,
       archive.file,
-      `sqlc_${databasePins.sqlc.version}_${releasePlatform}.${extension}`,
+      sqlcReleaseArchives[platform].file,
     );
-    if (!/^[0-9a-f]{64}$/.test(archive.sha256)) {
-      errors.push(`sqlc ${platform} SHA-256 is not an exact lowercase digest`);
-    }
+    assertEqual(
+      errors,
+      `sqlc ${platform} SHA-256`,
+      archive.sha256,
+      sqlcReleaseArchives[platform].sha256,
+    );
   }
-  assertIncludes(
-    errors,
-    "services pgx dependency",
-    sources.goModule,
-    `github.com/jackc/pgx/v5 v${databasePins.pgx}`,
-  );
+  const requiredPgx = `github.com/jackc/pgx/v5 v${databasePins.pgx}`;
+  const directRequires = [];
+  let requireBlock = false;
+  for (const sourceLine of sources.goModule.split("\n")) {
+    const line = sourceLine.split("//", 1)[0].trim();
+    if (line === "require (") {
+      requireBlock = true;
+      continue;
+    }
+    if (requireBlock && line === ")") {
+      requireBlock = false;
+      continue;
+    }
+    if (line.startsWith("require ")) directRequires.push(line.slice("require ".length).trim());
+    else if (requireBlock && line) directRequires.push(line);
+  }
+  if (!directRequires.includes(requiredPgx)) {
+    errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
+  }
   assertIncludes(
     errors,
     "Core schema architecture",
