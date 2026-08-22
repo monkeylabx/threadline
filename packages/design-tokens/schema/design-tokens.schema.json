@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/monkeylabx/threadline/main/packages/design-tokens/schema/design-tokens.schema.json",
+  "title": "Threadline Design Tokens v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "color",
+    "typography",
+    "space",
+    "radius",
+    "layer",
+    "motion",
+    "accessibility"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["light", "dark", "highContrastLight", "highContrastDark"],
+      "properties": {
+        "light": { "$ref": "#/$defs/colorMode" },
+        "dark": { "$ref": "#/$defs/colorMode" },
+        "highContrastLight": { "$ref": "#/$defs/colorMode" },
+        "highContrastDark": { "$ref": "#/$defs/colorMode" }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/typographyToken" }
+    },
+    "space": { "$ref": "#/$defs/numberScale" },
+    "radius": { "$ref": "#/$defs/numberScale" },
+    "layer": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationMs", "easing", "reducedMotion"],
+      "properties": {
+        "durationMs": { "$ref": "#/$defs/numberScale" },
+        "easing": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "reducedMotion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["durationMultiplier", "distanceMultiplier", "allowOpacity", "essentialOnly"],
+          "properties": {
+            "durationMultiplier": { "const": 0 },
+            "distanceMultiplier": { "const": 0 },
+            "allowOpacity": { "type": "boolean" },
+            "essentialOnly": { "const": true }
+          }
+        }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimumContrast", "maximumTextScale", "contrastPairs"],
+      "properties": {
+        "minimumContrast": { "type": "number", "minimum": 4.5 },
+        "maximumTextScale": { "type": "number", "minimum": 2 },
+        "contrastPairs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["foreground", "background", "minimum"],
+            "properties": {
+              "foreground": { "type": "string" },
+              "background": { "type": "string" },
+              "minimum": { "type": "number", "minimum": 3 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hexColor": { "type": "string", "pattern": "^#[0-9A-F]{6}$" },
+    "colorMode": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/hexColor" }
+    },
+    "numberScale": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+    "typographyToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["webRem", "lineHeight", "weight", "swiftTextStyle", "androidSp"],
+      "properties": {
+        "webRem": { "type": "number", "minimum": 0.75 },
+        "lineHeight": { "type": "number", "minimum": 1 },
+        "weight": { "type": "integer", "minimum": 400, "maximum": 800 },
+        "swiftTextStyle": { "type": "string", "minLength": 1 },
+        "androidSp": { "type": "number", "minimum": 12 }
+      }
+    }
+  }
+}
