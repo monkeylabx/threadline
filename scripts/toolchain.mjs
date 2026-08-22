@@ -137,7 +137,7 @@ function parseGoDependencyDirectives(source) {
     const commentAt = sourceLine.indexOf("//");
     const code = (commentAt === -1 ? sourceLine : sourceLine.slice(0, commentAt)).trim();
     const comment = commentAt === -1 ? "" : sourceLine.slice(commentAt + 2).trim();
-    const tokens = code.match(/"(?:\\.|[^"\\])*"|`[^`]*`|[()]|[^\s()]+/g) ?? [];
+    const tokens = code.match(/"(?:\\.|[^"\\])*"|`[^`]*`|=>|[()]|[^\s()=>]+/g) ?? [];
     if (
       tokens.length === 2 &&
       tokens[1] === "(" &&

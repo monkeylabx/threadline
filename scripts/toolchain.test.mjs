@@ -136,6 +136,20 @@ test("database pin verification handles block directives without whitespace befo
   assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /exclude directives/);
 });
 
+test("database pin verification handles replacements without whitespace around arrows", () => {
+  const moduleSingle = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nreplace github.com/jackc/pgx/v5=>../fake-pgx\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, moduleSingle).join("\n"), /replace directives/);
+
+  const workspaceBlock = {
+    ...databaseSources,
+    goWork: `${databaseSources.goWork}\nreplace(\n\tgithub.com/jackc/pgx/v5=>../fake-pgx\n)\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, workspaceBlock).join("\n"), /go\.work.*replace/);
+});
+
 test("database pin verification rejects a pgx exclusion", () => {
   const excluded = {
     ...databaseSources,
