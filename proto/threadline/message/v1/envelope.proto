@@ -80,7 +80,8 @@ message AgentAttribution {
 message ServerCommit {
   // Monotonically increasing position within the conversation. Allocated in the
   // same PostgreSQL transaction that persists the event and its Outbox row, so
-  // a Durable ACK implies a durable sequence number.
+  // a Durable ACK implies a durable sequence number. A sender must omit the
+  // entire ServerCommit; Core rejects rather than trusts client-assigned values.
   uint64 channel_seq = 1;
 
   google.protobuf.Timestamp committed_at = 2;
@@ -102,10 +103,11 @@ message ServerCommit {
 //
 // Associated data for the AEAD protecting `application_ciphertext`, and the
 // input to `sender_signature`, are the canonical encoding of the sender-authored
-// fields only: 1-6, 8-12, 14-15, 18, 20-23. `server_commit` is excluded because
-// it does not exist yet when the sender seals the event. The exact canonical
-// encoding is frozen by the Golden Vectors under test/crypto/ and must pass the
-// three-language check in P00-08 before this contract is treated as stable.
+// fields only: 1-6, 8-12, 14-15, 18, 20-23. `server_commit` is excluded
+// because it does not exist yet when the sender seals the event. The exact
+// canonical encoding is frozen by the Golden Vectors under test/crypto/ and
+// must pass the three-language check in P00-08 before this contract is treated
+// as stable.
 message ChannelEventEnvelope {
   // Golden Frame unknown-field canary. This number must remain unknown to
   // generated adapters so compatibility tests can prove decode/re-encode

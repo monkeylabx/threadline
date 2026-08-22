@@ -39,6 +39,8 @@ jobs:
         run: node scripts/proto.mjs check
       - name: Check protocol compatibility
         run: node scripts/proto.mjs breaking
+      - name: Verify protocol fixtures and contract invariants
+        run: node proto/tools/verify-contracts.mjs
       - name: Generate TypeScript SDK
         run: node scripts/proto.mjs generate ts
 

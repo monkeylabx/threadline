@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 1,
+  "classification": "synthetic-protocol-behavior-no-secrets",
+  "forbiddenPlaintextCanary": "SYNTHETIC-PLAINTEXT-MUST-NOT-REACH-SERVER",
+  "cases": [
+    {
+      "id": "durable-ack-after-atomic-commit",
+      "kind": "send",
+      "session": {
+        "tenantId": "tenant-a",
+        "actorId": "actor-alice",
+        "deviceId": "device-alice-1",
+        "authorized": true
+      },
+      "conversation": {
+        "channelId": "channel-a",
+        "tenantId": "tenant-a",
+        "e2eeGroupId": "group-a",
+        "currentEpoch": 7,
+        "rekeyRequired": false
+      },
+      "envelope": {
+        "eventId": "event-a-0001",
+        "tenantId": "tenant-a",
+        "channelId": "channel-a",
+        "e2eeGroupId": "group-a",
+        "epoch": 7,
+        "category": "EVENT_CATEGORY_APPLICATION",
+        "senderDeviceId": "device-alice-1",
+        "senderActorId": "actor-alice",
+        "idempotencyKey": "idem-a-0001",
+        "cryptoProfile": "tl-mls-1",
+        "envelopeVersion": 1,
+        "applicationCiphertext": "EjRWeJCrze8=",
+        "contentHash": "ERERERERERE=",
+        "senderSignature": "IiIiIiIiIiI=",
+        "signatureMetadataValid": true,
+        "contentHashValid": true,
+        "categoryBodyConsistent": true
+      },
+      "transaction": {
+        "eventPersisted": true,
+        "outboxPersisted": true,
+        "synchronousCommit": true,
+        "channelSeq": 41,
+        "chainHash": "MzMzMzMzMzM="
+      },
+      "expected": {
+        "status": "durable",
+        "eventId": "event-a-0001",
+        "idempotencyKey": "idem-a-0001",
+        "channelSeq": 41,
+        "deduplicated": false
+      }
+    },
+    {
+      "id": "no-ack-before-durable-commit",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "transaction": {
+        "eventPersisted": true,
+        "outboxPersisted": true,
+        "synchronousCommit": false,
+        "channelSeq": 41,
+        "chainHash": "MzMzMzMzMzM="
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_NOT_DURABLE",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "idempotent-retry-returns-original-commit",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "priorCommit": {
+        "eventId": "event-a-0001",
+        "idempotencyKey": "idem-a-0001",
+        "contentHash": "ERERERERERE=",
+        "channelSeq": 41
+      },
+      "expected": {
+        "status": "durable",
+        "eventId": "event-a-0001",
+        "idempotencyKey": "idem-a-0001",
+        "channelSeq": 41,
+        "deduplicated": true
+      }
+    },
+    {
+      "id": "idempotency-key-body-conflict",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "priorCommit": {
+        "eventId": "event-a-0000",
+        "idempotencyKey": "idem-a-0001",
+        "contentHash": "REREREREREQ=",
+        "channelSeq": 40
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_IDEMPOTENCY_CONFLICT",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "unauthorized-device-rejected",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "session": {
+        "authorized": false
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_PERMISSION_DENIED",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "cross-tenant-envelope-rejected",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "envelope": {
+        "tenantId": "tenant-b"
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_TENANT_MISMATCH",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "cross-group-envelope-rejected",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "envelope": {
+        "e2eeGroupId": "group-b"
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_GROUP_MISMATCH",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "stale-epoch-envelope-rejected",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "envelope": {
+        "epoch": 6
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_EPOCH_STALE",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "rekey-required-keeps-application-event-pending",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "conversation": {
+        "rekeyRequired": true
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_REKEY_REQUIRED",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "malformed-signature-metadata-rejected-without-opening-body",
+      "kind": "send",
+      "extends": "durable-ack-after-atomic-commit",
+      "envelope": {
+        "signatureMetadataValid": false
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_CIPHERTEXT_CORRUPT",
+        "durableAck": false
+      }
+    },
+    {
+      "id": "resume-applies-only-contiguous-events",
+      "kind": "resume",
+      "cursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 41
+      },
+      "deliveredSequences": [42, 43, 44],
+      "expected": {
+        "appliedSequences": [42, 43, 44],
+        "nextSeq": 44,
+        "gap": null
+      }
+    },
+    {
+      "id": "resume-stops-before-gap",
+      "kind": "resume",
+      "cursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 41
+      },
+      "deliveredSequences": [42, 44, 45],
+      "expected": {
+        "appliedSequences": [42],
+        "nextSeq": 42,
+        "gap": {
+          "firstMissingSeq": 43,
+          "lastKnownSeq": 45
+        }
+      }
+    },
+    {
+      "id": "gap-repair-is-contiguous-and-bounded",
+      "kind": "gap-repair",
+      "gap": {
+        "channelId": "channel-a",
+        "firstMissingSeq": 43,
+        "lastKnownSeq": 47
+      },
+      "availableSequences": [43, 44, 45, 46, 47],
+      "maxEventsPerGap": 3,
+      "expected": {
+        "returnedSequences": [43, 44, 45],
+        "nextSeq": 45,
+        "hasMore": true,
+        "unrecoverable": false
+      }
+    },
+    {
+      "id": "invalid-ahead-cursor-resumes-from-server-position",
+      "kind": "cursor-rejection",
+      "cursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 99
+      },
+      "serverCursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 44
+      },
+      "serverHeadSeq": 47,
+      "invalidReason": "ahead",
+      "expected": {
+        "errorCode": "ERROR_CODE_CURSOR_INVALID",
+        "resumeFromSeq": 44
+      }
+    },
+    {
+      "id": "past-retention-cursor-requires-explicit-unrecoverable-repair",
+      "kind": "past-retention",
+      "cursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 10
+      },
+      "serverCursor": {
+        "channelId": "channel-a",
+        "lastAppliedSeq": 10
+      },
+      "retentionFloorSeq": 20,
+      "repairRequest": {
+        "firstMissingSeq": 11,
+        "lastKnownSeq": 19
+      },
+      "repairResponse": {
+        "unrecoverableGap": {
+          "firstMissingSeq": 11,
+          "lastKnownSeq": 19
+        }
+      },
+      "expected": {
+        "errorCode": "ERROR_CODE_CURSOR_INVALID",
+        "repairStartsAtSeq": 20,
+        "cursorAdvances": false
+      }
+    },
+    {
+      "id": "matching-signed-checkpoint-allows-cursor-advance",
+      "kind": "checkpoint",
+      "applied": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo="
+      },
+      "checkpoint": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo=",
+        "signatureValid": true
+      },
+      "expected": {
+        "status": "verified",
+        "cursorAdvances": true
+      }
+    },
+    {
+      "id": "checkpoint-chain-mismatch-fails-closed",
+      "kind": "checkpoint",
+      "applied": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "qqqqqqqqqqo="
+      },
+      "checkpoint": {
+        "channelId": "channel-a",
+        "channelSeq": 44,
+        "chainHash": "u7u7u7u7u7s=",
+        "signatureValid": true
+      },
+      "expected": {
+        "status": "rejected",
+        "errorCode": "ERROR_CODE_CIPHERTEXT_CORRUPT",
+        "cursorAdvances": false
+      }
+    },
+    {
+      "id": "unknown-envelope-extension-is-preserved",
+      "kind": "unknown-extension",
+      "fixture": "../../../../proto/golden/v1/channel-event-envelope.golden.hex",
+      "fieldNumber": 50000,
+      "payloadUtf8": "threadline-ciphertext-golden-v1",
+      "expected": {
+        "byteExactRoundTrip": true
+      }
+    }
+  ]
+}

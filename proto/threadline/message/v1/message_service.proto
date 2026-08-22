@@ -18,10 +18,23 @@ service MessageService {
   // it as pending. Core authorizes, allocates `channel_seq`, and commits the
   // event with its Outbox row in one transaction. Only then does it return a
   // Durable ACK, at which point the client moves the event from pending to
-  // committed.
+  // committed. The request must omit `server_commit`.
   //
   // Retrying with the same `idempotency_key` returns the original commit. A
   // hundred retries produce one logical event.
+  //
+  // Before sequencing, Core derives tenant and sender from the authenticated
+  // Device-bound session, resolves the conversation's E2EE Group, current
+  // Epoch and Retention Policy, checks that sender-signature metadata is
+  // present and belongs to that authorized Device, checks category/body
+  // consistency and compares `content_hash` with the opaque body bytes. Core
+  // does not become the signature authority and none of these checks parse
+  // `application_ciphertext` as plaintext.
+  //
+  // When the Group is `rekey_required`, Core rejects APPLICATION events with
+  // ERROR_CODE_REKEY_REQUIRED even if they name the last accepted Epoch. Only
+  // the ordered MLS material needed to establish the successor Epoch may
+  // proceed; application messages remain in the Device's Durable Local Outbox.
   rpc SendEvent(SendEventRequest) returns (SendEventResponse);
 
   // Returns a page of history, newest-first or oldest-first.
@@ -51,6 +64,13 @@ message SendEventResponse {
   // True when this request matched an earlier commit by idempotency key and no
   // new event was created.
   bool deduplicated = 3;
+
+  // Echoes the key bound to the committed logical event. This lets HTTP and
+  // reconnecting clients correlate a Durable ACK exactly as the realtime
+  // DurableAck does, without trusting request ordering. When an N-1 server
+  // omits this additive field, the unary caller uses its request-local key and
+  // verifies the returned `event_id`; it never correlates an ACK by list order.
+  string idempotency_key = 4;
 }
 
 // EventOrder selects the direction of a history page.
