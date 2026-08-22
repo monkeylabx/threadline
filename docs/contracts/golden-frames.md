@@ -31,12 +31,12 @@ THREADLINE_BUF=/absolute/path/to/pinned/buf \
   node proto/tools/generate-golden-frames.mjs --check
 ```
 
-Only a reviewed contract change uses `--write`. Issue #28 remains open because
-repository-level wire validation is not the required five generated-language
-decode/mutate/re-encode evidence, N-1 evidence, or protected-runner formal
-codegen record. The Integration Owner must run every historical frame through
-every generated adapter before committing generated SDKs; failure remains a
-contract gate.
+Only a reviewed contract change uses `--write`. The five generated-language
+decode/mutate/re-encode matrix and bidirectional N-1 matrix now pass against
+these exact frames. Issue #28 remains open only while the replacement
+protected-runner formal codegen run is pending after the authoritative error
+schema cleanup. Generated SDK installation remains a separate Integration
+Owner action and is not part of this contract PR.
 
 ## Test contract
 
@@ -58,8 +58,8 @@ Rust now has a selected and tested persistence seam: descriptor-backed
 do not retain arbitrary unknown message fields and remain forbidden as a
 decode/mutate/re-encode persistence path. The exact boundary, pins, connected
 preload, and offline verification command are recorded in `compatibility.md`.
-This result closes the Rust decision, not the remaining generated-adapter or
-N-1 matrix.
+This result closes the Rust decision; the same boundary is exercised by the
+completed five-language and N-1 matrices.
 
 The encoded order of ordinary fields is not a general protocol guarantee. Tests compare semantic values and explicit canary survival; an exact byte comparison is used only where the owning contract declares canonical serialization.
 

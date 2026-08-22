@@ -4,8 +4,8 @@
   "classification": "synthetic-protocol-compatibility-no-secrets",
   "acceptanceBoundary": {
     "issue": 28,
-    "issueMayClose": true,
-    "status": "passed",
+    "issueMayClose": false,
+    "status": "blocked",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
       "fixture-digest-validation",
@@ -14,24 +14,18 @@
       "rust-dynamic-message-persistence-seam",
       "five-language-generated-envelope-unknown-field-roundtrip",
       "bidirectional-n-minus-one-compatibility",
-      "formal-plan-reconciled-with-merged-templates",
-      "protected-runner-formal-codegen-evidence"
+      "formal-plan-reconciled-with-merged-templates"
     ],
-    "notSatisfiedHere": [],
+    "notSatisfiedHere": ["protected-runner-formal-codegen-evidence-rerun"],
     "candidateFollowups": [],
     "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
   },
   "formalCodegenEvidence": {
-    "status": "passed",
-    "targetSha": "5791e5b511a64379fda42fdd0728f727e06a6afa",
-    "prepareRunId": "32567958528",
-    "prepareWorkflowSha": "027a69bb97cfac534f69903b8e41e0fa67becee6",
-    "verifyRunId": "32568875949",
-    "verifyWorkflowSha": "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
-    "runnerImageVersion": "20260728.0273.1",
-    "runnerImagesInventorySha": "8d3ea005fa2d87f3cbc9255c27fdfed9e901a043",
-    "manifestSha256": "b62927968869869564b8f1e65da41300fd34547a8f55ace20cd8fc8481858bf8",
-    "mode": "verify-only",
+    "status": "stale",
+    "reason": "authoritative-error-detail-rebind-changed-schema-and-generated-output-trees",
+    "previousTargetSha": "5791e5b511a64379fda42fdd0728f727e06a6afa",
+    "previousPrepareRunId": "32567958528",
+    "previousVerifyRunId": "32568875949",
     "physicalDevices": "NOT RUN"
   },
   "compatibilityEvidence": {

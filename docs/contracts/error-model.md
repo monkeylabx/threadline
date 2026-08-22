@@ -23,7 +23,6 @@ mapping and retry semantics. New codes are additive. A code cannot later change
 meaning, authorization implications, or retry safety inside `v1`; use a new
 code instead.
 
-The branch-local `threadline.common.v1.ErrorEnvelope` was created before the
-multi-domain protocol landed and is not authoritative. It remains a T014 merge
-blocker until the formal codegen smoke is rebound to `ErrorDetail` and the
-duplicate schema is removed.
+T014 removed the earlier branch-local duplicate error message and rebound the
+formal Kotlin compilation smoke to `ErrorDetail`. New transports must consume
+this authoritative type instead of adding a parallel envelope.

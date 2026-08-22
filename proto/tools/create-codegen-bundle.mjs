@@ -8,7 +8,6 @@ import {
   readdirSync,
   readlinkSync,
   realpathSync,
-  rmSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -108,8 +107,10 @@ function main() {
   if (outputRoot === resolve("/") || outputRoot === repositoryRoot || outputRoot.startsWith(`${repositoryRoot}${sep}`)) {
     fail("bundle output must be outside the repository");
   }
-  rmSync(outputRoot, { recursive: true, force: true });
-  mkdirSync(outputRoot, { recursive: true, mode: 0o700 });
+  if (existsSync(outputRoot)) {
+    fail(`bundle output must be a new, non-existing directory: ${outputRoot}`);
+  }
+  mkdirSync(outputRoot, { mode: 0o700 });
 
   const sources = {};
   for (const [name, input] of Object.entries(spec.sources).sort(([left], [right]) => compareCodepoints(left, right))) {

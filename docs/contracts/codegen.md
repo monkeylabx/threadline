@@ -199,18 +199,23 @@ Generated files are never hand-edited. A contract PR changes `proto/`, fixtures,
 
 The current T014 task defines output locations and provides the verified generation mechanism, but does not create or edit shared generated surfaces. Their package manifests, workspace registration, native builds, and committed generation remain Integration-owned.
 
-## T014 acceptance blocker
+## T014 acceptance status
 
 The merged schema now contains `ChannelEventEnvelope` and `RecoveryEnvelope`.
 Representative synthetic frames now bind both messages to known semantic
 values, exact source/frame digests, and the family field-50000 canary. The
 five-language unknown-field decode/mutate/re-encode and bidirectional N-1
 matrix now pass for both representative frames. The formal plan now exactly
-matches the merged templates. The remaining blocker is protected-runner formal
-evidence.
-`proto/golden/v1/manifest.json` records the completed local and protected-runner evidence, including the exact prepare/verify run IDs, workflow commits, runner image, reviewed manifest digest, and `issueMayClose: true`. Physical-device validation remains explicitly `NOT RUN` and is not part of T014.
+matches the merged templates. A prior protected-runner run passed, but removing
+the duplicate error schema and rebinding the compilation smoke to the
+authoritative `ErrorDetail` changed every generated output tree. That earlier
+run is therefore recorded as stale, not reused as acceptance evidence.
+`proto/golden/v1/manifest.json` keeps `issueMayClose: false` until a new
+prepare/review/verify cycle records the exact target SHA, workflow commits,
+runner image, reviewed manifest digest, and output-tree checks. Physical-device
+validation remains explicitly `NOT RUN` and is not part of T014.
 
-Issue #28 must remain open unless one of two things happens: protected-runner
-formal evidence is added; or Contracts and Product
+Issue #28 must remain open unless one of two things happens: replacement
+protected-runner formal evidence is added; or Contracts and Product
 explicitly approve moving exact acceptance items elsewhere and update the
 Issue. Merely naming a follow-up task in this document is not approval.

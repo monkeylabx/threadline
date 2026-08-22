@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -136,13 +137,45 @@ for (const [surface, checks] of Object.entries(toolchain.generationChecks)) {
   assert(Number.isSafeInteger(checks.fileCount) && checks.fileCount > 0, `${surface} must pin the generated file count`);
   assert(/^[0-9a-f]{64}$/u.test(checks.treeSha256), `${surface} must pin the exact generated tree SHA-256`);
   assert(Array.isArray(checks.signatureRegexAny) && checks.signatureRegexAny.length > 0, `${surface} must pin accepted real-generator signatures`);
-  assert(Array.isArray(checks.structureRegex) && checks.structureRegex.length > 0, `${surface} must pin ErrorEnvelope output structure`);
+  assert(Array.isArray(checks.structureRegex) && checks.structureRegex.length > 0, `${surface} must pin authoritative contract output structure`);
 }
 assert(statSync(join(protoRoot, "tools", "verify-codegen.mjs")).isFile(), "the verified codegen command must exist");
 const installTestPath = join(protoRoot, "tools", "verify-codegen-install.test.mjs");
 assert(statSync(installTestPath).isFile(), "repository codegen failure-injection tests must exist");
 const bundleBuilderPath = join(protoRoot, "tools", "create-codegen-bundle.mjs");
 assert(statSync(bundleBuilderPath).isFile(), "formal codegen bundle builder must exist");
+const bundleBuilderSource = read(bundleBuilderPath);
+assert(!bundleBuilderSource.includes("rmSync(outputRoot"), "formal bundle builder must never recursively replace a caller-selected output directory");
+assert(bundleBuilderSource.includes("bundle output must be a new, non-existing directory"), "formal bundle builder must refuse every pre-existing output directory");
+const bundleRefusalRoot = mkdtempSync(join(tmpdir(), "threadline-bundle-refusal-"));
+try {
+  const existingOutput = join(bundleRefusalRoot, "existing-output");
+  const marker = join(existingOutput, "owned-by-caller.txt");
+  const spec = join(bundleRefusalRoot, "spec.json");
+  mkdirSync(existingOutput);
+  writeFileSync(marker, "must survive\n");
+  writeFileSync(spec, `${JSON.stringify({
+    schemaVersion: 1,
+    platform: "darwin-arm64",
+    profile: "release",
+    sources: {},
+    closures: {},
+    tools: Object.fromEntries([
+      "buf", "protoc", "protoc-gen-go", "protoc-gen-connect-go", "protoc-gen-es",
+      "protoc-gen-prost", "protoc-gen-prost-crate", "protoc-gen-swift",
+      "protoc-gen-connect-swift", "protoc-gen-connect-kotlin", "java", "javac", "node",
+    ].map((name) => [name, null])),
+  })}\n`);
+  const refusal = spawnSync(process.execPath, [bundleBuilderPath], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: { ...process.env, THREADLINE_CODEGEN_BUNDLE_SPEC: spec, THREADLINE_CODEGEN_BUNDLE_DIR: existingOutput },
+  });
+  assert(refusal.status !== 0, "formal bundle builder must reject a pre-existing output directory");
+  assert(read(marker) === "must survive\n", "formal bundle builder rejection must preserve caller-owned output contents");
+} finally {
+  rmSync(bundleRefusalRoot, { recursive: true, force: true });
+}
 const bundleSpecBuilderPath = join(protoRoot, "tools", "create-codegen-bundle-spec.mjs");
 assert(statSync(bundleSpecBuilderPath).isFile(), "formal codegen bundle spec builder must exist");
 
@@ -161,8 +194,9 @@ assert(manifest.schemaVersion === 2, "Golden Frame manifest schemaVersion must b
 assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary must remain field 50000");
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
-assert(manifest.acceptanceBoundary.issueMayClose === true, "T014 may close only after all local and protected-runner evidence passes");
-assert(manifest.acceptanceBoundary.status === "passed", "T014 acceptance boundary must record the completed evidence state");
+const formalEvidencePending = manifest.formalCodegenEvidence.status === "stale";
+assert(manifest.acceptanceBoundary.issueMayClose === !formalEvidencePending, "T014 may close only after current protected-runner evidence passes");
+assert(manifest.acceptanceBoundary.status === (formalEvidencePending ? "blocked" : "passed"), "T014 acceptance status must match formal evidence state");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("rust-dynamic-message-persistence-seam"), "the selected Rust DynamicMessage seam must be recorded");
@@ -173,8 +207,8 @@ assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-un
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "verified N-1 evidence must not remain a blocker");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("formal-plan-reconciled-with-merged-templates"), "the merged formal generation plan must be recorded as satisfied");
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("formal-plan-reconciliation-with-merged-templates"), "completed formal-plan reconciliation must not remain a blocker");
-assert(manifest.acceptanceBoundary.satisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must be recorded as satisfied");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.length === 0, "T014 must not close with an unsatisfied evidence item");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("protected-runner-formal-codegen-evidence") === !formalEvidencePending, "formal protected-runner satisfaction must match the current evidence state");
+assert(JSON.stringify(manifest.acceptanceBoundary.notSatisfiedHere) === JSON.stringify(formalEvidencePending ? ["protected-runner-formal-codegen-evidence-rerun"] : []), "T014 unsatisfied evidence must exactly match the formal rerun state");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");
 assert(manifest.compatibilityEvidence.nMinusOneCommit === "b6c797c45d90fbb8b0465f7d7407ee1536e322e3", "generated-adapter N-1 evidence must remain pinned to the pre-T014 main commit");
 assert(manifest.compatibilityEvidence.status === "passed", "the generated-adapter matrix must be recorded as passed");
@@ -187,19 +221,23 @@ assert(manifest.compatibilityEvidence.canaryFieldNumber === 50000, "generated-ad
 assert(JSON.stringify(manifest.compatibilityEvidence.requiredAdapters) === JSON.stringify(["go", "typescript", "rust", "swift", "kotlin"]), "generated-adapter evidence must cover the exact five-language set");
 assert(JSON.stringify(manifest.compatibilityEvidence.verifiedAdapters) === JSON.stringify(manifest.compatibilityEvidence.requiredAdapters), "every required generated adapter must have verified evidence");
 assert(manifest.compatibilityEvidence.verificationCommand === "node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,swift,kotlin", "the canonical five-language verification command must remain fixed");
-assert(JSON.stringify(manifest.formalCodegenEvidence) === JSON.stringify({
-  status: "passed",
-  targetSha: "5791e5b511a64379fda42fdd0728f727e06a6afa",
-  prepareRunId: "32567958528",
-  prepareWorkflowSha: "027a69bb97cfac534f69903b8e41e0fa67becee6",
-  verifyRunId: "32568875949",
-  verifyWorkflowSha: "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
-  runnerImageVersion: "20260728.0273.1",
-  runnerImagesInventorySha: "8d3ea005fa2d87f3cbc9255c27fdfed9e901a043",
-  manifestSha256: "b62927968869869564b8f1e65da41300fd34547a8f55ace20cd8fc8481858bf8",
-  mode: "verify-only",
-  physicalDevices: "NOT RUN",
-}), "formal codegen evidence must remain bound to the reviewed protected-runner artifact");
+if (formalEvidencePending) {
+  assert(JSON.stringify(manifest.formalCodegenEvidence) === JSON.stringify({
+    status: "stale",
+    reason: "authoritative-error-detail-rebind-changed-schema-and-generated-output-trees",
+    previousTargetSha: "5791e5b511a64379fda42fdd0728f727e06a6afa",
+    previousPrepareRunId: "32567958528",
+    previousVerifyRunId: "32568875949",
+    physicalDevices: "NOT RUN",
+  }), "stale formal evidence must name the exact invalidating schema change and prior runs");
+} else {
+  assert(manifest.formalCodegenEvidence.status === "passed", "formal codegen evidence must be passed before T014 may close");
+  for (const field of ["targetSha", "prepareRunId", "prepareWorkflowSha", "verifyRunId", "verifyWorkflowSha", "runnerImageVersion", "runnerImagesInventorySha", "manifestSha256"]) {
+    assert(typeof manifest.formalCodegenEvidence[field] === "string" && manifest.formalCodegenEvidence[field].length > 0, `formal codegen evidence must bind ${field}`);
+  }
+  assert(manifest.formalCodegenEvidence.mode === "verify-only", "formal codegen evidence must use verify-only mode");
+  assert(manifest.formalCodegenEvidence.physicalDevices === "NOT RUN", "T014 must not claim physical-device evidence");
+}
 assert(JSON.stringify(manifest.compatibilityEvidence.requiredEnvironment) === JSON.stringify([
   "THREADLINE_GO",
   "THREADLINE_PROTOC_GEN_GO",

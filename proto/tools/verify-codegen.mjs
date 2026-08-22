@@ -738,17 +738,18 @@ function compileKotlinOutput(generatedRoot, temporaryRoot, tools, artifacts, env
   run(tools.javac, ["-encoding", "UTF-8", "-source", "17", "-target", "17", "-cp", artifacts.protobufJava, "-d", javaClasses, ...generatedJava], { env: environment });
   const smokeSource = join(temporaryRoot, "ThreadlineCodegenSmoke.kt");
   writeFileSync(smokeSource, [
-    "import com.threadline.proto.threadline.common.v1.errorEnvelope",
+    "import com.threadline.proto.threadline.type.v1.ErrorCode",
+    "import com.threadline.proto.threadline.type.v1.errorDetail",
     "",
     "fun threadlineCodegenSmoke() {",
-    "  val error = errorEnvelope {",
-    "    domain = \"contract-smoke\"",
-    "    code = \"generated\"",
-    "    retryable = false",
-    "    userMessageKey = \"contract.generated\"",
-    "    traceId = \"trace-smoke\"",
+    "  val error = errorDetail {",
+    "    code = ErrorCode.ERROR_CODE_IDEMPOTENCY_CONFLICT",
+    "    reason = \"generated_contract_smoke\"",
+    "    subjectId = \"subject-smoke\"",
+    "    policyVersion = \"policy-smoke\"",
     "  }",
-    "  check(error.hasTraceId() && error.traceId == \"trace-smoke\")",
+    "  check(error.code == ErrorCode.ERROR_CODE_IDEMPOTENCY_CONFLICT)",
+    "  check(error.reason == \"generated_contract_smoke\")",
     "}",
     "",
   ].join("\n"));

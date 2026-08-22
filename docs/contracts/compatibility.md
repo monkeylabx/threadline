@@ -43,17 +43,12 @@ Any Protobuf message stored in PostgreSQL, SQLite, object storage, a local outbo
 Ciphertext, MLS/application crypto, history, and recovery envelopes are
 persisted contracts. `ChannelEventEnvelope` and `RecoveryEnvelope` now have
 representative synthetic frames containing known fields plus the exact unknown
-field `50000` canary. The remaining T014 work is generated-adapter evidence,
-not schema invention: five-language unknown-field preservation and N-1
-read/write results must be recorded against those exact messages.
-
-The current T014 branch proves schema binding, representative wire values,
-source/frame digests, and library-independent canary preservation. It does not
-claim that a generated adapter retains unknown fields. The Integration Owner
-must record five-language decode/mutate/re-encode and N-1 evidence before the
-generated SDK update can merge. Assigning that missing acceptance work
-elsewhere requires explicit Contracts and Product approval plus an Issue
-update.
+field `50000` canary. T014 now records five-language generated-adapter
+decode/mutate/re-encode evidence and bidirectional N-1 read/write results
+against those exact messages. The protected-runner formal generation rerun is
+the only pending T014 acceptance item after removing the duplicate error
+schema; generated SDK installation remains Integration-owned and is not
+included in this branch.
 
 ### Rust persistence blocker
 
@@ -94,7 +89,6 @@ THREADLINE_CARGO=/absolute/path/to/cargo-1.97.1 \
   node proto/tools/verify-rust-envelope-preservation.mjs --offline
 ```
 
-This closes the Rust seam decision only. The five-language Gate still requires
-the other generated adapters, the Rust client owner to implement the selected
-boundary in its owned path, and the full N-1 matrix before persistence writes
-may ship.
+This closes the Rust seam decision and the compatibility harness covers all
+five generated adapters plus the full N-1 matrix. Product code must still
+implement the selected Rust boundary before persisted writes may ship.
