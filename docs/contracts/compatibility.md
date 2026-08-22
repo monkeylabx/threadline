@@ -66,11 +66,35 @@ its generated-message unknown-field implementation is still an open change:
 - [`prost-reflect::DynamicMessage`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html), which explicitly preserves unknown fields
 
 Consequently, decoding a persisted Envelope directly into a generated `prost`
-struct and re-encoding it is not an admissible persistence path. T014 remains
-blocked until Contracts and the Rust client owner select and test one explicit
-seam: descriptor-backed `DynamicMessage` at the persistence boundary, or an
-equally reviewed raw-wire preservation strategy that cannot duplicate, reorder,
-or overwrite a mutated known field. Changing generator/runtime is also valid,
-but requires the normal toolchain and generated-surface review. Whichever seam
-is selected must run the same representative frames, known-field mutation, and
-N-1 matrix before Rust can count toward the five-language Gate.
+struct and re-encoding it is not an admissible persistence path. T014 selects
+descriptor-backed `prost-reflect::DynamicMessage` as the Rust persistence
+boundary. The generated `prost` type may be a transient typed view, but it is
+never the source of bytes written back to SQLite, an Outbox, an event log, or
+object storage.
+
+The boundary has four invariants:
+
+1. the descriptor set is built from the exact checked-in schema with pinned Buf;
+2. the original `DynamicMessage` remains authoritative for all writes;
+3. a known-field change is applied through a descriptor-checked, contract-specific patch to that same dynamic message; and
+4. JSON conversion or transcoding a generated struct back into a fresh dynamic message is forbidden because either path can discard unknown wire material.
+
+The isolated harness pins Cargo 1.97.1, `prost` 0.14.1, and
+`prost-reflect` 0.16.5. It proves both representative frames preserve the exact
+field `50000` bytes through a no-op round trip and a type-checked known-string
+mutation, while a type-confused mutation fails closed:
+
+```sh
+THREADLINE_BUF=/absolute/path/to/buf-1.72.0 \
+THREADLINE_CARGO=/absolute/path/to/cargo-1.97.1 \
+  node proto/tools/verify-rust-envelope-preservation.mjs --connected
+
+THREADLINE_BUF=/absolute/path/to/buf-1.72.0 \
+THREADLINE_CARGO=/absolute/path/to/cargo-1.97.1 \
+  node proto/tools/verify-rust-envelope-preservation.mjs --offline
+```
+
+This closes the Rust seam decision only. The five-language Gate still requires
+the other generated adapters, the Rust client owner to implement the selected
+boundary in its owned path, and the full N-1 matrix before persistence writes
+may ship.

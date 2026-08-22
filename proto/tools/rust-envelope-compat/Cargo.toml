@@ -1,0 +1,11 @@
+[package]
+name = "threadline-rust-envelope-compat"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+prost = "=0.14.1"
+prost-reflect = "=0.16.5"

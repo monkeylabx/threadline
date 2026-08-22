@@ -53,11 +53,13 @@ prove:
 5. an N-1 reader can consume current additive frames, and the current reader can consume N-1 frames;
 6. malformed, cross-Tenant, cross-Group, unknown Crypto Profile, and rollback cases fail closed where applicable.
 
-Rust does not yet have an admissible generated-adapter result. The configured
-`prost` generated structs do not currently retain arbitrary unknown message
-fields; the explicit options and evidence requirements are recorded in
-`compatibility.md`. Until that persistence seam is selected and tested, a Rust
-decode/re-encode result is a blocker, not a waived or expected failure.
+Rust now has a selected and tested persistence seam: descriptor-backed
+`prost-reflect::DynamicMessage`. The configured `prost` generated structs still
+do not retain arbitrary unknown message fields and remain forbidden as a
+decode/mutate/re-encode persistence path. The exact boundary, pins, connected
+preload, and offline verification command are recorded in `compatibility.md`.
+This result closes the Rust decision, not the remaining generated-adapter or
+N-1 matrix.
 
 The encoded order of ordinary fields is not a general protocol guarantee. Tests compare semantic values and explicit canary survival; an exact byte comparison is used only where the owning contract declares canonical serialization.
 

@@ -9,6 +9,7 @@ Threadline uses versioned Protobuf packages as the stable seam between the IM co
 | Style | `buf lint` | Enforce package, file, enum, RPC, and comment conventions |
 | Compatibility | `make proto-breaking` | Reject source and wire changes covered by the merged `WIRE_JSON` policy |
 | Golden Frames | `node proto/tools/verify-contracts.mjs` | Verify representative persisted-envelope values, unknown-field canaries, hashes, local-only generation, and output mappings |
+| Rust persistence seam | pinned absolute Buf and Cargo + `node proto/tools/verify-rust-envelope-preservation.mjs --offline` | Prove descriptor-backed Rust no-op and known-field mutations preserve both exact field `50000` canaries |
 | Release verification | approved clean-env launcher + bundle-absolute Node + `proto/tools/verify-codegen.mjs --mode=verify-only` | Verify schema-v4 source/provenance/authentication records and snapshotted runtime closures, reject protocol stubs, require exact generated file sets, and compile the Java/Kotlin pair |
 | Generation commit | approved clean-env launcher + bundle-absolute Node + `proto/tools/verify-codegen.mjs --mode=repository` | Install the already-verified temporary output into the six declared generated directories; clean worktree, repository lock, safe destination paths, and explicit Integration Owner acknowledgement required |
 
@@ -18,9 +19,11 @@ breaking command against the merged protocol baseline.
 
 Representative synthetic frames now bind the concrete `ChannelEventEnvelope`
 and `RecoveryEnvelope` schemas to known values, hashes, and the exact field
-`50000` canary bytes. Issue #28 remains open until five generated-language
-decode/mutate/re-encode, N-1, and protected-runner formal codegen evidence
-exists, or Contracts and Product explicitly approve and record a scope split.
+`50000` canary bytes. The descriptor-backed Rust persistence seam is selected
+and independently reproducible, but Issue #28 remains open until the remaining
+generated-language decode/mutate/re-encode, N-1, and protected-runner formal
+codegen evidence exists, or Contracts and Product explicitly approve and
+record a scope split.
 
 The workspace intentionally has no BSR module name, BSR dependency, or remote generation plugin. Private and air-gapped builds consume only the repository plus the pinned local toolchain.
 

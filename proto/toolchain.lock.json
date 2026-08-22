@@ -105,6 +105,14 @@
       }
     }
   },
+  "rustPersistence": {
+    "cargo": "1.97.1",
+    "prost": "0.14.1",
+    "prostReflect": "0.16.5",
+    "harnessManifest": "proto/tools/rust-envelope-compat/Cargo.toml",
+    "connectedCommand": "THREADLINE_BUF=<absolute-pinned-buf> THREADLINE_CARGO=<absolute-pinned-cargo> node proto/tools/verify-rust-envelope-preservation.mjs --connected",
+    "offlineCommand": "THREADLINE_BUF=<absolute-pinned-buf> THREADLINE_CARGO=<absolute-pinned-cargo> node proto/tools/verify-rust-envelope-preservation.mjs --offline"
+  },
   "outputs": {
     "go": "services/gen/proto",
     "typescript": "packages/generated-ts/src",

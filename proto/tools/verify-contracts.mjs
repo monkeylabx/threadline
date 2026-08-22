@@ -37,6 +37,14 @@ assert(toolchain.schemaVersion === 1, "toolchain lock schemaVersion must be 1");
 assert(toolchain.tools.javaRuntime === workspaceToolchain.android.java, "Contract codegen JDK must match the workspace JDK pin");
 assert(toolchain.tools.javaVendor === "Eclipse Adoptium" && workspaceToolchain.android.javaVendor === "Temurin", "Contract codegen JDK vendor must match the workspace Temurin pin");
 assert(toolchain.scope.startsWith("Contract-specific"), "Proto lock must state its contract-only boundary");
+assert(JSON.stringify(toolchain.rustPersistence) === JSON.stringify({
+  cargo: workspaceToolchain.rust,
+  prost: "0.14.1",
+  prostReflect: "0.16.5",
+  harnessManifest: "proto/tools/rust-envelope-compat/Cargo.toml",
+  connectedCommand: "THREADLINE_BUF=<absolute-pinned-buf> THREADLINE_CARGO=<absolute-pinned-cargo> node proto/tools/verify-rust-envelope-preservation.mjs --connected",
+  offlineCommand: "THREADLINE_BUF=<absolute-pinned-buf> THREADLINE_CARGO=<absolute-pinned-cargo> node proto/tools/verify-rust-envelope-preservation.mjs --offline",
+}), "Rust persisted-envelope seam and exact runtime pins must remain fixed");
 assert(Object.keys(toolchain.outputs).length === 5, "exactly five language outputs must be pinned");
 const expectedGenerationPlan = {
   version: "v2",
@@ -119,10 +127,11 @@ assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary 
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-rust-unknown-fields-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
+assert(manifest.acceptanceBoundary.status === "blocked-on-cross-language-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("rust-persisted-envelope-unknown-field-preservation-decision"), "the Rust persisted-envelope unknown-field seam must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("rust-dynamic-message-persistence-seam"), "the selected Rust DynamicMessage seam must be recorded");
+assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("rust-persisted-envelope-unknown-field-preservation-decision"), "the verified Rust persistence decision must not remain listed as unsatisfied");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "cross-language unknown-field evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "N-1 evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must remain an explicit blocker");
@@ -132,6 +141,17 @@ assert(manifest.frames.length === 2, "ChannelEventEnvelope and RecoveryEnvelope 
 
 const goldenTestPath = join(protoRoot, "tools", "verify-golden-frames.mjs");
 assert(statSync(goldenTestPath).isFile(), "representative Golden Frame verifier must exist");
+const rustEnvelopeTestPath = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
+const rustEnvelopeHarnessRoot = join(protoRoot, "tools", "rust-envelope-compat");
+assert(statSync(rustEnvelopeTestPath).isFile(), "Rust persisted-envelope verifier must exist");
+assert(statSync(join(rustEnvelopeHarnessRoot, "Cargo.toml")).isFile(), "isolated Rust persisted-envelope harness manifest must exist");
+assert(statSync(join(rustEnvelopeHarnessRoot, "Cargo.lock")).isFile(), "isolated Rust persisted-envelope harness lock must exist");
+assert(statSync(join(rustEnvelopeHarnessRoot, "src", "main.rs")).isFile(), "isolated Rust persisted-envelope harness source must exist");
+const rustHarnessManifest = read(join(rustEnvelopeHarnessRoot, "Cargo.toml"));
+const rustHarnessLock = read(join(rustEnvelopeHarnessRoot, "Cargo.lock"));
+assert(rustHarnessManifest.includes('prost = "=0.14.1"'), "Rust harness must exactly pin prost 0.14.1");
+assert(rustHarnessManifest.includes('prost-reflect = "=0.16.5"'), "Rust harness must exactly pin prost-reflect 0.16.5");
+assert(rustHarnessLock.includes('name = "prost-reflect"\nversion = "0.16.5"'), "Rust harness lock must retain prost-reflect 0.16.5");
 const goldenTests = spawnSync(process.execPath, [goldenTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (goldenTests.status !== 0) errors.push(`${goldenTests.stdout ?? ""}${goldenTests.stderr ?? ""}`.trim());
 
