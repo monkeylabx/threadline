@@ -116,9 +116,9 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
     kubectl --context "$context" --namespace "$namespace" exec "$otel_allow_pod" -- \
       nc -z -w 2 "$jaeger_ip" 4317 >/dev/null 2>&1 && \
     kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
-      nslookup otel-collector >/dev/null 2>&1 && \
+      nslookup otel-collector.threadline-dev.svc.cluster.local >/dev/null 2>&1 && \
     kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
-      nslookup jaeger >/dev/null 2>&1 && \
+      nslookup jaeger.threadline-dev.svc.cluster.local >/dev/null 2>&1 && \
     ! kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
       nc -z -w 2 "$otel_ip" 8889 >/dev/null 2>&1 && \
     ! kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
@@ -138,8 +138,8 @@ echo "NetworkPolicy probes did not converge within 60s" >&2
 for check in \
   "prometheus-to-otel:wget -T 3 -q -O /dev/null http://$otel_ip:8889/metrics" \
   "otel-to-jaeger:nc -z -w 2 $jaeger_ip 4317" \
-  "deny-dns-otel:nslookup otel-collector" \
-  "deny-dns-jaeger:nslookup jaeger" \
+  "deny-dns-otel:nslookup otel-collector.threadline-dev.svc.cluster.local" \
+  "deny-dns-jaeger:nslookup jaeger.threadline-dev.svc.cluster.local" \
   "deny-to-otel:nc -z -w 2 $otel_ip 8889" \
   "deny-to-jaeger:nc -z -w 2 $jaeger_ip 4317"; do
   name=${check%%:*}
