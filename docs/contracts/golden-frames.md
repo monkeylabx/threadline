@@ -33,10 +33,10 @@ THREADLINE_BUF=/absolute/path/to/pinned/buf \
 
 Only a reviewed contract change uses `--write`. The five generated-language
 decode/mutate/re-encode matrix and bidirectional N-1 matrix now pass against
-these exact frames. Issue #28 remains open only while the replacement
-protected-runner formal codegen run is pending after the authoritative error
-schema cleanup. Generated SDK installation remains a separate Integration
-Owner action and is not part of this contract PR.
+these exact frames. Replacement protected-runner formal codegen also passes
+after the authoritative error-schema cleanup. Generated SDK installation
+remains a separate Integration Owner action and is not part of this contract
+PR.
 
 ## Test contract
 

@@ -20,9 +20,10 @@ breaking command against the merged protocol baseline.
 Representative synthetic frames now bind the concrete `ChannelEventEnvelope`
 and `RecoveryEnvelope` schemas to known values, hashes, and the exact field
 `50000` canary bytes. The descriptor-backed Rust persistence seam and the
-five-language bidirectional N-1 matrix are independently reproducible. Issue
-#28 remains open only until replacement protected-runner formal codegen
-evidence is recorded after the authoritative error-schema cleanup.
+five-language bidirectional N-1 matrix are independently reproducible. The
+replacement protected-runner formal codegen evidence also passes after the
+authoritative error-schema cleanup; Issue #28 may close after final review and
+required PR checks pass.
 
 The workspace intentionally has no BSR module name, BSR dependency, or remote generation plugin. Private and air-gapped builds consume only the repository plus the pinned local toolchain.
 

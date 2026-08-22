@@ -206,16 +206,15 @@ Representative synthetic frames now bind both messages to known semantic
 values, exact source/frame digests, and the family field-50000 canary. The
 five-language unknown-field decode/mutate/re-encode and bidirectional N-1
 matrix now pass for both representative frames. The formal plan now exactly
-matches the merged templates. A prior protected-runner run passed, but removing
-the duplicate error schema and rebinding the compilation smoke to the
-authoritative `ErrorDetail` changed every generated output tree. That earlier
-run is therefore recorded as stale, not reused as acceptance evidence.
-`proto/golden/v1/manifest.json` keeps `issueMayClose: false` until a new
-prepare/review/verify cycle records the exact target SHA, workflow commits,
-runner image, reviewed manifest digest, and output-tree checks. Physical-device
-validation remains explicitly `NOT RUN` and is not part of T014.
+matches the merged templates. After removing the duplicate error schema and
+rebinding the compilation smoke to the authoritative `ErrorDetail`, the full
+prepare/review/verify cycle passed again for exact target
+`6d4183410793e9946c86ec6c55397a31bc018da4`.
+`proto/golden/v1/manifest.json` records the exact prepare and verify run IDs,
+workflow commits, runner image, reviewed manifest digest, and six output-tree
+checks with `issueMayClose: true`. Physical-device validation remains
+explicitly `NOT RUN` and is not part of T014.
 
-Issue #28 must remain open unless one of two things happens: replacement
-protected-runner formal evidence is added; or Contracts and Product
-explicitly approve moving exact acceptance items elsewhere and update the
-Issue. Merely naming a follow-up task in this document is not approval.
+Issue #28 may close after final review and required PR checks pass. Moving or
+weakening any recorded acceptance item still requires explicit Contracts and
+Product approval plus an Issue update.

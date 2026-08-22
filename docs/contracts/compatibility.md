@@ -45,10 +45,9 @@ persisted contracts. `ChannelEventEnvelope` and `RecoveryEnvelope` now have
 representative synthetic frames containing known fields plus the exact unknown
 field `50000` canary. T014 now records five-language generated-adapter
 decode/mutate/re-encode evidence and bidirectional N-1 read/write results
-against those exact messages. The protected-runner formal generation rerun is
-the only pending T014 acceptance item after removing the duplicate error
-schema; generated SDK installation remains Integration-owned and is not
-included in this branch.
+against those exact messages. The protected-runner formal generation rerun also
+passes after removing the duplicate error schema. Generated SDK installation
+remains Integration-owned and is not included in this branch.
 
 ### Rust persistence blocker
 

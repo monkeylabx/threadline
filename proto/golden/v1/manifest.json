@@ -4,8 +4,8 @@
   "classification": "synthetic-protocol-compatibility-no-secrets",
   "acceptanceBoundary": {
     "issue": 28,
-    "issueMayClose": false,
-    "status": "blocked",
+    "issueMayClose": true,
+    "status": "passed",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
       "fixture-digest-validation",
@@ -14,18 +14,24 @@
       "rust-dynamic-message-persistence-seam",
       "five-language-generated-envelope-unknown-field-roundtrip",
       "bidirectional-n-minus-one-compatibility",
-      "formal-plan-reconciled-with-merged-templates"
+      "formal-plan-reconciled-with-merged-templates",
+      "protected-runner-formal-codegen-evidence"
     ],
-    "notSatisfiedHere": ["protected-runner-formal-codegen-evidence-rerun"],
+    "notSatisfiedHere": [],
     "candidateFollowups": [],
     "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
   },
   "formalCodegenEvidence": {
-    "status": "stale",
-    "reason": "authoritative-error-detail-rebind-changed-schema-and-generated-output-trees",
-    "previousTargetSha": "5791e5b511a64379fda42fdd0728f727e06a6afa",
-    "previousPrepareRunId": "32567958528",
-    "previousVerifyRunId": "32568875949",
+    "status": "passed",
+    "targetSha": "6d4183410793e9946c86ec6c55397a31bc018da4",
+    "prepareRunId": "32569817612",
+    "prepareWorkflowSha": "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+    "verifyRunId": "32570070634",
+    "verifyWorkflowSha": "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+    "runnerImageVersion": "20260728.0273.1",
+    "runnerImagesInventorySha": "8d3ea005fa2d87f3cbc9255c27fdfed9e901a043",
+    "manifestSha256": "36f0052f7594c0b8e03fd87b832481053de23dd9f143837b19da7f018b068678",
+    "mode": "verify-only",
     "physicalDevices": "NOT RUN"
   },
   "compatibilityEvidence": {

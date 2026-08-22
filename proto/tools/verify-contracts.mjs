@@ -194,9 +194,8 @@ assert(manifest.schemaVersion === 2, "Golden Frame manifest schemaVersion must b
 assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary must remain field 50000");
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
-const formalEvidencePending = manifest.formalCodegenEvidence.status === "stale";
-assert(manifest.acceptanceBoundary.issueMayClose === !formalEvidencePending, "T014 may close only after current protected-runner evidence passes");
-assert(manifest.acceptanceBoundary.status === (formalEvidencePending ? "blocked" : "passed"), "T014 acceptance status must match formal evidence state");
+assert(manifest.acceptanceBoundary.issueMayClose === true, "T014 may close only after current protected-runner evidence passes");
+assert(manifest.acceptanceBoundary.status === "passed", "T014 acceptance boundary must record the completed evidence state");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("rust-dynamic-message-persistence-seam"), "the selected Rust DynamicMessage seam must be recorded");
@@ -207,8 +206,8 @@ assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-un
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "verified N-1 evidence must not remain a blocker");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("formal-plan-reconciled-with-merged-templates"), "the merged formal generation plan must be recorded as satisfied");
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("formal-plan-reconciliation-with-merged-templates"), "completed formal-plan reconciliation must not remain a blocker");
-assert(manifest.acceptanceBoundary.satisfiedHere.includes("protected-runner-formal-codegen-evidence") === !formalEvidencePending, "formal protected-runner satisfaction must match the current evidence state");
-assert(JSON.stringify(manifest.acceptanceBoundary.notSatisfiedHere) === JSON.stringify(formalEvidencePending ? ["protected-runner-formal-codegen-evidence-rerun"] : []), "T014 unsatisfied evidence must exactly match the formal rerun state");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must be recorded as satisfied");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.length === 0, "T014 must not close with an unsatisfied evidence item");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");
 assert(manifest.compatibilityEvidence.nMinusOneCommit === "b6c797c45d90fbb8b0465f7d7407ee1536e322e3", "generated-adapter N-1 evidence must remain pinned to the pre-T014 main commit");
 assert(manifest.compatibilityEvidence.status === "passed", "the generated-adapter matrix must be recorded as passed");
@@ -221,23 +220,19 @@ assert(manifest.compatibilityEvidence.canaryFieldNumber === 50000, "generated-ad
 assert(JSON.stringify(manifest.compatibilityEvidence.requiredAdapters) === JSON.stringify(["go", "typescript", "rust", "swift", "kotlin"]), "generated-adapter evidence must cover the exact five-language set");
 assert(JSON.stringify(manifest.compatibilityEvidence.verifiedAdapters) === JSON.stringify(manifest.compatibilityEvidence.requiredAdapters), "every required generated adapter must have verified evidence");
 assert(manifest.compatibilityEvidence.verificationCommand === "node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,swift,kotlin", "the canonical five-language verification command must remain fixed");
-if (formalEvidencePending) {
-  assert(JSON.stringify(manifest.formalCodegenEvidence) === JSON.stringify({
-    status: "stale",
-    reason: "authoritative-error-detail-rebind-changed-schema-and-generated-output-trees",
-    previousTargetSha: "5791e5b511a64379fda42fdd0728f727e06a6afa",
-    previousPrepareRunId: "32567958528",
-    previousVerifyRunId: "32568875949",
-    physicalDevices: "NOT RUN",
-  }), "stale formal evidence must name the exact invalidating schema change and prior runs");
-} else {
-  assert(manifest.formalCodegenEvidence.status === "passed", "formal codegen evidence must be passed before T014 may close");
-  for (const field of ["targetSha", "prepareRunId", "prepareWorkflowSha", "verifyRunId", "verifyWorkflowSha", "runnerImageVersion", "runnerImagesInventorySha", "manifestSha256"]) {
-    assert(typeof manifest.formalCodegenEvidence[field] === "string" && manifest.formalCodegenEvidence[field].length > 0, `formal codegen evidence must bind ${field}`);
-  }
-  assert(manifest.formalCodegenEvidence.mode === "verify-only", "formal codegen evidence must use verify-only mode");
-  assert(manifest.formalCodegenEvidence.physicalDevices === "NOT RUN", "T014 must not claim physical-device evidence");
-}
+assert(JSON.stringify(manifest.formalCodegenEvidence) === JSON.stringify({
+  status: "passed",
+  targetSha: "6d4183410793e9946c86ec6c55397a31bc018da4",
+  prepareRunId: "32569817612",
+  prepareWorkflowSha: "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+  verifyRunId: "32570070634",
+  verifyWorkflowSha: "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+  runnerImageVersion: "20260728.0273.1",
+  runnerImagesInventorySha: "8d3ea005fa2d87f3cbc9255c27fdfed9e901a043",
+  manifestSha256: "36f0052f7594c0b8e03fd87b832481053de23dd9f143837b19da7f018b068678",
+  mode: "verify-only",
+  physicalDevices: "NOT RUN",
+}), "formal codegen evidence must remain bound to the reviewed protected-runner artifact");
 assert(JSON.stringify(manifest.compatibilityEvidence.requiredEnvironment) === JSON.stringify([
   "THREADLINE_GO",
   "THREADLINE_PROTOC_GEN_GO",
