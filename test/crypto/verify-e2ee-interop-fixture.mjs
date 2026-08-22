@@ -42,9 +42,16 @@ function scanPublicMetadata(bytes, label) {
   const prohibited = [
     [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/u, "private-key block"],
     [/\bBearer\s+[A-Za-z0-9._~+/-]{16,}={0,2}\b/u, "bearer token"],
+    [/\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/u, "JWT"],
+    [/\b(?:github_pat_|gh[pousr]_|xox[baprs]-|sk_live_|pk_live_|AKIA|ASIA|AIza)[A-Za-z0-9_-]{8,}\b/u, "provider token"],
     [/(?:password|passwd|access[_-]?token|client[_-]?secret)\s*[:=]\s*["']?[A-Za-z0-9._~+/-]{8,}/iu, "credential-shaped assignment"],
-    [/(?:\/Users\/[^/\s]+|\/home\/[^/\s]+|[A-Za-z]:\\Users\\[^\\\s]+)/u, "absolute user path"],
+    [/(?:^|[\s"'(])\/(?:Users|home|tmp|private|var|Volumes|opt|srv|mnt)\/[^\s"')]+/mu, "absolute local path"],
+    [/[A-Za-z]:\\(?:Users|Temp|Windows|ProgramData)\\[^\s"']+/u, "absolute Windows path"],
     [/https?:\/\/[^\s/@:]+:[^\s/@]+@/u, "credential-bearing URL"],
+    [/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu, "e-mail address"],
+    [/(?:^|\D)\+?[1-9]\d{0,2}[ .-]?(?:\(\d{2,4}\)|\d{2,4})[ .-]?\d{3,4}[ .-]?\d{4}(?:\D|$)/u, "phone number"],
+    [/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu, "UUID or device identifier"],
+    [/\b(?:10|127)\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|\b192\.168\.\d{1,3}\.\d{1,3}\b|\b172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b/u, "private network address"],
   ];
   for (const [pattern, description] of prohibited) assert(!pattern.test(source), `${label}: prohibited ${description}`);
 }
@@ -115,6 +122,8 @@ assert(typeof manifest.cleanup === "string" && manifest.cleanup.includes("No eph
 assert(manifest.files.length === 1 && manifest.files[0].path === "e2ee-interop-v1.vector", "manifest must bind exactly the T011 vector");
 assert(manifest.files[0].sha256 === pinnedVectorSha256, "manifest vector SHA-256 differs from independent pin");
 assert(sha256(vectorBytes) === pinnedVectorSha256, "T011 vector SHA-256 mismatch");
+const reproducedVectorBytes = git(["show", `${pinnedSourceCommit}:test/crypto/e2ee-interop-v1.vector`]);
+assert(reproducedVectorBytes.equals(vectorBytes), "declared historical source does not reproduce the current vector byte-for-byte");
 
 const records = parseVector(vectorBytes);
 assert(JSON.stringify(manifest.required_keys) === JSON.stringify(pinnedKeys), "manifest key schema differs from independent pin");
