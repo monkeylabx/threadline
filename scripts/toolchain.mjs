@@ -202,6 +202,10 @@ export function validateDatabasePins(databasePins, sources) {
     ["services/go.mod", moduleDirectives],
     ["go.work", workspaceDirectives],
   ]) {
+    const quotedPath = [...directives.replacements, ...directives.excludes].some(([modulePath]) =>
+      ['"', "'", "`"].some((quote) => modulePath?.startsWith(quote)),
+    );
+    if (quotedPath) errors.push(`${sourceName}: quoted dependency paths are forbidden`);
     if (directives.replacements.some(([modulePath]) => modulePath === "github.com/jackc/pgx/v5")) {
       errors.push(`${sourceName}: pgx replace directives are forbidden`);
     }

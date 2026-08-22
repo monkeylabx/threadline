@@ -135,6 +135,49 @@ test("database pin verification rejects workspace pgx replacement or exclusion",
   assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /go\.work.*exclude/);
 });
 
+test("database pin verification rejects quoted dependency paths", () => {
+  for (const quotedPath of [
+    '"github.com/jackc/pgx/v5"',
+    "`github.com/jackc/pgx/v5`",
+  ]) {
+    const moduleSingle = {
+      ...databaseSources,
+      goModule: `${databaseSources.goModule}\nreplace ${quotedPath} => ../fake-pgx\n`,
+    };
+    assert.match(
+      validateDatabasePins(pins.database, moduleSingle).join("\n"),
+      /quoted dependency paths/,
+    );
+
+    const moduleBlock = {
+      ...databaseSources,
+      goModule: `${databaseSources.goModule}\nexclude (\n\t${quotedPath} v${pins.database.pgx}\n)\n`,
+    };
+    assert.match(
+      validateDatabasePins(pins.database, moduleBlock).join("\n"),
+      /quoted dependency paths/,
+    );
+
+    const workspaceSingle = {
+      ...databaseSources,
+      goWork: `${databaseSources.goWork}\nreplace ${quotedPath} => ../fake-pgx\n`,
+    };
+    assert.match(
+      validateDatabasePins(pins.database, workspaceSingle).join("\n"),
+      /go\.work.*quoted dependency paths/,
+    );
+
+    const workspaceBlock = {
+      ...databaseSources,
+      goWork: `${databaseSources.goWork}\nexclude (\n\t${quotedPath} v${pins.database.pgx}\n)\n`,
+    };
+    assert.match(
+      validateDatabasePins(pins.database, workspaceBlock).join("\n"),
+      /go\.work.*quoted dependency paths/,
+    );
+  }
+});
+
 test("database pin verification rejects an incomplete sqlc archive set", () => {
   const database = structuredClone(pins.database);
   delete database.sqlc.archives["linux-arm64"];
