@@ -256,14 +256,85 @@ function verifyBuilderAuthentication(name, source, manifestDirectory, snapshotRo
   throw new Error(`${name} builder authentication kind is unsupported: ${authentication.kind}`);
 }
 
+function verifyHostBuilderAuthentication(name, source, snapshotRoot) {
+  const authentication = source.authentication;
+  assertExactKeys(`${name} host builder source`, source, ["kind", "path", "url", "authentication"]);
+  assertExactKeys(`${name} host builder authentication`, authentication, [
+    "kind",
+    "bundleIdentifier",
+    "version",
+    "build",
+    "swiftVersion",
+    "sdkVersion",
+  ]);
+  if (authentication.kind !== "apple-xcode-gatekeeper") {
+    throw new Error(`${name} host builder authentication kind is unsupported: ${authentication.kind}`);
+  }
+  if (process.platform !== "darwin" || process.arch !== "arm64") {
+    throw new Error(`${name} Apple Xcode authentication requires Darwin arm64`);
+  }
+  if (source.path !== "/Applications/Xcode_26.6.app") {
+    throw new Error(`${name} host builder must use the pinned Xcode 26.6 application path`);
+  }
+  if (!/^https:\/\/github\.com\/actions\/runner-images\/blob\/[0-9a-f]{40}\/images\/macos\/macos-26-arm64-Readme\.md$/u.test(source.url)) {
+    throw new Error(`${name} host builder must cite an immutable GitHub runner-image inventory`);
+  }
+  if (authentication.bundleIdentifier !== "com.apple.dt.Xcode" || authentication.version !== "26.6" || authentication.build !== "17F113" || authentication.swiftVersion !== "6.3" || authentication.sdkVersion !== "26.5") {
+    throw new Error(`${name} host builder identity does not match the pinned Xcode/Swift/SDK baseline`);
+  }
+  if (!existsSync(source.path) || lstatSync(source.path).isSymbolicLink() || !lstatSync(source.path).isDirectory() || realpathSync(source.path) !== source.path) {
+    throw new Error(`${name} host builder must be the real pinned Xcode application directory`);
+  }
+  const trustEnvironment = {
+    DEVELOPER_DIR: `${source.path}/Contents/Developer`,
+    HOME: join(snapshotRoot, "platform-trust-home"),
+    LANG: "C",
+    LC_ALL: "C",
+    PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+    TZ: "UTC",
+  };
+  mkdirSync(trustEnvironment.HOME, { recursive: true, mode: 0o700 });
+  const assess = spawnSync("/usr/sbin/spctl", ["--assess", "--type", "execute", "--verbose=4", source.path], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  const assessEvidence = `${assess.stdout ?? ""}${assess.stderr ?? ""}`;
+  if (assess.error || assess.status !== 0 || !/accepted/iu.test(assessEvidence)) {
+    throw new Error(`${name} Xcode application did not pass Gatekeeper assessment`);
+  }
+  const signature = spawnSync("/usr/bin/codesign", ["--verify", "--deep", "--strict", source.path], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  if (signature.error || signature.status !== 0) throw new Error(`${name} Xcode application signature verification failed`);
+  const metadata = spawnSync("/usr/bin/plutil", ["-extract", "CFBundleIdentifier", "raw", "-o", "-", `${source.path}/Contents/Info.plist`], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  if (metadata.error || metadata.status !== 0 || metadata.stdout.trim() !== authentication.bundleIdentifier) {
+    throw new Error(`${name} Xcode bundle identifier mismatch`);
+  }
+  const xcode = spawnSync("/usr/bin/xcodebuild", ["-version"], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  const xcodeEvidence = `${xcode.stdout ?? ""}${xcode.stderr ?? ""}`;
+  if (xcode.error || xcode.status !== 0 || !xcodeEvidence.includes(`Xcode ${authentication.version}`) || !xcodeEvidence.includes(`Build version ${authentication.build}`)) {
+    throw new Error(`${name} Xcode version/build mismatch`);
+  }
+  const swift = spawnSync("/usr/bin/xcrun", ["swift", "--version"], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  const swiftEvidence = `${swift.stdout ?? ""}${swift.stderr ?? ""}`;
+  const swiftToken = authentication.swiftVersion.replaceAll(".", "\\.");
+  if (swift.error || swift.status !== 0 || !new RegExp(`Apple Swift version ${swiftToken}(?:\\.\\d+)?(?:\\s|$)`, "u").test(swiftEvidence)) {
+    throw new Error(`${name} Swift version mismatch`);
+  }
+  const sdk = spawnSync("/usr/bin/xcrun", ["--sdk", "macosx", "--show-sdk-version"], { encoding: "utf8", env: trustEnvironment, stdio: "pipe" });
+  if (sdk.error || sdk.status !== 0 || sdk.stdout.trim() !== authentication.sdkVersion) {
+    throw new Error(`${name} macOS SDK version mismatch`);
+  }
+}
+
 function verifySources(manifest, manifestDirectory, snapshotRoot) {
   if (!manifest.sources || typeof manifest.sources !== "object" || Array.isArray(manifest.sources) || Object.keys(manifest.sources).length === 0) {
     throw new Error("Integration tool manifest must contain at least one locally verifiable source artifact");
   }
-  const allowedKinds = new Set(["official-binary", "official-package", "source-archive", "builder-toolchain", "protocol-fixture"]);
+  const allowedKinds = new Set(["official-binary", "official-package", "source-archive", "builder-toolchain", "host-builder-toolchain", "protocol-fixture"]);
   const verified = {};
   for (const [name, source] of Object.entries(manifest.sources)) {
     assertSafeIdentifier(name, "source name");
+    if (source?.kind === "host-builder-toolchain") {
+      verifyHostBuilderAuthentication(name, source, snapshotRoot);
+      verified[name] = { ...source };
+      continue;
+    }
     const sourceKeys = source?.kind === "builder-toolchain"
       ? ["kind", "file", "url", "sha256", "authentication"]
       : ["kind", "file", "url", "sha256"];
@@ -389,7 +460,9 @@ function verifyProvenance(name, provenance, sources, mode) {
     }
     for (const source of provenance.builders) {
       if (!sources[source]) throw new Error(`${name} source-built provenance references unknown builder ${source}`);
-      if (sources[source].kind !== "builder-toolchain") throw new Error(`${name} source-built builder must be classified builder-toolchain: ${source}`);
+      if (!new Set(["builder-toolchain", "host-builder-toolchain"]).has(sources[source].kind)) {
+        throw new Error(`${name} source-built builder must be classified builder-toolchain or host-builder-toolchain: ${source}`);
+      }
     }
     if (typeof provenance.buildCommand !== "string" || provenance.buildCommand.trim() !== provenance.buildCommand || provenance.buildCommand.length === 0) {
       throw new Error(`${name} source-built buildCommand must be a non-empty exact command record`);

@@ -88,24 +88,26 @@ assert(typeof toolchain.tools.git === "string", "repository-mode Git version mus
 for (const runtime of ["kotlin-compiler", "protobuf-java", "protobuf-kotlin", "kotlin-stdlib"]) {
   assert(typeof toolchain.tools[runtime] === "string", `${runtime} version must be pinned`);
 }
-assert(toolchain.integrity.toolManifestSchemaVersion === 4, "codegen tool manifest schema must be pinned to v4");
+assert(toolchain.integrity.toolManifestSchemaVersion === 5, "codegen tool manifest schema must be pinned to v5");
 assert(JSON.stringify(toolchain.integrity.toolManifestSchema) === JSON.stringify({
   manifestKeys: ["schemaVersion", "platform", "profile", "sources", "closures", "tools"],
   sourceKeys: ["kind", "file", "url", "sha256"],
   builderSourceKeys: ["kind", "file", "url", "sha256", "authentication"],
+  hostBuilderSourceKeys: ["kind", "path", "url", "authentication"],
   rustChecksumAuthenticationKeys: ["kind", "file", "url", "sha256"],
   goDistributionAuthenticationKeys: ["kind", "file", "url", "sha256"],
   appleInstallerAuthenticationKeys: ["kind", "signer"],
+  appleXcodeAuthenticationKeys: ["kind", "bundleIdentifier", "version", "build", "swiftVersion", "sdkVersion"],
   invocationKinds: ["native", "verified-node", "verified-java"],
   closureKeys: ["root", "sources", "treeSha256", "files"],
   toolKeys: ["path", "sha256", "closure", "provenance", "invocation"],
   officialProvenanceKeys: ["kind", "sources"],
   sourceBuiltProvenanceKeys: ["kind", "source", "builders", "buildCommand", "reproducibility"],
   protocolStubProvenanceKeys: ["kind", "sources"],
-  sourceKinds: ["builder-toolchain", "official-binary", "official-package", "protocol-fixture", "source-archive"],
+  sourceKinds: ["builder-toolchain", "host-builder-toolchain", "official-binary", "official-package", "protocol-fixture", "source-archive"],
   provenanceKinds: ["official-binary", "official-package", "protocol-stub", "source-built"],
   sourceBuiltReproducibility: "single-build-output-verified",
-}), "codegen tool manifest v4 vocabulary must remain exact");
+}), "codegen tool manifest v5 vocabulary must remain exact");
 for (const collection of [toolchain.integrity.runtimeJars, toolchain.integrity.kotlinCompilerClasspath]) {
   for (const [artifact, integrity] of Object.entries(collection)) {
     assert(/^[0-9a-f]{64}$/u.test(integrity.sha256), `${artifact} must have a canonical SHA-256 pin`);
@@ -139,6 +141,8 @@ for (const [surface, checks] of Object.entries(toolchain.generationChecks)) {
 assert(statSync(join(protoRoot, "tools", "verify-codegen.mjs")).isFile(), "the verified codegen command must exist");
 const installTestPath = join(protoRoot, "tools", "verify-codegen-install.test.mjs");
 assert(statSync(installTestPath).isFile(), "repository codegen failure-injection tests must exist");
+const bundleBuilderPath = join(protoRoot, "tools", "create-codegen-bundle.mjs");
+assert(statSync(bundleBuilderPath).isFile(), "formal codegen bundle builder must exist");
 
 for (const path of filesBelow(join(protoRoot, "threadline"), ".proto")) {
   const source = read(path);
