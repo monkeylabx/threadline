@@ -4,13 +4,40 @@ const validViews = new Set([...rootViews, "channel", "task", "approval"]);
 const isMobile = () => window.matchMedia("(max-width: 820px)").matches;
 const requestedView = new URLSearchParams(window.location.search).get("view");
 const initialView = requestedView === "home" ? "messages" : requestedView || (isMobile() ? "messages" : "channel");
+const viewLabels = {
+  messages: "消息",
+  search: "搜索",
+  activity: "活动",
+  profile: "我的",
+  channel: "产品研发频道",
+  task: "任务执行现场：Runtime Lease 与 Fencing Token",
+  approval: "权限审批：删除过期状态文件",
+};
+const viewFocusOrigins = new Map();
+let pendingFocusRestore = null;
+
+const sheetFocusableSelector = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "textarea:not([disabled])",
+  "select:not([disabled])",
+  "a[href]",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
 
 function normalizeView(view) {
   if (view === "home") return "messages";
   return validViews.has(view) ? view : isMobile() ? "messages" : "channel";
 }
 
-function renderView(view) {
+function focusTargetForView(view) {
+  if (view === "task") return document.querySelector("#mobile-task-title");
+  if (view === "approval") return document.querySelector("#mobile-approval-title");
+  if (view === "channel") return document.querySelector("#mobile-channel-heading");
+  return document.querySelector(`[data-home-panel="${view === "search" ? "messages" : view}"] h1`);
+}
+
+function renderView(view, { moveFocus = false, restoreFrom = null } = {}) {
   const nextView = normalizeView(view);
   const rootViewActive = rootViews.has(nextView);
   const workbenchView = rootViewActive ? "channel" : nextView;
@@ -24,6 +51,7 @@ function renderView(view) {
   const channelDock = document.querySelector(".channel-dock");
   const taskSheet = document.querySelector(".task-sheet");
   const approvalSheet = document.querySelector(".approval-sheet");
+  const modalSheetActive = isMobile() && (nextView === "task" || nextView === "approval");
 
   workbench.inert = mobileHomeActive;
   workbench.setAttribute("aria-hidden", String(mobileHomeActive));
@@ -35,6 +63,14 @@ function renderView(view) {
   taskSheet.setAttribute("aria-hidden", String(nextView !== "task"));
   approvalSheet.inert = nextView !== "approval";
   approvalSheet.setAttribute("aria-hidden", String(nextView !== "approval"));
+  document.querySelector(".sidebar").inert = modalSheetActive;
+  document.querySelector(".topbar").inert = modalSheetActive;
+  [taskSheet, approvalSheet].forEach((sheet) => {
+    if (isMobile()) sheet.setAttribute("role", "dialog");
+    else sheet.setAttribute("role", "region");
+    if (modalSheetActive && !sheet.inert) sheet.setAttribute("aria-modal", "true");
+    else sheet.removeAttribute("aria-modal");
+  });
 
   if (rootViewActive) renderHomePanel(nextView === "search" ? "messages" : nextView);
   setMobileSearch(nextView === "search" && isMobile());
@@ -42,28 +78,43 @@ function renderView(view) {
   document.querySelectorAll("[data-view-target]").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.viewTarget === workbenchView);
   });
+
+  document.querySelector("#mobile-route-announcement").textContent = viewLabels[nextView];
+  if (restoreFrom) {
+    const origin = viewFocusOrigins.get(restoreFrom);
+    viewFocusOrigins.delete(restoreFrom);
+    if (origin?.isConnected && !origin.disabled) window.requestAnimationFrame(() => origin.focus());
+    else if (moveFocus) window.requestAnimationFrame(() => focusTargetForView(nextView)?.focus());
+  } else if (moveFocus) {
+    window.requestAnimationFrame(() => focusTargetForView(nextView)?.focus());
+  }
 }
 
-function navigateView(view, { replace = false } = {}) {
+function navigateView(view, { replace = false, restoreFrom = null } = {}) {
   const nextView = normalizeView(view);
   const currentView = root.dataset.mobileView || "channel";
   if (!replace && currentView === nextView) return;
+
+  if ((nextView === "task" || nextView === "approval") && document.activeElement instanceof HTMLElement) {
+    viewFocusOrigins.set(nextView, document.activeElement);
+  }
 
   const url = new URL(window.location.href);
   url.searchParams.set("view", nextView);
   const state = { view: nextView, previous: replace ? null : currentView };
   window.history[replace ? "replaceState" : "pushState"](state, "", url);
-  renderView(nextView);
+  renderView(nextView, { moveFocus: true, restoreFrom });
 }
 
 function returnFromSheet() {
+  const currentView = root.dataset.mobileView;
   if (window.history.state?.previous) {
+    pendingFocusRestore = currentView;
     window.history.back();
     return;
   }
-  const currentView = root.dataset.mobileView;
   const fallback = currentView === "approval" ? "task" : isMobile() ? "messages" : "channel";
-  navigateView(fallback, { replace: true });
+  navigateView(fallback, { replace: true, restoreFrom: currentView });
 }
 
 document.querySelectorAll("[data-view-target]").forEach((button) => {
@@ -74,18 +125,80 @@ document.querySelectorAll(".close-sheet").forEach((button) => {
   button.addEventListener("click", returnFromSheet);
 });
 
+document.addEventListener("keydown", (event) => {
+  const currentView = root.dataset.mobileView;
+  const activeSheet = currentView === "task"
+    ? document.querySelector(".task-sheet")
+    : currentView === "approval"
+      ? document.querySelector(".approval-sheet")
+      : null;
+  if (!activeSheet || !isMobile()) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    returnFromSheet();
+    return;
+  }
+  if (event.key !== "Tab") return;
+
+  const focusable = [...activeSheet.querySelectorAll(sheetFocusableSelector)]
+    .filter((element) => !element.hidden && !element.closest("[hidden]"));
+  if (focusable.length === 0) {
+    event.preventDefault();
+    activeSheet.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!activeSheet.contains(document.activeElement) || !focusable.includes(document.activeElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
 window.addEventListener("popstate", (event) => {
   const queryView = new URLSearchParams(window.location.search).get("view");
-  renderView(event.state?.view || queryView || (isMobile() ? "messages" : "channel"));
+  const restoreFrom = pendingFocusRestore;
+  pendingFocusRestore = null;
+  renderView(event.state?.view || queryView || (isMobile() ? "messages" : "channel"), {
+    moveFocus: true,
+    restoreFrom,
+  });
 });
 
 window.addEventListener("resize", () => renderView(root.dataset.mobileView || "channel"));
 
 document.querySelectorAll(".sheet-tabs").forEach((tabs) => {
-  tabs.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      tabs.querySelectorAll("button").forEach((item) => item.classList.remove("is-active"));
-      button.classList.add("is-active");
+  const tabButtons = [...tabs.querySelectorAll("[role='tab']")];
+  const selectTab = (selected, { focus = false } = {}) => {
+    tabButtons.forEach((tab) => {
+      const active = tab === selected;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+      document.querySelector(`#${tab.getAttribute("aria-controls")}`).hidden = !active;
+    });
+    if (focus) selected.focus();
+  };
+
+  tabButtons.forEach((button, index) => {
+    button.addEventListener("click", () => selectTab(button));
+    button.addEventListener("keydown", (event) => {
+      let targetIndex = null;
+      if (event.key === "ArrowRight") targetIndex = (index + 1) % tabButtons.length;
+      if (event.key === "ArrowLeft") targetIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+      if (event.key === "Home") targetIndex = 0;
+      if (event.key === "End") targetIndex = tabButtons.length - 1;
+      if (targetIndex === null) return;
+      event.preventDefault();
+      selectTab(tabButtons[targetIndex], { focus: true });
     });
   });
 });
@@ -224,4 +337,6 @@ const normalizedInitialView = normalizeView(initialView);
 const initialUrl = new URL(window.location.href);
 initialUrl.searchParams.set("view", normalizedInitialView);
 window.history.replaceState({ view: normalizedInitialView, previous: null }, "", initialUrl);
-renderView(normalizedInitialView);
+renderView(normalizedInitialView, {
+  moveFocus: normalizedInitialView === "task" || normalizedInitialView === "approval",
+});
