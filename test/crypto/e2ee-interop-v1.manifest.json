@@ -1,0 +1,130 @@
+{
+  "fixture_set": "crypto.e2ee-interop-semantic.v1",
+  "schema_version": 1,
+  "contract_version": "tl-mls-1/semantic-spike-v1",
+  "owner": "Crypto",
+  "reviewers": ["Crypto", "Security"],
+  "classification": "public_metadata",
+  "provenance": {
+    "source": "Threadline T011 Issue #25 / PR #56 semantic spike",
+    "license": "Apache-2.0",
+    "production_export": false
+  },
+  "generator": {
+    "path": "git-object:test/crypto/e2ee-interop-v1.vector",
+    "version": "2b39382a1b0a050e466aa3418c468cb3cccc8939",
+    "reproduction_command": "git show 2b39382a1b0a050e466aa3418c468cb3cccc8939:test/crypto/e2ee-interop-v1.vector"
+  },
+  "seed_policy": "No seed or generated key material; public metadata, error names, and irreversible digests only.",
+  "allowed_surfaces": [
+    "repository contract verification",
+    "Crypto semantic regression tests",
+    "independent contract-input review"
+  ],
+  "forbidden_surfaces": [
+    "production import",
+    "credential or key provisioning",
+    "logs and telemetry payloads",
+    "production-readiness evidence"
+  ],
+  "cleanup": "No ephemeral secret state is created; consumers must not materialize private keys, plaintext, or credentials from this fixture.",
+  "files": [
+    {
+      "path": "e2ee-interop-v1.vector",
+      "sha256": "b9ce8eec6ccab6e5e200159c4a5bac73527ad8ebd929b21cb1f0447ab332ff40"
+    }
+  ],
+  "required_keys": [
+    "format_version",
+    "profile",
+    "protocol",
+    "ciphersuite",
+    "mls_library",
+    "mls_library_version",
+    "vector_class",
+    "key_package.expected",
+    "epoch.initial",
+    "epoch.after_add",
+    "epoch.after_update_1",
+    "epoch.after_update_2",
+    "epoch.after_offline_join",
+    "epoch.after_revoke",
+    "wire_format.handshake",
+    "leaf_lifetime.not_before_skew_seconds",
+    "leaf_lifetime.max_range_seconds",
+    "interop.independent_implementation",
+    "interop.independent_implementation_version",
+    "offline_new_device.expected",
+    "out_of_order_commit.expected",
+    "device_revocation.expected",
+    "history.authorized",
+    "history.unauthorized",
+    "history.cross_tenant",
+    "recovery.wrapper",
+    "recovery.private_key_location",
+    "recovery.version",
+    "recovery.tenant_id",
+    "recovery.group_id",
+    "recovery.epoch",
+    "recovery.recipient_key_id",
+    "recovery.payload_sha256",
+    "recovery.binding_sha256",
+    "recovery.success",
+    "recovery.no_recipient",
+    "recovery.refused",
+    "recovery.corrupt",
+    "recovery.old_epoch",
+    "recovery.cross_group",
+    "recovery.cross_tenant",
+    "error.replay",
+    "error.corrupt",
+    "error.old_epoch",
+    "error.future_epoch",
+    "error.unknown_version",
+    "output.classification"
+  ],
+  "expected": {
+    "profile": "tl-mls-1",
+    "handshake_wire_format": "private-message",
+    "key_package": "accept",
+    "offline_new_device": "join-current-epoch",
+    "out_of_order_commit": "queue-until-predecessor",
+    "device_revocation": "removed-device-cannot-read-future-epoch",
+    "history_authorized": "accept",
+    "history_unauthorized": "TL_E2EE_HISTORY_UNAUTHORIZED",
+    "history_cross_tenant": "TL_E2EE_TENANT_MISMATCH",
+    "recovery_success": "accept",
+    "recovery_unavailable": "TL_E2EE_RECOVERY_UNAVAILABLE",
+    "recovery_refused": "TL_E2EE_RECOVERY_REFUSED",
+    "recovery_corrupt": "TL_E2EE_CORRUPT",
+    "recovery_old_epoch": "TL_E2EE_OLD_EPOCH",
+    "recovery_cross_group": "TL_E2EE_GROUP_MISMATCH",
+    "recovery_cross_tenant": "TL_E2EE_TENANT_MISMATCH",
+    "replay": "TL_E2EE_REPLAY",
+    "corrupt": "TL_E2EE_CORRUPT",
+    "old_epoch": "TL_E2EE_OLD_EPOCH",
+    "future_epoch": "TL_E2EE_FUTURE_EPOCH",
+    "unknown_version": "TL_E2EE_UNKNOWN_VERSION"
+  },
+  "n_minus_one": {
+    "status": "not_applicable_to_semantic-spike-vector",
+    "reader_writer_pairs": [],
+    "retained_historical_files": ["e2ee-interop-v1.vector"],
+    "note": "This is not a persisted Protobuf frame and does not claim generated-adapter compatibility."
+  },
+  "acceptance_boundary": {
+    "openmls_0_8_1_production_admission": "FAIL",
+    "production_crypto_provider": "NOT ESTABLISHED",
+    "independent_production_interoperability": "NOT ESTABLISHED",
+    "real_kms_hsm": "NOT RUN",
+    "physical_devices": "NOT RUN"
+  },
+  "reopen_triggers": [
+    "Crypto Profile tuple changes",
+    "MLS provider or provider version changes",
+    "leaf lifetime policy changes",
+    "History or Recovery semantic/error changes",
+    "classification or fixture digest changes",
+    "production admission decision changes"
+  ]
+}
