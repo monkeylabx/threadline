@@ -11,8 +11,9 @@
     "production_export": false
   },
   "generator": {
-    "path": null,
-    "version": "none-existing-vector-is-immutable"
+    "path": "git-object:test/crypto/e2ee-interop-v1.vector",
+    "version": "2b39382a1b0a050e466aa3418c468cb3cccc8939",
+    "reproduction_command": "git show 2b39382a1b0a050e466aa3418c468cb3cccc8939:test/crypto/e2ee-interop-v1.vector"
   },
   "seed_policy": "No seed or generated key material; public metadata, error names, and irreversible digests only.",
   "allowed_surfaces": [
@@ -86,10 +87,23 @@
     "profile": "tl-mls-1",
     "handshake_wire_format": "private-message",
     "key_package": "accept",
+    "offline_new_device": "join-current-epoch",
+    "out_of_order_commit": "queue-until-predecessor",
+    "device_revocation": "removed-device-cannot-read-future-epoch",
     "history_authorized": "accept",
     "history_unauthorized": "TL_E2EE_HISTORY_UNAUTHORIZED",
+    "history_cross_tenant": "TL_E2EE_TENANT_MISMATCH",
     "recovery_success": "accept",
     "recovery_unavailable": "TL_E2EE_RECOVERY_UNAVAILABLE",
+    "recovery_refused": "TL_E2EE_RECOVERY_REFUSED",
+    "recovery_corrupt": "TL_E2EE_CORRUPT",
+    "recovery_old_epoch": "TL_E2EE_OLD_EPOCH",
+    "recovery_cross_group": "TL_E2EE_GROUP_MISMATCH",
+    "recovery_cross_tenant": "TL_E2EE_TENANT_MISMATCH",
+    "replay": "TL_E2EE_REPLAY",
+    "corrupt": "TL_E2EE_CORRUPT",
+    "old_epoch": "TL_E2EE_OLD_EPOCH",
+    "future_epoch": "TL_E2EE_FUTURE_EPOCH",
     "unknown_version": "TL_E2EE_UNKNOWN_VERSION"
   },
   "n_minus_one": {

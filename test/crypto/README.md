@@ -6,6 +6,11 @@ machine-readable companion manifest is
 digest, complete key set, classification, frozen protocol/profile values, and
 the evidence boundary.
 
+The reproducible source is the exact Git object recorded by the manifest. The
+verifier independently pins that historical commit, the vector SHA-256 and the
+complete key schema, scans both the working-tree family and every reachable
+historical vector blob for prohibited material, and rejects manifest drift.
+
 The vector contains public metadata, stable error names, and irreversible
 digests only. It contains no plaintext, private key, credential, token, or
 production export. It is not a persisted Protobuf frame and does not replace

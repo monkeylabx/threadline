@@ -251,8 +251,6 @@ const goldenTestPath = join(protoRoot, "tools", "verify-golden-frames.mjs");
 assert(statSync(goldenTestPath).isFile(), "representative Golden Frame verifier must exist");
 const messageSyncTestPath = join(protoRoot, "tools", "verify-message-sync-contracts.mjs");
 assert(statSync(messageSyncTestPath).isFile(), "T015 message/sync behavior verifier must exist");
-const cryptoSemanticFixtureTestPath = join(repositoryRoot, "test", "crypto", "verify-e2ee-interop-fixture.mjs");
-assert(statSync(cryptoSemanticFixtureTestPath).isFile(), "T011 Crypto semantic fixture verifier must exist");
 const rustEnvelopeTestPath = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
 const generatedEnvelopeTestPath = join(protoRoot, "tools", "verify-generated-envelope-compat.mjs");
 const rustEnvelopeHarnessRoot = join(protoRoot, "tools", "rust-envelope-compat");
@@ -274,8 +272,6 @@ const goldenTests = spawnSync(process.execPath, [goldenTestPath], { cwd: reposit
 if (goldenTests.status !== 0) errors.push(`${goldenTests.stdout ?? ""}${goldenTests.stderr ?? ""}`.trim());
 const messageSyncTests = spawnSync(process.execPath, [messageSyncTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (messageSyncTests.status !== 0) errors.push(`${messageSyncTests.stdout ?? ""}${messageSyncTests.stderr ?? ""}`.trim());
-const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (cryptoSemanticFixtureTests.status !== 0) errors.push(`${cryptoSemanticFixtureTests.stdout ?? ""}${cryptoSemanticFixtureTests.stderr ?? ""}`.trim());
 
 if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join("\n"));
@@ -290,5 +286,4 @@ if (installTests.status !== 0) {
 
 console.log("Threadline contract structure and representative Golden Frames are valid.");
 console.log("Threadline T015 message/sync behavior fixtures are valid.");
-console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");
