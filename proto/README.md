@@ -118,6 +118,8 @@ contract review.
 
 ## Still required before the protocol gate closes
 
+- Select and verify a Rust persisted-envelope seam that retains unknown fields;
+  direct `prost` generated-struct decode/re-encode is not sufficient.
 - Descriptor-driven five-language unknown-field round trips and N-1 evidence.
 - Formal authenticated release codegen on the protected runner.
 - Fake Server and Contract Test coverage for the client-facing slice.

@@ -119,9 +119,10 @@ assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary 
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-cross-language-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
+assert(manifest.acceptanceBoundary.status === "blocked-on-rust-unknown-fields-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("rust-persisted-envelope-unknown-field-preservation-decision"), "the Rust persisted-envelope unknown-field seam must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "cross-language unknown-field evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "N-1 evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must remain an explicit blocker");

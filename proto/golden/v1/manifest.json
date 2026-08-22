@@ -5,7 +5,7 @@
   "acceptanceBoundary": {
     "issue": 28,
     "issueMayClose": false,
-    "status": "blocked-on-cross-language-n-minus-one-and-formal-evidence",
+    "status": "blocked-on-rust-unknown-fields-n-minus-one-and-formal-evidence",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
       "fixture-digest-validation",
@@ -13,6 +13,7 @@
       "representative-recovery-envelope-frame"
     ],
     "notSatisfiedHere": [
+      "rust-persisted-envelope-unknown-field-preservation-decision",
       "cross-language-unknown-field-roundtrip",
       "n-minus-one-compatibility",
       "protected-runner-formal-codegen-evidence"

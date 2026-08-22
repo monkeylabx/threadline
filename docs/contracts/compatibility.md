@@ -54,3 +54,23 @@ must record five-language decode/mutate/re-encode and N-1 evidence before the
 generated SDK update can merge. Assigning that missing acceptance work
 elsewhere requires explicit Contracts and Product approval plus an Issue
 update.
+
+### Rust persistence blocker
+
+The generated Rust surface currently uses `prost`. The upstream project
+documents preservation of unknown enum values, not unknown message fields, and
+its generated-message unknown-field implementation is still an open change:
+
+- [`prost` capabilities](https://github.com/tokio-rs/prost#readme)
+- [upstream unknown-field support PR](https://github.com/tokio-rs/prost/pull/1340)
+- [`prost-reflect::DynamicMessage`](https://docs.rs/prost-reflect/latest/prost_reflect/struct.DynamicMessage.html), which explicitly preserves unknown fields
+
+Consequently, decoding a persisted Envelope directly into a generated `prost`
+struct and re-encoding it is not an admissible persistence path. T014 remains
+blocked until Contracts and the Rust client owner select and test one explicit
+seam: descriptor-backed `DynamicMessage` at the persistence boundary, or an
+equally reviewed raw-wire preservation strategy that cannot duplicate, reorder,
+or overwrite a mutated known field. Changing generator/runtime is also valid,
+but requires the normal toolchain and generated-surface review. Whichever seam
+is selected must run the same representative frames, known-field mutation, and
+N-1 matrix before Rust can count toward the five-language Gate.
