@@ -122,8 +122,12 @@ Kind `v0.32.0` imports a Docker image through containerd with
 `--all-platforms`, which fails when a native-only pull retains a multi-platform
 index whose other platform content is intentionally absent. The Makefile uses
 containerd's current-platform `--digests` import instead, while keeping the
-committed manifest-list lock and verifying the imported workload through the
-normal rollout and NetworkPolicy probes.
+committed manifest-list lock. Kustomize renders fixed version-tag aliases for
+the node's current-platform runtime because Kubernetes otherwise asks
+containerd for the absent multi-platform index verbatim. Those aliases are
+usable only after the Makefile verifies their image IDs against the connected
+digest lock or the authenticated offline ID manifest. Normal rollouts and
+NetworkPolicy probes then verify the imported workload.
 
 ## Compose
 

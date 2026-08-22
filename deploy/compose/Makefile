@@ -39,6 +39,7 @@ check: check-tools
 verify-lock:
 	@sh "$(CURDIR)/../../docs/development/verify-dev-stack-image-locks.sh" exact "$(CURDIR)/compose.yaml" $(IMAGES)
 	@sh "$(CURDIR)/../../docs/development/verify-dev-stack-image-locks.sh" common "$(CURDIR)/compose.yaml" "$(CURDIR)/../kind/stack.yaml" $(CORE_IMAGES)
+	@sh "$(ARCHIVE_HELPER)" verify-compose-tags "$(CURDIR)/offline-images.yaml" $(TAG_IMAGES)
 
 check-images: check verify-lock
 	@if [ -f "$(OFFLINE_LOCK)" ]; then \

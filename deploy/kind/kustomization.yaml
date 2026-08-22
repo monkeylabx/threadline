@@ -2,3 +2,30 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - stack.yaml
+
+# Kubernetes asks containerd for the manifest-list digest verbatim. A native-only
+# offline bundle intentionally contains just one platform, so the runtime uses
+# these immutable-version aliases after the Makefile verifies the local image ID
+# against the digest-pinned source manifest and archive evidence.
+images:
+  - name: postgres
+    newName: postgres
+    newTag: 16.4-alpine
+  - name: nats
+    newName: nats
+    newTag: 2.10.20-alpine
+  - name: redis
+    newName: redis
+    newTag: 7.4.0-alpine
+  - name: minio/minio
+    newName: minio/minio
+    newTag: RELEASE.2024-07-16T23-46-41Z
+  - name: otel/opentelemetry-collector-contrib
+    newName: otel/opentelemetry-collector-contrib
+    newTag: 0.107.0
+  - name: prom/prometheus
+    newName: prom/prometheus
+    newTag: v2.54.1
+  - name: jaegertracing/jaeger
+    newName: jaegertracing/jaeger
+    newTag: 2.20.0

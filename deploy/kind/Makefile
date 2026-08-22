@@ -23,8 +23,10 @@ CORE_IMAGES := \
 
 PROBE_IMAGE := busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
 IMAGES := $(CORE_IMAGES) $(PROBE_IMAGE)
+TAG_CORE_IMAGES := $(foreach image,$(CORE_IMAGES),$(word 1,$(subst @, ,$(image))))
 TAG_IMAGES := $(foreach image,$(IMAGES),$(word 1,$(subst @, ,$(image))))
 TAG_NODE_IMAGE := $(word 1,$(subst @, ,$(NODE_IMAGE)))
+TAG_PROBE_IMAGE := $(word 1,$(subst @, ,$(PROBE_IMAGE)))
 ARCHIVE_HELPER := $(CURDIR)/../../docs/development/dev-stack-image-archive.sh
 
 CONTEXT := kind-$(CLUSTER)
@@ -49,6 +51,7 @@ verify-lock:
 	@printf '%s\n' "$(NODE_IMAGE)" | grep -Eq '^kindest/node:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$$'
 	@printf '%s\n' "$(PROBE_IMAGE)" | grep -Eq '^busybox:[^@]+@sha256:[0-9a-f]{64}$$'
 	@test "$$(printf '%s\n' "$(NODE_IMAGE)" | sed -E 's|^kindest/node:(v[0-9]+\.[0-9]+\.[0-9]+)@.*$$|\1|')" = "$(KUBERNETES_VERSION)" || { echo "NODE_IMAGE tag must match KUBERNETES_VERSION" >&2; exit 1; }
+	@sh "$(ARCHIVE_HELPER)" verify-kustomize-tags "$(CURDIR)/kustomization.yaml" $(TAG_CORE_IMAGES)
 
 check-images: check verify-lock
 	@if [ -f "$(OFFLINE_LOCK)" ]; then \
@@ -108,7 +111,7 @@ verify-cluster: check verify-lock
 	@actual="$$(kubectl --context "$(CONTEXT)" version --output=yaml | awk '/^serverVersion:/ { server=1; next } server && /^  gitVersion:/ { print $$2; exit }')"; test "$$actual" = "$(KUBERNETES_VERSION)" || { echo "Kind Kubernetes $(KUBERNETES_VERSION) required; found $${actual:-unknown}. Run make destroy then make up" >&2; exit 1; }
 
 verify-network-policy: verify-cluster
-	@sh "$(CURDIR)/verify-network-policy.sh" "$(CONTEXT)" "$(PROBE_IMAGE)"
+	@sh "$(CURDIR)/verify-network-policy.sh" "$(CONTEXT)" "$(TAG_PROBE_IMAGE)"
 
 down: check-tools
 	@kubectl --context "$(CONTEXT)" delete -k "$(CURDIR)" --ignore-not-found

@@ -3,7 +3,7 @@
 set -eu
 
 usage() {
-  echo "usage: $0 tag IMAGE... | write-ids FILE IMAGE... | verify-ids FILE IMAGE..." >&2
+  echo "usage: $0 tag IMAGE... | write-ids FILE IMAGE... | verify-ids FILE IMAGE... | verify-compose-tags FILE IMAGE... | verify-kustomize-tags FILE IMAGE..." >&2
   exit 2
 }
 
@@ -49,6 +49,26 @@ case "${1:-}" in
       actual=$(docker image inspect --format '{{.Id}}' "$(tag_name "$image")" 2>/dev/null || true)
       [ "$actual" = "$matches" ] || { echo "offline image ID mismatch: $image" >&2; exit 1; }
     done
+    ;;
+  verify-compose-tags)
+    [ "$#" -gt 2 ] || usage
+    input=$2
+    shift 2
+    actual=$(awk '$1 == "image:" { print $2 }' "$input" | LC_ALL=C sort -u)
+    expected=$(printf '%s\n' "$@" | LC_ALL=C sort -u)
+    [ "$actual" = "$expected" ] || { echo "Compose offline tag set mismatch: $input" >&2; exit 1; }
+    ;;
+  verify-kustomize-tags)
+    [ "$#" -gt 2 ] || usage
+    input=$2
+    shift 2
+    actual=$(awk '
+      $1 == "-" && $2 == "name:" { source = $3; next }
+      $1 == "newName:" { name = $2; next }
+      $1 == "newTag:" && source != "" && name != "" { print name ":" $2; source = ""; name = "" }
+    ' "$input" | LC_ALL=C sort -u)
+    expected=$(printf '%s\n' "$@" | LC_ALL=C sort -u)
+    [ "$actual" = "$expected" ] || { echo "Kustomize runtime tag set mismatch: $input" >&2; exit 1; }
     ;;
   *) usage ;;
 esac
