@@ -1,0 +1,325 @@
+name: T014 authenticated formal codegen
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/proto-formal.yml
+      - docs/integration/t014-formal-codegen.md
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Prepare an immutable bundle, or verify a previously reviewed bundle
+        required: true
+        type: choice
+        options:
+          - prepare
+          - verify
+      target_sha:
+        description: Exact PR #44 commit SHA to test
+        required: true
+        type: string
+      prepared_run_id:
+        description: Prepare workflow run ID (required for verify)
+        required: false
+        type: string
+      manifest_sha256:
+        description: Separately reviewed manifest SHA-256 (required for verify)
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: proto-formal-${{ github.workflow }}-${{ inputs.mode || 'validate' }}-${{ inputs.target_sha || github.ref }}
+  cancel-in-progress: false
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+  RUNNER_IMAGES_SHA: 8d3ea005fa2d87f3cbc9255c27fdfed9e901a043
+
+jobs:
+  validate-workflow:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out integration change
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Validate workflow and handoff
+        run: |
+          ruby -e 'require "yaml"; YAML.safe_load(File.read(".github/workflows/proto-formal.yml"), aliases: true)'
+          test -s docs/integration/t014-formal-codegen.md
+
+  prepare:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'prepare'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Validate exact target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          PR_HEAD="$(gh pr view 44 --repo "${GITHUB_REPOSITORY}" --json headRefOid --jq .headRefOid)"
+          test "${TARGET_SHA}" = "${PR_HEAD}"
+      - name: Check out exact T014 commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+      - name: Confirm source and Xcode baseline
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "${TARGET_SHA}"
+          test -d /Applications/Xcode_26.6.app
+          xcodebuild -version | grep -Fx 'Xcode 26.6'
+          xcodebuild -version | grep -Fx 'Build version 17F113'
+          xcrun swift --version | grep -E '^Apple Swift version 6\.3(\.[0-9]+)? '
+          test "$(xcrun --sdk macosx --show-sdk-version)" = '26.5'
+      - name: Download and build pinned formal inputs
+        env:
+          FORMAL_ROOT: ${{ runner.temp }}/threadline-formal
+        run: |
+          set -euo pipefail
+          SOURCES="${FORMAL_ROOT}/sources"
+          CLOSURES="${FORMAL_ROOT}/closures"
+          BUILD="${FORMAL_ROOT}/build"
+          mkdir -p "${SOURCES}" "${CLOSURES}" "${BUILD}"
+          download() {
+            curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error "$2" --output "$1"
+            test -s "$1"
+          }
+
+          download "${SOURCES}/buf-Darwin-arm64.tar.gz" 'https://github.com/bufbuild/buf/releases/download/v1.72.0/buf-Darwin-arm64.tar.gz'
+          download "${SOURCES}/protoc-35.1-osx-aarch_64.zip" 'https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-osx-aarch_64.zip'
+          download "${SOURCES}/node-v24.19.0-darwin-arm64.tar.gz" 'https://nodejs.org/dist/v24.19.0/node-v24.19.0-darwin-arm64.tar.gz'
+          download "${SOURCES}/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.19_10.tar.gz" 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.19_10.tar.gz'
+          download "${SOURCES}/protoc-gen-go.v1.36.11.darwin.arm64.tar.gz" 'https://github.com/protocolbuffers/protobuf-go/releases/download/v1.36.11/protoc-gen-go.v1.36.11.darwin.arm64.tar.gz'
+          download "${SOURCES}/connect-go-1.20.0.tar.gz" 'https://github.com/connectrpc/connect-go/archive/refs/tags/v1.20.0.tar.gz'
+          download "${SOURCES}/go1.26.5.darwin-arm64.tar.gz" 'https://go.dev/dl/go1.26.5.darwin-arm64.tar.gz'
+          download "${SOURCES}/go-release.json" 'https://go.dev/dl/?mode=json&include=all'
+          download "${SOURCES}/protoc-gen-es-2.14.0.tgz" 'https://registry.npmjs.org/@bufbuild/protoc-gen-es/-/protoc-gen-es-2.14.0.tgz'
+          download "${SOURCES}/protobuf-2.14.0.tgz" 'https://registry.npmjs.org/@bufbuild/protobuf/-/protobuf-2.14.0.tgz'
+          download "${SOURCES}/protoplugin-2.14.0.tgz" 'https://registry.npmjs.org/@bufbuild/protoplugin/-/protoplugin-2.14.0.tgz'
+          download "${SOURCES}/vfs-1.6.4.tgz" 'https://registry.npmjs.org/@typescript/vfs/-/vfs-1.6.4.tgz'
+          download "${SOURCES}/typescript-5.4.5.tgz" 'https://registry.npmjs.org/typescript/-/typescript-5.4.5.tgz'
+          download "${SOURCES}/debug-4.4.3.tgz" 'https://registry.npmjs.org/debug/-/debug-4.4.3.tgz'
+          download "${SOURCES}/ms-2.1.3.tgz" 'https://registry.npmjs.org/ms/-/ms-2.1.3.tgz'
+          download "${SOURCES}/protoc-gen-prost-0.5.0.tar.gz" 'https://github.com/neoeinstein/protoc-gen-prost/archive/refs/tags/protoc-gen-prost-v0.5.0.tar.gz'
+          download "${SOURCES}/rust-1.97.1-aarch64-apple-darwin.tar.xz" 'https://static.rust-lang.org/dist/rust-1.97.1-aarch64-apple-darwin.tar.xz'
+          download "${SOURCES}/rust-1.97.1-aarch64-apple-darwin.tar.xz.sha256" 'https://static.rust-lang.org/dist/rust-1.97.1-aarch64-apple-darwin.tar.xz.sha256'
+          download "${SOURCES}/swift-protobuf-1.38.1.tar.gz" 'https://github.com/apple/swift-protobuf/archive/refs/tags/1.38.1.tar.gz'
+          download "${SOURCES}/protoc-gen-connect-swift.tar.gz" 'https://github.com/connectrpc/connect-swift/releases/download/1.2.3/protoc-gen-connect-swift.tar.gz'
+          download "${SOURCES}/protoc-gen-connect-kotlin-0.9.0.jar" 'https://github.com/connectrpc/connect-kotlin/releases/download/v0.9.0/protoc-gen-connect-kotlin-0.9.0.jar'
+
+          mkdir -p "${CLOSURES}/buf" "${BUILD}/buf"
+          tar -xzf "${SOURCES}/buf-Darwin-arm64.tar.gz" -C "${BUILD}/buf"
+          install -m 0755 "$(find "${BUILD}/buf" -type f -name buf -print -quit)" "${CLOSURES}/buf/buf"
+
+          mkdir -p "${CLOSURES}/protoc" "${BUILD}/protoc"
+          ditto -x -k "${SOURCES}/protoc-35.1-osx-aarch_64.zip" "${BUILD}/protoc"
+          install -m 0755 "${BUILD}/protoc/bin/protoc" "${CLOSURES}/protoc/protoc"
+
+          mkdir -p "${CLOSURES}/node"
+          tar -xzf "${SOURCES}/node-v24.19.0-darwin-arm64.tar.gz" -C "${CLOSURES}/node" --strip-components=1
+
+          mkdir -p "${CLOSURES}/jdk"
+          tar -xzf "${SOURCES}/OpenJDK17U-jdk_aarch64_mac_hotspot_17.0.19_10.tar.gz" -C "${CLOSURES}/jdk" --strip-components=1
+
+          mkdir -p "${CLOSURES}/protoc-gen-go" "${BUILD}/protoc-gen-go"
+          tar -xzf "${SOURCES}/protoc-gen-go.v1.36.11.darwin.arm64.tar.gz" -C "${BUILD}/protoc-gen-go"
+          install -m 0755 "${BUILD}/protoc-gen-go/protoc-gen-go" "${CLOSURES}/protoc-gen-go/protoc-gen-go"
+
+          mkdir -p "${BUILD}/go" "${BUILD}/connect-go" "${CLOSURES}/connect-go"
+          tar -xzf "${SOURCES}/go1.26.5.darwin-arm64.tar.gz" -C "${BUILD}/go" --strip-components=1
+          tar -xzf "${SOURCES}/connect-go-1.20.0.tar.gz" -C "${BUILD}/connect-go" --strip-components=1
+          (
+            cd "${BUILD}/connect-go"
+            GOTOOLCHAIN=local CGO_ENABLED=0 "${BUILD}/go/bin/go" build -trimpath -ldflags=-buildid= -o "${CLOSURES}/connect-go/protoc-gen-connect-go" ./cmd/protoc-gen-connect-go
+          )
+
+          mkdir -p "${CLOSURES}/protoc-gen-es"
+          "${CLOSURES}/node/bin/npm" install --prefix "${CLOSURES}/protoc-gen-es" --ignore-scripts --omit=dev --no-audit --no-fund --package-lock=false \
+            "${SOURCES}/protoc-gen-es-2.14.0.tgz" \
+            "${SOURCES}/protobuf-2.14.0.tgz" \
+            "${SOURCES}/protoplugin-2.14.0.tgz" \
+            "${SOURCES}/vfs-1.6.4.tgz" \
+            "${SOURCES}/typescript-5.4.5.tgz" \
+            "${SOURCES}/debug-4.4.3.tgz" \
+            "${SOURCES}/ms-2.1.3.tgz"
+
+          mkdir -p "${BUILD}/rust-installer" "${BUILD}/rust" "${BUILD}/prost" "${BUILD}/cargo-home" "${BUILD}/cargo-target"
+          tar -xJf "${SOURCES}/rust-1.97.1-aarch64-apple-darwin.tar.xz" -C "${BUILD}/rust-installer" --strip-components=1
+          "${BUILD}/rust-installer/install.sh" --prefix="${BUILD}/rust" --without=rust-docs --disable-ldconfig
+          tar -xzf "${SOURCES}/protoc-gen-prost-0.5.0.tar.gz" -C "${BUILD}/prost" --strip-components=1
+          (
+            cd "${BUILD}/prost"
+            PATH="${BUILD}/rust/bin:/usr/bin:/bin" CARGO_HOME="${BUILD}/cargo-home" CARGO_TARGET_DIR="${BUILD}/cargo-target" \
+              "${BUILD}/rust/bin/cargo" build --release --locked -p protoc-gen-prost -p protoc-gen-prost-crate
+          )
+          mkdir -p "${CLOSURES}/protoc-gen-prost" "${CLOSURES}/protoc-gen-prost-crate"
+          install -m 0755 "${BUILD}/cargo-target/release/protoc-gen-prost" "${CLOSURES}/protoc-gen-prost/protoc-gen-prost"
+          install -m 0755 "${BUILD}/cargo-target/release/protoc-gen-prost-crate" "${CLOSURES}/protoc-gen-prost-crate/protoc-gen-prost-crate"
+
+          mkdir -p "${BUILD}/swift-protobuf" "${BUILD}/swift-scratch" "${CLOSURES}/protoc-gen-swift"
+          tar -xzf "${SOURCES}/swift-protobuf-1.38.1.tar.gz" -C "${BUILD}/swift-protobuf" --strip-components=1
+          xcrun swift build --configuration release --product protoc-gen-swift --package-path "${BUILD}/swift-protobuf" --scratch-path "${BUILD}/swift-scratch"
+          SWIFT_BIN="$(xcrun swift build --configuration release --show-bin-path --package-path "${BUILD}/swift-protobuf" --scratch-path "${BUILD}/swift-scratch")/protoc-gen-swift"
+          install -m 0755 "${SWIFT_BIN}" "${CLOSURES}/protoc-gen-swift/protoc-gen-swift"
+
+          mkdir -p "${CLOSURES}/connect-swift" "${CLOSURES}/connect-kotlin"
+          tar -xzf "${SOURCES}/protoc-gen-connect-swift.tar.gz" -C "${CLOSURES}/connect-swift" --strip-components=1
+          mv "${CLOSURES}/connect-swift/protoc-gen-connect-swift" "${CLOSURES}/connect-swift/protoc-gen-connect-swift.tmp"
+          install -m 0755 "${CLOSURES}/connect-swift/protoc-gen-connect-swift.tmp" "${CLOSURES}/connect-swift/protoc-gen-connect-swift"
+          rm "${CLOSURES}/connect-swift/protoc-gen-connect-swift.tmp"
+          install -m 0644 "${SOURCES}/protoc-gen-connect-kotlin-0.9.0.jar" "${CLOSURES}/connect-kotlin/protoc-gen-connect-kotlin.jar"
+      - name: Download pinned Kotlin compiler and runtime JARs
+        env:
+          FORMAL_ROOT: ${{ runner.temp }}/threadline-formal
+        run: |
+          set -euo pipefail
+          mkdir -p "${FORMAL_ROOT}/kotlin/compiler" "${FORMAL_ROOT}/kotlin/runtime"
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const integrity = JSON.parse(readFileSync("proto/toolchain.lock.json", "utf8")).integrity;
+            for (const [group, entries] of [["compiler", integrity.kotlinCompilerClasspath], ["runtime", integrity.runtimeJars]]) {
+              for (const [name, value] of Object.entries(entries)) console.log(`${group}\t${name}\t${value.source}`);
+            }
+          ' > "${FORMAL_ROOT}/kotlin/downloads.tsv"
+          while IFS=$'\t' read -r group name url; do
+            curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error "${url}" --output "${FORMAL_ROOT}/kotlin/${group}/${name}"
+          done < "${FORMAL_ROOT}/kotlin/downloads.tsv"
+      - name: Create immutable candidate bundle
+        env:
+          FORMAL_ROOT: ${{ runner.temp }}/threadline-formal
+          THREADLINE_RUNNER_IMAGES_SHA: ${{ env.RUNNER_IMAGES_SHA }}
+          THREADLINE_FORMAL_WORK_ROOT: ${{ runner.temp }}/threadline-formal
+          THREADLINE_CODEGEN_BUNDLE_SPEC: ${{ runner.temp }}/threadline-formal/spec.json
+          THREADLINE_CODEGEN_BUNDLE_DIR: ${{ runner.temp }}/threadline-formal-bundle
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          NODE="${FORMAL_ROOT}/closures/node/bin/node"
+          "${NODE}" proto/tools/create-codegen-bundle-spec.mjs
+          "${NODE}" proto/tools/create-codegen-bundle.mjs | tee "${RUNNER_TEMP}/bundle-result.json"
+          cp -R "${FORMAL_ROOT}/kotlin" "${THREADLINE_CODEGEN_BUNDLE_DIR}/kotlin"
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const result = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/bundle-result.json", "utf8"));
+            const evidence = {
+              schemaVersion: 1,
+              status: "candidate-awaiting-separate-review",
+              targetSha: process.env.TARGET_SHA,
+              prepareRunId: process.env.GITHUB_RUN_ID,
+              runnerImageVersion: process.env.ImageVersion ?? "unavailable",
+              runnerImagesInventorySha: process.env.RUNNER_IMAGES_SHA,
+              manifestSha256: result.manifestSha256,
+            };
+            writeFileSync(process.env.THREADLINE_CODEGEN_BUNDLE_DIR + "/prepare-evidence.json", JSON.stringify(evidence, null, 2) + "\n");
+          '
+          tar -czf "${RUNNER_TEMP}/proto-formal-bundle.tgz" -C "$(dirname "${THREADLINE_CODEGEN_BUNDLE_DIR}")" "$(basename "${THREADLINE_CODEGEN_BUNDLE_DIR}")"
+          (cd "${RUNNER_TEMP}" && shasum -a 256 proto-formal-bundle.tgz | tee proto-formal-bundle.tgz.sha256)
+      - name: Upload candidate for separate review
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: proto-formal-bundle
+          path: |
+            ${{ runner.temp }}/proto-formal-bundle.tgz
+            ${{ runner.temp }}/proto-formal-bundle.tgz.sha256
+            ${{ runner.temp }}/bundle-result.json
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'verify'
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Validate reviewed inputs
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: |
+          [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PREPARED_RUN_ID}" =~ ^[0-9]+$ ]]
+          [[ "${MANIFEST_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+      - name: Check out exact T014 commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+      - name: Download the reviewed prepare artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/prepared"
+          gh run download "${PREPARED_RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name proto-formal-bundle --dir "${RUNNER_TEMP}/prepared"
+          shasum -a 256 -c "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz.sha256"
+          tar -xzf "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz" -C "${RUNNER_TEMP}"
+      - name: Verify artifact identity and formal generation
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+          BUNDLE: ${{ runner.temp }}/threadline-formal-bundle
+        run: |
+          set -euo pipefail
+          BUNDLE="${RUNNER_TEMP}/threadline-formal-bundle"
+          test "$(git rev-parse HEAD)" = "${TARGET_SHA}"
+          test "$(shasum -a 256 "${BUNDLE}/manifest.json" | awk '{print $1}')" = "${MANIFEST_SHA256}"
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const evidence = JSON.parse(readFileSync(process.env.BUNDLE + "/prepare-evidence.json", "utf8"));
+            if (evidence.targetSha !== process.env.TARGET_SHA || evidence.prepareRunId !== process.env.PREPARED_RUN_ID || evidence.manifestSha256 !== process.env.MANIFEST_SHA256) process.exit(1);
+            const compatibility = JSON.parse(readFileSync("proto/golden/v1/manifest.json", "utf8")).compatibilityEvidence;
+            if (compatibility.status !== "passed" || JSON.stringify(compatibility.requiredAdapters) !== JSON.stringify(compatibility.verifiedAdapters)) process.exit(1);
+          '
+          NODE="${BUNDLE}/closures/node/bin/node"
+          env -i \
+            HOME="${RUNNER_TEMP}/formal-home" \
+            PATH='/usr/bin:/bin:/usr/sbin:/sbin' \
+            LANG=C LC_ALL=C TZ=UTC \
+            THREADLINE_PROTO_TOOL_MANIFEST="${BUNDLE}/manifest.json" \
+            THREADLINE_PROTO_TOOL_MANIFEST_SHA256="${MANIFEST_SHA256}" \
+            THREADLINE_KOTLIN_COMPILER_DIR="${BUNDLE}/kotlin/compiler" \
+            THREADLINE_PROTOBUF_JAVA_JAR="${BUNDLE}/kotlin/runtime/protobuf-java-4.35.1.jar" \
+            THREADLINE_PROTOBUF_KOTLIN_JAR="${BUNDLE}/kotlin/runtime/protobuf-kotlin-4.35.1.jar" \
+            THREADLINE_KOTLIN_STDLIB_JAR="${BUNDLE}/kotlin/runtime/kotlin-stdlib-2.4.10.jar" \
+            THREADLINE_CONNECT_KOTLIN_JAR="${BUNDLE}/kotlin/runtime/connect-kotlin-0.9.0.jar" \
+            "${NODE}" proto/tools/verify-codegen.mjs --mode=verify-only | tee "${RUNNER_TEMP}/formal-verification.log"
+      - name: Record verified evidence
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: |
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const lock = JSON.parse(readFileSync("proto/toolchain.lock.json", "utf8"));
+            const evidence = {
+              schemaVersion: 1,
+              status: "passed",
+              targetSha: process.env.TARGET_SHA,
+              preparedRunId: process.env.PREPARED_RUN_ID,
+              verifyRunId: process.env.GITHUB_RUN_ID,
+              runnerImageVersion: process.env.ImageVersion ?? "unavailable",
+              manifestSha256: process.env.MANIFEST_SHA256,
+              generationTrees: Object.fromEntries(Object.entries(lock.generationChecks).map(([name, value]) => [name, { fileCount: value.fileCount, treeSha256: value.treeSha256 }])),
+              physicalDevices: "NOT RUN",
+            };
+            writeFileSync(process.env.RUNNER_TEMP + "/formal-evidence.json", JSON.stringify(evidence, null, 2) + "\n");
+          '
+      - name: Upload formal verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: proto-formal-verification
+          path: |
+            ${{ runner.temp }}/formal-evidence.json
+            ${{ runner.temp }}/formal-verification.log
+          if-no-files-found: error
+          retention-days: 30
