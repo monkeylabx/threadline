@@ -75,7 +75,7 @@ save-images: check-images
 	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; else shasum -a 256 "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; fi
 	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; else shasum -a 256 "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; fi
 	@printf '%s\n' "$(PLATFORM)" > "$(PLATFORM_FILE)"
-	@for image in $(TAG_NODE_IMAGE) $(TAG_IMAGES); do docker image rm "$$image" >/dev/null; done
+	@for image in $(TAG_NODE_IMAGE) $(TAG_IMAGES); do docker image rm --force "$$image" >/dev/null; done
 
 load-images: check
 	@test -f "$(ARCHIVE)" || { echo "archive not found: $(ARCHIVE)" >&2; exit 1; }
