@@ -71,9 +71,11 @@ the bytes installed; do not follow a verified run with a separate naked
 See [the codegen trust contract](../docs/contracts/codegen.md) and
 [contract workflow](../docs/contracts/README.md). Representative concrete
 Golden Frames and five-language bidirectional N-1 unknown-field evidence now
-exist. The formal plan now matches the merged multi-package templates. T014
-remains HOLD until the protected release runner authenticates and executes the
-formal tool bundle.
+exist. The formal plan now matches the merged multi-package templates, and the
+protected release runner has authenticated and executed the exact reviewed
+tool bundle. The evidence manifest records the target, run IDs, runner image,
+manifest digest, and all six generated-tree checks. T014 may leave HOLD after
+final review and required PR checks pass.
 
 ## Packages
 
@@ -121,6 +123,5 @@ contract review.
 - Implement the selected descriptor-backed Rust persistence seam in the Rust
   client owner's path; direct `prost` generated-struct decode/re-encode remains
   forbidden.
-- Formal authenticated release codegen on the protected runner.
 - Fake Server and Contract Test coverage for the client-facing slice.
 - Connect/gRPC interceptors for auth, retry, deadline, and trace.
