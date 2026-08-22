@@ -1,10 +1,9 @@
-name: T014 authenticated formal codegen
+name: Authenticated formal codegen
 
 on:
   pull_request:
     paths:
       - .github/workflows/proto-formal.yml
-      - docs/integration/t014-formal-codegen.md
   workflow_dispatch:
     inputs:
       mode:
@@ -14,8 +13,12 @@ on:
         options:
           - prepare
           - verify
+      target_pr:
+        description: Open protocol PR number whose exact head is being tested
+        required: true
+        type: string
       target_sha:
-        description: Exact PR #44 commit SHA to test
+        description: Exact selected protocol PR head commit SHA to test
         required: true
         type: string
       prepared_run_id:
@@ -32,7 +35,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: proto-formal-${{ github.workflow }}-${{ inputs.mode || 'validate' }}-${{ inputs.target_sha || github.ref }}
+  group: proto-formal-${{ github.workflow }}-${{ inputs.mode || 'validate' }}-${{ inputs.target_pr || 'workflow' }}-${{ inputs.target_sha || github.ref }}
   cancel-in-progress: false
 
 env:
@@ -46,10 +49,9 @@ jobs:
     steps:
       - name: Check out integration change
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Validate workflow and handoff
+      - name: Validate workflow
         run: |
           ruby -e 'require "yaml"; YAML.safe_load(File.read(".github/workflows/proto-formal.yml"), aliases: true)'
-          test -s docs/integration/t014-formal-codegen.md
 
   prepare:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'prepare'
@@ -59,12 +61,15 @@ jobs:
       - name: Validate exact target
         env:
           GH_TOKEN: ${{ github.token }}
+          TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
         run: |
+          [[ "${TARGET_PR}" =~ ^[1-9][0-9]*$ ]]
           [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
-          PR_HEAD="$(gh pr view 44 --repo "${GITHUB_REPOSITORY}" --json headRefOid --jq .headRefOid)"
+          test "$(gh pr view "${TARGET_PR}" --repo "${GITHUB_REPOSITORY}" --json state --jq .state)" = 'OPEN'
+          PR_HEAD="$(gh pr view "${TARGET_PR}" --repo "${GITHUB_REPOSITORY}" --json headRefOid --jq .headRefOid)"
           test "${TARGET_SHA}" = "${PR_HEAD}"
-      - name: Check out exact T014 commit
+      - name: Check out exact protocol commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.target_sha }}
@@ -199,6 +204,7 @@ jobs:
           THREADLINE_FORMAL_WORK_ROOT: ${{ runner.temp }}/threadline-formal
           THREADLINE_CODEGEN_BUNDLE_SPEC: ${{ runner.temp }}/threadline-formal/spec.json
           THREADLINE_CODEGEN_BUNDLE_DIR: ${{ runner.temp }}/threadline-formal-bundle
+          TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
         run: |
           set -euo pipefail
@@ -212,6 +218,7 @@ jobs:
             const evidence = {
               schemaVersion: 1,
               status: "candidate-awaiting-separate-review",
+              targetPr: process.env.TARGET_PR,
               targetSha: process.env.TARGET_SHA,
               prepareRunId: process.env.GITHUB_RUN_ID,
               runnerImageVersion: process.env.ImageVersion ?? "unavailable",
@@ -240,14 +247,16 @@ jobs:
     steps:
       - name: Validate reviewed inputs
         env:
+          TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
         run: |
+          [[ "${TARGET_PR}" =~ ^[1-9][0-9]*$ ]]
           [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
           [[ "${PREPARED_RUN_ID}" =~ ^[0-9]+$ ]]
           [[ "${MANIFEST_SHA256}" =~ ^[0-9a-f]{64}$ ]]
-      - name: Check out exact T014 commit
+      - name: Check out exact protocol commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.target_sha }}
@@ -263,6 +272,7 @@ jobs:
           tar -xzf "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz" -C "${RUNNER_TEMP}"
       - name: Verify artifact identity and formal generation
         env:
+          TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
@@ -275,7 +285,7 @@ jobs:
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const evidence = JSON.parse(readFileSync(process.env.BUNDLE + "/prepare-evidence.json", "utf8"));
-            if (evidence.targetSha !== process.env.TARGET_SHA || evidence.prepareRunId !== process.env.PREPARED_RUN_ID || evidence.manifestSha256 !== process.env.MANIFEST_SHA256) process.exit(1);
+            if (evidence.targetPr !== process.env.TARGET_PR || evidence.targetSha !== process.env.TARGET_SHA || evidence.prepareRunId !== process.env.PREPARED_RUN_ID || evidence.manifestSha256 !== process.env.MANIFEST_SHA256) process.exit(1);
             const compatibility = JSON.parse(readFileSync("proto/golden/v1/manifest.json", "utf8")).compatibilityEvidence;
             if (compatibility.status !== "passed" || JSON.stringify(compatibility.requiredAdapters) !== JSON.stringify(compatibility.verifiedAdapters)) process.exit(1);
           '
@@ -294,6 +304,7 @@ jobs:
             "${NODE}" proto/tools/verify-codegen.mjs --mode=verify-only | tee "${RUNNER_TEMP}/formal-verification.log"
       - name: Record verified evidence
         env:
+          TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
@@ -304,6 +315,7 @@ jobs:
             const evidence = {
               schemaVersion: 1,
               status: "passed",
+              targetPr: process.env.TARGET_PR,
               targetSha: process.env.TARGET_SHA,
               preparedRunId: process.env.PREPARED_RUN_ID,
               verifyRunId: process.env.GITHUB_RUN_ID,
