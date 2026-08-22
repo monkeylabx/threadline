@@ -22,3 +22,4 @@ plugins:
     out: ../crates/client-proto/src/generated
     opt:
       - no_features
+    strategy: all
