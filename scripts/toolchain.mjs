@@ -102,6 +102,63 @@ export function validateWorkflowPins(workflow, expectedPins = pins) {
   return errors;
 }
 
+export function validateDatabasePins(databasePins, sources) {
+  const errors = [];
+  const platforms = [
+    ["darwin-amd64", "darwin_amd64", "tar.gz"],
+    ["darwin-arm64", "darwin_arm64", "tar.gz"],
+    ["linux-amd64", "linux_amd64", "tar.gz"],
+    ["linux-arm64", "linux_arm64", "tar.gz"],
+    ["windows-amd64", "windows_amd64", "zip"],
+  ];
+  if (!/^\d+\.\d+\.\d+$/.test(databasePins.sqlc.version)) {
+    errors.push(`sqlc version is not exact: ${databasePins.sqlc.version}`);
+  }
+  if (!/^\d+\.\d+\.\d+$/.test(databasePins.pgx)) {
+    errors.push(`pgx version is not exact: ${databasePins.pgx}`);
+  }
+  const actualPlatforms = Object.keys(databasePins.sqlc.archives).sort();
+  const expectedPlatforms = platforms.map(([platform]) => platform).sort();
+  assertEqual(
+    errors,
+    "sqlc archive platform set",
+    actualPlatforms.join(","),
+    expectedPlatforms.join(","),
+  );
+  for (const [platform, releasePlatform, extension] of platforms) {
+    const archive = databasePins.sqlc.archives[platform];
+    if (!archive) continue;
+    assertEqual(
+      errors,
+      `sqlc ${platform} archive`,
+      archive.file,
+      `sqlc_${databasePins.sqlc.version}_${releasePlatform}.${extension}`,
+    );
+    if (!/^[0-9a-f]{64}$/.test(archive.sha256)) {
+      errors.push(`sqlc ${platform} SHA-256 is not an exact lowercase digest`);
+    }
+  }
+  assertIncludes(
+    errors,
+    "services pgx dependency",
+    sources.goModule,
+    `github.com/jackc/pgx/v5 v${databasePins.pgx}`,
+  );
+  assertIncludes(
+    errors,
+    "Core schema architecture",
+    sources.serviceCatalog,
+    `physical schema \`${databasePins.coreSchema}\``,
+  );
+  assertIncludes(
+    errors,
+    "database reproducibility runbook",
+    sources.reproducibleBuilds,
+    `sqlc ${databasePins.sqlc.version}`,
+  );
+  return errors;
+}
+
 function findWindowsCorepackEntrypoint(pathValue, nodeExecutable) {
   const directories = (pathValue ?? "").split(";").filter(Boolean);
   directories.push(dirname(nodeExecutable));
@@ -146,6 +203,8 @@ export function verifyPins() {
   const gradleLock = read("apps/android/gradle.lockfile");
   const wrapper = read("gradle/wrapper/gradle-wrapper.properties");
   const workflow = read(".github/workflows/build.yml");
+  const serviceCatalog = read("docs/architecture/service-catalog.md");
+  const reproducibleBuilds = read("docs/build/reproducible-builds.md");
 
   assertEqual(errors, ".node-version", read(".node-version").trim(), pins.node);
   assertEqual(errors, ".nvmrc", read(".nvmrc").trim(), pins.node);
@@ -200,6 +259,13 @@ export function verifyPins() {
   );
   assertIncludes(errors, "Android NDK install", workflow, `'ndk;${pins.android.ndk}'`);
   errors.push(...validateWorkflowPins(workflow));
+  errors.push(
+    ...validateDatabasePins(pins.database, {
+      goModule,
+      serviceCatalog,
+      reproducibleBuilds,
+    }),
+  );
   assertIncludes(errors, "CI Go auto-download guard", workflow, "GOTOOLCHAIN: local");
   assertIncludes(errors, "Gradle distribution", wrapper, `gradle-${pins.android.gradle}-bin.zip`);
   assertIncludes(
@@ -264,6 +330,9 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
     valid = probe("Go", "go", ["version"], [`go${pins.goToolchain}`], {
       env: { GOTOOLCHAIN: "local" },
     }) && valid;
+  }
+  if (selected.has("database")) {
+    valid = probe("sqlc", "sqlc", ["version"], [`v${pins.database.sqlc.version}`]) && valid;
   }
   if (selected.has("desktop")) {
     valid =

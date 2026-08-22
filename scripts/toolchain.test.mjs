@@ -5,13 +5,50 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { pins, resolveProbeInvocation, validateWorkflowPins } from "./toolchain.mjs";
+import {
+  pins,
+  resolveProbeInvocation,
+  validateDatabasePins,
+  validateWorkflowPins,
+} from "./toolchain.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const workflow = readFileSync(join(root, ".github", "workflows", "build.yml"), "utf8");
+const databaseSources = {
+  goModule: readFileSync(join(root, "services", "go.mod"), "utf8"),
+  serviceCatalog: readFileSync(
+    join(root, "docs", "architecture", "service-catalog.md"),
+    "utf8",
+  ),
+  reproducibleBuilds: readFileSync(join(root, "docs", "build", "reproducible-builds.md"), "utf8"),
+};
 
 test("the checked-in workflow has no toolchain pin drift", () => {
   assert.deepEqual(validateWorkflowPins(workflow), []);
+});
+
+test("database generator, driver, and schema pins are internally consistent", () => {
+  assert.deepEqual(validateDatabasePins(pins.database, databaseSources), []);
+});
+
+test("database pin verification rejects a drifted pgx dependency", () => {
+  const drifted = {
+    ...databaseSources,
+    goModule: databaseSources.goModule.replace(`v${pins.database.pgx}`, "v0.0.0"),
+  };
+  assert.match(
+    validateDatabasePins(pins.database, drifted).join("\n"),
+    /services pgx dependency/,
+  );
+});
+
+test("database pin verification rejects an incomplete sqlc archive set", () => {
+  const database = structuredClone(pins.database);
+  delete database.sqlc.archives["linux-arm64"];
+  assert.match(
+    validateDatabasePins(database, databaseSources).join("\n"),
+    /sqlc archive platform set/,
+  );
 });
 
 const gradleLock = readFileSync(join(root, "apps", "android", "gradle.lockfile"), "utf8");
