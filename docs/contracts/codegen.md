@@ -208,7 +208,7 @@ five-language unknown-field decode/mutate/re-encode and bidirectional N-1
 matrix now pass for both representative frames. The formal plan now exactly
 matches the merged templates. The remaining blocker is protected-runner formal
 evidence.
-`proto/golden/v1/manifest.json` records these as `issueMayClose: false`.
+`proto/golden/v1/manifest.json` records the completed local and protected-runner evidence, including the exact prepare/verify run IDs, workflow commits, runner image, reviewed manifest digest, and `issueMayClose: true`. Physical-device validation remains explicitly `NOT RUN` and is not part of T014.
 
 Issue #28 must remain open unless one of two things happens: protected-runner
 formal evidence is added; or Contracts and Product
