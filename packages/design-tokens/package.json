@@ -1,0 +1,14 @@
+{
+  "name": "@threadline/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./generated/typescript/tokens.ts"
+  },
+  "scripts": {
+    "generate": "node scripts/design-tokens.mjs generate",
+    "verify": "node scripts/design-tokens.mjs verify"
+  }
+}
