@@ -188,13 +188,15 @@ The current T014 task defines output locations and provides the verified generat
 ## T014 acceptance blocker
 
 The merged schema now contains `ChannelEventEnvelope` and `RecoveryEnvelope`.
-The remaining blocker is executable evidence: the current branch has only
-schema-independent field-50000 canaries, not representative frames,
-descriptor-driven five-language unknown-field round trips, or N-1 results.
-`proto/golden/v1/manifest.json` records this as `issueMayClose: false`.
+Representative synthetic frames now bind both messages to known semantic
+values, exact source/frame digests, and the family field-50000 canary. The
+remaining blockers are descriptor-driven five-language unknown-field
+decode/mutate/re-encode, N-1 results, reconciliation of the formal plan with
+the merged templates, and protected-runner formal evidence.
+`proto/golden/v1/manifest.json` records these as `issueMayClose: false`.
 
-Issue #28 must remain open unless one of two things happens: representative
-frames, five-language unknown-field evidence, N-1 results, and a formal plan
-reconciled with the merged templates are added; or Contracts and Product
+Issue #28 must remain open unless one of two things happens: five-language
+unknown-field evidence, N-1 results, a formal plan reconciled with the merged
+templates, and protected-runner evidence are added; or Contracts and Product
 explicitly approve moving exact acceptance items elsewhere and update the
 Issue. Merely naming a follow-up task in this document is not approval.

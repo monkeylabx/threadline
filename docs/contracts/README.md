@@ -8,7 +8,7 @@ Threadline uses versioned Protobuf packages as the stable seam between the IM co
 | --- | --- | --- |
 | Style | `buf lint` | Enforce package, file, enum, RPC, and comment conventions |
 | Compatibility | `make proto-breaking` | Reject source and wire changes covered by the merged `WIRE_JSON` policy |
-| Golden Frames | `node proto/tools/verify-contracts.mjs` | Verify persisted-envelope unknown-field canaries, hashes, local-only generation, and output mappings |
+| Golden Frames | `node proto/tools/verify-contracts.mjs` | Verify representative persisted-envelope values, unknown-field canaries, hashes, local-only generation, and output mappings |
 | Release verification | approved clean-env launcher + bundle-absolute Node + `proto/tools/verify-codegen.mjs --mode=verify-only` | Verify schema-v4 source/provenance/authentication records and snapshotted runtime closures, reject protocol stubs, require exact generated file sets, and compile the Java/Kotlin pair |
 | Generation commit | approved clean-env launcher + bundle-absolute Node + `proto/tools/verify-codegen.mjs --mode=repository` | Install the already-verified temporary output into the six declared generated directories; clean worktree, repository lock, safe destination paths, and explicit Integration Owner acknowledgement required |
 
@@ -16,11 +16,11 @@ The schema bootstrap has already landed on `main`. T014 no longer has an empty
 baseline exception: it must build and lint the current module and run the fixed
 breaking command against the merged protocol baseline.
 
-The schema-independent canaries do not yet satisfy Issue #28's concrete
-Ciphertext/Crypto Envelope Golden Frame acceptance item. The concrete
-`ChannelEventEnvelope` and `RecoveryEnvelope` schemas are now present; Issue
-#28 remains open until representative frames and cross-language/N-1 evidence
-exist, or Contracts and Product explicitly approve and record a scope split.
+Representative synthetic frames now bind the concrete `ChannelEventEnvelope`
+and `RecoveryEnvelope` schemas to known values, hashes, and the exact field
+`50000` canary bytes. Issue #28 remains open until five generated-language
+decode/mutate/re-encode, N-1, and protected-runner formal codegen evidence
+exists, or Contracts and Product explicitly approve and record a scope split.
 
 The workspace intentionally has no BSR module name, BSR dependency, or remote generation plugin. Private and air-gapped builds consume only the repository plus the pinned local toolchain.
 

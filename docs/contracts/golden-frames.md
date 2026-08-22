@@ -4,29 +4,47 @@ Golden Frames protect the serialized bytes and unknown-field behavior of persist
 
 ## Canary
 
-Every persisted message reserves field `50000`. The field is absent from the schema and is injected as a length-delimited unknown field in compatibility tests. The repository seeds two versioned canaries:
+Every persisted message reserves field `50000`. The field is absent from the schema and is injected as a length-delimited unknown field in compatibility tests. The repository contains two versioned canaries and two representative frames:
 
 - `proto/golden/v1/ciphertext-envelope.canary.hex`
 - `proto/golden/v1/crypto-envelope.canary.hex`
+- `proto/golden/v1/channel-event-envelope.golden.hex`
+- `proto/golden/v1/recovery-envelope.golden.hex`
 
-Their names identify the contract families; they do not define the concrete
-Envelope fields. `manifest.json` pins the payload and SHA-256 of each raw
-canary.
+The canary names identify contract families; they do not define concrete
+Envelope fields. Each representative frame is generated from its adjacent
+synthetic `.golden.json` source using the real schema, then receives the exact
+family canary bytes as its final unknown field. `manifest.json` pins every
+source and frame SHA-256, its schema file, known-field set, and canary.
 
-T014 currently provides only the executable, schema-independent canary
-baseline: canonical bytes, field `50000`, payload, and digest are checked now.
-The merged protocol now defines `threadline.message.v1.ChannelEventEnvelope`
-and `threadline.crypto.v1.RecoveryEnvelope`, but representative frames for
-those messages and cross-language decode/re-encode and N-1 evidence are still
-missing. Issue #28 therefore remains open. The Integration Owner must run every
-concrete historical frame through every generated adapter before committing
-generated SDKs; failure remains a contract gate.
+`verify-golden-frames.mjs` decodes the wire format without a generated adapter,
+checks all representative known values and nested messages, proves the exact
+field `50000` bytes survived, and rejects any byte or source drift. The fixtures
+are synthetic compatibility data: they contain no production identifier,
+plaintext, credential, key, or real ciphertext.
+
+Regeneration requires an absolute Buf 1.72.0 executable; the script does not
+discover one from `PATH`:
+
+```sh
+THREADLINE_BUF=/absolute/path/to/pinned/buf \
+  node proto/tools/generate-golden-frames.mjs --check
+```
+
+Only a reviewed contract change uses `--write`. Issue #28 remains open because
+repository-level wire validation is not the required five generated-language
+decode/mutate/re-encode evidence, N-1 evidence, or protected-runner formal
+codegen record. The Integration Owner must run every historical frame through
+every generated adapter before committing generated SDKs; failure remains a
+contract gate.
 
 ## Test contract
 
-For each concrete persisted Envelope, its owner must add a canonical binary/hex
+For each concrete persisted Envelope, its owner adds a canonical binary/hex
 frame containing representative known fields followed by the appropriate
-canary. Each generated-language adapter must prove:
+canary. The repository verifier proves the source, schema reservation, known
+wire values, digest, and canary. Each generated-language adapter must still
+prove:
 
 1. decode succeeds without knowing field `50000`;
 2. known fields have the expected semantic values;

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -22,18 +21,6 @@ function filesBelow(directory, suffix) {
     if (entry.isDirectory()) return filesBelow(path, suffix);
     return path.endsWith(suffix) ? [path] : [];
   });
-}
-
-function decodeVarint(bytes, start) {
-  let value = 0;
-  let shift = 0;
-  for (let index = start; index < bytes.length && shift <= 49; index += 1) {
-    const byte = bytes[index];
-    value += (byte & 0x7f) * 2 ** shift;
-    if ((byte & 0x80) === 0) return { value, next: index + 1 };
-    shift += 7;
-  }
-  throw new Error("invalid or oversized varint");
 }
 
 const bufYaml = read(join(repositoryRoot, "buf.yaml"));
@@ -127,38 +114,25 @@ for (const path of filesBelow(join(protoRoot, "threadline"), ".proto")) {
 
 const manifestPath = join(protoRoot, "golden", "v1", "manifest.json");
 const manifest = JSON.parse(read(manifestPath));
-assert(manifest.schemaVersion === 1, "Golden Frame manifest schemaVersion must be 1");
+assert(manifest.schemaVersion === 2, "Golden Frame manifest schemaVersion must be 2");
 assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary must remain field 50000");
+assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-representative-frames-and-cross-language-evidence", "T014 Golden Frame blocker must remain explicit");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must remain an explicit blocker");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.status === "blocked-on-cross-language-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "cross-language unknown-field evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "N-1 evidence must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");
-assert(manifest.fixtures.length === 2, "Ciphertext and Crypto Envelope canaries are both required");
+assert(manifest.canaries.length === 2, "Ciphertext and Crypto Envelope canaries are both required");
+assert(manifest.frames.length === 2, "ChannelEventEnvelope and RecoveryEnvelope frames are both required");
 
-for (const fixture of manifest.fixtures) {
-  const fixturePath = join(dirname(manifestPath), fixture.file);
-  assert(statSync(fixturePath).isFile(), `${fixture.contract} fixture is missing`);
-  const hex = read(fixturePath).trim();
-  assert(/^(?:[0-9a-f]{2})+$/u.test(hex), `${fixture.contract} fixture must be canonical lowercase hex`);
-  const bytes = Buffer.from(hex, "hex");
-  const digest = createHash("sha256").update(bytes).digest("hex");
-  assert(digest === fixture.sha256, `${fixture.contract} SHA-256 mismatch`);
-  try {
-    const tag = decodeVarint(bytes, 0);
-    const length = decodeVarint(bytes, tag.next);
-    const payload = bytes.subarray(length.next, length.next + length.value);
-    assert(Math.floor(tag.value / 8) === manifest.canaryFieldNumber, `${fixture.contract} must use field 50000`);
-    assert(tag.value % 8 === 2, `${fixture.contract} canary must be length-delimited`);
-    assert(length.next + length.value === bytes.length, `${fixture.contract} must contain one complete field`);
-    assert(payload.toString("utf8") === fixture.payloadUtf8, `${fixture.contract} payload mismatch`);
-  } catch (error) {
-    errors.push(`${fixture.contract} is not a valid Golden Frame canary: ${error.message}`);
-  }
-}
+const goldenTestPath = join(protoRoot, "tools", "verify-golden-frames.mjs");
+assert(statSync(goldenTestPath).isFile(), "representative Golden Frame verifier must exist");
+const goldenTests = spawnSync(process.execPath, [goldenTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (goldenTests.status !== 0) errors.push(`${goldenTests.stdout ?? ""}${goldenTests.stderr ?? ""}`.trim());
 
 if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join("\n"));
@@ -171,5 +145,5 @@ if (installTests.status !== 0) {
   process.exit(installTests.status ?? 1);
 }
 
-console.log("Threadline contract structure and Golden Frame canaries are valid.");
+console.log("Threadline contract structure and representative Golden Frames are valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");

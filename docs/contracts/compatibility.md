@@ -41,15 +41,16 @@ Any Protobuf message stored in PostgreSQL, SQLite, object storage, a local outbo
 5. document storage migration and rollback behavior before a package-major change.
 
 Ciphertext, MLS/application crypto, history, and recovery envelopes are
-persisted contracts. `ChannelEventEnvelope` and `RecoveryEnvelope` now exist in
-the merged protocol, so the remaining T014 work is evidence rather than schema
-invention: representative frames, five-language unknown-field preservation,
-and N-1 read/write results must be recorded against those exact messages.
+persisted contracts. `ChannelEventEnvelope` and `RecoveryEnvelope` now have
+representative synthetic frames containing known fields plus the exact unknown
+field `50000` canary. The remaining T014 work is generated-adapter evidence,
+not schema invention: five-language unknown-field preservation and N-1
+read/write results must be recorded against those exact messages.
 
-Accordingly, the current T014 branch proves only the library-independent
-field-50000 canary encoding and manifest integrity. This is not yet a pass for
-Issue #28's concrete Envelope Golden Frame acceptance item. The Integration
-Owner must add the representative frames and record cross-language and N-1
-evidence before the generated SDK update can merge. Assigning that missing
-acceptance work elsewhere requires explicit Contracts and Product approval plus
-an Issue update.
+The current T014 branch proves schema binding, representative wire values,
+source/frame digests, and library-independent canary preservation. It does not
+claim that a generated adapter retains unknown fields. The Integration Owner
+must record five-language decode/mutate/re-encode and N-1 evidence before the
+generated SDK update can merge. Assigning that missing acceptance work
+elsewhere requires explicit Contracts and Product approval plus an Issue
+update.

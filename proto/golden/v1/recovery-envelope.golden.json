@@ -1,0 +1,19 @@
+{
+  "tenantId": "tenant-golden",
+  "e2eeGroupId": "group-golden",
+  "epoch": "42",
+  "cryptoProfile": {
+    "name": "tl-mls-1",
+    "mlsProtocolVersion": "1.0",
+    "cipherSuite": "CIPHER_SUITE_MLS_128_DHKEMX25519_AES128GCM_SHA256_ED25519",
+    "messageEnvelopeVersion": 1,
+    "historyEnvelopeVersion": 1,
+    "recoveryEnvelopeVersion": 1
+  },
+  "recoveryKeyVersion": 7,
+  "wrappedMaterial": "UFFSU1RVVlc=",
+  "envelopeVersion": 1,
+  "recoveryRecipientPresent": true,
+  "recoveryKeyId": "recovery-key-golden-v7",
+  "bindingHash": "YGFiY2RlZmc="
+}

@@ -1,24 +1,26 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "canaryFieldNumber": 50000,
+  "classification": "synthetic-protocol-compatibility-no-secrets",
   "acceptanceBoundary": {
     "issue": 28,
     "issueMayClose": false,
-    "status": "blocked-on-representative-frames-and-cross-language-evidence",
+    "status": "blocked-on-cross-language-n-minus-one-and-formal-evidence",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
-      "fixture-digest-validation"
+      "fixture-digest-validation",
+      "representative-channel-event-envelope-frame",
+      "representative-recovery-envelope-frame"
     ],
     "notSatisfiedHere": [
-      "representative-channel-event-envelope-frame",
-      "representative-recovery-envelope-frame",
       "cross-language-unknown-field-roundtrip",
-      "n-minus-one-compatibility"
+      "n-minus-one-compatibility",
+      "protected-runner-formal-codegen-evidence"
     ],
     "candidateFollowups": [],
     "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
   },
-  "fixtures": [
+  "canaries": [
     {
       "contract": "ciphertext-envelope/v1",
       "file": "ciphertext-envelope.canary.hex",
@@ -30,6 +32,28 @@
       "file": "crypto-envelope.canary.hex",
       "payloadUtf8": "threadline-crypto-golden-v1",
       "sha256": "d1ef5c38238e345005af3b85b0e3e965aa8326966f42294c9be7699aa97f86c6"
+    }
+  ],
+  "frames": [
+    {
+      "contract": "threadline.message.v1.ChannelEventEnvelope",
+      "schemaFile": "threadline/message/v1/envelope.proto",
+      "sourceJson": "channel-event-envelope.golden.json",
+      "sourceSha256": "a113c598136d65e66a0768eed8f83dd4ddc66a72eb564a6f7cc18f42b9c2a63d",
+      "file": "channel-event-envelope.golden.hex",
+      "sha256": "d965e48a03c4bf266241d8610812bf945a431f657c77c17fc7cf8b17610aee8c",
+      "canary": "ciphertext-envelope/v1",
+      "requiredKnownFields": [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20, 22, 23, 24]
+    },
+    {
+      "contract": "threadline.crypto.v1.RecoveryEnvelope",
+      "schemaFile": "threadline/crypto/v1/recovery.proto",
+      "sourceJson": "recovery-envelope.golden.json",
+      "sourceSha256": "a674f8be6d3f108be4a667964c997e54e4ba1c4bd4f23580a79416292b76be98",
+      "file": "recovery-envelope.golden.hex",
+      "sha256": "bdfbda9cbf6634bcee1a1d7653abecfcfc7cbe3dac2c57620ccfc8ee927a515d",
+      "canary": "crypto-envelope/v1",
+      "requiredKnownFields": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     }
   ]
 }

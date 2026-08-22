@@ -69,10 +69,11 @@ the bytes installed; do not follow a verified run with a separate naked
 `buf generate`.
 
 See [the codegen trust contract](../docs/contracts/codegen.md) and
-[contract workflow](../docs/contracts/README.md). T014 remains HOLD until the
-formal plan is reconciled with the merged multi-package protocol, concrete
-Golden Frames and unknown-field/N-1 evidence exist, and the Swift builder is
-authenticated on the protected release runner.
+[contract workflow](../docs/contracts/README.md). Representative concrete
+Golden Frames now exist. T014 remains HOLD until the formal plan is reconciled
+with the merged multi-package protocol, five-language unknown-field/N-1
+evidence exists, and the Swift builder is authenticated on the protected
+release runner.
 
 ## Packages
 
@@ -117,9 +118,7 @@ contract review.
 
 ## Still required before the protocol gate closes
 
-- Concrete persisted Ciphertext and Recovery Golden Frames.
 - Descriptor-driven five-language unknown-field round trips and N-1 evidence.
 - Formal authenticated release codegen on the protected runner.
 - Fake Server and Contract Test coverage for the client-facing slice.
 - Connect/gRPC interceptors for auth, retry, deadline, and trace.
-
