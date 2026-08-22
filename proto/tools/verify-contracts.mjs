@@ -143,6 +143,8 @@ const installTestPath = join(protoRoot, "tools", "verify-codegen-install.test.mj
 assert(statSync(installTestPath).isFile(), "repository codegen failure-injection tests must exist");
 const bundleBuilderPath = join(protoRoot, "tools", "create-codegen-bundle.mjs");
 assert(statSync(bundleBuilderPath).isFile(), "formal codegen bundle builder must exist");
+const bundleSpecBuilderPath = join(protoRoot, "tools", "create-codegen-bundle-spec.mjs");
+assert(statSync(bundleSpecBuilderPath).isFile(), "formal codegen bundle spec builder must exist");
 
 for (const path of filesBelow(join(protoRoot, "threadline"), ".proto")) {
   const source = read(path);
