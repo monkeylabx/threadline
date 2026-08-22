@@ -172,6 +172,17 @@ test("database pin verification rejects workspace pgx replacement or exclusion",
   assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /go\.work.*exclude/);
 });
 
+test("database pin verification rejects additional workspace main modules", () => {
+  const additionalModule = {
+    ...databaseSources,
+    goWork: databaseSources.goWork.replace(
+      "use ./services",
+      "use(\n\t./services\n\t./other-main\n)",
+    ),
+  };
+  assert.match(validateDatabasePins(pins.database, additionalModule).join("\n"), /go\.work use set/);
+});
+
 test("database pin verification rejects quoted dependency paths", () => {
   for (const quotedPath of [
     '"github.com/jackc/pgx/v5"',

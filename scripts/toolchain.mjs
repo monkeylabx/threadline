@@ -131,6 +131,7 @@ function parseGoDependencyDirectives(source) {
     directRequires: [],
     excludes: [],
     replacements: [],
+    uses: [],
   };
   let block;
   for (const sourceLine of source.split("\n")) {
@@ -141,7 +142,7 @@ function parseGoDependencyDirectives(source) {
     if (
       tokens.length === 2 &&
       tokens[1] === "(" &&
-      ["require", "replace", "exclude"].includes(tokens[0])
+      ["require", "replace", "exclude", "use"].includes(tokens[0])
     ) {
       block = tokens[0];
       continue;
@@ -158,6 +159,7 @@ function parseGoDependencyDirectives(source) {
     }
     if (directive === "replace") directives.replacements.push(values);
     if (directive === "exclude") directives.excludes.push(values);
+    if (directive === "use") directives.uses.push(...values);
   }
   return directives;
 }
@@ -198,6 +200,7 @@ export function validateDatabasePins(databasePins, sources) {
   if (!moduleDirectives.directRequires.includes(requiredPgx)) {
     errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
   }
+  assertEqual(errors, "go.work use set", workspaceDirectives.uses.join(","), "./services");
   for (const [sourceName, directives] of [
     ["services/go.mod", moduleDirectives],
     ["go.work", workspaceDirectives],
