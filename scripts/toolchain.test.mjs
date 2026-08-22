@@ -113,6 +113,29 @@ test("database pin verification rejects tab-separated pgx replacements", () => {
   assert.match(validateDatabasePins(pins.database, block).join("\n"), /replace directives/);
 });
 
+test("database pin verification handles block directives without whitespace before parentheses", () => {
+  const direct = {
+    ...databaseSources,
+    goModule: databaseSources.goModule.replace(
+      `require github.com/jackc/pgx/v5 v${pins.database.pgx}`,
+      `require(\n\tgithub.com/jackc/pgx/v5 v${pins.database.pgx}\n)`,
+    ),
+  };
+  assert.deepEqual(validateDatabasePins(pins.database, direct), []);
+
+  const replaced = {
+    ...databaseSources,
+    goWork: `${databaseSources.goWork}\nreplace(\n\tgithub.com/jackc/pgx/v5 => ../fake-pgx\n)\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /go\.work.*replace/);
+
+  const excluded = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nexclude(\n\tgithub.com/jackc/pgx/v5 v${pins.database.pgx}\n)\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /exclude directives/);
+});
+
 test("database pin verification rejects a pgx exclusion", () => {
   const excluded = {
     ...databaseSources,
