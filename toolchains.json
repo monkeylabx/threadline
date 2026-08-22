@@ -5,6 +5,35 @@
   "rust": "1.97.1",
   "goLanguage": "1.26.0",
   "goToolchain": "1.26.5",
+  "database": {
+    "sqlc": {
+      "version": "1.31.1",
+      "archives": {
+        "darwin-amd64": {
+          "file": "sqlc_1.31.1_darwin_amd64.tar.gz",
+          "sha256": "c5af76772e3785d21663a62697056b383f07629979b1bd25b93872e73dbd519b"
+        },
+        "darwin-arm64": {
+          "file": "sqlc_1.31.1_darwin_arm64.tar.gz",
+          "sha256": "21602158c99eb1f2bae197a66abfb1941d1e9e50b23125bb193349c6b1acc71e"
+        },
+        "linux-amd64": {
+          "file": "sqlc_1.31.1_linux_amd64.tar.gz",
+          "sha256": "497ae4fcdfa64c5b0c311ffe4c2bd991e43991e82e5367792ed78bc2dca27354"
+        },
+        "linux-arm64": {
+          "file": "sqlc_1.31.1_linux_arm64.tar.gz",
+          "sha256": "b7cae247740d0c51a1e657479e5b2d21e6fef428f596682a01bc55bf4ab8a23d"
+        },
+        "windows-amd64": {
+          "file": "sqlc_1.31.1_windows_amd64.zip",
+          "sha256": "352711fa7dcb05dcdfefca0ad71b2c9a74fd090f8d7fc609419de4cbc725429f"
+        }
+      }
+    },
+    "pgx": "5.10.0",
+    "coreSchema": "domain"
+  },
   "tauri": {
     "core": "2.11.5",
     "build": "2.6.3",

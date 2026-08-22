@@ -172,7 +172,16 @@ CA 和 NetworkPolicy；PostgreSQL、NATS、Redis、Vault 不暴露到 Client Net
 | agentd | Internal Model Endpoint | 企业模型原生 HTTPS / mTLS | 推理数据路径 | Policy Retry / Fallback |
 | 所有服务 | OTel Collector | OTLP / mTLS | Trace、Metric、脱敏 Log | 本地 Buffer，不能阻塞业务 |
 
-### 6.1 消息发送关系
+### 6.1 PostgreSQL schema ownership
+
+`threadline-core` owns the physical schema `domain`. Core migrations are the
+only authority that creates or changes objects in that schema. The Worker may
+receive narrowly scoped access to claim and acknowledge reviewed Outbox or Job
+rows, but it does not own migrations and must not bypass Core's event and
+capability contracts. New services do not create objects in `public`, share
+Core's database role, or gain schema access by convention.
+
+### 6.2 消息发送关系
 
 ```mermaid
 sequenceDiagram
@@ -198,7 +207,7 @@ sequenceDiagram
   RC->>Core: sync(after_seq)
 ```
 
-### 6.2 Agent Task 关系
+### 6.3 Agent Task 关系
 
 ```mermaid
 sequenceDiagram
