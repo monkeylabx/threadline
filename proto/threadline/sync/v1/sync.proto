@@ -126,8 +126,9 @@ message CursorRejection {
   // resolves outside the authenticated tenant. Contains metadata only.
   threadline.type.v1.ErrorDetail error = 2;
 
-  // Server's contiguous position for this Device and conversation. The client
-  // resumes from here or from a separately verified checkpoint; it never jumps
-  // to its rejected position.
+  // Server's last accepted contiguous position for this Device and
+  // conversation. The client resumes from it only when its local applied chain
+  // matches; otherwise it repairs from its own verified position. This field is
+  // never permission to jump across an unapplied or retention-expired range.
   SyncCursor server_cursor = 3;
 }

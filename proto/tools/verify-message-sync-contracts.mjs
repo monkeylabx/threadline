@@ -115,14 +115,29 @@ function evaluateCursorRejection(testCase) {
   assert(testCase.cursor.channelId === testCase.serverCursor.channelId, `${testCase.id}: server cursor must name the same conversation`);
   if (testCase.invalidReason === "ahead") {
     assert(testCase.cursor.lastAppliedSeq > testCase.serverHeadSeq, `${testCase.id}: fixture must exercise an ahead cursor`);
-  } else if (testCase.invalidReason === "past-retention") {
-    assert(testCase.cursor.lastAppliedSeq < testCase.retentionFloorSeq, `${testCase.id}: fixture must exercise a past-retention cursor`);
   } else {
     throw new Error(`${testCase.id}: unsupported cursor rejection reason`);
   }
   return {
     errorCode: "ERROR_CODE_CURSOR_INVALID",
     resumeFromSeq: testCase.serverCursor.lastAppliedSeq,
+  };
+}
+
+function evaluatePastRetention(testCase) {
+  assert(testCase.cursor.channelId === testCase.serverCursor.channelId, `${testCase.id}: server cursor must name the same conversation`);
+  assert(testCase.serverCursor.lastAppliedSeq === testCase.cursor.lastAppliedSeq, `${testCase.id}: server must not offer a forward cursor jump`);
+  assert(testCase.cursor.lastAppliedSeq < testCase.retentionFloorSeq, `${testCase.id}: fixture must exercise a past-retention cursor`);
+  const expectedGap = {
+    firstMissingSeq: testCase.cursor.lastAppliedSeq + 1,
+    lastKnownSeq: testCase.retentionFloorSeq - 1,
+  };
+  assert(JSON.stringify(testCase.repairRequest) === JSON.stringify(expectedGap), `${testCase.id}: repair must name the expired range exactly`);
+  assert(JSON.stringify(testCase.repairResponse.unrecoverableGap) === JSON.stringify(expectedGap), `${testCase.id}: server must return the expired range as unrecoverable`);
+  return {
+    errorCode: "ERROR_CODE_CURSOR_INVALID",
+    repairStartsAtSeq: testCase.retentionFloorSeq,
+    cursorAdvances: false,
   };
 }
 
@@ -202,6 +217,7 @@ function evaluate(testCase) {
   if (testCase.kind === "resume") return evaluateResume(testCase);
   if (testCase.kind === "gap-repair") return evaluateGapRepair(testCase);
   if (testCase.kind === "cursor-rejection") return evaluateCursorRejection(testCase);
+  if (testCase.kind === "past-retention") return evaluatePastRetention(testCase);
   if (testCase.kind === "checkpoint") return evaluateCheckpoint(testCase);
   if (testCase.kind === "unknown-extension") return evaluateUnknownExtension(testCase);
   throw new Error(`${testCase.id}: unknown case kind ${testCase.kind}`);

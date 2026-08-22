@@ -249,21 +249,31 @@
       }
     },
     {
-      "id": "past-retention-cursor-resumes-from-server-position",
-      "kind": "cursor-rejection",
+      "id": "past-retention-cursor-requires-explicit-unrecoverable-repair",
+      "kind": "past-retention",
       "cursor": {
         "channelId": "channel-a",
         "lastAppliedSeq": 10
       },
       "serverCursor": {
         "channelId": "channel-a",
-        "lastAppliedSeq": 44
+        "lastAppliedSeq": 10
       },
       "retentionFloorSeq": 20,
-      "invalidReason": "past-retention",
+      "repairRequest": {
+        "firstMissingSeq": 11,
+        "lastKnownSeq": 19
+      },
+      "repairResponse": {
+        "unrecoverableGap": {
+          "firstMissingSeq": 11,
+          "lastKnownSeq": 19
+        }
+      },
       "expected": {
         "errorCode": "ERROR_CODE_CURSOR_INVALID",
-        "resumeFromSeq": 44
+        "repairStartsAtSeq": 20,
+        "cursorAdvances": false
       }
     },
     {

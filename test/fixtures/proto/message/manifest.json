@@ -23,7 +23,7 @@
   "nMinusOne": "Unknown-field byte preservation delegates to the T014 five-language bidirectional N-1 Golden Frame evidence.",
   "source": {
     "file": "scenarios.json",
-    "sha256": "763ee5121485349991aa3d2c041147ee27fbc4a816a0b26dd946174c71985dd4"
+    "sha256": "e1d4d1b9cb5451f6a54eea745c67cae6cdf7a64a34bf54aaa16647e077c3b423"
   },
   "contracts": [
     "threadline/identity/v1/identity.proto",
@@ -50,7 +50,7 @@
     "resume-stops-before-gap",
     "gap-repair-is-contiguous-and-bounded",
     "invalid-ahead-cursor-resumes-from-server-position",
-    "past-retention-cursor-resumes-from-server-position",
+    "past-retention-cursor-requires-explicit-unrecoverable-repair",
     "matching-signed-checkpoint-allows-cursor-advance",
     "checkpoint-chain-mismatch-fails-closed",
     "unknown-envelope-extension-is-preserved"
