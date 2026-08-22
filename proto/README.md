@@ -70,10 +70,10 @@ the bytes installed; do not follow a verified run with a separate naked
 
 See [the codegen trust contract](../docs/contracts/codegen.md) and
 [contract workflow](../docs/contracts/README.md). Representative concrete
-Golden Frames now exist. T014 remains HOLD until the formal plan is reconciled
-with the merged multi-package protocol, five-language unknown-field/N-1
-evidence exists, and the Swift builder is authenticated on the protected
-release runner.
+Golden Frames and five-language bidirectional N-1 unknown-field evidence now
+exist. T014 remains HOLD until the formal plan is reconciled with the merged
+multi-package protocol and the protected release runner authenticates and
+executes the formal tool bundle.
 
 ## Packages
 
@@ -121,7 +121,6 @@ contract review.
 - Implement the selected descriptor-backed Rust persistence seam in the Rust
   client owner's path; direct `prost` generated-struct decode/re-encode remains
   forbidden.
-- Descriptor-driven five-language unknown-field round trips and N-1 evidence.
 - Formal authenticated release codegen on the protected runner.
 - Fake Server and Contract Test coverage for the client-facing slice.
 - Connect/gRPC interceptors for auth, retry, deadline, and trace.

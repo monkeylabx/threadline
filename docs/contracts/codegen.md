@@ -21,7 +21,7 @@ The machine-readable pins live in `proto/toolchain.lock.json`. The pinned set is
 | protoc | 35.1 | Kotlin built-in generator and descriptor compiler |
 | Temurin JDK | 17.0.19+10 | Eclipse Adoptium Java/Javac compile smoke; must match `toolchains.json` |
 | protoc-gen-go | 1.36.11 | Go messages |
-| protoc-gen-es | 2.12.0 | TypeScript messages |
+| protoc-gen-es | 2.14.0 | TypeScript messages |
 | protoc-gen-prost | 0.5.0 | Rust Prost messages |
 | protoc-gen-swift | 1.38.1 | Swift messages |
 | Git CLI | 2.50.1 | Repository-mode clean-worktree gate only; supplied in the verified release manifest |
@@ -137,7 +137,14 @@ THREADLINE_PROTOBUF_KOTLIN_JAR=/path/to/protobuf-kotlin-4.35.1.jar \
 <approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=verify-only
 ```
 
-`--mode=protocol-smoke` is a deliberately weaker harness for exercising the plugin protocol with declared stubs. Its output is labelled `PROTOCOL-SMOKE ONLY` and is never release evidence. `--mode=verify-only` requires non-stub provenance. Go, TypeScript, Rust, and Swift native package compilation, plus descriptor-driven five-language unknown-field round trips, remain required Integration Owner checks when generated SDKs and concrete persisted schemas are committed. T014 checks exact generated source identities and Java/Kotlin compilation; it does not claim those four native builds, concrete Envelope round trips, or N-1 evidence.
+`--mode=protocol-smoke` is a deliberately weaker harness for exercising the plugin protocol with declared stubs. Its output is labelled `PROTOCOL-SMOKE ONLY` and is never release evidence. `--mode=verify-only` requires non-stub provenance. The separate `verify-generated-envelope-compat.mjs` harness generates and compiles Go, TypeScript, Rust, Swift, and Kotlin adapters, then relays the representative `ChannelEventEnvelope` and `RecoveryEnvelope` in both directions between the current schema and the exact pre-T014 main commit. Every hop mutates a known field and must preserve the exact field-50000 unknown canary. This closes the generated-adapter and N-1 acceptance items, but it is local compatibility evidence rather than the protected-runner formal codegen attestation.
+
+The canonical command and the exact required environment-variable names are
+machine-readable in `proto/golden/v1/manifest.json`. Each variable points to a
+pinned executable, JDK/SDK, verified Kotlin JAR directory, or the committed
+SwiftProtobuf source-archive digest; optional Go cache variables and
+`THREADLINE_ENVELOPE_COMPAT_OFFLINE=1` make the same matrix repeatable without
+network access after preload.
 
 The Kotlin generator extends Java-generated message classes; it does not
 replace them. `proto/buf.gen.kotlin.yaml` therefore emits both
@@ -190,13 +197,14 @@ The current T014 task defines output locations and provides the verified generat
 The merged schema now contains `ChannelEventEnvelope` and `RecoveryEnvelope`.
 Representative synthetic frames now bind both messages to known semantic
 values, exact source/frame digests, and the family field-50000 canary. The
-remaining blockers are descriptor-driven five-language unknown-field
-decode/mutate/re-encode, N-1 results, reconciliation of the formal plan with
-the merged templates, and protected-runner formal evidence.
+five-language unknown-field decode/mutate/re-encode and bidirectional N-1
+matrix now pass for both representative frames. The remaining blockers are
+reconciliation of the formal plan with the merged templates and
+protected-runner formal evidence.
 `proto/golden/v1/manifest.json` records these as `issueMayClose: false`.
 
-Issue #28 must remain open unless one of two things happens: five-language
-unknown-field evidence, N-1 results, a formal plan reconciled with the merged
-templates, and protected-runner evidence are added; or Contracts and Product
+Issue #28 must remain open unless one of two things happens: a formal plan
+reconciled with the merged templates and protected-runner evidence are added;
+or Contracts and Product
 explicitly approve moving exact acceptance items elsewhere and update the
 Issue. Merely naming a follow-up task in this document is not approval.

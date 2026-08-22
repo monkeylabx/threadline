@@ -89,6 +89,13 @@ for (const collection of [toolchain.integrity.runtimeJars, toolchain.integrity.k
     assert(/^[0-9a-f]{40}$/u.test(integrity.sourceSha1), `${artifact} must record the published source SHA-1`);
   }
 }
+assert(JSON.stringify(toolchain.integrity.swiftProtobufSourceArchive) === JSON.stringify({
+  version: toolchain.tools["protoc-gen-swift"],
+  sha256: "7e35c119afe8f16fe4de45c2143b0f50a205db83738092336562d610469283ac",
+  source: "https://github.com/apple/swift-protobuf/archive/refs/tags/1.38.1.tar.gz",
+  tagCommit: "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
+}), "Swift compatibility source must remain bound to the exact official 1.38.1 tag archive");
+assert(toolchain.tools["protoc-gen-es"] === "2.14.0", "TypeScript generator must match the workspace package pin");
 const trustedLaunchPrefix = "<approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs";
 assert(JSON.stringify(Object.keys(toolchain.commands).sort()) === JSON.stringify(["breaking", "generate", "lint", "protocolSmoke", "verify", "verifyCodegen"]), "contract command set must remain exact");
 assert(toolchain.commands.lint === "buf lint", "contract lint command must remain canonical");
@@ -127,23 +134,54 @@ assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary 
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-cross-language-n-minus-one-and-formal-evidence", "T014 remaining blockers must stay explicit");
+assert(manifest.acceptanceBoundary.status === "blocked-on-formal-plan-and-protected-runner-evidence", "T014 remaining blockers must stay explicit");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("rust-dynamic-message-persistence-seam"), "the selected Rust DynamicMessage seam must be recorded");
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("rust-persisted-envelope-unknown-field-preservation-decision"), "the verified Rust persistence decision must not remain listed as unsatisfied");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "cross-language unknown-field evidence must remain an explicit blocker");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "N-1 evidence must remain an explicit blocker");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("five-language-generated-envelope-unknown-field-roundtrip"), "five-language unknown-field evidence must be recorded as satisfied");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("bidirectional-n-minus-one-compatibility"), "N-1 evidence must be recorded as satisfied");
+assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "verified cross-language evidence must not remain a blocker");
+assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "verified N-1 evidence must not remain a blocker");
+assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("formal-plan-reconciliation-with-merged-templates"), "formal-plan reconciliation must remain explicit until completed");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");
+assert(manifest.compatibilityEvidence.nMinusOneCommit === "b6c797c45d90fbb8b0465f7d7407ee1536e322e3", "generated-adapter N-1 evidence must remain pinned to the pre-T014 main commit");
+assert(manifest.compatibilityEvidence.status === "passed", "the generated-adapter matrix must be recorded as passed");
+assert(manifest.compatibilityEvidence.protocol === "current-write-n-minus-one-read-mutate-write-current-read-and-reverse", "N-1 evidence must require bidirectional read/mutate/write handoff");
+assert(JSON.stringify(manifest.compatibilityEvidence.frames) === JSON.stringify([
+  "threadline.message.v1.ChannelEventEnvelope",
+  "threadline.crypto.v1.RecoveryEnvelope",
+]), "generated-adapter evidence must cover both representative persisted envelopes");
+assert(manifest.compatibilityEvidence.canaryFieldNumber === 50000, "generated-adapter evidence must preserve field 50000");
+assert(JSON.stringify(manifest.compatibilityEvidence.requiredAdapters) === JSON.stringify(["go", "typescript", "rust", "swift", "kotlin"]), "generated-adapter evidence must cover the exact five-language set");
+assert(JSON.stringify(manifest.compatibilityEvidence.verifiedAdapters) === JSON.stringify(manifest.compatibilityEvidence.requiredAdapters), "every required generated adapter must have verified evidence");
+assert(manifest.compatibilityEvidence.verificationCommand === "node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,swift,kotlin", "the canonical five-language verification command must remain fixed");
+assert(JSON.stringify(manifest.compatibilityEvidence.requiredEnvironment) === JSON.stringify([
+  "THREADLINE_GO",
+  "THREADLINE_PROTOC_GEN_GO",
+  "THREADLINE_CARGO",
+  "THREADLINE_JAVA_HOME",
+  "THREADLINE_PROTOC",
+  "THREADLINE_KOTLIN_JARS",
+  "THREADLINE_SWIFT",
+  "THREADLINE_SWIFT_SDK",
+  "THREADLINE_SWIFT_PROTOBUF_ARCHIVE",
+]), "five-language verification must name every externally supplied pinned input");
 assert(manifest.canaries.length === 2, "Ciphertext and Crypto Envelope canaries are both required");
 assert(manifest.frames.length === 2, "ChannelEventEnvelope and RecoveryEnvelope frames are both required");
 
 const goldenTestPath = join(protoRoot, "tools", "verify-golden-frames.mjs");
 assert(statSync(goldenTestPath).isFile(), "representative Golden Frame verifier must exist");
 const rustEnvelopeTestPath = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
+const generatedEnvelopeTestPath = join(protoRoot, "tools", "verify-generated-envelope-compat.mjs");
 const rustEnvelopeHarnessRoot = join(protoRoot, "tools", "rust-envelope-compat");
 assert(statSync(rustEnvelopeTestPath).isFile(), "Rust persisted-envelope verifier must exist");
+assert(statSync(generatedEnvelopeTestPath).isFile(), "five-language generated-envelope verifier must exist");
+assert(statSync(join(protoRoot, "tools", "generated-envelope-compat", "typescript.mjs")).isFile(), "TypeScript generated-envelope adapter must exist");
+assert(statSync(join(protoRoot, "tools", "generated-envelope-compat", "go", "main.go")).isFile(), "Go generated-envelope adapter must exist");
+assert(statSync(join(protoRoot, "tools", "generated-envelope-compat", "kotlin", "Main.kt")).isFile(), "Kotlin generated-envelope adapter must exist");
+assert(statSync(join(protoRoot, "tools", "generated-envelope-compat", "swift", "main.swift")).isFile(), "Swift generated-envelope adapter must exist");
 assert(statSync(join(rustEnvelopeHarnessRoot, "Cargo.toml")).isFile(), "isolated Rust persisted-envelope harness manifest must exist");
 assert(statSync(join(rustEnvelopeHarnessRoot, "Cargo.lock")).isFile(), "isolated Rust persisted-envelope harness lock must exist");
 assert(statSync(join(rustEnvelopeHarnessRoot, "src", "main.rs")).isFile(), "isolated Rust persisted-envelope harness source must exist");

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const protoRoot = join(repositoryRoot, "proto");
 const goldenRoot = join(protoRoot, "golden", "v1");
 const harnessManifest = join(protoRoot, "tools", "rust-envelope-compat", "Cargo.toml");
+const goldenManifest = JSON.parse(readFileSync(join(goldenRoot, "manifest.json"), "utf8"));
 const buf = process.env.THREADLINE_BUF;
 const cargo = process.env.THREADLINE_CARGO;
 const mode = process.argv[2];
@@ -40,6 +41,31 @@ function run(executable, commandArguments, options = {}) {
   return result;
 }
 
+function extractProtoSnapshot(commit, destination) {
+  if (!/^[0-9a-f]{40}$/u.test(commit)) throw new Error("N-1 commit must be a full Git object ID");
+  const listing = run("git", ["ls-tree", "-r", "--name-only", commit, "--", "proto"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: process.env,
+  }).stdout;
+  const paths = listing.split("\n").filter((path) => path === "proto/buf.yaml" || path.endsWith(".proto"));
+  if (!paths.includes("proto/buf.yaml") || paths.filter((path) => path.endsWith(".proto")).length === 0) {
+    throw new Error(`N-1 commit ${commit} does not contain the expected proto module`);
+  }
+  for (const path of paths) {
+    const output = join(destination, path);
+    mkdirSync(dirname(output), { recursive: true });
+    const content = spawnSync("git", ["show", `${commit}:${path}`], {
+      cwd: repositoryRoot,
+      encoding: null,
+      env: process.env,
+      stdio: "pipe",
+    });
+    if (content.error || content.status !== 0) throw new Error(`cannot extract ${commit}:${path}`);
+    writeFileSync(output, content.stdout, { mode: 0o600 });
+  }
+}
+
 const bufPath = `${dirname(buf)}${delimiter}${dirname(process.execPath)}${delimiter}/usr/bin${delimiter}/bin`;
 const bufVersion = run(buf, ["--version"], { env: { PATH: bufPath } }).stdout.trim();
 if (bufVersion !== "1.72.0") throw new Error(`Buf 1.72.0 is required; received ${bufVersion}`);
@@ -66,10 +92,18 @@ const environment = {
 };
 
 try {
-  const descriptor = join(temporaryRoot, "threadline-descriptor-set.binpb");
+  const currentDescriptor = join(temporaryRoot, "threadline-current-descriptor-set.binpb");
+  const previousDescriptor = join(temporaryRoot, "threadline-n-minus-one-descriptor-set.binpb");
+  const previousRoot = join(temporaryRoot, "n-minus-one");
+  extractProtoSnapshot(goldenManifest.compatibilityEvidence.nMinusOneCommit, previousRoot);
   run(
     buf,
-    ["build", "proto", "--as-file-descriptor-set", "--exclude-source-info", "-o", descriptor],
+    ["build", "proto", "--as-file-descriptor-set", "--exclude-source-info", "-o", currentDescriptor],
+    { cwd: repositoryRoot, env: { PATH: bufPath, TMPDIR: temporaryRoot } },
+  );
+  run(
+    buf,
+    ["build", join(previousRoot, "proto"), "--as-file-descriptor-set", "--exclude-source-info", "-o", previousDescriptor],
     { cwd: repositoryRoot, env: { PATH: bufPath, TMPDIR: temporaryRoot } },
   );
 
@@ -79,7 +113,7 @@ try {
 
   const cargoArguments = ["run", "--locked"];
   if (mode === "--offline") cargoArguments.push("--offline");
-  cargoArguments.push("--quiet", "--manifest-path", harnessManifest, "--", descriptor, goldenRoot);
+  cargoArguments.push("--quiet", "--manifest-path", harnessManifest, "--", currentDescriptor, previousDescriptor, goldenRoot);
   const verification = run(cargo, cargoArguments, { cwd: repositoryRoot, env: environment });
   process.stdout.write(verification.stdout);
 } finally {
