@@ -5,7 +5,7 @@
   "acceptanceBoundary": {
     "issue": 28,
     "issueMayClose": false,
-    "status": "blocked-on-formal-plan-and-protected-runner-evidence",
+    "status": "blocked-on-protected-runner-formal-evidence",
     "satisfiedHere": [
       "schema-independent-field-50000-canary-encoding",
       "fixture-digest-validation",
@@ -13,10 +13,10 @@
       "representative-recovery-envelope-frame",
       "rust-dynamic-message-persistence-seam",
       "five-language-generated-envelope-unknown-field-roundtrip",
-      "bidirectional-n-minus-one-compatibility"
+      "bidirectional-n-minus-one-compatibility",
+      "formal-plan-reconciled-with-merged-templates"
     ],
     "notSatisfiedHere": [
-      "formal-plan-reconciliation-with-merged-templates",
       "protected-runner-formal-codegen-evidence"
     ],
     "candidateFollowups": [],

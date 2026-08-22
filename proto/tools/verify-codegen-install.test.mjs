@@ -10,10 +10,10 @@ for (const name of Object.keys(process.env)) {
   }
 }
 const outputs = [
-  "services/gen/proto",
+  "services/gen",
   "packages/generated-ts/src",
-  "crates/generated-proto/src/generated",
-  "packages/generated-swift/Sources/ThreadlineGenerated",
+  "crates/client-proto/src/generated",
+  "packages/generated-swift/Sources/ThreadlineProto",
   "packages/generated-kotlin/src/main/java",
   "packages/generated-kotlin/src/main/kotlin",
 ];

@@ -71,9 +71,9 @@ the bytes installed; do not follow a verified run with a separate naked
 See [the codegen trust contract](../docs/contracts/codegen.md) and
 [contract workflow](../docs/contracts/README.md). Representative concrete
 Golden Frames and five-language bidirectional N-1 unknown-field evidence now
-exist. T014 remains HOLD until the formal plan is reconciled with the merged
-multi-package protocol and the protected release runner authenticates and
-executes the formal tool bundle.
+exist. The formal plan now matches the merged multi-package templates. T014
+remains HOLD until the protected release runner authenticates and executes the
+formal tool bundle.
 
 ## Packages
 

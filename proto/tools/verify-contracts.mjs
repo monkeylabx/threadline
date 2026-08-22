@@ -35,6 +35,7 @@ const toolchain = JSON.parse(read(join(protoRoot, "toolchain.lock.json")));
 const workspaceToolchain = JSON.parse(read(join(repositoryRoot, "toolchains.json")));
 assert(toolchain.schemaVersion === 1, "toolchain lock schemaVersion must be 1");
 assert(toolchain.tools.javaRuntime === workspaceToolchain.android.java, "Contract codegen JDK must match the workspace JDK pin");
+assert(toolchain.tools.go === workspaceToolchain.goToolchain, "Contract source-built generators must match the workspace Go toolchain pin");
 assert(toolchain.tools.javaVendor === "Eclipse Adoptium" && workspaceToolchain.android.javaVendor === "Temurin", "Contract codegen JDK vendor must match the workspace Temurin pin");
 assert(toolchain.scope.startsWith("Contract-specific"), "Proto lock must state its contract-only boundary");
 assert(JSON.stringify(toolchain.rustPersistence) === JSON.stringify({
@@ -48,18 +49,39 @@ assert(JSON.stringify(toolchain.rustPersistence) === JSON.stringify({
 assert(Object.keys(toolchain.outputs).length === 5, "exactly five language outputs must be pinned");
 const expectedGenerationPlan = {
   version: "v2",
+  clean: true,
+  managed: {
+    enabled: true,
+    override: [
+      { file_option: "go_package_prefix", value: "github.com/monkeylabx/threadline/services/gen" },
+      { file_option: "java_package_prefix", value: "com.threadline.proto" },
+    ],
+  },
   plugins: [
     { local: "protoc-gen-go", out: toolchain.outputs.go, opt: ["paths=source_relative"] },
-    { local: "protoc-gen-es", out: toolchain.outputs.typescript, opt: ["target=ts"] },
-    { local: "protoc-gen-prost", out: toolchain.outputs.rust, opt: ["bytes=."] },
-    { local: "protoc-gen-swift", out: toolchain.outputs.swift },
+    { local: "protoc-gen-connect-go", out: toolchain.outputs.go, opt: ["paths=source_relative"] },
+    { local: "protoc-gen-es", out: toolchain.outputs.typescript, opt: ["target=ts", "import_extension=.js"] },
+    { local: "protoc-gen-prost", out: toolchain.outputs.rust, opt: ["bytes=.", "compile_well_known_types=false"] },
+    { local: "protoc-gen-prost-crate", out: toolchain.outputs.rust, opt: ["no_features"], strategy: "all" },
+    { local: "protoc-gen-swift", out: toolchain.outputs.swift, opt: ["Visibility=Public", "FileNaming=PathToUnderscores"] },
+    { local: "protoc-gen-connect-swift", out: toolchain.outputs.swift, opt: ["Visibility=Public", "FileNaming=PathToUnderscores"] },
     { protoc_builtin: "java", protoc_path: "protoc", out: toolchain.outputs.kotlin.javaMessages },
     { protoc_builtin: "kotlin", protoc_path: "protoc", out: toolchain.outputs.kotlin.kotlinDsl },
+    { local: "protoc-gen-connect-kotlin", out: toolchain.outputs.kotlin.kotlinDsl },
   ],
   inputs: [{ directory: "proto" }],
 };
 assert(JSON.stringify(generationPlan) === JSON.stringify(expectedGenerationPlan), "buf.gen.yaml must exactly match the pinned five-language generation plan");
-for (const plugin of ["protoc-gen-go", "protoc-gen-es", "protoc-gen-prost", "protoc-gen-swift"]) {
+for (const plugin of [
+  "protoc-gen-go",
+  "protoc-gen-connect-go",
+  "protoc-gen-es",
+  "protoc-gen-prost",
+  "protoc-gen-prost-crate",
+  "protoc-gen-swift",
+  "protoc-gen-connect-swift",
+  "protoc-gen-connect-kotlin",
+]) {
   assert(typeof toolchain.tools[plugin] === "string", `${plugin} version must be pinned`);
 }
 assert(typeof toolchain.tools.git === "string", "repository-mode Git version must be pinned");
@@ -72,7 +94,9 @@ assert(JSON.stringify(toolchain.integrity.toolManifestSchema) === JSON.stringify
   sourceKeys: ["kind", "file", "url", "sha256"],
   builderSourceKeys: ["kind", "file", "url", "sha256", "authentication"],
   rustChecksumAuthenticationKeys: ["kind", "file", "url", "sha256"],
+  goDistributionAuthenticationKeys: ["kind", "file", "url", "sha256"],
   appleInstallerAuthenticationKeys: ["kind", "signer"],
+  invocationKinds: ["native", "verified-node", "verified-java"],
   closureKeys: ["root", "sources", "treeSha256", "files"],
   toolKeys: ["path", "sha256", "closure", "provenance", "invocation"],
   officialProvenanceKeys: ["kind", "sources"],
@@ -107,11 +131,9 @@ assert(toolchain.commands.protocolSmoke === `${trustedLaunchPrefix} --mode=proto
 assert(Object.keys(toolchain.generationChecks).length === 6, "all six generated source surfaces must have formal output checks");
 for (const [surface, checks] of Object.entries(toolchain.generationChecks)) {
   assert(Array.isArray(checks.extensions) && checks.extensions.length > 0, `${surface} must pin generated source extensions`);
-  assert(Array.isArray(checks.expectedRelativePaths) && checks.expectedRelativePaths.length > 0, `${surface} must pin the exact generated file set`);
-  assert(new Set(checks.expectedRelativePaths).size === checks.expectedRelativePaths.length, `${surface} expected generated paths must be unique`);
-  assert(JSON.stringify(checks.expectedRelativePaths) === JSON.stringify([...checks.expectedRelativePaths].sort()), `${surface} expected generated paths must be sorted`);
-  assert(checks.expectedRelativePaths.every((path) => !path.startsWith("/") && !path.includes("\\") && !path.split("/").includes("..")), `${surface} expected generated paths must be canonical relative paths`);
-  assert(Array.isArray(checks.signatureRegex) && checks.signatureRegex.length > 0, `${surface} must pin real-generator signatures`);
+  assert(Number.isSafeInteger(checks.fileCount) && checks.fileCount > 0, `${surface} must pin the generated file count`);
+  assert(/^[0-9a-f]{64}$/u.test(checks.treeSha256), `${surface} must pin the exact generated tree SHA-256`);
+  assert(Array.isArray(checks.signatureRegexAny) && checks.signatureRegexAny.length > 0, `${surface} must pin accepted real-generator signatures`);
   assert(Array.isArray(checks.structureRegex) && checks.structureRegex.length > 0, `${surface} must pin ErrorEnvelope output structure`);
 }
 assert(statSync(join(protoRoot, "tools", "verify-codegen.mjs")).isFile(), "the verified codegen command must exist");
@@ -134,7 +156,7 @@ assert(manifest.canaryFieldNumber === 50000, "Golden Frame unknown-field canary 
 assert(manifest.classification === "synthetic-protocol-compatibility-no-secrets", "Golden Frame fixtures must remain synthetic and secret-free");
 assert(manifest.acceptanceBoundary.issue === 28, "Golden Frame acceptance boundary must identify T014");
 assert(manifest.acceptanceBoundary.issueMayClose === false, "T014 must remain open until its concrete Golden Frame requirement is resolved");
-assert(manifest.acceptanceBoundary.status === "blocked-on-formal-plan-and-protected-runner-evidence", "T014 remaining blockers must stay explicit");
+assert(manifest.acceptanceBoundary.status === "blocked-on-protected-runner-formal-evidence", "T014 remaining blocker must stay explicit");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-channel-event-envelope-frame"), "representative ChannelEventEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("representative-recovery-envelope-frame"), "representative RecoveryEnvelope frame must be recorded");
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("rust-dynamic-message-persistence-seam"), "the selected Rust DynamicMessage seam must be recorded");
@@ -143,7 +165,8 @@ assert(manifest.acceptanceBoundary.satisfiedHere.includes("five-language-generat
 assert(manifest.acceptanceBoundary.satisfiedHere.includes("bidirectional-n-minus-one-compatibility"), "N-1 evidence must be recorded as satisfied");
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("cross-language-unknown-field-roundtrip"), "verified cross-language evidence must not remain a blocker");
 assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("n-minus-one-compatibility"), "verified N-1 evidence must not remain a blocker");
-assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("formal-plan-reconciliation-with-merged-templates"), "formal-plan reconciliation must remain explicit until completed");
+assert(manifest.acceptanceBoundary.satisfiedHere.includes("formal-plan-reconciled-with-merged-templates"), "the merged formal generation plan must be recorded as satisfied");
+assert(!manifest.acceptanceBoundary.notSatisfiedHere.includes("formal-plan-reconciliation-with-merged-templates"), "completed formal-plan reconciliation must not remain a blocker");
 assert(manifest.acceptanceBoundary.notSatisfiedHere.includes("protected-runner-formal-codegen-evidence"), "formal protected-runner evidence must remain an explicit blocker");
 assert(manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Contracts") && manifest.acceptanceBoundary.splitRequiresExplicitApprovalFrom.includes("Product"), "moving the concrete frames out of T014 requires Contracts and Product approval");
 assert(manifest.compatibilityEvidence.nMinusOneCommit === "b6c797c45d90fbb8b0465f7d7407ee1536e322e3", "generated-adapter N-1 evidence must remain pinned to the pre-T014 main commit");

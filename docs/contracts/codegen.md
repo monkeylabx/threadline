@@ -4,12 +4,11 @@ Code generation is deliberately local and deterministic. The merged templates
 under `proto/buf.gen.*.yaml` contain no `remote:` entries, and
 `proto/buf.yaml` contains no public BSR module name or dependency.
 
-The root `buf.gen.yaml` in this Draft branch is an earlier formal-verifier
-candidate, not the merged product generation plan. Its output mapping and
-single-message assertions predate the current multi-domain protocol. Formal or
-repository mode must remain HOLD until the verifier consumes the merged five
-templates (including their Connect plugins and managed options) without a
-second, drifting topology.
+The root `buf.gen.yaml` is the machine-readable union of the five developer
+templates. It preserves their managed Go/Java package options, exact output
+directories, Connect plugins, and the all-files strategy required by
+`protoc-gen-prost-crate`. Both structural verification and the formal verifier
+compare this plan as an exact object, so there is no second drifting topology.
 
 ## Pinned toolchain
 
@@ -21,9 +20,13 @@ The machine-readable pins live in `proto/toolchain.lock.json`. The pinned set is
 | protoc | 35.1 | Kotlin built-in generator and descriptor compiler |
 | Temurin JDK | 17.0.19+10 | Eclipse Adoptium Java/Javac compile smoke; must match `toolchains.json` |
 | protoc-gen-go | 1.36.11 | Go messages |
+| protoc-gen-connect-go | 1.20.0 | Go Connect clients and handlers |
 | protoc-gen-es | 2.14.0 | TypeScript messages |
 | protoc-gen-prost | 0.5.0 | Rust Prost messages |
+| protoc-gen-prost-crate | 0.5.0 | Rust module tree |
 | protoc-gen-swift | 1.38.1 | Swift messages |
+| protoc-gen-connect-swift | 1.2.3 | Swift Connect clients |
+| protoc-gen-connect-kotlin | 0.9.0 | Kotlin Connect clients |
 | Git CLI | 2.50.1 | Repository-mode clean-worktree gate only; supplied in the verified release manifest |
 | Kotlin compiler | 2.4.10 | Kotlin generated-source compile smoke |
 | protobuf-java | 4.35.1 | Java message runtime used by the Kotlin SDK |
@@ -36,7 +39,7 @@ The root `toolchains.json` remains the workspace toolchain source of truth. `pro
 
 The Integration Owner supplies a platform-specific tool bundle plus a manifest. The manifest SHA-256 comes from separately reviewed release metadata; this repository does not claim a signature unless the release process actually supplies and verifies one. Nothing is discovered from the current `PATH`.
 
-Manifest schema 4 records the exact platform/profile, bundle-local source archives or packages, every tool's provenance and invocation, and a complete recursive file/symlink manifest for every runtime closure. A normal source entry is an exact `{kind,file,url,sha256}` record: the bundle-local regular file is hashed, the URL must be HTTPS, and `kind` distinguishes an official binary/package, a source archive, or a protocol-only fixture. A `builder-toolchain` additionally carries machine-checked `authentication`: either the exact `static.rust-lang.org` distribution `.sha256` sidecar (including matching digest and filename), or the macOS Swift installer signature with the exact `Developer ID Installer: Swift Open Source (V9AUD2URP3)` identity. Other builder authorities require an explicit schema/reviewer update; arbitrary HTTPS labels or self-authored checksum text are rejected. A closure references one or more source names, which lets the JavaScript generator closure account for the main `protoc-gen-es` npm tarball and its complete dependency-tarball set instead of pretending one archive represents the closure. This covers the JDK `lib/modules`, the Node runtime, JavaScript plugin modules, native generators, and their bundle-local files—not just launcher filenames. A repository-mode manifest additionally contains the pinned Git CLI used for the clean-worktree check; verification-only and protocol-smoke manifests omit Git because they cannot update generated surfaces:
+Manifest schema 4 records the exact platform/profile, bundle-local source archives or packages, every tool's provenance and invocation, and a complete recursive file/symlink manifest for every runtime closure. A normal source entry is an exact `{kind,file,url,sha256}` record: the bundle-local regular file is hashed, the URL must be HTTPS, and `kind` distinguishes an official binary/package, a source archive, or a protocol-only fixture. A `builder-toolchain` additionally carries machine-checked `authentication`: the exact `static.rust-lang.org` distribution `.sha256` sidecar, the exact pinned `go.dev` release JSON entry, or the macOS Swift installer signature with the `Developer ID Installer: Swift Open Source (V9AUD2URP3)` identity. Other builder authorities require an explicit schema/reviewer update; arbitrary HTTPS labels or self-authored checksum text are rejected. A closure references one or more source names, which lets the JavaScript generator closure account for the main `protoc-gen-es` npm tarball and its complete dependency-tarball set instead of pretending one archive represents the closure. This covers the JDK `lib/modules`, the Node runtime, JavaScript plugin modules, native generators, and their bundle-local files—not just launcher filenames. A repository-mode manifest additionally contains the pinned Git CLI used for the clean-worktree check; verification-only and protocol-smoke manifests omit Git because they cannot update generated surfaces:
 
 ```json
 {
@@ -105,10 +108,10 @@ first. Cross-platform protocol-smoke bundles may still use native Windows
 `.exe` files, but `.cmd` wrappers are forbidden because they introduce an
 unverified command-interpreter dependency. A JavaScript generator is invoked
 as `[verified-node, verified-plugin]`, so its `env node` shebang is never used
-for version inspection or generation; native generators and `protoc` are also
-invoked by verified absolute paths. Before formal mode is enabled, the same
-replacement must be applied to the merged templates rather than to the stale
-root candidate plan.
+for version inspection or generation. The Connect Kotlin executable JAR is
+invoked as `[verified-java, -jar, verified-plugin]`; native generators and
+`protoc` are invoked by verified absolute paths. The exact root plan is then
+rewritten in memory with only these verified invocations.
 
 Formal verification has a bootstrap trust boundary outside JavaScript. An approved clean-environment launcher must first authenticate the reviewed manifest digest, verify the bundle's absolute Node executable, clear preload/search-path variables, and only then start that absolute Node. A check inside `verify-codegen.mjs` can reject a suspicious environment after startup, but it cannot prove that `NODE_OPTIONS`, `LD_PRELOAD`, or an equivalent preload did not already execute. Invoking the script with a bare `node`, a shell-discovered launcher, or the current environment is therefore diagnostic only, never formal release evidence.
 
@@ -117,13 +120,13 @@ After startup, every child receives a minimal environment: only verified tool di
 The committed SHA-256 values for the Kotlin compiler classpath and Protobuf/Kotlin runtime JARs live in `proto/toolchain.lock.json`. Each supplied JAR must match both the committed SHA-256 and the recorded Maven Central SHA-1. The compiler directory is an exact set: missing, extra, renamed, symlinked, or changed JARs fail.
 
 Formal release verification requires a `release` manifest; protocol stubs are
-rejected. Once reconciled, it must generate to a temporary directory using the
-provenance-recorded plugins, require the exact expected file set for every
-output surface, check each source's generator signature and a real merged
-message structure, then compile all generated Java messages and Kotlin DSL plus
-a Kotlin consumer. The present exact-set assertions still target the obsolete
-branch-local `ErrorEnvelope`, so the command below is documented for the final
-workflow but is not currently an acceptance result. Replace the two
+rejected. It generates to a temporary directory using the provenance-recorded
+plugins, checks the pinned file count and canonical SHA-256 tree for every
+merged output surface, checks every source against an accepted generator
+signature and real Envelope/service structures, then compiles all generated
+Java messages, Kotlin DSL and Connect clients plus a Kotlin consumer. The root
+plan and exact output assertions now cover the merged multi-domain protocol.
+Replace the two
 angle-bracket launcher arguments with values from the approved release runner;
 they are trust-root placeholders, not shell commands:
 
@@ -134,6 +137,7 @@ THREADLINE_KOTLIN_COMPILER_DIR=/reviewed-bundle/kotlin-compiler-classpath \
 THREADLINE_KOTLIN_STDLIB_JAR=/path/to/kotlin-stdlib-2.4.10.jar \
 THREADLINE_PROTOBUF_JAVA_JAR=/path/to/protobuf-java-4.35.1.jar \
 THREADLINE_PROTOBUF_KOTLIN_JAR=/path/to/protobuf-kotlin-4.35.1.jar \
+THREADLINE_CONNECT_KOTLIN_JAR=/path/to/connect-kotlin-0.9.0.jar \
 <approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=verify-only
 ```
 
@@ -179,6 +183,7 @@ THREADLINE_KOTLIN_COMPILER_DIR=/reviewed-bundle/kotlin-compiler-classpath \
 THREADLINE_KOTLIN_STDLIB_JAR=/reviewed-bundle/kotlin-stdlib-2.4.10.jar \
 THREADLINE_PROTOBUF_JAVA_JAR=/reviewed-bundle/protobuf-java-4.35.1.jar \
 THREADLINE_PROTOBUF_KOTLIN_JAR=/reviewed-bundle/protobuf-kotlin-4.35.1.jar \
+THREADLINE_CONNECT_KOTLIN_JAR=/reviewed-bundle/connect-kotlin-0.9.0.jar \
 <approved-clean-env-launcher> <bundle-absolute-node> proto/tools/verify-codegen.mjs --mode=repository
 ```
 
@@ -198,13 +203,12 @@ The merged schema now contains `ChannelEventEnvelope` and `RecoveryEnvelope`.
 Representative synthetic frames now bind both messages to known semantic
 values, exact source/frame digests, and the family field-50000 canary. The
 five-language unknown-field decode/mutate/re-encode and bidirectional N-1
-matrix now pass for both representative frames. The remaining blockers are
-reconciliation of the formal plan with the merged templates and
-protected-runner formal evidence.
+matrix now pass for both representative frames. The formal plan now exactly
+matches the merged templates. The remaining blocker is protected-runner formal
+evidence.
 `proto/golden/v1/manifest.json` records these as `issueMayClose: false`.
 
-Issue #28 must remain open unless one of two things happens: a formal plan
-reconciled with the merged templates and protected-runner evidence are added;
-or Contracts and Product
+Issue #28 must remain open unless one of two things happens: protected-runner
+formal evidence is added; or Contracts and Product
 explicitly approve moving exact acceptance items elsewhere and update the
 Issue. Merely naming a follow-up task in this document is not approval.

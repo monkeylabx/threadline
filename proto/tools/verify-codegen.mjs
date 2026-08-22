@@ -48,8 +48,18 @@ assertCleanBootstrapEnvironment();
 const toolchain = JSON.parse(readFileSync(join(protoRoot, "toolchain.lock.json"), "utf8"));
 const workspaceToolchain = JSON.parse(readFileSync(join(repositoryRoot, "toolchains.json"), "utf8"));
 const generationPlan = JSON.parse(readFileSync(join(repositoryRoot, "buf.gen.yaml"), "utf8"));
-const generationTools = ["buf", "protoc", "protoc-gen-go", "protoc-gen-es", "protoc-gen-prost", "protoc-gen-swift", "java", "javac", "node"];
-const generatorTools = ["protoc-gen-go", "protoc-gen-es", "protoc-gen-prost", "protoc-gen-swift"];
+const generatorTools = [
+  "protoc-gen-go",
+  "protoc-gen-connect-go",
+  "protoc-gen-es",
+  "protoc-gen-prost",
+  "protoc-gen-prost-crate",
+  "protoc-gen-swift",
+  "protoc-gen-connect-swift",
+  "protoc-gen-connect-kotlin",
+];
+const generationTools = ["buf", "protoc", ...generatorTools, "java", "javac", "node"];
+const versionlessGenerators = new Set(["protoc-gen-connect-swift", "protoc-gen-connect-kotlin"]);
 const modes = new Set(["verify-only", "repository", "protocol-smoke"]);
 
 function parseMode() {
@@ -198,6 +208,29 @@ function verifyBuilderAuthentication(name, source, manifestDirectory, snapshotRo
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(original, destination, { errorOnExist: true });
     if (hashFile("sha256", destination) !== authentication.sha256) throw new Error(`${name} builder checksum metadata snapshot mismatch`);
+    return;
+  }
+  if (authentication.kind === "go-distribution-json") {
+    assertExactKeys(`${name} builder authentication`, authentication, ["kind", "file", "url", "sha256"]);
+    if (authentication.url !== "https://go.dev/dl/?mode=json&include=all" || source.url !== `https://go.dev/dl/${basename(source.file)}`) {
+      throw new Error(`${name} Go builder must use the matching go.dev archive and release metadata`);
+    }
+    assertCanonicalDigest(authentication.sha256, 64, `${name} Go release metadata sha256`);
+    const original = resolve(manifestDirectory, canonicalRelativePath(authentication.file, `${name} Go release metadata file`));
+    if (!existsSync(original)) throw new Error(`${name} Go release metadata is missing`);
+    assertBundleLocalPath(manifestDirectory, original, `${name} Go release metadata`, "file");
+    if (hashFile("sha256", original) !== authentication.sha256) throw new Error(`${name} Go release metadata SHA-256 mismatch`);
+    const releases = JSON.parse(readFileSync(original, "utf8"));
+    const expectedVersion = `go${toolchain.tools.go}`;
+    const release = Array.isArray(releases) ? releases.find((item) => item?.version === expectedVersion && item?.stable === true) : undefined;
+    const file = release?.files?.find((item) => item?.filename === basename(source.file));
+    if (!file || file.os !== "darwin" || file.arch !== "arm64" || file.kind !== "archive" || file.sha256 !== source.sha256) {
+      throw new Error(`${name} Go release metadata does not authenticate the pinned Darwin arm64 builder archive`);
+    }
+    const destination = join(snapshotRoot, "authentication", name, basename(original));
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(original, destination, { errorOnExist: true });
+    if (hashFile("sha256", destination) !== authentication.sha256) throw new Error(`${name} Go release metadata snapshot mismatch`);
     return;
   }
   if (authentication.kind === "apple-installer-signature") {
@@ -422,7 +455,9 @@ function verifyToolManifest(manifestPath, expectedDigest, mode, snapshotRoot) {
     assertNoSymlinkSegments(roots.snapshot, path, `${name} executable`);
     const acceptedNames = entry.invocation === "verified-node"
       ? [name, `${name}.js`]
-      : process.platform === "win32" ? [`${name}.exe`] : [name];
+      : entry.invocation === "verified-java"
+        ? [`${name}.jar`]
+        : process.platform === "win32" ? [`${name}.exe`] : [name];
     if (!acceptedNames.includes(basename(path))) throw new Error(`${name} manifest path has an unexpected basename: ${basename(path)}`);
     if (!existsSync(path) || !lstatSync(path).isFile()) throw new Error(`${name} path is not a regular file`);
     if (hashFile("sha256", path) !== entry.sha256) throw new Error(`${name} executable SHA-256 mismatch`);
@@ -434,8 +469,12 @@ function verifyToolManifest(manifestPath, expectedDigest, mode, snapshotRoot) {
       if (!head.startsWith("#!") || !/^#![^\n]*\bnode(?:\s|$)/u.test(head.split("\n", 1)[0])) {
         throw new Error(`${name} must be a Node script when invocation is verified-node`);
       }
+    } else if (entry.invocation === "verified-java") {
+      if (name !== "protoc-gen-connect-kotlin" || !readFileSync(path).subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) {
+        throw new Error(`${name} must be the verified executable JAR when invocation is verified-java`);
+      }
     } else {
-      throw new Error(`${name} invocation must be native or verified-node`);
+      throw new Error(`${name} invocation must be native, verified-node, or verified-java`);
     }
     tools[name] = path;
     invocationKinds[name] = entry.invocation;
@@ -446,7 +485,9 @@ function verifyToolManifest(manifestPath, expectedDigest, mode, snapshotRoot) {
   }
   const invocations = Object.fromEntries(Object.entries(tools).map(([name, path]) => [
     name,
-    invocationKinds[name] === "verified-node" ? [tools.node, path] : [path],
+    invocationKinds[name] === "verified-node"
+      ? [tools.node, path]
+      : invocationKinds[name] === "verified-java" ? [tools.java, "-jar", path] : [path],
   ]));
   assertExactKeys("referenced runtime closures", Object.fromEntries([...referencedClosures].map((name) => [name, true])), Object.keys(closureRoots));
   assertExactKeys("referenced source artifacts", Object.fromEntries([...referencedSources].map((name) => [name, true])), Object.keys(verifiedSources));
@@ -472,13 +513,25 @@ function verifiedGenerationTemplate(tools, invocations) {
 function assertGenerationPlan() {
   const expected = {
     version: "v2",
+    clean: true,
+    managed: {
+      enabled: true,
+      override: [
+        { file_option: "go_package_prefix", value: "github.com/monkeylabx/threadline/services/gen" },
+        { file_option: "java_package_prefix", value: "com.threadline.proto" },
+      ],
+    },
     plugins: [
       { local: "protoc-gen-go", out: toolchain.outputs.go, opt: ["paths=source_relative"] },
-      { local: "protoc-gen-es", out: toolchain.outputs.typescript, opt: ["target=ts"] },
-      { local: "protoc-gen-prost", out: toolchain.outputs.rust, opt: ["bytes=."] },
-      { local: "protoc-gen-swift", out: toolchain.outputs.swift },
+      { local: "protoc-gen-connect-go", out: toolchain.outputs.go, opt: ["paths=source_relative"] },
+      { local: "protoc-gen-es", out: toolchain.outputs.typescript, opt: ["target=ts", "import_extension=.js"] },
+      { local: "protoc-gen-prost", out: toolchain.outputs.rust, opt: ["bytes=.", "compile_well_known_types=false"] },
+      { local: "protoc-gen-prost-crate", out: toolchain.outputs.rust, opt: ["no_features"], strategy: "all" },
+      { local: "protoc-gen-swift", out: toolchain.outputs.swift, opt: ["Visibility=Public", "FileNaming=PathToUnderscores"] },
+      { local: "protoc-gen-connect-swift", out: toolchain.outputs.swift, opt: ["Visibility=Public", "FileNaming=PathToUnderscores"] },
       { protoc_builtin: "java", protoc_path: "protoc", out: toolchain.outputs.kotlin.javaMessages },
       { protoc_builtin: "kotlin", protoc_path: "protoc", out: toolchain.outputs.kotlin.kotlinDsl },
+      { local: "protoc-gen-connect-kotlin", out: toolchain.outputs.kotlin.kotlinDsl },
     ],
     inputs: [{ directory: "proto" }],
   };
@@ -522,7 +575,13 @@ function verifyKotlinArtifacts(tools, snapshotRoot, environment) {
   const protobufJava = resolve(requiredEnvironment("THREADLINE_PROTOBUF_JAVA_JAR"));
   const protobufKotlin = resolve(requiredEnvironment("THREADLINE_PROTOBUF_KOTLIN_JAR"));
   const kotlinStdlib = resolve(requiredEnvironment("THREADLINE_KOTLIN_STDLIB_JAR"));
-  const runtimeFiles = { [basename(protobufJava)]: protobufJava, [basename(protobufKotlin)]: protobufKotlin, [basename(kotlinStdlib)]: kotlinStdlib };
+  const connectKotlin = resolve(requiredEnvironment("THREADLINE_CONNECT_KOTLIN_JAR"));
+  const runtimeFiles = {
+    [basename(connectKotlin)]: connectKotlin,
+    [basename(protobufJava)]: protobufJava,
+    [basename(protobufKotlin)]: protobufKotlin,
+    [basename(kotlinStdlib)]: kotlinStdlib,
+  };
   assertExactKeys("Kotlin runtime artifacts", runtimeFiles, Object.keys(runtimePins));
   for (const [name, path] of Object.entries(runtimeFiles)) verifyPinnedArtifact(path, runtimePins[name], name);
   const runtimeSnapshot = join(snapshotRoot, "kotlin", "runtime");
@@ -535,6 +594,7 @@ function verifyKotlinArtifacts(tools, snapshotRoot, environment) {
     protobufJava: runtimeSnapshotFiles[basename(protobufJava)],
     protobufKotlin: runtimeSnapshotFiles[basename(protobufKotlin)],
     kotlinStdlib: runtimeSnapshotFiles[basename(kotlinStdlib)],
+    connectKotlin: runtimeSnapshotFiles[basename(connectKotlin)],
   };
 }
 
@@ -569,27 +629,24 @@ function verifyGeneratedOutput(generatedRoot, formal) {
     if (!formal) continue;
 
     const checks = toolchain.generationChecks[name];
-    if (!Array.isArray(checks.expectedRelativePaths) || checks.expectedRelativePaths.length === 0) {
-      throw new Error(`${name} generation check must pin expectedRelativePaths`);
+    if (!Number.isSafeInteger(checks.fileCount) || checks.fileCount <= 0 || allFiles.length !== checks.fileCount) {
+      throw new Error(`${name} generated file count mismatch: expected ${checks.fileCount}; got ${allFiles.length}`);
     }
-    const expectedRelativePaths = checks.expectedRelativePaths.map((path, index) => canonicalRelativePath(path, `${name} expectedRelativePaths ${index}`).replaceAll(sep, "/"));
-    if (JSON.stringify(expectedRelativePaths) !== JSON.stringify([...expectedRelativePaths].sort(compareCodepoints)) || new Set(expectedRelativePaths).size !== expectedRelativePaths.length) {
-      throw new Error(`${name} expectedRelativePaths must be a sorted unique exact set`);
-    }
-    const actualRelativePaths = allFiles.map((path) => relative(outputDirectory, path).split(sep).join("/")).sort(compareCodepoints);
-    if (JSON.stringify(actualRelativePaths) !== JSON.stringify(expectedRelativePaths)) {
-      throw new Error(`${name} generated exact file set mismatch: expected ${expectedRelativePaths.join(", ")}; got ${actualRelativePaths.join(", ")}`);
+    assertCanonicalDigest(checks.treeSha256, 64, `${name} generated treeSha256`);
+    const actualTreeSha256 = canonicalTreeDigest(walkExactTree(outputDirectory));
+    if (actualTreeSha256 !== checks.treeSha256) {
+      throw new Error(`${name} generated exact tree mismatch: expected ${checks.treeSha256}; got ${actualTreeSha256}`);
     }
     const sourceFiles = allFiles.filter((path) => checks.extensions.some((extension) => path.endsWith(extension)));
     if (sourceFiles.length === 0) throw new Error(`${name} produced no source with an expected extension`);
     for (const path of sourceFiles) {
       const source = readFileSync(path, "utf8");
-      for (const signature of checks.signatureRegex) {
-        if (!new RegExp(signature, "su").test(source)) throw new Error(`${name} source lacks its real-generator signature: ${path}`);
+      if (!checks.signatureRegexAny.some((signature) => new RegExp(signature, "su").test(source))) {
+        throw new Error(`${name} source lacks an accepted real-generator signature: ${path}`);
       }
     }
     for (const structure of checks.structureRegex) {
-      if (!new RegExp(structure, "su").test(combined)) throw new Error(`${name} output lacks expected ErrorEnvelope structure: ${structure}`);
+      if (!new RegExp(structure, "su").test(combined)) throw new Error(`${name} output lacks expected merged-contract structure: ${structure}`);
     }
   }
 }
@@ -608,7 +665,7 @@ function compileKotlinOutput(generatedRoot, temporaryRoot, tools, artifacts, env
   run(tools.javac, ["-encoding", "UTF-8", "-source", "17", "-target", "17", "-cp", artifacts.protobufJava, "-d", javaClasses, ...generatedJava], { env: environment });
   const smokeSource = join(temporaryRoot, "ThreadlineCodegenSmoke.kt");
   writeFileSync(smokeSource, [
-    "import com.monkeylabx.threadline.generated.common.v1.errorEnvelope",
+    "import com.threadline.proto.threadline.common.v1.errorEnvelope",
     "",
     "fun threadlineCodegenSmoke() {",
     "  val error = errorEnvelope {",
@@ -622,7 +679,7 @@ function compileKotlinOutput(generatedRoot, temporaryRoot, tools, artifacts, env
     "}",
     "",
   ].join("\n"));
-  const compileClasspath = [javaClasses, artifacts.protobufJava, artifacts.protobufKotlin, artifacts.kotlinStdlib].join(delimiter);
+  const compileClasspath = [javaClasses, artifacts.protobufJava, artifacts.protobufKotlin, artifacts.kotlinStdlib, artifacts.connectKotlin].join(delimiter);
   run(tools.java, ["-cp", artifacts.kotlinCompilerClasspath, "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler", "-jvm-target", "17", "-no-stdlib", "-classpath", compileClasspath, "-d", kotlinClasses, ...generatedKotlin, smokeSource], { env: environment });
   return { generatedJava: generatedJava.length, generatedKotlin: generatedKotlin.length };
 }
@@ -791,6 +848,7 @@ function main() {
   assertVersionToken("Buf", run(tools.buf, ["--version"], { capture: true, env: codegenEnvironment }), toolchain.tools.buf);
   assertVersionToken("protoc", run(tools.protoc, ["--version"], { capture: true, env: codegenEnvironment }), toolchain.tools.protoc);
   for (const name of generatorTools) {
+    if (versionlessGenerators.has(name)) continue;
     assertVersionToken(name, runInvocation(invocations[name], ["--version"], { capture: true, env: codegenEnvironment }), toolchain.tools[name]);
   }
   if (mode === "repository") {
