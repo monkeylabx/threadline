@@ -13,7 +13,7 @@ const routeMeta = {
   admin: ["管理后台", "北辰科技 · 组织治理", ""],
 };
 
-function switchRoute(route) {
+function switchRoute(route, { moveFocus = false } = {}) {
   if (!routeMeta[route]) return;
   document.querySelectorAll("[data-screen]").forEach((screen) => {
     screen.classList.toggle("is-visible", screen.dataset.screen === route);
@@ -22,8 +22,10 @@ function switchRoute(route) {
     button.classList.toggle("is-active", button.dataset.route === route);
   });
   const [title, subtitle, hash] = routeMeta[route];
-  document.querySelector("#view-title").textContent = title;
+  const viewTitle = document.querySelector("#view-title");
+  viewTitle.textContent = title;
   document.querySelector("#view-subtitle").textContent = subtitle;
+  document.querySelector("#route-announcement").textContent = `${title}。${subtitle}`;
   document.querySelector(".channel-hash").textContent = hash;
   document.querySelectorAll(".sidebar-item").forEach((item) => {
     item.classList.toggle("is-selected", route === "channel" && item.dataset.channel === "产品研发");
@@ -31,26 +33,87 @@ function switchRoute(route) {
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("screen", route);
   window.history.replaceState({}, "", nextUrl);
+  if (moveFocus) window.requestAnimationFrame(() => viewTitle.focus());
 }
 
 document.querySelectorAll("[data-route]").forEach((button) => {
-  button.addEventListener("click", () => switchRoute(button.dataset.route));
+  button.addEventListener("click", () => switchRoute(button.dataset.route, { moveFocus: true }));
 });
 
 const modal = document.querySelector("#task-modal");
-const setModal = (open) => {
+const appShell = document.querySelector("#app-shell");
+const createTaskButton = document.querySelector("#create-task");
+let modalOpener = null;
+
+const modalFocusableSelector = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "textarea:not([disabled])",
+  "select:not([disabled])",
+  "a[href]",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function modalFocusableElements() {
+  return [...modal.querySelectorAll(modalFocusableSelector)].filter((element) => !element.hidden);
+}
+
+const setModal = (open, { restoreFocus = true } = {}) => {
+  if (open) {
+    modalOpener = document.activeElement instanceof HTMLElement
+      && document.activeElement !== document.body
+      && appShell.contains(document.activeElement)
+      ? document.activeElement
+      : createTaskButton;
+  }
   modal.classList.toggle("is-open", open);
   modal.setAttribute("aria-hidden", String(!open));
+  modal.inert = !open;
+  appShell.inert = open;
+  appShell.setAttribute("aria-hidden", String(open));
+
+  if (open) {
+    window.requestAnimationFrame(() => modalFocusableElements()[0]?.focus());
+  } else if (restoreFocus && modalOpener?.isConnected && !modalOpener.disabled) {
+    window.requestAnimationFrame(() => modalOpener.focus());
+  }
 };
 
-document.querySelector("#create-task").addEventListener("click", () => setModal(true));
+createTaskButton.addEventListener("click", () => setModal(true));
 document.querySelectorAll(".modal-close").forEach((button) => button.addEventListener("click", () => setModal(false)));
 modal.addEventListener("click", (event) => {
   if (event.target === modal) setModal(false);
 });
+document.addEventListener("keydown", (event) => {
+  if (!modal.classList.contains("is-open")) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setModal(false);
+    return;
+  }
+  if (event.key !== "Tab") return;
+
+  const focusable = modalFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!modal.contains(document.activeElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 document.querySelector("#confirm-task").addEventListener("click", () => {
-  setModal(false);
-  switchRoute("tasks");
+  setModal(false, { restoreFocus: false });
+  switchRoute("tasks", { moveFocus: true });
 });
 
 document.querySelector("#approve-action").addEventListener("click", (event) => {
