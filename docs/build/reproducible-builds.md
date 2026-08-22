@@ -28,6 +28,14 @@ Homebrew, Snap, Docker, or `go install ...@latest` binary as release evidence.
 P03-01A owns generated-query determinism and migration round trips; this
 toolchain baseline does not create or alter a database.
 
+The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
+features disabled. `client-core` tests enable its bundled plain-SQLite backend,
+which supplies SQLite 3.53.2 and satisfies the repository's SQLite 3.51.3
+minimum. This test backend is not encryption evidence and must not be used as a
+production database-open path. P05-01B owns selection and validation of the
+keyed SQLCipher/SEE-compatible production backend, including DB/WAL/SHM
+encryption and wrong-key rejection on every release platform.
+
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
 Android dependency locking runs in strict mode. When an Android dependency changes intentionally, regenerate `apps/android/gradle.lockfile` with `./gradlew :apps:android:assembleDebug :apps:android:testDebugUnitTest :apps:android:lintDebug --write-locks --no-daemon`, review the complete lock diff, and commit it with the manifest change. Normal CI commands must never use `--write-locks`.
