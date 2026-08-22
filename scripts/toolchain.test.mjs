@@ -62,6 +62,42 @@ test("database pin verification rejects a well-formed but drifted sqlc digest", 
   assert.match(validateDatabasePins(database, databaseSources).join("\n"), /linux-amd64 SHA-256/);
 });
 
+test("database pin verification rejects a drifted sqlc release version", () => {
+  const database = structuredClone(pins.database);
+  database.sqlc.version = "9.9.9";
+  assert.match(validateDatabasePins(database, databaseSources).join("\n"), /sqlc release version/);
+});
+
+test("database pin verification rejects a single-line indirect pgx requirement", () => {
+  const indirect = {
+    ...databaseSources,
+    goModule: databaseSources.goModule.replace(
+      `require github.com/jackc/pgx/v5 v${pins.database.pgx}`,
+      `require github.com/jackc/pgx/v5 v${pins.database.pgx} // indirect`,
+    ),
+  };
+  assert.match(validateDatabasePins(pins.database, indirect).join("\n"), /missing direct require/);
+});
+
+test("database pin verification rejects a block-form indirect pgx requirement", () => {
+  const indirect = {
+    ...databaseSources,
+    goModule: databaseSources.goModule.replace(
+      `require github.com/jackc/pgx/v5 v${pins.database.pgx}`,
+      `require (\n\tgithub.com/jackc/pgx/v5 v${pins.database.pgx} // indirect\n)`,
+    ),
+  };
+  assert.match(validateDatabasePins(pins.database, indirect).join("\n"), /missing direct require/);
+});
+
+test("database pin verification rejects a pgx replacement", () => {
+  const replaced = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nreplace github.com/jackc/pgx/v5 => ../fake-pgx\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /replace directives/);
+});
+
 test("database pin verification rejects an incomplete sqlc archive set", () => {
   const database = structuredClone(pins.database);
   delete database.sqlc.archives["linux-arm64"];

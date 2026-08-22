@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
+const sqlcReleaseVersion = "1.31.1";
 const sqlcReleaseArchives = Object.freeze({
   "darwin-amd64": Object.freeze({
     file: "sqlc_1.31.1_darwin_amd64.tar.gz",
@@ -127,9 +128,7 @@ export function validateWorkflowPins(workflow, expectedPins = pins) {
 
 export function validateDatabasePins(databasePins, sources) {
   const errors = [];
-  if (!/^\d+\.\d+\.\d+$/.test(databasePins.sqlc.version)) {
-    errors.push(`sqlc version is not exact: ${databasePins.sqlc.version}`);
-  }
+  assertEqual(errors, "sqlc release version", databasePins.sqlc.version, sqlcReleaseVersion);
   if (!/^\d+\.\d+\.\d+$/.test(databasePins.pgx)) {
     errors.push(`pgx version is not exact: ${databasePins.pgx}`);
   }
@@ -159,22 +158,37 @@ export function validateDatabasePins(databasePins, sources) {
   }
   const requiredPgx = `github.com/jackc/pgx/v5 v${databasePins.pgx}`;
   const directRequires = [];
-  let requireBlock = false;
+  const replacements = [];
+  let block;
   for (const sourceLine of sources.goModule.split("\n")) {
-    const line = sourceLine.split("//", 1)[0].trim();
+    const commentAt = sourceLine.indexOf("//");
+    const line = (commentAt === -1 ? sourceLine : sourceLine.slice(0, commentAt)).trim();
+    const comment = commentAt === -1 ? "" : sourceLine.slice(commentAt + 2).trim();
     if (line === "require (") {
-      requireBlock = true;
+      block = "require";
       continue;
     }
-    if (requireBlock && line === ")") {
-      requireBlock = false;
+    if (line === "replace (") {
+      block = "replace";
       continue;
     }
-    if (line.startsWith("require ")) directRequires.push(line.slice("require ".length).trim());
-    else if (requireBlock && line) directRequires.push(line);
+    if (block && line === ")") {
+      block = undefined;
+      continue;
+    }
+    if (line.startsWith("require ")) {
+      if (comment !== "indirect") directRequires.push(line.slice("require ".length).trim());
+    } else if (block === "require" && line && comment !== "indirect") {
+      directRequires.push(line);
+    }
+    if (line.startsWith("replace ")) replacements.push(line.slice("replace ".length).trim());
+    else if (block === "replace" && line) replacements.push(line);
   }
   if (!directRequires.includes(requiredPgx)) {
     errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
+  }
+  if (replacements.some((replacement) => replacement.split(/\s+/, 1)[0] === "github.com/jackc/pgx/v5")) {
+    errors.push("services pgx dependency: replace directives are forbidden");
   }
   assertIncludes(
     errors,
