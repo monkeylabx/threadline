@@ -126,6 +126,42 @@ export function validateWorkflowPins(workflow, expectedPins = pins) {
   return errors;
 }
 
+function parseGoDependencyDirectives(source) {
+  const directives = {
+    directRequires: [],
+    excludes: [],
+    replacements: [],
+  };
+  let block;
+  for (const sourceLine of source.split("\n")) {
+    const commentAt = sourceLine.indexOf("//");
+    const code = (commentAt === -1 ? sourceLine : sourceLine.slice(0, commentAt)).trim();
+    const comment = commentAt === -1 ? "" : sourceLine.slice(commentAt + 2).trim();
+    const tokens = code ? code.split(/\s+/) : [];
+    if (
+      tokens.length === 2 &&
+      tokens[1] === "(" &&
+      ["require", "replace", "exclude"].includes(tokens[0])
+    ) {
+      block = tokens[0];
+      continue;
+    }
+    if (block && tokens.length === 1 && tokens[0] === ")") {
+      block = undefined;
+      continue;
+    }
+    if (tokens.length === 0) continue;
+    const directive = block ?? tokens.shift();
+    const values = tokens;
+    if (directive === "require" && comment.split(/\s+/, 1)[0] !== "indirect") {
+      directives.directRequires.push(values.join(" "));
+    }
+    if (directive === "replace") directives.replacements.push(values);
+    if (directive === "exclude") directives.excludes.push(values);
+  }
+  return directives;
+}
+
 export function validateDatabasePins(databasePins, sources) {
   const errors = [];
   assertEqual(errors, "sqlc release version", databasePins.sqlc.version, sqlcReleaseVersion);
@@ -157,38 +193,21 @@ export function validateDatabasePins(databasePins, sources) {
     );
   }
   const requiredPgx = `github.com/jackc/pgx/v5 v${databasePins.pgx}`;
-  const directRequires = [];
-  const replacements = [];
-  let block;
-  for (const sourceLine of sources.goModule.split("\n")) {
-    const commentAt = sourceLine.indexOf("//");
-    const line = (commentAt === -1 ? sourceLine : sourceLine.slice(0, commentAt)).trim();
-    const comment = commentAt === -1 ? "" : sourceLine.slice(commentAt + 2).trim();
-    if (line === "require (") {
-      block = "require";
-      continue;
-    }
-    if (line === "replace (") {
-      block = "replace";
-      continue;
-    }
-    if (block && line === ")") {
-      block = undefined;
-      continue;
-    }
-    if (line.startsWith("require ")) {
-      if (comment !== "indirect") directRequires.push(line.slice("require ".length).trim());
-    } else if (block === "require" && line && comment !== "indirect") {
-      directRequires.push(line);
-    }
-    if (line.startsWith("replace ")) replacements.push(line.slice("replace ".length).trim());
-    else if (block === "replace" && line) replacements.push(line);
-  }
-  if (!directRequires.includes(requiredPgx)) {
+  const moduleDirectives = parseGoDependencyDirectives(sources.goModule);
+  const workspaceDirectives = parseGoDependencyDirectives(sources.goWork);
+  if (!moduleDirectives.directRequires.includes(requiredPgx)) {
     errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
   }
-  if (replacements.some((replacement) => replacement.split(/\s+/, 1)[0] === "github.com/jackc/pgx/v5")) {
-    errors.push("services pgx dependency: replace directives are forbidden");
+  for (const [sourceName, directives] of [
+    ["services/go.mod", moduleDirectives],
+    ["go.work", workspaceDirectives],
+  ]) {
+    if (directives.replacements.some(([modulePath]) => modulePath === "github.com/jackc/pgx/v5")) {
+      errors.push(`${sourceName}: pgx replace directives are forbidden`);
+    }
+    if (directives.excludes.some(([modulePath]) => modulePath === "github.com/jackc/pgx/v5")) {
+      errors.push(`${sourceName}: pgx exclude directives are forbidden`);
+    }
   }
   assertIncludes(
     errors,
@@ -308,6 +327,7 @@ export function verifyPins() {
   errors.push(
     ...validateDatabasePins(pins.database, {
       goModule,
+      goWork,
       serviceCatalog,
       reproducibleBuilds,
     }),

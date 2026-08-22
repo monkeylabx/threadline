@@ -16,6 +16,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const workflow = readFileSync(join(root, ".github", "workflows", "build.yml"), "utf8");
 const databaseSources = {
   goModule: readFileSync(join(root, "services", "go.mod"), "utf8"),
+  goWork: readFileSync(join(root, "go.work"), "utf8"),
   serviceCatalog: readFileSync(
     join(root, "docs", "architecture", "service-catalog.md"),
     "utf8",
@@ -96,6 +97,42 @@ test("database pin verification rejects a pgx replacement", () => {
     goModule: `${databaseSources.goModule}\nreplace github.com/jackc/pgx/v5 => ../fake-pgx\n`,
   };
   assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /replace directives/);
+});
+
+test("database pin verification rejects tab-separated pgx replacements", () => {
+  const singleLine = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nreplace\tgithub.com/jackc/pgx/v5 => ../fake-pgx\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, singleLine).join("\n"), /replace directives/);
+
+  const block = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nreplace\t(\n\tgithub.com/jackc/pgx/v5 => ../fake-pgx\n)\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, block).join("\n"), /replace directives/);
+});
+
+test("database pin verification rejects a pgx exclusion", () => {
+  const excluded = {
+    ...databaseSources,
+    goModule: `${databaseSources.goModule}\nexclude github.com/jackc/pgx/v5 v${pins.database.pgx}\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /exclude directives/);
+});
+
+test("database pin verification rejects workspace pgx replacement or exclusion", () => {
+  const replaced = {
+    ...databaseSources,
+    goWork: `${databaseSources.goWork}\nreplace github.com/jackc/pgx/v5 => ../fake-pgx\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /go\.work.*replace/);
+
+  const excluded = {
+    ...databaseSources,
+    goWork: `${databaseSources.goWork}\nexclude\tgithub.com/jackc/pgx/v5 v${pins.database.pgx}\n`,
+  };
+  assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /go\.work.*exclude/);
 });
 
 test("database pin verification rejects an incomplete sqlc archive set", () => {
