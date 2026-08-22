@@ -19,6 +19,17 @@ trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
 cleanup
 
+otel_ip=$(kubectl --context "$context" --namespace "$namespace" get pods \
+  --selector=app=otel-collector --field-selector=status.phase=Running \
+  --output=jsonpath='{.items[0].status.podIP}')
+jaeger_ip=$(kubectl --context "$context" --namespace "$namespace" get pods \
+  --selector=app=jaeger --field-selector=status.phase=Running \
+  --output=jsonpath='{.items[0].status.podIP}')
+[ -n "$otel_ip" ] && [ -n "$jaeger_ip" ] || {
+  echo "NetworkPolicy probe targets are not running" >&2
+  exit 1
+}
+
 kubectl --context "$context" apply -f - <<EOF
 apiVersion: v1
 kind: Pod
@@ -101,17 +112,17 @@ deadline=$(( $(date +%s) + 60 ))
 stable=0
 while [ "$(date +%s)" -lt "$deadline" ]; do
   if kubectl --context "$context" --namespace "$namespace" exec "$allow_pod" -- \
-      wget -T 3 -q -O /dev/null http://otel-collector:8889/metrics >/dev/null 2>&1 && \
+      wget -T 3 -q -O /dev/null "http://$otel_ip:8889/metrics" >/dev/null 2>&1 && \
     kubectl --context "$context" --namespace "$namespace" exec "$otel_allow_pod" -- \
-      nc -z -w 2 jaeger 4317 >/dev/null 2>&1 && \
+      nc -z -w 2 "$jaeger_ip" 4317 >/dev/null 2>&1 && \
     kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
       nslookup otel-collector >/dev/null 2>&1 && \
     kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
       nslookup jaeger >/dev/null 2>&1 && \
     ! kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
-      nc -z -w 2 otel-collector 8889 >/dev/null 2>&1 && \
+      nc -z -w 2 "$otel_ip" 8889 >/dev/null 2>&1 && \
     ! kubectl --context "$context" --namespace "$namespace" exec "$deny_pod" -- \
-      nc -z -w 2 jaeger 4317 >/dev/null 2>&1; then
+      nc -z -w 2 "$jaeger_ip" 4317 >/dev/null 2>&1; then
     stable=$((stable + 1))
     if [ "$stable" -ge 3 ]; then
       echo "NetworkPolicy probes passed: prometheus -> otel:8889 and otel -> jaeger:4317 allowed; unlabeled source denied"
@@ -124,4 +135,24 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
 done
 
 echo "NetworkPolicy probes did not converge within 60s" >&2
+for check in \
+  "prometheus-to-otel:wget -T 3 -q -O /dev/null http://$otel_ip:8889/metrics" \
+  "otel-to-jaeger:nc -z -w 2 $jaeger_ip 4317" \
+  "deny-dns-otel:nslookup otel-collector" \
+  "deny-dns-jaeger:nslookup jaeger" \
+  "deny-to-otel:nc -z -w 2 $otel_ip 8889" \
+  "deny-to-jaeger:nc -z -w 2 $jaeger_ip 4317"; do
+  name=${check%%:*}
+  command=${check#*:}
+  pod=$deny_pod
+  case "$name" in
+    prometheus-to-otel) pod=$allow_pod ;;
+    otel-to-jaeger) pod=$otel_allow_pod ;;
+  esac
+  if kubectl --context "$context" --namespace "$namespace" exec "$pod" -- sh -c "$command" >/dev/null 2>&1; then
+    echo "$name: connected" >&2
+  else
+    echo "$name: blocked-or-failed" >&2
+  fi
+done
 exit 1

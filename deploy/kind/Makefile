@@ -73,7 +73,7 @@ images: check verify-lock
 	@sh "$(ARCHIVE_HELPER)" tag $(NODE_IMAGE) $(IMAGES)
 
 save-images: check-images
-	@sh "$(ARCHIVE_HELPER)" write-ids "$(IDS)" $(NODE_IMAGE) $(IMAGES)
+	@sh "$(ARCHIVE_HELPER)" write-ids "$(IDS)" "$(PLATFORM)" $(NODE_IMAGE) $(IMAGES)
 	@docker image save --platform "$(PLATFORM)" --output "$(ARCHIVE)" $(TAG_NODE_IMAGE) $(TAG_IMAGES)
 	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; else shasum -a 256 "$(ARCHIVE)" | awk '{print $$1}' > "$(CHECKSUM)"; fi
 	@if command -v sha256sum >/dev/null 2>&1; then sha256sum "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; else shasum -a 256 "$(IDS)" | awk '{print $$1}' > "$(IDS_CHECKSUM)"; fi

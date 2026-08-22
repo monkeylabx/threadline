@@ -3,7 +3,7 @@
 set -eu
 
 usage() {
-  echo "usage: $0 tag IMAGE... | write-ids FILE IMAGE... | verify-ids FILE IMAGE... | verify-compose-tags FILE IMAGE... | verify-kustomize-tags FILE IMAGE..." >&2
+  echo "usage: $0 tag IMAGE... | write-ids FILE PLATFORM IMAGE... | verify-ids FILE IMAGE... | verify-compose-tags FILE IMAGE... | verify-kustomize-tags FILE IMAGE..." >&2
   exit 2
 }
 
@@ -20,15 +20,16 @@ case "${1:-}" in
     done
     ;;
   write-ids)
-    [ "$#" -gt 2 ] || usage
+    [ "$#" -gt 3 ] || usage
     output=$2
-    shift 2
+    platform=$3
+    shift 3
     temporary="${output}.tmp.$$"
     trap 'rm -f "$temporary"' EXIT HUP INT TERM
     : > "$temporary"
     chmod 600 "$temporary"
     for image in "$@"; do
-      identifier=$(docker image inspect --format '{{.Id}}' "$image")
+      identifier=$(docker image inspect --platform "$platform" --format '{{.Id}}' "$image")
       printf '%s %s\n' "$image" "$identifier" >> "$temporary"
     done
     mv "$temporary" "$output"
