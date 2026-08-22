@@ -1,0 +1,181 @@
+name: Private dev stack runtime acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_ref:
+        description: Exact branch, tag, or commit containing the T016 stack
+        required: true
+        default: agent/t016-dev-stack-skeleton
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-dev-stack-runtime-${{ inputs.target_ref }}
+  cancel-in-progress: false
+
+jobs:
+  compose:
+    name: compose-runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out target ref without credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ inputs.target_ref }}
+      - name: Record resolved source commit
+        run: |
+          TARGET_SHA="$(git rev-parse HEAD)"
+          test -n "${TARGET_SHA}"
+          echo "Resolved target: ${TARGET_SHA}"
+          echo "### Compose target ${TARGET_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Set up pinned Docker Engine
+        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.0.0
+        with:
+          version: v29.6.2
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+      - name: Install checksum-pinned Docker Compose
+        run: |
+          install -d "${HOME}/.docker/cli-plugins"
+          curl --fail --show-error --silent --location \
+            --output "${RUNNER_TEMP}/docker-compose" \
+            https://github.com/docker/compose/releases/download/v5.4.0/docker-compose-linux-x86_64
+          echo "837fd1d35bf6a494f41b5b5988269a7be79de337cf1a1a6ff0e45ab51bb4e9be  ${RUNNER_TEMP}/docker-compose" | sha256sum --check --strict
+          install -m 0755 "${RUNNER_TEMP}/docker-compose" "${HOME}/.docker/cli-plugins/docker-compose"
+          docker compose version
+      - name: Verify pinned tools and manifests
+        run: |
+          make -C deploy/compose check
+          make -C deploy/compose verify-lock
+      - name: Prepare connected image set
+        run: make -C deploy/compose images
+      - name: Verify startup, readiness, and clean recreate
+        run: |
+          make -C deploy/compose up
+          make -C deploy/compose status
+          make -C deploy/compose recreate
+          make -C deploy/compose status
+      - name: Save, remove, and load the offline image set
+        run: |
+          ARCHIVE="${RUNNER_TEMP}/threadline-compose-images.tar"
+          make -C deploy/compose save-images ARCHIVE="${ARCHIVE}"
+          make -C deploy/compose destroy
+          IMAGES="$(make --no-print-directory -C deploy/compose -pn | sed -n 's/^IMAGES := //p')"
+          test -n "${IMAGES}"
+          for image in ${IMAGES}; do
+            docker image rm "${image}"
+            ! docker image inspect "${image}" >/dev/null 2>&1
+          done
+          make -C deploy/compose load-images ARCHIVE="${ARCHIVE}"
+      - name: Start from the offline-loaded image set
+        run: |
+          make -C deploy/compose up
+          make -C deploy/compose status
+          make -C deploy/compose destroy
+      - name: Collect failure diagnostics without artifacts
+        if: failure()
+        run: |
+          docker version || true
+          docker info || true
+          docker ps --all || true
+          docker compose --project-name threadline-dev --file deploy/compose/compose.yaml ps --all || true
+          docker compose --project-name threadline-dev --file deploy/compose/compose.yaml logs --no-color --tail 200 || true
+      - name: Remove Compose state
+        if: always()
+        run: make -C deploy/compose destroy || true
+
+  kind:
+    name: kind-runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Check out target ref without credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: ${{ inputs.target_ref }}
+      - name: Record resolved source commit
+        run: |
+          TARGET_SHA="$(git rev-parse HEAD)"
+          test -n "${TARGET_SHA}"
+          echo "Resolved target: ${TARGET_SHA}"
+          echo "### Kind target ${TARGET_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+      - name: Set up pinned Docker Engine
+        uses: docker/setup-docker-action@77e84dbf09b47d1e29270283c22f16145aa85ca1 # v5.0.0
+        with:
+          version: v29.6.2
+          daemon-config: |
+            {
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+      - name: Install checksum-pinned Kind and kubectl
+        run: |
+          curl --fail --show-error --silent --location \
+            --output "${RUNNER_TEMP}/kind" \
+            https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
+          echo "50030de23cf40a18505f20426f6a8506bedf13c6e509244bd1fa9463721b0f54  ${RUNNER_TEMP}/kind" | sha256sum --check --strict
+          sudo install -m 0755 "${RUNNER_TEMP}/kind" /usr/local/bin/kind
+
+          curl --fail --show-error --silent --location \
+            --output "${RUNNER_TEMP}/kubectl" \
+            https://dl.k8s.io/v1.36.2/bin/linux/amd64/kubectl
+          echo "1e9045ec32bea85da43de85f0065358529ea7c7a152eca78154fba5b58c27d82  ${RUNNER_TEMP}/kubectl" | sha256sum --check --strict
+          sudo install -m 0755 "${RUNNER_TEMP}/kubectl" /usr/local/bin/kubectl
+          kind version
+          kubectl version --client
+      - name: Verify pinned tools and manifests
+        run: |
+          make -C deploy/kind check
+          make -C deploy/kind verify-lock
+      - name: Prepare connected image set
+        run: make -C deploy/kind images
+      - name: Verify startup, readiness, policy, and clean recreate
+        run: |
+          make -C deploy/kind up
+          make -C deploy/kind status
+          make -C deploy/kind recreate
+          make -C deploy/kind status
+      - name: Save, remove, and load the offline image set
+        run: |
+          ARCHIVE="${RUNNER_TEMP}/threadline-kind-images.tar"
+          make -C deploy/kind save-images ARCHIVE="${ARCHIVE}"
+          make -C deploy/kind destroy
+          IMAGES="$(make --no-print-directory -C deploy/kind -pn | sed -n 's/^IMAGES := //p')"
+          NODE_IMAGE="$(make --no-print-directory -C deploy/kind -pn | sed -n 's/^NODE_IMAGE = //p')"
+          test -n "${IMAGES}"
+          test -n "${NODE_IMAGE}"
+          for image in ${NODE_IMAGE} ${IMAGES}; do
+            docker image rm "${image}"
+            ! docker image inspect "${image}" >/dev/null 2>&1
+          done
+          make -C deploy/kind load-images ARCHIVE="${ARCHIVE}"
+      - name: Start and probe from the offline-loaded image set
+        run: |
+          make -C deploy/kind up
+          make -C deploy/kind status
+          make -C deploy/kind destroy
+      - name: Collect failure diagnostics without artifacts
+        if: failure()
+        run: |
+          docker version || true
+          docker info || true
+          docker ps --all || true
+          kind get clusters || true
+          kubectl --context kind-threadline-dev get pods,services,networkpolicy --all-namespaces -o wide || true
+          kubectl --context kind-threadline-dev --namespace threadline-dev describe pods || true
+      - name: Remove Kind state
+        if: always()
+        run: make -C deploy/kind destroy || true
