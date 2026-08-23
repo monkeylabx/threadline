@@ -92,9 +92,9 @@ same locked command:
 
 | Host evidence | Runner | Protected job | Run binding |
 | --- | --- | --- | --- |
-| Ubuntu | `ubuntu-24.04` | `workspace-linux` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
-| Windows | `windows-2025` | `desktop-windows` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
-| macOS | `macos-26` | `apple` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
+| Ubuntu | `ubuntu-24.04` | `workspace-linux` | Run [`32625880682`](https://github.com/monkeylabx/threadline/actions/runs/32625880682), job [`97161053015`](https://github.com/monkeylabx/threadline/actions/runs/32625880682/job/97161053015) — PASS |
+| Windows | `windows-2025` | `desktop-windows` | Run [`32625880682`](https://github.com/monkeylabx/threadline/actions/runs/32625880682), job [`97161053053`](https://github.com/monkeylabx/threadline/actions/runs/32625880682/job/97161053053) — PASS |
+| macOS | `macos-26` | `apple` | Run [`32625880682`](https://github.com/monkeylabx/threadline/actions/runs/32625880682), job [`97161052998`](https://github.com/monkeylabx/threadline/actions/runs/32625880682/job/97161052998) — PASS |
 
 The existing jobs retain the workflow's read-only `contents` permission and
 pinned Actions. They now have 45-minute bounds for `workspace-linux` and both
