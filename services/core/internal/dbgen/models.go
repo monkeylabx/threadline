@@ -64,6 +64,38 @@ type DomainOrganization struct {
 	CreatedAt     pgtype.Timestamptz
 }
 
+type DomainResourceAclEntry struct {
+	TenantID     string
+	AclVersion   int64
+	EntryOrdinal int32
+	ActorType    int16
+	ActorID      string
+	Action       int16
+	Effect       int16
+}
+
+type DomainResourceAclHead struct {
+	TenantID          string
+	ResourceKind      int16
+	ResourceID        string
+	SpaceID           *string
+	ChannelID         *string
+	CurrentAclVersion int64
+	UpdatedAt         pgtype.Timestamptz
+}
+
+type DomainResourceAclSnapshot struct {
+	AclVersion    int64
+	TenantID      string
+	ResourceKind  int16
+	ResourceID    string
+	SpaceID       *string
+	ChannelID     *string
+	DefaultEffect int16
+	EntriesSealed bool
+	CreatedAt     pgtype.Timestamptz
+}
+
 type DomainSpace struct {
 	TenantID     string
 	SpaceID      string

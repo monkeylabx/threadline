@@ -7,7 +7,9 @@ migration `000003` adds Member directory/RBAC metadata. Migration `000004` adds
 Space directory/policy-inheritance metadata. Migration `000005` adds Channel
 directory/lifecycle metadata plus Direct Message identity and immutable
 participant rows. Migration `000006` adds the application-level Channel
-Membership lifecycle. It does not define Message, Session, Device, key,
+Membership lifecycle. Migration `000007` adds immutable, versioned Resource ACL
+snapshots and an atomic current head for Space and Channel resources. It does
+not define Message, Session, Device, key,
 recovery, or Outbox tables.
 
 ## Migration rules
@@ -280,6 +282,52 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
 Fixtures contain only synthetic directory and membership metadata. They contain
 no messages, credentials, tokens, key material, production identifiers, or
 authorization decisions.
+
+## Resource ACL persistence
+
+`domain.resource_acl_snapshots` stores one complete, server-versioned Resource
+ACL for an exact tenant-scoped Space or Channel. `resource_kind` and the typed
+Space/Channel columns form a database-enforced one-of binding. Default and
+entry effects use the published `1` ALLOW and `2` DENY values; Actor type uses
+the existing `1` Human, `2` Agent, and `3` Service values; Actions use the 11
+frozen Protobuf numbers. Actor entries also reference the exact Tenant Member.
+
+Snapshot construction is transactional: create an unsealed snapshot, append
+the complete entry set, seal it, then atomically insert or replace the matching
+row in `domain.resource_acl_heads`. A deferred constraint rejects commit of an
+unsealed snapshot. Lifecycle triggers reject snapshot or entry mutation,
+deletion, and entry append after sealing. Exact duplicate entries are rejected,
+while an ALLOW and DENY for the same Actor and Action may coexist so the Core
+authorizer can apply matching-DENY precedence. Old versions remain immutable
+evidence after the current head moves.
+
+The ACL store locks the exact Space or Channel row with `FOR NO KEY UPDATE`
+before replacement. This serializes even the first two replacements for one
+resource while allowing different resources to proceed independently. A
+missing current head is a typed not-found result; neither SQL nor the Go module
+synthesizes an ALLOW or persists an Authorization Decision.
+
+Run the live schema constraints, one-of and Tenant isolation, complete
+Space/Channel snapshots, all Actions and Actor types, sealing, immutability,
+rollback, and old-version preservation checks against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db resource-acl-test
+```
+
+The separately gated Go integration test crosses the two-operation ACL store
+interface with a caller-owned transaction and a disposable guarded database:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db resource-acl-go-test
+```
+
+Fixtures contain only synthetic Tenant, Resource, and Actor identifiers plus
+authorization vocabulary. They contain no request Principal, Authorization
+Decision, message or file content, Prompt, credential, token, Device, E2EE
+Group key, history authority, or production data.
 
 ## Query generation
 

@@ -15,6 +15,8 @@ CHANNEL_DM_UP="$DB_DIR/migrations/000005_channel_dm.up.sql"
 CHANNEL_DM_DOWN="$DB_DIR/migrations/000005_channel_dm.down.sql"
 CHANNEL_MEMBERSHIP_UP="$DB_DIR/migrations/000006_channel_membership.up.sql"
 CHANNEL_MEMBERSHIP_DOWN="$DB_DIR/migrations/000006_channel_membership.down.sql"
+RESOURCE_ACL_UP="$DB_DIR/migrations/000007_resource_acl.up.sql"
+RESOURCE_ACL_DOWN="$DB_DIR/migrations/000007_resource_acl.down.sql"
 
 . "$TESTS_DIR/postgres_harness.sh"
 POSTGRES_TEST_SUITE=migration
@@ -40,6 +42,8 @@ verify_static_contract() {
   test -f "$CHANNEL_DM_DOWN" || postgres_test_fail "missing 000005 down migration"
   test -f "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "missing 000006 up migration"
   test -f "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "missing 000006 down migration"
+  test -f "$RESOURCE_ACL_UP" || postgres_test_fail "missing 000007 up migration"
+  test -f "$RESOURCE_ACL_DOWN" || postgres_test_fail "missing 000007 down migration"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -67,6 +71,21 @@ verify_static_contract() {
   grep -Eq '^DROP TABLE domain\.channel_memberships;$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop domain.channel_memberships exactly"
   grep -Eq '^DROP FUNCTION domain\.enforce_channel_membership_interval_lifecycle\(\);$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop membership lifecycle function exactly"
   grep -Eq '^DROP FUNCTION domain\.require_active_member_for_channel_membership\(\);$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop active Member validation function exactly"
+  grep -Eq '^CREATE TABLE domain\.resource_acl_snapshots \($' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must create domain.resource_acl_snapshots"
+  grep -Eq '^CREATE TABLE domain\.resource_acl_entries \($' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must create domain.resource_acl_entries"
+  grep -Eq '^CREATE TABLE domain\.resource_acl_heads \($' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must create domain.resource_acl_heads"
+  grep -Eq '^  acl_version bigint GENERATED ALWAYS AS IDENTITY,$' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must generate ACL versions server-side"
+  grep -Eq '^CREATE CONSTRAINT TRIGGER resource_acl_snapshots_sealed_at_commit$' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must reject partially constructed ACL snapshots at commit"
+  grep -Eq '^CREATE TRIGGER resource_acl_snapshots_lifecycle_guard$' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must guard immutable ACL snapshots"
+  grep -Eq '^CREATE TRIGGER resource_acl_entries_lifecycle_guard$' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must guard immutable ACL entries"
+  grep -Eq '^CREATE TRIGGER resource_acl_heads_lifecycle_guard$' "$RESOURCE_ACL_UP" || postgres_test_fail "000007 up must guard exact current ACL heads"
+  grep -Eq '^DROP TABLE domain\.resource_acl_heads;$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop domain.resource_acl_heads exactly"
+  grep -Eq '^DROP TABLE domain\.resource_acl_entries;$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop domain.resource_acl_entries exactly"
+  grep -Eq '^DROP TABLE domain\.resource_acl_snapshots;$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop domain.resource_acl_snapshots exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_resource_acl_head_lifecycle\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL head lifecycle function exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_resource_acl_entry_lifecycle\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL entry lifecycle function exactly"
+  grep -Eq '^DROP FUNCTION domain\.require_resource_acl_snapshot_sealed\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL sealing function exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_resource_acl_snapshot_lifecycle\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL snapshot lifecycle function exactly"
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -90,9 +109,11 @@ apply_up_migrations() {
   psql_test --file="$SPACE_UP"
   psql_test --file="$CHANNEL_DM_UP"
   psql_test --file="$CHANNEL_MEMBERSHIP_UP"
+  psql_test --file="$RESOURCE_ACL_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$RESOURCE_ACL_DOWN"
   psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
   psql_test --file="$CHANNEL_DM_DOWN"
   psql_test --file="$SPACE_DOWN"
@@ -107,6 +128,19 @@ test "$schema_count" = "0" || postgres_test_fail "disposable database is not cle
 apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/first.sql"
 
+psql_test --command="
+  INSERT INTO domain.organizations (tenant_id, display_name, state, policy_version)
+  VALUES ('tenant-acl-roundtrip-synthetic', 'ACL Roundtrip Synthetic', 1, 'policy-acl-roundtrip-v1')
+"
+psql_test --file="$RESOURCE_ACL_DOWN"
+roundtrip_tenant_count=$(
+  psql_test --tuples-only --no-align \
+    --command="SELECT count(*) FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
+)
+test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000007 down changed data owned by a prior migration"
+psql_test --file="$RESOURCE_ACL_UP"
+psql_test --command="DELETE FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
+
 apply_down_migrations
 schema_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM pg_namespace WHERE nspname = 'domain'")
 test "$schema_count" = "0" || postgres_test_fail "down migration did not remove schema domain"
@@ -115,6 +149,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$RESOURCE_ACL_DOWN"
 psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
 psql_test --file="$CHANNEL_DM_DOWN"
 psql_test --file="$SPACE_DOWN"
