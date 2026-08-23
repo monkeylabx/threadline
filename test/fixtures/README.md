@@ -53,26 +53,26 @@ Test credentials are minted per run with the least scope and short expiry. Their
 
 ## Required manifest
 
-Every fixture family must have a machine-readable manifest before data files are added. The manifest includes:
+Every fixture family must have a machine-readable manifest before data files are added. Manifests are versioned, owner-specific contracts rather than one universal JSON shape. The integrated T014/T015/T019 v1/v2 manifests remain authoritative and conform through the semantic aliases below; they must not be rewritten merely to normalize casing. CI validates each declared manifest version and the equivalent meaning, while new generic registry manifests should prefer the canonical names in the first column.
 
-| Field | Requirement |
+| Canonical meaning | Accepted representation / requirement |
 | --- | --- |
-| `fixture_set` | Stable namespaced ID, for example `contract.error-envelope.v1` |
-| `schema_version` | Fixture manifest schema, independent of product version |
-| `contract_version` | Proto/Bridge/Crypto Profile/DB schema that interprets the data |
+| `fixture_set` | Stable namespaced ID, or the versioned manifest path plus `owner` and `contracts` as the stable family identity |
+| `schema_version` | `schema_version` or `schemaVersion`; independent of product version |
+| `contract_version` | `contract_version`, `contracts`, Profile/Schema fields, or a content-addressed formal-generation target that identifies the interpreting contract |
 | `owner` | Workstream accountable for semantic changes |
 | `reviewers` | Contracts, Security, platform or Product reviewers required by risk |
-| `classification` | `public_metadata`, `public_test_material`, or `synthetic_opaque` only |
-| `provenance` | Generator/source specification and license; never a production export |
-| `generator` | Source path and exact version |
-| `seed_policy` | Deterministic only for public KAT/`synthetic_opaque`; runtime CSPRNG for C3/C4/key/nonce/sensitive inputs; sensitive replay seed stored only in the short-retention encrypted vault |
-| `allowed_surfaces` | Tests/processes that may read the fixture |
-| `forbidden_surfaces` | Logs, telemetry, crash artifacts, production import and similar sinks |
+| `classification` | `public_metadata`, `public_test_material`, `synthetic_opaque`, or a narrower namespaced `synthetic-*-no-secrets` value validated by the family schema |
+| `provenance` | Generator/source specification and license where applicable; never a production export |
+| `generator` | Top-level field or `provenance.generator`; exact source/version, or explicit `none` for reviewed hand-authored inputs |
+| `seed_policy` | Explicit when generation, KATs, fuzzing or sensitive inputs apply. Hand-authored `synthetic-*-no-secrets` families may inherit this policy when their manifest constrains `allowedData`/`forbiddenData` and contains no seed |
+| `allowed_surfaces` | Explicit family field when access differs from this registry; otherwise inherited from the family verifier and this policy |
+| `forbidden_surfaces` | Explicit family field when stricter; otherwise logs, telemetry, crash artifacts and production import are forbidden by this policy |
 | `cleanup` | Ephemeral state, credential and volume destruction requirements |
-| `sha256` | Digest for every committed fixture and generator input |
-| `expected` | Stable semantic state/error; no implementation-internal call sequence |
-| `n_minus_one` | Supported reader/writer pairs and retained historical files |
-| `reopen_triggers` | Contract, generator, provider or security changes requiring review |
+| `sha256` | Top-level digest map or content-addressed `source`/required-file/evidence entries covering every committed fixture and generator input |
+| `expected` | `expected`, `expectedBehavior`, required cases or transcript outcomes describing stable external state/error; never an implementation-internal call sequence |
+| `n_minus_one` | `n_minus_one`, `nMinusOne` or linked generated N-1 evidence with supported reader/writer pairs and retained historical files |
+| `reopen_triggers` | Explicit family field, or inherited from the test plan's reopening rules plus owner/reviewer approval on contract, generator, provider or security changes |
 
 Each committed public/opaque file must be reproducible from reviewed source. A generator update is a semantic change: review the generator diff, every output diff, classification scan and historical compatibility result. A public/opaque regression seed may be retained as numeric/text metadata. A sensitive regression seed is never retained in Git or normal CI artifacts: keep it only in the short-retention encrypted vault and retain the seed policy, minimized shrink trace and keyed digest in evidence, never the sensitive generated payload.
 
@@ -149,7 +149,7 @@ Fixture changes fail review when any of the following is true:
 - the test asserts implementation internals instead of the public seam;
 - evidence is only a simulator when a real-device or external-review Gate applies.
 
-CI should validate manifest schema, file digests, deterministic regeneration, classification allowlist, no forbidden extensions, links to existing owners/contracts and all historical consumer tests. The scanner must inspect Git blobs as well as the working tree so deletion in the latest revision does not hide an accidentally committed secret.
+CI should validate the declared family manifest version and semantic aliases above, file digests, deterministic regeneration, classification policy, no forbidden extensions, links to existing owners/contracts and all historical consumer tests. The scanner must inspect Git blobs as well as the working tree so deletion in the latest revision does not hide an accidentally committed secret.
 
 ## Incident handling
 
