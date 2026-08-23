@@ -226,6 +226,19 @@ function historyTranscript(history) {
   };
 }
 
+// Complete threadline.type.v1.EncryptedField wire projection. The reason
+// digest is derived only from this domain-separated transcript; callers cannot
+// submit a free-floating digest disconnected from the encrypted field bytes.
+function encryptedFieldTranscript(field) {
+  return {
+    ciphertextHex: bytesHex(field.ciphertext),
+    e2eeGroupId: field.e2eeGroupId,
+    epoch: uint64(field.epoch),
+    cryptoProfile: field.cryptoProfile,
+    envelopeVersion: field.envelopeVersion,
+  };
+}
+
 function recoveryCaseTranscript(recovery) {
   return {
     recoveryCaseId: recovery.caseId,
@@ -235,16 +248,7 @@ function recoveryCaseTranscript(recovery) {
       actorId: recovery.requester.actorId,
       actorType: String({ ACTOR_TYPE_HUMAN: 1, ACTOR_TYPE_AGENT: 2, ACTOR_TYPE_SERVICE: 3 }[recovery.requester.actorType] ?? 0),
     },
-    reasonDigestHex: bytesHex(recovery.reasonDigest),
-    legacyE2eeGroupIds: [...recovery.legacyGroupIds],
-    legacyFirstEpoch: uint64(recovery.legacyFirstEpoch),
-    legacyLastEpoch: uint64(recovery.legacyLastEpoch),
-    legacyTimeRange: recovery.legacyStartTime === null && recovery.legacyEndTime === null
-      ? null
-      : {
-        startTime: timestamp(recovery.legacyStartTime),
-        endTime: timestamp(recovery.legacyEndTime),
-      },
+    reasonBindingHashHex: transcriptHash("recovery-reason", encryptedFieldTranscript(recovery.reason)),
     scopes: recovery.scopes.map(canonicalRecoveryScope),
     recipientDeviceId: recovery.recipientDeviceId,
     requiredApprovals: recovery.requiredApprovals,
@@ -432,6 +436,7 @@ function reject(errorCode, extra = {}) {
 
 function evaluateCredential(testCase) {
   const { credential, now } = testCase;
+  const currentCredentialVersion = testCase.currentCredentialVersion ?? 3;
   const allowedIssuers = new Set([
     "CREDENTIAL_ISSUER_KIND_DEVICE_AUTHORITY",
     "CREDENTIAL_ISSUER_KIND_EXISTING_AUTHORIZED_DEVICE",
@@ -439,6 +444,10 @@ function evaluateCredential(testCase) {
   ]);
   if (credential.tenantId !== "tenant-a") return reject("ERROR_CODE_TENANT_MISMATCH");
   if (credential.deviceId !== "device-alice-1" || credential.actorId !== "actor-alice") return reject("ERROR_CODE_DEVICE_NOT_ENROLLED");
+  if (credential.credentialVersion === 0 || credential.credentialVersion < currentCredentialVersion) {
+    return reject("ERROR_CODE_DEVICE_REVOKED");
+  }
+  if (credential.credentialVersion !== currentCredentialVersion) return reject("ERROR_CODE_DEVICE_NOT_ENROLLED");
   if (credential.credentialFormatVersion !== 1) return reject("ERROR_CODE_ENVELOPE_VERSION_UNSUPPORTED");
   if (!isTlMls1(credential.profile)) return reject("ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED");
   const credentialProjection = credentialTranscript(credential);
@@ -510,9 +519,20 @@ function evaluateKeyPackage(testCase) {
   if (claim.priorClaim) {
     const exact = claim.priorClaim.claimId === claim.claimId
       && claim.priorClaim.authorizationId === claim.authorizationId
-      && claim.priorClaim.keyPackageId === keyPackage.keyPackageId;
+      && claim.priorClaim.keyPackageId === keyPackage.keyPackageId
+      && keyPackage.state === "KEY_PACKAGE_STATE_CONSUMED"
+      && !keyPackage.available
+      && keyPackage.consumedAt !== null
+      && keyPackage.consumedByAuthorizationId === claim.authorizationId;
     return exact
-      ? { status: "claimed", claimId: claim.claimId, deduplicated: true }
+      ? {
+        status: "claimed",
+        claimId: claim.claimId,
+        deduplicated: true,
+        state: "KEY_PACKAGE_STATE_CONSUMED",
+        consumedAt: keyPackage.consumedAt,
+        consumedByAuthorizationId: keyPackage.consumedByAuthorizationId,
+      }
       : reject("ERROR_CODE_REPLAY_DETECTED");
   }
   if (keyPackage.state === "KEY_PACKAGE_STATE_CONSUMED") return reject("ERROR_CODE_KEY_PACKAGE_CONSUMED");
@@ -520,7 +540,14 @@ function evaluateKeyPackage(testCase) {
   if (keyPackage.notBefore !== keyPackage.issuedAt - 3600) return reject("ERROR_CODE_KEY_PACKAGE_UNAVAILABLE");
   if (keyPackage.expiresAt - keyPackage.notBefore > 7261200) return reject("ERROR_CODE_KEY_PACKAGE_UNAVAILABLE");
   if (now < keyPackage.notBefore || now > keyPackage.expiresAt) return reject("ERROR_CODE_KEY_PACKAGE_UNAVAILABLE");
-  return { status: "claimed", claimId: claim.claimId };
+  if (claim.atomicTransitionCommitted === false) return reject("ERROR_CODE_KEY_PACKAGE_UNAVAILABLE");
+  return {
+    status: "claimed",
+    claimId: claim.claimId,
+    state: "KEY_PACKAGE_STATE_CONSUMED",
+    consumedAt: now,
+    consumedByAuthorizationId: claim.authorizationId,
+  };
 }
 
 const transitionKinds = new Set([
@@ -673,6 +700,8 @@ function evaluateHistory(testCase) {
 
 function evaluateRecovery(testCase) {
   const { recovery, now } = testCase;
+  const expectedReasonBindingHash = transcriptHash("recovery-reason", encryptedFieldTranscript(recovery.reason));
+  if (recovery.reasonBindingHash !== expectedReasonBindingHash) return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
   if (!recovery.explicitTargetCapabilityObserved) return reject("ERROR_CODE_RECOVERY_UNAVAILABLE");
   if (!recovery.executionId) return reject("ERROR_CODE_INVALID_STATE_TRANSITION");
   if (!recovery.requestId) return reject("ERROR_CODE_RECOVERY_APPROVAL_INSUFFICIENT");
@@ -939,26 +968,20 @@ function evaluateLegacyRecoveryTargets(testCase) {
   });
 }
 
-// Models the recovery Group/window admission logic at base 6ee924d after an
-// N-1 binary ignores unknown current scopes/targets. The intentionally empty
-// legacy projection poisons every mutating path, including rollback reads of a
-// persisted current Case.
+// A base/N-1 server has no TargetedRecoveryService method descriptor. The new
+// RPC cannot be decoded or dispatched as a legacy RecoveryService request.
 function evaluateNMinusOneRecovery(testCase) {
-  const legacy = testCase.nMinusOneRecovery;
-  assert(legacy.unknownCurrentScopesIgnored, `${testCase.id}: N-1 simulation must ignore unknown scopes`);
-  const poisoned = legacy.e2eeGroupIds.length === 0
-    && legacy.firstEpoch === 0
-    && legacy.lastEpoch === 0
-    && !legacy.timeRangePresent;
-  assert(poisoned, `${testCase.id}: current writer must poison the legacy recovery projection`);
-  return reject("ERROR_CODE_RECOVERY_UNAVAILABLE", {
-    operation: legacy.operation,
+  const targeted = testCase.nMinusOneRecovery;
+  assert(targeted.service === "TargetedRecoveryService", `${testCase.id}: downgrade must exercise targeted service`);
+  return {
+    status: "unimplemented",
+    rpcStatus: "UNIMPLEMENTED",
+    operation: targeted.operation,
     simulatedBase: "6ee924d",
-    decoded: true,
-    auditReadable: true,
+    decodedAsLegacy: false,
+    legacyServiceInvoked: false,
     mutationPerformed: false,
-    broadWindowInferred: false,
-  });
+  };
 }
 
 function evaluateNMinusOneMatrix(testCase) {
@@ -1113,6 +1136,7 @@ const transcriptBuilders = {
   publication: (testCase) => publicationTranscript(testCase.keyPackage),
   membership: (testCase) => membershipTranscript(testCase.membership, testCase.changeKind),
   history: (testCase) => historyTranscript(testCase.history),
+  "recovery-reason": (testCase) => encryptedFieldTranscript(testCase.recovery.reason),
   "recovery-case": (testCase) => recoveryCaseTranscript(testCase.recovery),
   "recovery-decision": (testCase) => {
     const caseHash = transcriptHash("recovery-case", recoveryCaseTranscript(testCase.recovery));
@@ -1174,7 +1198,7 @@ assert(sha256(transcriptBytesFixture) === manifest.transcripts.sha256, "canonica
 assert(manifest.transcripts.format === "RFC8785-JCS" && manifest.transcripts.domainPrefix === transcriptPrefix, "canonical transcript format metadata changed");
 assert(manifest.transcripts.generator === "node proto/tools/verify-crypto-contracts.mjs --print-transcripts", "canonical transcript generator must remain live-builder-backed");
 for (const requiredFile of manifest.requiredFiles) assert(statSync(join(fixtureRoot, requiredFile)).isFile(), `missing fixture file ${requiredFile}`);
-const transcriptDomains = ["credential", "publication", "membership", "history", "recovery-case", "recovery-decision", "recovery-protected-scope", "recovery-scope-binding", "recovery-envelope", "channel-event-sender-binding", "recovery-evidence-grant", "recovery-delivery", "recovery-commit-attestation"];
+const transcriptDomains = ["credential", "publication", "membership", "history", "recovery-reason", "recovery-case", "recovery-decision", "recovery-protected-scope", "recovery-scope-binding", "recovery-envelope", "channel-event-sender-binding", "recovery-evidence-grant", "recovery-delivery", "recovery-commit-attestation"];
 assert(canonicalEqual(transcriptVectors.vectors.map((vector) => vector.domain), transcriptDomains), "canonical transcript domain set/order changed");
 const liveVectors = liveTranscriptVectors();
 for (const [index, vector] of transcriptVectors.vectors.entries()) {
@@ -1196,6 +1220,33 @@ const crypto = read("proto/threadline/crypto/v1/crypto.proto");
 const recovery = read("proto/threadline/crypto/v1/recovery.proto");
 const services = read("proto/threadline/crypto/v1/key_service.proto");
 const errors = read("proto/threadline/type/v1/error.proto");
+
+function block(source, kind, name) {
+  const match = source.match(new RegExp(`${kind}\\s+${name}\\s*\\{([\\s\\S]*?)\\n\\}`, "u"));
+  assert(match, `missing ${kind} ${name}`);
+  return match[1];
+}
+
+// The targeted recovery interface is additive. These exact-shape checks keep
+// the already-merged legacy v1 service and messages from being reinterpreted,
+// while the separate TargetedRecoveryService carries all new authorization.
+const legacyRecoveryService = block(services, "service", "RecoveryService");
+assert(canonicalEqual(
+  [...legacyRecoveryService.matchAll(/rpc\s+(\w+)\s*\(/gu)].map((match) => match[1]),
+  ["CreateRecoveryCase", "DecideRecoveryCase", "ExecuteRecoveryCase", "GetRecoveryCase", "ListRecoveryCases"],
+), "legacy RecoveryService RPC surface changed");
+const legacyCreate = block(services, "message", "CreateRecoveryCaseRequest");
+assert(!/\bscopes\b|\brequest_id\b/u.test(legacyCreate), "legacy CreateRecoveryCaseRequest gained targeted semantics");
+assert(/reason\s*=\s*1;[\s\S]*e2ee_group_ids\s*=\s*2;[\s\S]*first_epoch\s*=\s*3;[\s\S]*last_epoch\s*=\s*4;[\s\S]*time_range\s*=\s*5;[\s\S]*recovery_recipient_device_id\s*=\s*6;/u.test(legacyCreate), "legacy CreateRecoveryCaseRequest field layout changed");
+const legacyDecide = block(services, "message", "DecideRecoveryCaseRequest");
+assert(/recovery_case_id\s*=\s*1;[\s\S]*approved\s*=\s*2;[\s\S]*note\s*=\s*3;/u.test(legacyDecide)
+  && !/decision_id|case_binding_hash|decision_signature|approver_device_id/u.test(legacyDecide), "legacy DecideRecoveryCaseRequest field layout changed");
+const legacyExecute = block(services, "message", "ExecuteRecoveryCaseRequest");
+assert(/recovery_case_id\s*=\s*1;/u.test(legacyExecute) && !/execution_id/u.test(legacyExecute), "legacy ExecuteRecoveryCaseRequest field layout changed");
+const legacyCase = block(recovery, "message", "RecoveryCase");
+assert(!/\bscopes\b|policy_version|request_id|execution_id|reason_binding_hash/u.test(legacyCase), "legacy RecoveryCase gained targeted semantics");
+const legacyApproval = block(recovery, "message", "RecoveryApproval");
+assert(!/decision_id|case_binding_hash|decision_signature|approver_device_id/u.test(legacyApproval), "legacy RecoveryApproval gained targeted semantics");
 
 for (const [name, wireNumber] of Object.entries(membershipKindWireNumber)) {
   assert(new RegExp(`${name}\\s*=\\s*${wireNumber};`, "u").test(crypto), `${name}: verifier wire number differs from Proto`);
@@ -1223,15 +1274,15 @@ for (const assertion of [
   [crypto, /string\s+handshake_id\s*=\s*12;/u, "handshake replay identity"],
   [crypto, /string\s+related_handshake_id\s*=\s*13;/u, "Welcome-to-Commit correlation"],
   [recovery, /message\s+HistorySharingRequest\s*\{/u, "bounded history request"],
-  [recovery, /repeated\s+RecoveryScope\s+scopes\s*=\s*16;/u, "explicit recovery scopes"],
+  [recovery, /message\s+TargetedRecoveryCase\s*\{[\s\S]*repeated\s+RecoveryScope\s+scopes\s*=\s*12;/u, "explicit targeted recovery scopes"],
   [recovery, /repeated\s+RecoveryProtectedScope\s+protected_targets\s*=\s*5;/u, "explicit typed Recovery targets"],
   [recovery, /bytes\s+case_binding_hash\s*=\s*8;/u, "Recovery Approval Case binding"],
   [recovery, /bytes\s+decision_signature\s*=\s*9;/u, "Recovery Approval decision signature"],
   [recovery, /string\s+approver_device_id\s*=\s*10;/u, "Recovery Approval signing Device"],
-  [recovery, /case_binding_hash[\s\S]*DecideRecoveryCaseRequest fields 1-4 and 7[\s\S]*Service-generated approval_id[\s\S]*excluded/u, "client-generatable Recovery decision signature projection"],
-  [recovery, /requester ActorRef identity[\s\S]*canonical `scopes`[\s\S]*Poisoned legacy fields[\s\S]*empty\/default values/u, "authoritative Recovery Case approval projection"],
+  [recovery, /case_binding_hash[\s\S]*DecideTargetedRecoveryCaseRequest fields 1-4 and 7[\s\S]*Service-generated approval_id[\s\S]*excluded/u, "client-generatable targeted Recovery decision signature projection"],
+  [recovery, /requester ActorRef identity[\s\S]*encrypted-reason binding[\s\S]*canonical `scopes`[\s\S]*No legacy[\s\S]*participates/u, "authoritative targeted Recovery Case approval projection"],
   [recovery, /complete encrypted note \(ciphertext, e2ee_group_id, epoch,[\s\S]*crypto_profile and envelope_version\)/u, "complete encrypted approval-note signature binding"],
-  [recovery, /ascending bytewise e2ee_group_id order[\s\S]*same shared inclusive Epoch bounds and half-open TimeRange[\s\S]*poison[\s\S]*empty\/default values/u, "canonical targetful Recovery scopes with poisoned legacy projection"],
+  [recovery, /ascending bytewise e2ee_group_id order[\s\S]*same shared inclusive Epoch bounds and half-open TimeRange[\s\S]*separate legacy RecoveryCase[\s\S]*UNIMPLEMENTED/u, "canonical targetful Recovery scopes with an additive legacy boundary"],
   [recovery, /bytes\s+scope_hash\s*=\s*11;/u, "Recovery Envelope scope hash"],
   [recovery, /bytes\s+scope_binding_hash\s*=\s*12;/u, "Recovery Envelope scope-aware binding"],
   [recovery, /string\s+recovery_case_id\s*=\s*13;/u, "RecoveryEnvelope delivery Case binding"],
@@ -1247,16 +1298,16 @@ for (const assertion of [
   [recovery, /fields 1-16[\s\S]*and 18[\s\S]*Field 17 is the digest itself and is excluded/u, "complete RecoveryEnvelope delivery projection"],
   [services, /MessageService\.SendEvent/u, "single durable MLS sequencing path"],
   [services, /string\s+claim_id\s*=\s*4;/u, "atomic claim replay identity"],
-  [services, /message\s+DecideRecoveryCaseRequest\s*\{[\s\S]*bytes\s+case_binding_hash\s*=\s*5;[\s\S]*bytes\s+decision_signature\s*=\s*6;[\s\S]*string\s+approver_device_id\s*=\s*7;/u, "approver-submitted Recovery Case binding and Device signature"],
-  [services, /message\s+ExecuteRecoveryCaseRequest\s*\{[\s\S]*Empty is invalid[\s\S]*string\s+execution_id\s*=\s*2;/u, "non-empty Recovery execution idempotency key"],
-  [services, /rpc\s+GetRecoveryCapabilities[\s\S]*explicit_protected_targets\s*=\s*1;[\s\S]*contract_version\s*=\s*2;/u, "server-first Recovery target capability"],
+  [services, /message\s+DecideTargetedRecoveryCaseRequest\s*\{[\s\S]*bytes\s+case_binding_hash\s*=\s*5;[\s\S]*bytes\s+decision_signature\s*=\s*6;[\s\S]*string\s+approver_device_id\s*=\s*7;/u, "approver-submitted targeted Recovery Case binding and Device signature"],
+  [services, /message\s+ExecuteTargetedRecoveryCaseRequest\s*\{[\s\S]*Required idempotency key[\s\S]*string\s+execution_id\s*=\s*2;/u, "non-empty targeted Recovery execution idempotency key"],
+  [services, /rpc\s+GetTargetedRecoveryCapabilities[\s\S]*explicit_protected_targets\s*=\s*1;[\s\S]*contract_version\s*=\s*2;[\s\S]*RecoveryProtocolFloor\s+protocol_floor\s*=\s*3;/u, "server-first targeted Recovery capability and protocol floor"],
   [services, /service\s+RecoveryEvidenceService\s*\{[\s\S]*GetRecoveryEvidence[\s\S]*RecoveryEvidenceGrant\s+grant\s*=\s*1;[\s\S]*repeated\s+RecoveryEvidenceItem\s+items\s*=\s*1;[\s\S]*RecoveryEnvelope\s+envelope\s*=\s*1;[\s\S]*RecoveryScopeCommitAttestation\s+attestation\s*=\s*2;/u, "Core Recovery evidence fetch seam"],
-  [services, /Poisoned N-1 projection[\s\S]*leave fields 2-5[\s\S]*old server sees no Group and rejects/u, "v1 poisoned Recovery request projection"],
-  [services, /repeated\s+RecoveryEnvelope\s+delivered_envelopes\s*=\s*2;/u, "single N-1/current recovery delivery surface"],
+  [services, /TargetedRecoveryService is a separate additive protocol boundary[\s\S]*never reuses or reinterprets RecoveryService[\s\S]*older server therefore returns UNIMPLEMENTED/u, "additive targeted Recovery downgrade boundary"],
+  [services, /message\s+ExecuteTargetedRecoveryCaseResponse\s*\{[\s\S]*repeated\s+RecoveryEnvelope\s+delivered_envelopes\s*=\s*2;/u, "targeted recovery delivery surface"],
   [crypto, /Required and non-empty for WELCOME[\s\S]*only for non-WELCOME message types/u, "WELCOME target requirement"],
-  [services, /HistoryService and the internal[\s\S]*RecoveryEvidenceService are served by[\s\S]*threadline-core[\s\S]*RecoveryService is the only recovery-control service[\s\S]*threadline-recovery-control/u, "History and Recovery service ownership boundary"],
+  [services, /HistoryService and the internal[\s\S]*RecoveryEvidenceService are served by[\s\S]*threadline-core[\s\S]*RecoveryService and the additive TargetedRecoveryService are served only by[\s\S]*threadline-recovery-control/u, "History and Recovery service ownership boundary"],
 ]) assert(assertion[1].test(assertion[0]), `contract is missing ${assertion[2]}`);
-assert(!/message\s+ExecuteRecoveryCaseRequest\s*\{[^}]*scope_commit_attestations/u.test(services), "Execute caller must not submit Recovery attestations");
+assert(!/message\s+ExecuteTargetedRecoveryCaseRequest\s*\{[^}]*scope_commit_attestations/u.test(services), "targeted Execute caller must not submit Recovery attestations");
 assert(!/message\s+RecoveryDeliveryEnvelope\s*\{/u.test(recovery), "T019 must not add a second recovery delivery message");
 assert(!/\bdeliveries\s*=\s*3;/u.test(services), "ExecuteRecoveryCaseResponse must not add a second delivery field");
 

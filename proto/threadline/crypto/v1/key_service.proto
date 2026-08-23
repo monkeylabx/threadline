@@ -6,8 +6,8 @@ syntax = "proto3";
 // KeyDirectoryService, MembershipService, HistoryService and the internal
 // RecoveryEvidenceService are served by threadline-core. Core only policy-checks
 // and routes opaque History grants; it cannot unwrap or derive History Keys.
-// RecoveryService is the only recovery-control service and is served by
-// service and is served by threadline-recovery-control, which runs in a
+// RecoveryService and the additive TargetedRecoveryService are served only by
+// threadline-recovery-control, which runs in a
 // separate namespace with its own identity, network policy, database role and
 // audit sink; Core, Realtime, Worker, Runtime Gateway, Model Control and model
 // Endpoints cannot call it.
@@ -222,11 +222,6 @@ message ListHistorySharingResponse {
 // recovery must not become an interface for search, DLP, summarization or model
 // input.
 service RecoveryService {
-  // Server-first rollout gate. Current administrative clients must observe an
-  // explicit-target capability before Create/Decide/Execute. UNIMPLEMENTED from
-  // an N-1 server fails closed; clients never infer support from old scopes.
-  rpc GetRecoveryCapabilities(GetRecoveryCapabilitiesRequest) returns (GetRecoveryCapabilitiesResponse);
-
   rpc CreateRecoveryCase(CreateRecoveryCaseRequest) returns (CreateRecoveryCaseResponse);
 
   // Records one approver's decision. The requester cannot approve their own
@@ -243,20 +238,76 @@ service RecoveryService {
   rpc ListRecoveryCases(ListRecoveryCasesRequest) returns (ListRecoveryCasesResponse);
 }
 
-message GetRecoveryCapabilitiesRequest {}
+// TargetedRecoveryService is a separate additive protocol boundary for exact,
+// typed recovery targets. It never reuses or reinterprets RecoveryService
+// request or Case bytes. An older server therefore returns UNIMPLEMENTED.
+//
+// Activation requires an externally recorded server protocol floor and
+// disabling legacy recovery mutation before targeted clients are enabled.
+// These messages describe that migration gate; they do not claim it is
+// implemented. Rollback must preserve the floor or keep mutation disabled.
+service TargetedRecoveryService {
+  rpc GetTargetedRecoveryCapabilities(GetTargetedRecoveryCapabilitiesRequest) returns (GetTargetedRecoveryCapabilitiesResponse);
+  rpc CreateTargetedRecoveryCase(CreateTargetedRecoveryCaseRequest) returns (CreateTargetedRecoveryCaseResponse);
+  rpc DecideTargetedRecoveryCase(DecideTargetedRecoveryCaseRequest) returns (DecideTargetedRecoveryCaseResponse);
+  rpc ExecuteTargetedRecoveryCase(ExecuteTargetedRecoveryCaseRequest) returns (ExecuteTargetedRecoveryCaseResponse);
+}
 
-message GetRecoveryCapabilitiesResponse {
-  // Current v1 requires true and contract_version >= 1. Absence, false, zero,
-  // unknown versions or UNIMPLEMENTED make recovery read/audit-only.
+message GetTargetedRecoveryCapabilitiesRequest {}
+
+message GetTargetedRecoveryCapabilitiesResponse {
   bool explicit_protected_targets = 1;
   uint32 contract_version = 2;
+  RecoveryProtocolFloor protocol_floor = 3;
+}
+
+message RecoveryProtocolFloor {
+  uint32 minimum_targeted_contract_version = 1;
+  bool legacy_mutation_disabled = 2;
+}
+
+message CreateTargetedRecoveryCaseRequest {
+  threadline.type.v1.EncryptedField reason = 1;
+  string recovery_recipient_device_id = 2;
+  repeated RecoveryScope scopes = 3;
+  string request_id = 4;
+}
+
+message CreateTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+}
+
+message DecideTargetedRecoveryCaseRequest {
+  string recovery_case_id = 1;
+  bool approved = 2;
+  threadline.type.v1.EncryptedField note = 3;
+  string decision_id = 4;
+  bytes case_binding_hash = 5;
+  bytes decision_signature = 6;
+  string approver_device_id = 7;
+}
+
+message DecideTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+}
+
+message ExecuteTargetedRecoveryCaseRequest {
+  string recovery_case_id = 1;
+  // Required idempotency key. An exact retry is allowed only for the same
+  // stored non-empty value after successful targeted execution.
+  string execution_id = 2;
+}
+
+message ExecuteTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+  // The targeted RPC requires the additive scope/delivery bindings on every
+  // returned envelope; their absence is not invalid in legacy RPC contexts.
+  repeated RecoveryEnvelope delivered_envelopes = 2;
 }
 
 message CreateRecoveryCaseRequest {
   threadline.type.v1.EncryptedField reason = 1;
 
-  // Poisoned N-1 projection: current targetful writers leave fields 2-5 at
-  // empty/default values. An old server sees no Group and rejects the request.
   repeated string e2ee_group_ids = 2;
 
   uint64 first_epoch = 3;
@@ -265,16 +316,6 @@ message CreateRecoveryCaseRequest {
   threadline.type.v1.TimeRange time_range = 5;
 
   string recovery_recipient_device_id = 6;
-
-  // Canonical current-client scope. Empty is invalid. v1 entries must be unique,
-  // sorted by Group ID and share exactly the same Epoch and TimeRange bounds.
-  // Current writers never double-write targetful authority to fields 2-5. An
-  // N-1 request may decode old shared bounds for audit only; without explicit
-  // protected_targets it cannot be created, approved or executed by current
-  // v1. Heterogeneous bounds are never inferred or unioned.
-  repeated RecoveryScope scopes = 7;
-
-  string request_id = 8;
 }
 
 message CreateRecoveryCaseResponse {
@@ -287,18 +328,6 @@ message DecideRecoveryCaseRequest {
   bool approved = 2;
 
   threadline.type.v1.EncryptedField note = 3;
-
-  string decision_id = 4;
-
-  // Computed by the approver over the exact immutable Case/request projection.
-  // The service verifies these values and records them unchanged in the
-  // resulting RecoveryApproval.
-  bytes case_binding_hash = 5;
-  bytes decision_signature = 6;
-
-  // Authorized Device producing the signature. It must exactly match the
-  // authenticated caller session and is copied unchanged to the approval.
-  string approver_device_id = 7;
 }
 
 message DecideRecoveryCaseResponse {
@@ -307,10 +336,6 @@ message DecideRecoveryCaseResponse {
 
 message ExecuteRecoveryCaseRequest {
   string recovery_case_id = 1;
-
-  // Required client-generated idempotency key. Empty is invalid. A retry after
-  // execution succeeds only when this non-empty value equals the stored ID.
-  string execution_id = 2;
 }
 
 // Internal Core evidence seam. Only the threadline-recovery-control workload
@@ -352,18 +377,7 @@ message ExecuteRecoveryCaseResponse {
   RecoveryCase recovery_case = 1;
 
   // Material re-encrypted to the Recovery Recipient Device, one entry per
-  // recovered Epoch. Only that Device can open these. Current clients validate
-  // the additive delivery metadata; N-1 clients ignore it and still consume the
-  // established field-2 result.
-  //
-  // A current client performing scoped Execute rejects an N-1 result whenever
-  // scope fields 11-12, delivery metadata fields 13-17 or protected scope 18
-  // are absent with
-  // ERROR_CODE_RECOVERY_UNAVAILABLE. It may decode, preserve and audit those
-  // bytes, but must never infer object identity or time scope from legacy
-  // Tenant/Group/Epoch fields. In the opposite direction, an N-1 client can
-  // ignore additive metadata on a current field-2 result and consume it using
-  // its established semantics.
+  // recovered Epoch. Only that Device can open these.
   repeated RecoveryEnvelope delivered_envelopes = 2;
 }
 

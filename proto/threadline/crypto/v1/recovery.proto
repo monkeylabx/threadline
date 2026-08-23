@@ -101,7 +101,7 @@ message RecoveryScope {
   repeated RecoveryProtectedScope protected_targets = 5;
 }
 
-// RecoveryCaseState is the Recovery Case lifecycle.
+// RecoveryCaseState is the legacy Recovery Case lifecycle.
 //
 //	DRAFT -> PENDING_APPROVAL -> APPROVED -> EXECUTED
 //	              |                  |
@@ -124,11 +124,41 @@ enum RecoveryCaseState {
   RECOVERY_CASE_STATE_REVOKED = 7;
 }
 
-// RecoveryApproval is one approver's decision on a Recovery Case.
+// Legacy approval contract. Its field meanings and numbering are unchanged.
+message RecoveryApproval {
+  string approval_id = 1;
+  threadline.type.v1.ActorRef approver = 2;
+  bool approved = 3;
+  threadline.type.v1.EncryptedField note = 4;
+  google.protobuf.Timestamp decided_at = 5;
+  string policy_version = 6;
+}
+
+// Legacy Recovery contract retained byte-for-byte for existing clients. New
+// targeted recovery never serializes into or reinterprets this message.
+message RecoveryCase {
+  string recovery_case_id = 1;
+  string tenant_id = 2;
+  threadline.type.v1.ActorRef requester = 3;
+  threadline.type.v1.EncryptedField reason = 4;
+  repeated string e2ee_group_ids = 5;
+  uint64 first_epoch = 6;
+  uint64 last_epoch = 7;
+  threadline.type.v1.TimeRange time_range = 8;
+  string recovery_recipient_device_id = 9;
+  RecoveryCaseState state = 10;
+  uint32 required_approvals = 11;
+  repeated RecoveryApproval approvals = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp expires_at = 14;
+  google.protobuf.Timestamp executed_at = 15;
+}
+
+// TargetedRecoveryApproval is one approver's decision on a Recovery Case.
 //
 // v1 requires at least two distinct approvers and forbids self-approval. An
 // organization may raise the threshold but never lower it to one.
-message RecoveryApproval {
+message TargetedRecoveryApproval {
   string approval_id = 1;
 
   threadline.type.v1.ActorRef approver = 2;
@@ -150,17 +180,16 @@ message RecoveryApproval {
 
   // Digest of the authoritative `recovery-case` v1 canonical transcript:
   // recovery_case_id, request_id, Tenant, requester ActorRef identity (actor_id
-  // and actor_type), encrypted-reason digest, canonical `scopes`, one recipient
-  // Device, required approval count, expiry and policy. Poisoned legacy fields
-  // 5-8 are included explicitly as empty/default values; filling them later
-  // invalidates the hash instead of creating an executable N-1 projection.
+  // and actor_type), encrypted-reason binding, canonical `scopes`, one
+  // recipient Device, required approval count, expiry and policy. No legacy
+  // RecoveryCase projection participates in this targeted transcript.
   // The Case is immutable after the first decision; a changed projection
   // invalidates every approval and cannot be replayed to another request/Case.
   bytes case_binding_hash = 8;
 
   // Device signature over the `recovery-decision` v1 canonical transcript of
   // `case_binding_hash` followed by the canonical
-  // DecideRecoveryCaseRequest fields 1-4 and 7: recovery_case_id, approved,
+  // DecideTargetedRecoveryCaseRequest fields 1-4 and 7: recovery_case_id, approved,
   // the complete encrypted note (ciphertext, e2ee_group_id, epoch,
   // crypto_profile and envelope_version), decision_id and approver_device_id.
   // Service-generated approval_id, approver ActorRef and decided_at are
@@ -172,13 +201,13 @@ message RecoveryApproval {
   string approver_device_id = 10;
 }
 
-// RecoveryCase is a time-bounded, auditable request to recover a defined set of
+// TargetedRecoveryCase is a time-bounded, auditable request to recover a defined set of
 // retained Epochs for exactly one designated recipient Device.
 //
 // It is not standing access to a Tenant, Channel or DM, and it is not a device
 // sync path: a new Device that has no eligible source Device starts from its
 // current authorization point unless a case like this is separately approved.
-message RecoveryCase {
+message TargetedRecoveryCase {
   string recovery_case_id = 1;
 
   string tenant_id = 2;
@@ -189,54 +218,45 @@ message RecoveryCase {
   // reason routinely names people and incidents.
   threadline.type.v1.EncryptedField reason = 4;
 
-  // Poisoned N-1 projection. Current targetful v1 writers MUST leave this empty.
-  // An N-1 reader/server therefore fails closed instead of interpreting a broad
-  // Group window. Non-empty on a current Case is invalid.
-  repeated string e2ee_group_ids = 5;
-
-  // Poisoned N-1 projection. Current targetful v1 writers set both Epochs to
-  // zero and omit time_range. These fields never authorize current recovery.
-  uint64 first_epoch = 6;
-  uint64 last_epoch = 7;
-  threadline.type.v1.TimeRange time_range = 8;
-
   // The one explicitly approved Device that receives the result end to end.
   // Recovery Control and administrator interfaces are never recipients.
-  string recovery_recipient_device_id = 9;
+  string recovery_recipient_device_id = 5;
 
-  RecoveryCaseState state = 10;
+  RecoveryCaseState state = 6;
 
   // Threshold in force when the case was created, so a later policy change
   // cannot retroactively make an under-approved case valid.
-  uint32 required_approvals = 11;
+  uint32 required_approvals = 7;
 
-  repeated RecoveryApproval approvals = 12;
+  repeated TargetedRecoveryApproval approvals = 8;
 
-  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp created_at = 9;
 
   // After this instant the authorization and any temporary material are dead.
   // Recovering again requires a fresh case and fresh approvals.
-  google.protobuf.Timestamp expires_at = 14;
+  google.protobuf.Timestamp expires_at = 10;
 
-  google.protobuf.Timestamp executed_at = 15;
+  google.protobuf.Timestamp executed_at = 11;
 
   // Canonical v1 scope. Entries are unique by e2ee_group_id and serialized in
   // ascending bytewise e2ee_group_id order. Every entry binds its Group and the
   // same shared inclusive Epoch bounds and half-open TimeRange; heterogeneous
-  // bounds fail closed rather than being widened. Current writers do not
-  // double-write this targetful authority into legacy fields 5-8: they poison
-  // that projection with empty/default values so an N-1 binary fails closed.
-  // The canonical approval transcript binds those legacy empty/default values,
-  // preventing later code from filling in a broad executable window.
-  repeated RecoveryScope scopes = 16;
+  // bounds fail closed rather than being widened. Current writers never
+  // serialize this targetful authority into the separate legacy RecoveryCase.
+  // N-1 binaries do not know TargetedRecoveryService and receive UNIMPLEMENTED.
+  repeated RecoveryScope scopes = 12;
 
   // Policy snapshot and stable replay identity for the high-impact request.
-  string policy_version = 17;
-  string request_id = 18;
+  string policy_version = 13;
+  string request_id = 14;
 
   // Set once at successful execution. Empty is invalid. The same non-empty ID
   // is idempotent; another ID after execution is ERROR_CODE_REPLAY_DETECTED.
-  string execution_id = 19;
+  string execution_id = 15;
+
+  // SHA-256 of the `recovery-reason` v1 canonical transcript of the complete
+  // EncryptedField in field 4. No plaintext or free-floating digest is used.
+  bytes reason_binding_hash = 16;
 }
 
 // RecoveryEnvelope is versioned material that binds recoverability to one E2EE
@@ -378,7 +398,7 @@ message RecoveryEnvelope {
   // Scope-bound wrapped material for `epoch`. Opaque to every application
   // service, including Recovery Control itself, which orchestrates approvals
   // but never sees recovery private key bytes. This message is also the
-  // baseline ExecuteRecoveryCaseResponse delivery type.
+  // baseline ExecuteTargetedRecoveryCaseResponse delivery type.
   bytes wrapped_material = 6;
 
   // Format version of `wrapped_material` within `crypto_profile`.
@@ -393,7 +413,7 @@ message RecoveryEnvelope {
   bool recovery_recipient_present = 8;
 
   // Additive current-delivery metadata. These fields are absent on stored
-  // RecoveryEnvelope frames and required on ExecuteRecoveryCase results.
+  // RecoveryEnvelope frames and required on ExecuteTargetedRecoveryCase results.
   string recovery_case_id = 13;
   string recovery_recipient_device_id = 14;
   string delivery_policy_version = 15;
