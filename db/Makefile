@@ -1,9 +1,10 @@
 SQLC ?= sqlc
 GO ?= go
 SQLC_VERSION := 1.31.1
-GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
+CORE_GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
+WORKER_GENERATED_DIR := $(CURDIR)/../services/worker/internal/dbgen
 
-.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test
+.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test
 
 check-sqlc:
 	@actual="$$($(SQLC) version)"; test "$$actual" = "v$(SQLC_VERSION)" || { echo "sqlc v$(SQLC_VERSION) required; found $$actual" >&2; exit 1; }
@@ -21,6 +22,14 @@ transactional-outbox-go-test:
 	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
 	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly \
 		./core/internal/outboxstore -run '^TestInsert' -count=1
+
+transactional-outbox-worker-ops-test:
+	@sh "$(CURDIR)/tests/transactional_outbox_worker_ops.sh"
+
+transactional-outbox-worker-go-test:
+	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
+	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly -race \
+		./worker/internal/outboxdb -run '^TestAdapterPostgres' -count=1
 
 organization-test:
 	@sh "$(CURDIR)/tests/organization_persistence.sh"
@@ -89,10 +98,14 @@ generate: check-sqlc migration-static
 generate-check: generate
 	@snapshot="$$(mktemp -d "$${TMPDIR:-/tmp}/threadline-sqlc.XXXXXX")"; \
 	trap 'rm -rf "$$snapshot"' EXIT HUP INT TERM; \
-	cp -R "$(GENERATED_DIR)/." "$$snapshot/"; \
+	mkdir "$$snapshot/core" "$$snapshot/worker"; \
+	cp -R "$(CORE_GENERATED_DIR)/." "$$snapshot/core/"; \
+	cp -R "$(WORKER_GENERATED_DIR)/." "$$snapshot/worker/"; \
 	cd "$(CURDIR)"; \
 	"$(SQLC)" generate; \
-	diff -ru "$$snapshot" "$(GENERATED_DIR)"
-	@git -C "$(CURDIR)/.." diff --exit-code -- services/core/internal/dbgen
+	diff -ru "$$snapshot/core" "$(CORE_GENERATED_DIR)"; \
+	diff -ru "$$snapshot/worker" "$(WORKER_GENERATED_DIR)"
+	@git -C "$(CURDIR)/.." diff --exit-code -- \
+		services/core/internal/dbgen services/worker/internal/dbgen
 
 check: migration-static generate-check

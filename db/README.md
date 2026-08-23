@@ -397,11 +397,20 @@ begins nor commits that transaction, and it remains private until a later task
 registers an exact Event-Type descriptor. An exact retry observes immutable
 Event facts and the singleton destination; conflicting facts fail closed.
 
-The schema stores only 32-byte claim-token digests and never raw tokens. The
-ordinary generated Core query surface cannot select those digests or mutate
-Event facts, destinations, policy snapshots, Attempts, claims, or terminal
-evidence. Worker claim, renew, failure, ACK, replay, and purge operations remain
-later work.
+The schema stores only 32-byte claim-token digests and never raw tokens.
+Migration `000009` adds the reviewed Worker authority functions for deterministic
+batch claim, lease renewal, publish acknowledgement, and publish failure. It
+requires PostgreSQL 16.4 with `pgcrypto` already provisioned; the migration does
+not create or drop that shared extension. Claim creates 32 random bytes inside
+the database transaction, stores only the domain-separated digest, and returns
+the raw bytes once. The private Worker adapter immediately converts those bytes
+to canonical 43-character unpadded base64url, clears the generated row buffer,
+and collapses malformed, stale, and mismatched authority to `claim-denied`.
+
+The ordinary generated Core and Worker query surfaces cannot select stored
+claim-token digests or perform generic Event, Entry, or Attempt mutation. The
+Worker surface calls only the four reviewed database functions. Replay and
+purge remain later work.
 
 Run the static migration checks without a database:
 
@@ -425,15 +434,42 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
   make -C db transactional-outbox-go-test
 ```
 
+Run the Worker operation, concurrency, fencing, Golden-vector, retry-ceiling,
+and `000009` ownership matrix against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db transactional-outbox-worker-ops-test
+```
+
+Run the private Worker adapter and token unit tests:
+
+```text
+go test -race ./services/worker/internal/dbgen ./services/worker/internal/outboxdb
+```
+
+The adapter also has a separately gated PostgreSQL 16.4 integration test. It
+creates and drops only a guarded `threadline_worker_outbox_go_test_*` database,
+applies migrations `000001` through `000009`, and exercises concurrent claims,
+renewal, acknowledgement, and retry scheduling through the adapter:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db transactional-outbox-worker-go-test
+```
+
 All fixtures are synthetic and contain no production identifiers, credentials,
 raw claim tokens, message plaintext, keys, prompts, or user data.
 
 ## Query generation
 
 The reviewed generator is sqlc 1.31.1 from `toolchains.json`. Generated Go uses
-`pgx/v5` and is written only to `services/core/internal/dbgen/`. Query inputs
-remain schema-qualified and Tenant-scoped; generated files are never hand
-edited.
+`pgx/v5` and is written to the workload-owned
+`services/core/internal/dbgen/` and `services/worker/internal/dbgen/` packages.
+Query inputs remain schema-qualified and Tenant-scoped; generated files are
+never hand edited. Token-bearing Worker values add non-generated redaction
+methods so formatting and JSON diagnostics cannot render raw tokens, payloads,
+or candidate digests.
 
 ```text
 node scripts/toolchain.mjs doctor --scope=database
