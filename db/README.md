@@ -6,8 +6,9 @@ This directory owns the PostgreSQL migration and sqlc inputs for
 migration `000003` adds Member directory/RBAC metadata. Migration `000004` adds
 Space directory/policy-inheritance metadata. Migration `000005` adds Channel
 directory/lifecycle metadata plus Direct Message identity and immutable
-participant rows. It does not define Channel Membership, Message, Session,
-Device, key, recovery, or Outbox tables.
+participant rows. Migration `000006` adds the application-level Channel
+Membership lifecycle. It does not define Message, Session, Device, key,
+recovery, or Outbox tables.
 
 ## Migration rules
 
@@ -25,11 +26,12 @@ Device, key, recovery, or Outbox tables.
 
 All live shell tests source `tests/postgres_harness.sh` for the PostgreSQL 16.4
 version gate, pinned tool resolution, disposable-database lifecycle, cleanup
-guards, and secret-safe diagnostics. The Organization, Member, Space, and
-Channel/DM typed Go tests likewise share `postgres_integration_test.go` for the
-operator-supplied DSN gate, maintenance/test connection lifecycle, migration
-loading, version check, and guarded database deletion. Aggregate test files
-contain only their domain fixtures and assertions.
+guards, and secret-safe diagnostics. The Organization, Member, Space,
+Channel/DM, and Channel Membership typed Go tests likewise share
+`postgres_integration_test.go` for the operator-supplied DSN gate,
+maintenance/test connection lifecycle, migration loading, version check, and
+guarded database deletion. Aggregate test files contain only their domain
+fixtures and assertions.
 
 Run the static contract without a database:
 
@@ -229,6 +231,55 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
 Fixtures contain only synthetic C2 directory/routing metadata. They contain no
 message or topic plaintext, prompt, credential, token, Device or MLS key,
 Epoch/History/Recovery material, or production identifier.
+
+## Channel Membership persistence
+
+`domain.channel_memberships` records application-level Channel membership as
+immutable historical intervals. Each interval has a server-assigned internal
+identity and `joined_at`; leaving assigns `left_at` once, while rejoining
+creates a distinct interval. Tenant-scoped composite foreign keys bind every
+interval to an existing Channel and Member. Role uses the published values
+`1–4` and is immutable within an interval. A partial unique index permits at
+most one active interval for an Actor in a Channel, including under concurrent
+creates.
+
+Creation requires the matching tenant Member to be ACTIVE at the insert's
+linearization point. The insert trigger takes `FOR SHARE` on that Member row,
+which conflicts with the Member state update lock, so a concurrent deactivate
+and join cannot both pass from an obsolete state. If the join linearizes first,
+later deactivation does not rewrite the audit interval; callers must still
+evaluate current Member state when authorizing an action. Database guards also
+reject interval identity, Actor, Channel, Tenant, Role, or join-time mutation,
+reopening or changing a departure, and deletion.
+
+These records are auditable storage facts, not effective authorization and not
+cryptographic group membership. P03-05 must intersect current Member state and
+Role, active Channel Membership, resource ACL, and any Capability Grant for
+each decision. Crypto owns actual E2EE group admission. Exact Tenant query
+arguments are storage scope, not caller authority; P03-02 must derive Tenant
+and Actor from the authenticated Session.
+
+Run the synthetic lifecycle, inactive-Member, tenant-isolation, immutable-row,
+failed-transaction, and PostgreSQL constraint cases with:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db channel-membership-test
+```
+
+The separately gated Go integration test invokes every generated Channel
+Membership operation against its own guarded PostgreSQL 16.4 database. It also
+proves that two simultaneous creates for one active key produce exactly one
+interval:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-membership-go-test
+```
+
+Fixtures contain only synthetic directory and membership metadata. They contain
+no messages, credentials, tokens, key material, production identifiers, or
+authorization decisions.
 
 ## Query generation
 

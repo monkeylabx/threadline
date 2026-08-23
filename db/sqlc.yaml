@@ -8,6 +8,7 @@ sql:
       - migrations/000003_member.up.sql
       - migrations/000004_space.up.sql
       - migrations/000005_channel_dm.up.sql
+      - migrations/000006_channel_membership.up.sql
     queries:
       - queries/core
     gen:
