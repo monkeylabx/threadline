@@ -19,6 +19,8 @@ psql_test --file="$SPACE_UP"
 psql_test --file="$CHANNEL_DM_UP"
 
 psql_test --command="
+  BEGIN;
+
   INSERT INTO domain.organizations (tenant_id, display_name, state, policy_version)
   VALUES
     ('tenant-conversation-alpha-synthetic', 'Conversation Alpha Synthetic', 1, 'policy-conversation-alpha-v1'),
@@ -28,6 +30,7 @@ psql_test --command="
   VALUES
     ('tenant-conversation-alpha-synthetic', 1, 'actor-alice-synthetic', 'Alice Synthetic', 4, 2),
     ('tenant-conversation-alpha-synthetic', 1, 'actor-bob-synthetic', 'Bob Synthetic', 4, 2),
+    ('tenant-conversation-alpha-synthetic', 1, 'actor-carol-synthetic', 'Carol Synthetic', 4, 2),
     ('tenant-conversation-beta-synthetic', 1, 'actor-alice-synthetic', 'Beta Alice Synthetic', 4, 2),
     ('tenant-conversation-beta-synthetic', 1, 'actor-beta-only-synthetic', 'Beta Only Synthetic', 4, 2);
 
@@ -53,6 +56,15 @@ psql_test --command="
     ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-alice-synthetic'),
     ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-bob-synthetic'),
     ('tenant-conversation-beta-synthetic', 'dm-shared-synthetic', 1, 'actor-alice-synthetic');
+
+  UPDATE domain.direct_messages
+  SET participants_sealed = TRUE
+  WHERE (tenant_id, dm_id) IN (
+    ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic'),
+    ('tenant-conversation-beta-synthetic', 'dm-shared-synthetic')
+  );
+
+  COMMIT;
 "
 
 channel_created_at=$(psql_test --tuples-only --no-align --command="
@@ -180,22 +192,84 @@ expect_sql_failure "untrimmed Direct Message E2EE group binding" "
   INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
   VALUES ('tenant-conversation-alpha-synthetic', 'dm-untrimmed-group-synthetic', ' group-dm-untrimmed-binding-synthetic ');
 "
+expect_sql_failure "blank Direct Message E2EE group binding" "
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-blank-group-synthetic', '');
+"
 expect_sql_failure "duplicate Direct Message participant" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-duplicate-participant-synthetic', 'group-dm-duplicate-participant-synthetic');
   INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
-  VALUES ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-alice-synthetic');
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-duplicate-participant-synthetic', 1, 'actor-alice-synthetic');
+  INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-duplicate-participant-synthetic', 1, 'actor-alice-synthetic');
+  COMMIT;
 "
 expect_sql_failure "missing Direct Message parent" "
   INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
   VALUES ('tenant-conversation-alpha-synthetic', 'dm-missing-synthetic', 1, 'actor-alice-synthetic');
 "
 expect_sql_failure "missing Direct Message Member" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-missing-member-synthetic', 'group-dm-missing-member-synthetic');
   INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
-  VALUES ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-missing-synthetic');
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-missing-member-synthetic', 1, 'actor-missing-synthetic');
+  COMMIT;
 "
 expect_sql_failure "cross-Tenant Direct Message Member" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-cross-tenant-member-synthetic', 'group-dm-cross-tenant-member-synthetic');
   INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
-  VALUES ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-beta-only-synthetic');
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-cross-tenant-member-synthetic', 1, 'actor-beta-only-synthetic');
+  COMMIT;
 "
+expect_sql_failure "sealed Direct Message participant append" "
+  INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-shared-synthetic', 1, 'actor-carol-synthetic');
+"
+expect_sql_failure "Direct Message participant update" "
+  UPDATE domain.direct_message_participants
+  SET actor_id = 'actor-carol-synthetic'
+  WHERE tenant_id = 'tenant-conversation-alpha-synthetic'
+    AND dm_id = 'dm-shared-synthetic'
+    AND actor_type = 1
+    AND actor_id = 'actor-bob-synthetic';
+"
+expect_sql_failure "Direct Message participant delete" "
+  DELETE FROM domain.direct_message_participants
+  WHERE tenant_id = 'tenant-conversation-alpha-synthetic'
+    AND dm_id = 'dm-shared-synthetic'
+    AND actor_type = 1
+    AND actor_id = 'actor-bob-synthetic';
+"
+expect_sql_failure "sealed Direct Message participant reopen" "
+  UPDATE domain.direct_messages
+  SET participants_sealed = FALSE
+  WHERE tenant_id = 'tenant-conversation-alpha-synthetic'
+    AND dm_id = 'dm-shared-synthetic';
+"
+expect_sql_failure "initially sealed Direct Message" "
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id, participants_sealed)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-initially-sealed-synthetic', 'group-dm-initially-sealed-synthetic', TRUE);
+"
+expect_sql_failure "unfinalized Direct Message transaction" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-unfinalized-synthetic', 'group-dm-unfinalized-synthetic');
+  INSERT INTO domain.direct_message_participants (tenant_id, dm_id, actor_type, actor_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-unfinalized-synthetic', 1, 'actor-alice-synthetic');
+  COMMIT;
+"
+
+unfinalized_rows=$(psql_test --tuples-only --no-align --command="
+  SELECT
+    (SELECT count(*) FROM domain.direct_messages WHERE tenant_id = 'tenant-conversation-alpha-synthetic' AND dm_id = 'dm-unfinalized-synthetic') +
+    (SELECT count(*) FROM domain.direct_message_participants WHERE tenant_id = 'tenant-conversation-alpha-synthetic' AND dm_id = 'dm-unfinalized-synthetic');
+")
+test "$unfinalized_rows" = "0" || postgres_test_fail "unfinalized Direct Message transaction left partial rows"
 
 missing_dm_count=$(psql_test --tuples-only --no-align --command="
   SELECT count(*) FROM domain.direct_messages

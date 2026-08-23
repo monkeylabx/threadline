@@ -47,9 +47,12 @@ verify_static_contract() {
   grep -Eq '^CREATE TABLE domain\.channels \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.channels"
   grep -Eq '^CREATE TABLE domain\.direct_messages \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.direct_messages"
   grep -Eq '^CREATE TABLE domain\.direct_message_participants \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.direct_message_participants"
+  grep -Eq '^CREATE CONSTRAINT TRIGGER direct_messages_participants_sealed_at_commit$' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must defer participant sealing validation until commit"
+  grep -Eq '^  FOR UPDATE;$' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must serialize participant append with finalization"
   grep -Eq '^DROP TABLE domain\.direct_message_participants;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.direct_message_participants exactly"
   grep -Eq '^DROP TABLE domain\.direct_messages;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.direct_messages exactly"
   grep -Eq '^DROP TABLE domain\.channels;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.channels exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_direct_message_participants_append_only\(\);$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop participant lifecycle function exactly"
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"

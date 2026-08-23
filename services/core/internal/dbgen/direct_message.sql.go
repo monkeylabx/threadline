@@ -58,7 +58,7 @@ INSERT INTO domain.direct_messages (
   $2,
   $3
 )
-RETURNING tenant_id, dm_id, e2ee_group_id, created_at
+RETURNING tenant_id, dm_id, e2ee_group_id, participants_sealed, created_at
 `
 
 type CreateDirectMessageParams struct {
@@ -74,13 +74,41 @@ func (q *Queries) CreateDirectMessage(ctx context.Context, arg CreateDirectMessa
 		&i.TenantID,
 		&i.DmID,
 		&i.E2eeGroupID,
+		&i.ParticipantsSealed,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const finalizeDirectMessageParticipants = `-- name: FinalizeDirectMessageParticipants :one
+UPDATE domain.direct_messages
+SET participants_sealed = TRUE
+WHERE tenant_id = $1
+  AND dm_id = $2
+  AND NOT participants_sealed
+RETURNING tenant_id, dm_id, e2ee_group_id, participants_sealed, created_at
+`
+
+type FinalizeDirectMessageParticipantsParams struct {
+	TenantID string
+	DmID     string
+}
+
+func (q *Queries) FinalizeDirectMessageParticipants(ctx context.Context, arg FinalizeDirectMessageParticipantsParams) (DomainDirectMessage, error) {
+	row := q.db.QueryRow(ctx, finalizeDirectMessageParticipants, arg.TenantID, arg.DmID)
+	var i DomainDirectMessage
+	err := row.Scan(
+		&i.TenantID,
+		&i.DmID,
+		&i.E2eeGroupID,
+		&i.ParticipantsSealed,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getDirectMessage = `-- name: GetDirectMessage :one
-SELECT tenant_id, dm_id, e2ee_group_id, created_at
+SELECT tenant_id, dm_id, e2ee_group_id, participants_sealed, created_at
 FROM domain.direct_messages
 WHERE tenant_id = $1
   AND dm_id = $2
@@ -98,6 +126,7 @@ func (q *Queries) GetDirectMessage(ctx context.Context, arg GetDirectMessagePara
 		&i.TenantID,
 		&i.DmID,
 		&i.E2eeGroupID,
+		&i.ParticipantsSealed,
 		&i.CreatedAt,
 	)
 	return i, err

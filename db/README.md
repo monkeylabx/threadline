@@ -187,9 +187,19 @@ deliberately outside this slice.
 `domain.direct_messages` stores tenant-scoped DM identity, opaque E2EE Group
 binding and creation time. `domain.direct_message_participants` normalizes the
 immutable Actor set with tenant-scoped foreign keys to both the DM and Member.
-Generated queries expose participant creation and deterministic reads only;
-there is no participant update or delete operation. Production create-or-get
-concurrency behavior remains a later RPC transaction concern.
+DM creation is one transaction: create the unsealed parent, append the intended
+participants, then call `FinalizeDirectMessageParticipants`. A deferred
+database constraint rejects commit while the parent remains unsealed. Database
+triggers reject participant append after finalization, every participant update
+or delete, and any attempt to reopen a sealed set. They intentionally impose no
+minimum participant count because that domain rule is not present in the proto
+contract. The append trigger locks the parent DM row, so participant insertion
+and finalization serialize on that row and a concurrent insert cannot cross the
+sealed transition. The composite participant-to-DM and participant-to-Member
+foreign keys remain authoritative after that lifecycle check. Generated queries
+expose participant creation and deterministic reads only; there is no
+participant update or delete operation. Production
+create-or-get concurrency behavior remains a later RPC transaction concern.
 
 Visibility, state, participant rows and E2EE Group identifiers are routing
 facts, not authorization or proof of key possession. P03-02 must derive Tenant

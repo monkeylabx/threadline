@@ -20,10 +20,11 @@ type DomainChannel struct {
 }
 
 type DomainDirectMessage struct {
-	TenantID    string
-	DmID        string
-	E2eeGroupID string
-	CreatedAt   pgtype.Timestamptz
+	TenantID           string
+	DmID               string
+	E2eeGroupID        string
+	ParticipantsSealed bool
+	CreatedAt          pgtype.Timestamptz
 }
 
 type DomainDirectMessageParticipant struct {

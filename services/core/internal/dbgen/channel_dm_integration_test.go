@@ -68,6 +68,14 @@ func createConversationFixtures(t *testing.T, ctx context.Context, queries *Quer
 			State:       2,
 		},
 		{
+			TenantID:    conversationAlphaTenant,
+			ActorType:   1,
+			ActorID:     "actor-conversation-go-carol-synthetic",
+			DisplayName: "Conversation Go Carol Synthetic",
+			Role:        4,
+			State:       2,
+		},
+		{
 			TenantID:    conversationBetaTenant,
 			ActorType:   1,
 			ActorID:     "actor-conversation-go-beta-only-synthetic",
@@ -264,16 +272,18 @@ func testDirectMessageGeneratedQueries(
 	queries *Queries,
 ) {
 	t.Helper()
-	created, err := queries.CreateDirectMessage(ctx, CreateDirectMessageParams{
+	participants := []AddDirectMessageParticipantParams{
+		{TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-shared-synthetic", ActorType: 1, ActorID: "actor-conversation-go-bob-synthetic"},
+		{TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-shared-synthetic", ActorType: 1, ActorID: "actor-conversation-go-alice-synthetic"},
+	}
+	created := createFinalizedDirectMessage(t, ctx, testDatabase, queries, CreateDirectMessageParams{
 		TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-shared-synthetic",
 		E2eeGroupID: "group-conversation-go-dm-alpha-synthetic",
-	})
-	if err != nil {
-		t.Fatal("typed Direct Message create failed")
-	}
+	}, participants)
 	if created.TenantID != conversationAlphaTenant ||
 		created.DmID != "dm-conversation-go-shared-synthetic" ||
 		created.E2eeGroupID != "group-conversation-go-dm-alpha-synthetic" ||
+		!created.ParticipantsSealed ||
 		!created.CreatedAt.Valid {
 		t.Fatal("typed Direct Message create returned unexpected fields")
 	}
@@ -285,20 +295,6 @@ func testDirectMessageGeneratedQueries(
 	}
 	assertSameDirectMessageImmutableFields(t, created, got)
 
-	participants := []AddDirectMessageParticipantParams{
-		{TenantID: created.TenantID, DmID: created.DmID, ActorType: 1, ActorID: "actor-conversation-go-bob-synthetic"},
-		{TenantID: created.TenantID, DmID: created.DmID, ActorType: 1, ActorID: "actor-conversation-go-alice-synthetic"},
-	}
-	for _, participant := range participants {
-		added, err := queries.AddDirectMessageParticipant(ctx, participant)
-		if err != nil {
-			t.Fatal("typed Direct Message participant create failed")
-		}
-		if added.TenantID != participant.TenantID || added.DmID != participant.DmID ||
-			added.ActorType != participant.ActorType || added.ActorID != participant.ActorID {
-			t.Fatal("typed Direct Message participant create returned unexpected fields")
-		}
-	}
 	listed, err := queries.ListDirectMessageParticipants(ctx, ListDirectMessageParticipantsParams{
 		TenantID: created.TenantID, DmID: created.DmID,
 	})
@@ -323,19 +319,13 @@ func testDirectMessageGeneratedQueries(
 		t.Fatal("typed Direct Message exact-key participant miss did not return an empty set")
 	}
 
-	beta, err := queries.CreateDirectMessage(ctx, CreateDirectMessageParams{
+	beta := createFinalizedDirectMessage(t, ctx, testDatabase, queries, CreateDirectMessageParams{
 		TenantID: conversationBetaTenant, DmID: created.DmID,
 		E2eeGroupID: "group-conversation-go-dm-beta-synthetic",
-	})
-	if err != nil {
-		t.Fatal("typed same-ID cross-Tenant Direct Message create failed")
-	}
-	if _, err := queries.AddDirectMessageParticipant(ctx, AddDirectMessageParticipantParams{
-		TenantID: beta.TenantID, DmID: beta.DmID, ActorType: 1,
+	}, []AddDirectMessageParticipantParams{{
+		TenantID: conversationBetaTenant, DmID: created.DmID, ActorType: 1,
 		ActorID: "actor-conversation-go-beta-only-synthetic",
-	}); err != nil {
-		t.Fatal("typed cross-Tenant Direct Message participant create failed")
-	}
+	}})
 	betaParticipants, err := queries.ListDirectMessageParticipants(ctx, ListDirectMessageParticipantsParams{
 		TenantID: beta.TenantID, DmID: beta.DmID,
 	})
@@ -350,10 +340,22 @@ func testDirectMessageGeneratedQueries(
 		{TenantID: created.TenantID, DmID: " dm-conversation-go-untrimmed-synthetic ", E2eeGroupID: "group-conversation-go-dm-untrimmed-synthetic"},
 		{TenantID: "tenant-conversation-go-missing-synthetic", DmID: "dm-conversation-go-missing-tenant-synthetic", E2eeGroupID: "group-conversation-go-dm-missing-tenant-synthetic"},
 		{TenantID: created.TenantID, DmID: "dm-conversation-go-duplicate-group-synthetic", E2eeGroupID: created.E2eeGroupID},
+		{TenantID: created.TenantID, DmID: "dm-conversation-go-blank-group-synthetic", E2eeGroupID: ""},
 	} {
 		if _, err := queries.CreateDirectMessage(ctx, invalid); err == nil {
 			t.Fatal("typed invalid Direct Message create unexpectedly succeeded")
 		}
+	}
+
+	if _, err := queries.FinalizeDirectMessageParticipants(ctx, FinalizeDirectMessageParticipantsParams{
+		TenantID: missingKey.TenantID, DmID: missingKey.DmID,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatal("typed Direct Message participant finalize exact-key miss did not return pgx.ErrNoRows")
+	}
+	if _, err := queries.FinalizeDirectMessageParticipants(ctx, FinalizeDirectMessageParticipantsParams{
+		TenantID: created.TenantID, DmID: created.DmID,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatal("typed Direct Message participant finalize allowed a sealed set to be reopened")
 	}
 
 	for _, invalid := range []AddDirectMessageParticipantParams{
@@ -361,11 +363,16 @@ func testDirectMessageGeneratedQueries(
 		{TenantID: created.TenantID, DmID: "dm-conversation-go-missing-synthetic", ActorType: 1, ActorID: "actor-conversation-go-alice-synthetic"},
 		{TenantID: created.TenantID, DmID: created.DmID, ActorType: 1, ActorID: "actor-conversation-go-missing-synthetic"},
 		{TenantID: created.TenantID, DmID: created.DmID, ActorType: 1, ActorID: "actor-conversation-go-beta-only-synthetic"},
+		{TenantID: created.TenantID, DmID: created.DmID, ActorType: 1, ActorID: "actor-conversation-go-carol-synthetic"},
 	} {
 		if _, err := queries.AddDirectMessageParticipant(ctx, invalid); err == nil {
 			t.Fatal("typed invalid Direct Message participant create unexpectedly succeeded")
 		}
 	}
+
+	assertDirectMessageParticipantMutationFails(t, ctx, testDatabase, created)
+	assertUnfinalizedDirectMessageRollsBack(t, ctx, testDatabase, queries, created.TenantID)
+	assertDuplicateParticipantRollsBack(t, ctx, testDatabase, queries, created.TenantID)
 
 	tx, err := testDatabase.Begin(ctx)
 	if err != nil {
@@ -417,6 +424,148 @@ func testDirectMessageGeneratedQueries(
 	})
 	if err != nil || !sameDirectMessageParticipants(listed, afterParticipants) {
 		t.Fatal("rejected Direct Message operations changed the participant set")
+	}
+}
+
+func createFinalizedDirectMessage(
+	t *testing.T,
+	ctx context.Context,
+	testDatabase *pgx.Conn,
+	queries *Queries,
+	params CreateDirectMessageParams,
+	participants []AddDirectMessageParticipantParams,
+) DomainDirectMessage {
+	t.Helper()
+	tx, err := testDatabase.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin Direct Message creation transaction failed")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	txQueries := queries.WithTx(tx)
+	created, err := txQueries.CreateDirectMessage(ctx, params)
+	if err != nil {
+		t.Fatal("typed Direct Message create failed")
+	}
+	if created.ParticipantsSealed {
+		t.Fatal("typed Direct Message create returned a prematurely sealed participant set")
+	}
+	for _, participant := range participants {
+		added, err := txQueries.AddDirectMessageParticipant(ctx, participant)
+		if err != nil {
+			t.Fatal("typed Direct Message participant create failed")
+		}
+		if added.TenantID != participant.TenantID || added.DmID != participant.DmID ||
+			added.ActorType != participant.ActorType || added.ActorID != participant.ActorID {
+			t.Fatal("typed Direct Message participant create returned unexpected fields")
+		}
+	}
+	finalized, err := txQueries.FinalizeDirectMessageParticipants(ctx, FinalizeDirectMessageParticipantsParams{
+		TenantID: created.TenantID, DmID: created.DmID,
+	})
+	if err != nil {
+		t.Fatal("typed Direct Message participant finalize failed")
+	}
+	if !finalized.ParticipantsSealed {
+		t.Fatal("typed Direct Message participant finalize did not seal the set")
+	}
+	assertSameDirectMessageImmutableFields(t, created, finalized)
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal("commit finalized Direct Message transaction failed")
+	}
+	return finalized
+}
+
+func assertDirectMessageParticipantMutationFails(
+	t *testing.T,
+	ctx context.Context,
+	testDatabase *pgx.Conn,
+	directMessage DomainDirectMessage,
+) {
+	t.Helper()
+	for _, statement := range []string{
+		`UPDATE domain.direct_message_participants SET actor_id = 'actor-conversation-go-carol-synthetic' WHERE tenant_id = $1 AND dm_id = $2 AND actor_type = 1 AND actor_id = 'actor-conversation-go-bob-synthetic'`,
+		`DELETE FROM domain.direct_message_participants WHERE tenant_id = $1 AND dm_id = $2 AND actor_type = 1 AND actor_id = 'actor-conversation-go-bob-synthetic'`,
+		`UPDATE domain.direct_messages SET participants_sealed = FALSE WHERE tenant_id = $1 AND dm_id = $2`,
+	} {
+		if _, err := testDatabase.Exec(ctx, statement, directMessage.TenantID, directMessage.DmID); err == nil {
+			t.Fatal("database accepted a forbidden Direct Message participant lifecycle mutation")
+		}
+	}
+}
+
+func assertUnfinalizedDirectMessageRollsBack(
+	t *testing.T,
+	ctx context.Context,
+	testDatabase *pgx.Conn,
+	queries *Queries,
+	tenantID string,
+) {
+	t.Helper()
+	const dmID = "dm-conversation-go-unfinalized-synthetic"
+	tx, err := testDatabase.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin unfinalized Direct Message transaction failed")
+	}
+	txQueries := queries.WithTx(tx)
+	if _, err := txQueries.CreateDirectMessage(ctx, CreateDirectMessageParams{
+		TenantID: tenantID, DmID: dmID,
+		E2eeGroupID: "group-conversation-go-dm-unfinalized-synthetic",
+	}); err != nil {
+		t.Fatal("create unfinalized Direct Message fixture failed")
+	}
+	if _, err := txQueries.AddDirectMessageParticipant(ctx, AddDirectMessageParticipantParams{
+		TenantID: tenantID, DmID: dmID, ActorType: 1,
+		ActorID: "actor-conversation-go-alice-synthetic",
+	}); err != nil {
+		t.Fatal("add unfinalized Direct Message participant fixture failed")
+	}
+	if err := tx.Commit(ctx); err == nil {
+		t.Fatal("unfinalized Direct Message transaction unexpectedly committed")
+	}
+	if _, err := queries.GetDirectMessage(ctx, GetDirectMessageParams{TenantID: tenantID, DmID: dmID}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatal("unfinalized Direct Message transaction left a partial parent row")
+	}
+	rows, err := queries.ListDirectMessageParticipants(ctx, ListDirectMessageParticipantsParams{
+		TenantID: tenantID, DmID: dmID,
+	})
+	if err != nil || len(rows) != 0 {
+		t.Fatal("unfinalized Direct Message transaction left partial participant rows")
+	}
+}
+
+func assertDuplicateParticipantRollsBack(
+	t *testing.T,
+	ctx context.Context,
+	testDatabase *pgx.Conn,
+	queries *Queries,
+	tenantID string,
+) {
+	t.Helper()
+	const dmID = "dm-conversation-go-duplicate-participant-synthetic"
+	tx, err := testDatabase.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin duplicate Direct Message participant transaction failed")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	txQueries := queries.WithTx(tx)
+	if _, err := txQueries.CreateDirectMessage(ctx, CreateDirectMessageParams{
+		TenantID: tenantID, DmID: dmID,
+		E2eeGroupID: "group-conversation-go-dm-duplicate-participant-synthetic",
+	}); err != nil {
+		t.Fatal("create duplicate Direct Message participant fixture failed")
+	}
+	participant := AddDirectMessageParticipantParams{
+		TenantID: tenantID, DmID: dmID, ActorType: 1,
+		ActorID: "actor-conversation-go-alice-synthetic",
+	}
+	if _, err := txQueries.AddDirectMessageParticipant(ctx, participant); err != nil {
+		t.Fatal("add duplicate Direct Message participant fixture failed")
+	}
+	if _, err := txQueries.AddDirectMessageParticipant(ctx, participant); err == nil {
+		t.Fatal("typed duplicate Direct Message participant create unexpectedly succeeded")
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal("rollback duplicate Direct Message participant transaction failed")
 	}
 }
 

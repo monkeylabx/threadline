@@ -16,6 +16,7 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (DomainOrganization, error)
 	CreateSpace(ctx context.Context, arg CreateSpaceParams) (DomainSpace, error)
 	DatabaseReady(ctx context.Context) (int64, error)
+	FinalizeDirectMessageParticipants(ctx context.Context, arg FinalizeDirectMessageParticipantsParams) (DomainDirectMessage, error)
 	GetChannel(ctx context.Context, arg GetChannelParams) (DomainChannel, error)
 	GetDirectMessage(ctx context.Context, arg GetDirectMessageParams) (DomainDirectMessage, error)
 	GetMember(ctx context.Context, arg GetMemberParams) (DomainMember, error)
