@@ -263,14 +263,16 @@ assert(statSync(t019GeneratedCompatTestPath).isFile(), "T019 scoped generated co
 assert(statSync(t019GeneratedCompatManifestPath).isFile(), "T019 scoped generated compatibility manifest must exist");
 assert(statSync(t019GeneratedCompatManifestModulePath).isFile(), "T019 scoped manifest validator must exist");
 const { manifest: t019GeneratedCompatManifest } = loadScopedGeneratedCompatManifest("test/fixtures/proto/crypto/generated-compat-manifest.json");
-const t019VerificationCommand = "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=8c842371b8abece7829c95634a14d56cebbba2c6 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift";
+const t019VerificationCommand = "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=509e4331b9366a671893912b5bade7790d9fb752 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift";
 assert(t019GeneratedCompatManifest.baselineCommit === "b997fd70f1b4a115c9046df4db15fea4849df487", "T019 scoped compatibility baseline must remain pinned to T015 main");
-assert(t019GeneratedCompatManifest.targetSchemaCommit === "8c842371b8abece7829c95634a14d56cebbba2c6", "T019 scoped compatibility target must remain pinned to the reviewed parent head");
+assert(t019GeneratedCompatManifest.targetSchemaCommit === "509e4331b9366a671893912b5bade7790d9fb752", "T019 scoped compatibility target must remain pinned to the reviewed parent schema commit");
 assert(t019GeneratedCompatManifest.verificationCommand === t019VerificationCommand, "T019 scoped compatibility command must document every pinned input");
 assert(t019GeneratedCompatManifest.failClosedEvidence.verifier === "proto/tools/verify-crypto-contracts.mjs", "T019 scoped fail-closed evidence must use the canonical crypto verifier");
 for (const scenarioId of t019GeneratedCompatManifest.failClosedEvidence.scenarioIds) {
   assert(cryptoContractManifest.requiredCases.includes(scenarioId), `T019 scoped fail-closed scenario is not aggregated: ${scenarioId}`);
 }
+const cryptoSemanticFixtureTestPath = join(repositoryRoot, "test", "crypto", "verify-e2ee-interop-fixture.mjs");
+assert(statSync(cryptoSemanticFixtureTestPath).isFile(), "T011 Crypto semantic fixture verifier must exist");
 const rustEnvelopeTestPath = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
 const generatedEnvelopeTestPath = join(protoRoot, "tools", "verify-generated-envelope-compat.mjs");
 const rustEnvelopeHarnessRoot = join(protoRoot, "tools", "rust-envelope-compat");
@@ -294,6 +296,8 @@ const messageSyncTests = spawnSync(process.execPath, [messageSyncTestPath], { cw
 if (messageSyncTests.status !== 0) errors.push(`${messageSyncTests.stdout ?? ""}${messageSyncTests.stderr ?? ""}`.trim());
 const cryptoContractTests = spawnSync(process.execPath, [cryptoContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (cryptoContractTests.status !== 0) errors.push(`${cryptoContractTests.stdout ?? ""}${cryptoContractTests.stderr ?? ""}`.trim());
+const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (cryptoSemanticFixtureTests.status !== 0) errors.push(`${cryptoSemanticFixtureTests.stdout ?? ""}${cryptoSemanticFixtureTests.stderr ?? ""}`.trim());
 
 if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join("\n"));
@@ -309,4 +313,5 @@ if (installTests.status !== 0) {
 console.log("Threadline contract structure and representative Golden Frames are valid.");
 console.log("Threadline T015 message/sync behavior fixtures are valid.");
 console.log("Threadline T019 crypto/recovery behavior fixtures are valid.");
+console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");

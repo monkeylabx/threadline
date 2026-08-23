@@ -1,0 +1,16 @@
+version: "2"
+
+sql:
+  - engine: postgresql
+    schema:
+      - migrations/000001_core_foundation.up.sql
+    queries:
+      - queries/core
+    gen:
+      go:
+        package: dbgen
+        out: ../services/core/internal/dbgen
+        sql_package: pgx/v5
+        emit_empty_slices: true
+        emit_interface: true
+        emit_pointers_for_null_types: true

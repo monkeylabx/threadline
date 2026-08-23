@@ -3,11 +3,11 @@
   "classification": "synthetic-protocol-compatibility-no-secrets",
   "owner": "contracts/T019-A",
   "baselineCommit": "b997fd70f1b4a115c9046df4db15fea4849df487",
-  "targetSchemaCommit": "8c842371b8abece7829c95634a14d56cebbba2c6",
-  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=8c842371b8abece7829c95634a14d56cebbba2c6 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
+  "targetSchemaCommit": "509e4331b9366a671893912b5bade7790d9fb752",
+  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=509e4331b9366a671893912b5bade7790d9fb752 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
   "targetSchema": {
     "file": "proto/threadline/crypto/v1/recovery.proto",
-    "sha256": "0f6ae59a6934ca61e06b47c67192590abe2ef278043587ccb55e3f4d7dfab64f"
+    "sha256": "3a8569906290e24e6157abcad81b754aabbf4a1146a78e372f2e92133089e0de"
   },
   "historicalT014RecoveryFrame": {
     "file": "proto/golden/v1/recovery-envelope.golden.hex",
@@ -86,7 +86,7 @@
       "recovery-tenant-mismatch",
       "recovery-group-mismatch",
       "recovery-event-profile-version-tampered",
-      "n-minus-one-rollback-persisted-case-poisoned",
+      "n-minus-one-targeted-rollback-unimplemented",
       "legacy-recovery-current-execute-unavailable"
     ]
   },
