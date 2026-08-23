@@ -8,6 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DomainMember struct {
+	TenantID    string
+	ActorType   int16
+	ActorID     string
+	DisplayName string
+	Role        int16
+	State       int16
+	OrgUnitPath *string
+	JoinedAt    pgtype.Timestamptz
+}
+
 type DomainOrganization struct {
 	TenantID      string
 	DisplayName   string

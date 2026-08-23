@@ -2,9 +2,9 @@
 
 This directory owns the PostgreSQL migration and sqlc inputs for
 `threadline-core`. Migration `000001` creates the physical schema namespace
-`domain`. Migration `000002` adds the root Organization/Tenant boundary only;
-it does not define Member, Space, Channel, Message, Session, Device, key,
-recovery, or Outbox tables.
+`domain`. Migration `000002` adds the root Organization/Tenant boundary, and
+migration `000003` adds Member directory/RBAC metadata. It does not define
+Space, Channel, Message, Session, Device, key, recovery, or Outbox tables.
 
 ## Migration rules
 
@@ -82,6 +82,46 @@ The test creates only disposable identifiers containing `synthetic`. It uses no
 production data, member content, message plaintext, credentials, tokens, keys,
 Device, Crypto, Recovery, or Outbox data. Organization display names are the
 unencrypted enterprise-directory data defined by the published contract.
+
+## Member persistence
+
+`domain.members` stores the normalized fields of
+`threadline.identity.v1.Member` beneath an existing Organization. Its immutable
+identity is `(tenant_id, actor_type, actor_id)`. ActorType values use the frozen
+Protobuf numbers `1` human, `2` agent, and `3` service; Role values are `1–5`;
+MemberState values are `1–3`. Unspecified and unknown values fail closed.
+
+Directory `display_name` and optional `org_unit_path` are synthetic C2 metadata
+in tests. `joined_at` is server-assigned. Generated updates expose only Role and
+MemberState, so identity and join time cannot be mutated through the typed
+query surface.
+
+Stored Role is not authorization. P03-05 must still intersect current Role,
+Channel Membership, resource ACL, and any Capability Grant. Likewise, exact
+Tenant query arguments are storage scope, not caller authority; P03-02 must
+derive Tenant and Actor from the authenticated Session before calling them.
+
+Run the synthetic duplicate, invalid-enum, Organization-FK, optional-path,
+exact-key miss, and role/state lifecycle cases against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db member-test
+```
+
+The generated Member API has a separately gated live Go test. It creates and
+drops its own `threadline_member_go_test_*` database and never prints the DSN or
+credentials:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db member-go-test
+```
+
+It invokes `CreateMember`, `GetMember`, and `UpdateMemberRoleState` directly and
+verifies complete round-trip, exact-key misses, constraints, optional
+org-unit-path behavior, and immutable identity/join time. Ordinary Go tests
+skip this live test when the environment variable is absent.
 
 ## Query generation
 
