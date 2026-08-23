@@ -3,10 +3,12 @@ use std::{fmt::Write as _, fs, path::PathBuf};
 use rusqlite::Connection;
 use threadline_client_core::storage::{
     CommittedEvent, ConversationRef, CursorUpdate, DatabaseKey, EncryptedDatabase,
-    PendingOutboxEvent, StorageError, StoredCursor, APPLICATION_ID, LATEST_SCHEMA_VERSION,
+    PendingOutboxEvent, StorageError, StoredCursor,
 };
 use zeroize::Zeroizing;
 
+const EXPECTED_APPLICATION_ID: i64 = 1_414_285_646;
+const EXPECTED_SCHEMA_VERSION: i64 = 1;
 const MIGRATION_0001_SHA256: [u8; 32] = [
     0x61, 0x16, 0xaa, 0xca, 0xec, 0x95, 0x84, 0x15, 0xb7, 0x73, 0xbd, 0xd1, 0xe2, 0xf9, 0xe3, 0x4d,
     0x7d, 0x9f, 0x55, 0xf3, 0x0d, 0xef, 0x8a, 0x5b, 0x8d, 0x9a, 0xce, 0x11, 0xbf, 0x63, 0x37, 0x43,
@@ -19,10 +21,13 @@ fn create_and_reopen_preserve_application_version_and_ledger_invariants() {
     drop(database);
 
     let connection = fixture.open_for_fixture_inspection();
-    assert_eq!(pragma_i64(&connection, "application_id"), APPLICATION_ID);
+    assert_eq!(
+        pragma_i64(&connection, "application_id"),
+        EXPECTED_APPLICATION_ID
+    );
     assert_eq!(
         pragma_i64(&connection, "user_version"),
-        LATEST_SCHEMA_VERSION
+        EXPECTED_SCHEMA_VERSION
     );
     assert_eq!(
         connection
@@ -32,7 +37,7 @@ fn create_and_reopen_preserve_application_version_and_ledger_invariants() {
                 |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?)),
             )
             .expect("read migration ledger"),
-        (LATEST_SCHEMA_VERSION, MIGRATION_0001_SHA256.to_vec())
+        (EXPECTED_SCHEMA_VERSION, MIGRATION_0001_SHA256.to_vec())
     );
     drop(connection);
 
@@ -61,7 +66,7 @@ fn newer_schema_fails_closed_without_changing_version() {
     drop(fixture.open());
     let connection = fixture.open_for_fixture_inspection();
     connection
-        .pragma_update(None, "user_version", LATEST_SCHEMA_VERSION + 1)
+        .pragma_update(None, "user_version", EXPECTED_SCHEMA_VERSION + 1)
         .expect("inject future schema version");
     drop(connection);
     let before = fixture.database_family_state();
@@ -178,6 +183,44 @@ fn outbox_and_cursor_semantics_survive_correct_key_reopen() {
             envelope_bytes: &pending_bytes,
         })
         .expect("enqueue pending event");
+    assert_eq!(
+        database.enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: channel,
+            event_id: "evt-1",
+            idempotency_key: "idem-conflicting-event",
+            envelope_bytes: &pending_bytes,
+        }),
+        Err(StorageError::Conflict)
+    );
+    assert_eq!(
+        database.enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: channel,
+            event_id: "evt-conflicting-idempotency",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        }),
+        Err(StorageError::Conflict)
+    );
+    database
+        .enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: ConversationRef::channel("channel-b").expect("valid channel"),
+            event_id: "evt-other-channel",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        })
+        .expect("scope idempotency by conversation");
+    database
+        .enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-b",
+            conversation: channel,
+            event_id: "evt-other-tenant",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        })
+        .expect("scope idempotency by tenant");
     database
         .record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
@@ -205,6 +248,89 @@ fn outbox_and_cursor_semantics_survive_correct_key_reopen() {
             last_applied_sequence: 1,
             cursor_bytes: cursor_bytes.to_vec(),
         })
+    );
+}
+
+#[test]
+fn cursor_compare_and_swap_rejects_stale_progress_and_preserves_u64_boundaries() {
+    let fixture = DatabaseFixture::create();
+    let channel = ConversationRef::channel("channel-cursor").expect("valid channel");
+    let mut database = fixture.open();
+    let initial_cursor = [0x18, 0x00];
+    let signed_max_cursor = [0x18, 0x7F];
+    let unsigned_max_cursor = [0x18, 0xFF, 0x01];
+
+    database
+        .record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: None,
+            last_applied_sequence: 0,
+            cursor_bytes: &initial_cursor,
+        })
+        .expect("record initial cursor");
+    database
+        .record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(0),
+            last_applied_sequence: i64::MAX as u64,
+            cursor_bytes: &signed_max_cursor,
+        })
+        .expect("advance through signed maximum");
+    database
+        .record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(i64::MAX as u64),
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: &unsigned_max_cursor,
+        })
+        .expect("advance through unsigned maximum");
+    database
+        .record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(u64::MAX),
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: &unsigned_max_cursor,
+        })
+        .expect("accept exact idempotent cursor replay");
+
+    assert_eq!(
+        database
+            .load_cursor("tenant-a", "device-a", channel)
+            .expect("load maximum cursor"),
+        Some(StoredCursor {
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: unsigned_max_cursor.to_vec(),
+        })
+    );
+    assert_eq!(
+        database.record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(u64::MAX),
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: &[0x18, 0x01],
+        }),
+        Err(StorageError::Conflict)
+    );
+    assert_eq!(
+        database.record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(0),
+            last_applied_sequence: 1,
+            cursor_bytes: &[0x18, 0x01],
+        }),
+        Err(StorageError::Conflict)
     );
 }
 

@@ -26,8 +26,8 @@ const MIGRATION_0001_SHA256: [u8; 32] = [
 ];
 
 /// ASCII `TLIN`, used to reject unrelated SQLite files.
-pub const APPLICATION_ID: i64 = 1_414_285_646;
-pub const LATEST_SCHEMA_VERSION: i64 = 1;
+pub(crate) const APPLICATION_ID: i64 = 1_414_285_646;
+pub(crate) const LATEST_SCHEMA_VERSION: i64 = 1;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StorageError {
@@ -171,4 +171,50 @@ fn verify_current_schema(connection: &Connection) -> Result<(), StorageError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+
+    use rusqlite::{
+        hooks::{AuthAction, AuthContext, Authorization},
+        Connection,
+    };
+
+    use super::{has_user_objects, migrate, user_version, StorageError};
+
+    #[test]
+    fn migration_failure_rolls_back_every_schema_change() {
+        let mut connection = Connection::open_in_memory().expect("open failure fixture");
+        let first_table_was_created = Arc::new(AtomicBool::new(false));
+        let observed_first_table = Arc::clone(&first_table_was_created);
+        connection
+            .authorizer(Some(move |context: AuthContext<'_>| match context.action {
+                AuthAction::CreateTable {
+                    table_name: "threadline_schema_migrations",
+                } => {
+                    observed_first_table.store(true, Ordering::SeqCst);
+                    Authorization::Allow
+                }
+                AuthAction::CreateTable {
+                    table_name: "opaque_events",
+                } => Authorization::Deny,
+                _ => Authorization::Allow,
+            }))
+            .expect("install deterministic migration failure");
+
+        let error = migrate(&mut connection).expect_err("migration must fail closed");
+        connection
+            .authorizer(None::<fn(AuthContext<'_>) -> Authorization>)
+            .expect("remove migration failure injection");
+
+        assert_eq!(error, StorageError::Database);
+        assert!(first_table_was_created.load(Ordering::SeqCst));
+        assert_eq!(user_version(&connection), Ok(0));
+        assert_eq!(has_user_objects(&connection), Ok(false));
+    }
 }

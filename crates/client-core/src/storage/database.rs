@@ -76,12 +76,12 @@ fn apply_key(connection: &Connection, key: &DatabaseKey) -> Result<(), StorageEr
     let mut command = Zeroizing::new(String::with_capacity(22 + DATABASE_KEY_BYTES * 2));
     command.push_str("PRAGMA key = \"x'");
     for byte in &key.0 {
-        write!(&mut command, "{byte:02x}").map_err(|_| StorageError::InvalidKey)?;
+        write!(&mut command, "{byte:02x}").map_err(|_| StorageError::Database)?;
     }
     command.push_str("'\";");
     connection
         .execute_batch(&command)
-        .map_err(|_| StorageError::InvalidKey)
+        .map_err(|_| StorageError::Database)
 }
 
 fn verify_community_cipher(connection: &Connection) -> Result<(), StorageError> {
@@ -100,7 +100,10 @@ fn verify_key(connection: &Connection) -> Result<(), StorageError> {
             row.get::<_, i64>(0)
         })
         .map(|_| ())
-        .map_err(|_| StorageError::InvalidKey)
+        // SQLCipher deliberately does not provide a reliable distinction
+        // between a wrong key, damaged ciphertext, and an underlying read/I/O
+        // failure. Do not misclassify those cases as a confirmed key error.
+        .map_err(|_| StorageError::Database)
 }
 
 fn pragma_i64(connection: &Connection, name: &str) -> Result<i64, StorageError> {

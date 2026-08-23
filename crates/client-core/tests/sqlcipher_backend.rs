@@ -68,7 +68,7 @@ fn production_interface_is_keyed_fail_closed_and_preserves_opaque_bytes() {
         Ok(_) => panic!("wrong key unexpectedly opened database"),
         Err(error) => error,
     };
-    assert_eq!(error, StorageError::InvalidKey);
+    assert_eq!(error, StorageError::Database);
     assert_eq!(
         snapshot_database_family(&family_paths),
         family_before_rejection,
@@ -149,12 +149,46 @@ fn public_errors_do_not_echo_key_or_path_material() {
     let display = error.to_string();
     let debug = format!("{error:?}");
 
-    assert_eq!(display, "storage_invalid_key");
+    assert_eq!(display, "storage_database_error");
     assert!(!display.contains(secret_path_fragment));
     assert!(!debug.contains(secret_path_fragment));
     assert!(!display.contains(&encode_hex(&wrong_key)));
     assert!(!debug.contains(&encode_hex(&wrong_key)));
     drop(database);
+}
+
+#[test]
+fn corrupted_ciphertext_is_not_misclassified_as_a_confirmed_key_error() {
+    let test_directory = EphemeralDirectory::create();
+    let database_path = test_directory.path().join("client-core.db");
+    let key = random_distinct_from(&[]);
+    let database = EncryptedDatabase::open(
+        &database_path,
+        DatabaseKey::new(key).expect("accept generated fixed-size key"),
+    )
+    .expect("create encrypted database");
+    drop(database);
+
+    let mut corrupted = fs::read(&database_path).expect("read encrypted fixture");
+    assert!(corrupted.len() > 100, "encrypted fixture has a first page");
+    corrupted[100] ^= 0x80;
+    fs::write(&database_path, &corrupted).expect("inject ciphertext corruption");
+
+    let error = match EncryptedDatabase::open(
+        &database_path,
+        DatabaseKey::new(key).expect("accept original fixed-size key"),
+    ) {
+        Ok(_) => panic!("corrupted ciphertext unexpectedly opened"),
+        Err(error) => error,
+    };
+
+    assert_eq!(error, StorageError::Database);
+    assert_eq!(error.code(), "storage_database_error");
+    assert_eq!(
+        fs::read(&database_path).expect("read rejected corrupted fixture"),
+        corrupted,
+        "corrupt database rejection rewrote ciphertext"
+    );
 }
 
 fn snapshot_database_family(family_paths: &[PathBuf; 3]) -> [Vec<u8>; 3] {
