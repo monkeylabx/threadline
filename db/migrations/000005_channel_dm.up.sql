@@ -81,11 +81,16 @@ BEFORE INSERT ON domain.direct_messages
 FOR EACH ROW
 EXECUTE FUNCTION domain.reject_initially_sealed_direct_message();
 
-CREATE FUNCTION domain.reject_direct_message_participant_reopen()
+CREATE FUNCTION domain.enforce_direct_message_lifecycle_update()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 BEGIN
+  IF OLD.tenant_id IS DISTINCT FROM NEW.tenant_id
+      OR OLD.dm_id IS DISTINCT FROM NEW.dm_id THEN
+    RAISE EXCEPTION 'Direct Message identity cannot be changed'
+      USING ERRCODE = 'check_violation';
+  END IF;
   IF OLD.participants_sealed AND NOT NEW.participants_sealed THEN
     RAISE EXCEPTION 'Direct Message participants cannot be reopened'
       USING ERRCODE = 'check_violation';
@@ -94,10 +99,10 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER direct_messages_participants_cannot_reopen
-BEFORE UPDATE OF participants_sealed ON domain.direct_messages
+CREATE TRIGGER direct_messages_lifecycle_update_guard
+BEFORE UPDATE ON domain.direct_messages
 FOR EACH ROW
-EXECUTE FUNCTION domain.reject_direct_message_participant_reopen();
+EXECUTE FUNCTION domain.enforce_direct_message_lifecycle_update();
 
 CREATE FUNCTION domain.require_direct_message_participants_sealed()
 RETURNS trigger

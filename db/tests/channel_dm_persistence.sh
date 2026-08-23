@@ -255,6 +255,35 @@ expect_sql_failure "initially sealed Direct Message" "
   INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id, participants_sealed)
   VALUES ('tenant-conversation-alpha-synthetic', 'dm-initially-sealed-synthetic', 'group-dm-initially-sealed-synthetic', TRUE);
 "
+expect_sql_failure "unsealed Direct Message identifier change" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-key-change-source-synthetic', 'group-dm-key-change-synthetic');
+  UPDATE domain.direct_messages
+  SET dm_id = 'dm-key-change-target-synthetic'
+  WHERE tenant_id = 'tenant-conversation-alpha-synthetic'
+    AND dm_id = 'dm-key-change-source-synthetic';
+  COMMIT;
+"
+expect_sql_failure "unsealed Direct Message Tenant change" "
+  BEGIN;
+  INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)
+  VALUES ('tenant-conversation-alpha-synthetic', 'dm-tenant-change-synthetic', 'group-dm-tenant-change-synthetic');
+  UPDATE domain.direct_messages
+  SET tenant_id = 'tenant-conversation-beta-synthetic'
+  WHERE tenant_id = 'tenant-conversation-alpha-synthetic'
+    AND dm_id = 'dm-tenant-change-synthetic';
+  COMMIT;
+"
+
+key_change_rows=$(psql_test --tuples-only --no-align --command="
+  SELECT
+    (SELECT count(*) FROM domain.direct_messages WHERE dm_id IN ('dm-key-change-source-synthetic', 'dm-key-change-target-synthetic')) +
+    (SELECT count(*) FROM domain.direct_messages WHERE dm_id = 'dm-tenant-change-synthetic') +
+    (SELECT count(*) FROM domain.direct_message_participants WHERE dm_id IN ('dm-key-change-source-synthetic', 'dm-key-change-target-synthetic', 'dm-tenant-change-synthetic'));
+")
+test "$key_change_rows" = "0" || postgres_test_fail "failed Direct Message identity changes left partial rows"
+
 expect_sql_failure "unfinalized Direct Message transaction" "
   BEGIN;
   INSERT INTO domain.direct_messages (tenant_id, dm_id, e2ee_group_id)

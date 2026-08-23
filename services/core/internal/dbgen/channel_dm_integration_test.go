@@ -372,6 +372,7 @@ func testDirectMessageGeneratedQueries(
 
 	assertDirectMessageParticipantMutationFails(t, ctx, testDatabase, created)
 	assertUnfinalizedDirectMessageRollsBack(t, ctx, testDatabase, queries, created.TenantID)
+	assertUnsealedDirectMessageIdentityChangesRollBack(t, ctx, testDatabase, queries)
 	assertDuplicateParticipantRollsBack(t, ctx, testDatabase, queries, created.TenantID)
 
 	tx, err := testDatabase.Begin(ctx)
@@ -566,6 +567,71 @@ func assertDuplicateParticipantRollsBack(
 	}
 	if err := tx.Rollback(ctx); err != nil {
 		t.Fatal("rollback duplicate Direct Message participant transaction failed")
+	}
+}
+
+func assertUnsealedDirectMessageIdentityChangesRollBack(
+	t *testing.T,
+	ctx context.Context,
+	testDatabase *pgx.Conn,
+	queries *Queries,
+) {
+	t.Helper()
+	testCases := []struct {
+		name        string
+		originalKey GetDirectMessageParams
+		changedKey  GetDirectMessageParams
+		groupID     string
+	}{
+		{
+			name:        "identifier",
+			originalKey: GetDirectMessageParams{TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-key-change-source-synthetic"},
+			changedKey:  GetDirectMessageParams{TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-key-change-target-synthetic"},
+			groupID:     "group-conversation-go-dm-key-change-synthetic",
+		},
+		{
+			name:        "Tenant",
+			originalKey: GetDirectMessageParams{TenantID: conversationAlphaTenant, DmID: "dm-conversation-go-tenant-change-synthetic"},
+			changedKey:  GetDirectMessageParams{TenantID: conversationBetaTenant, DmID: "dm-conversation-go-tenant-change-synthetic"},
+			groupID:     "group-conversation-go-dm-tenant-change-synthetic",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			tx, err := testDatabase.Begin(ctx)
+			if err != nil {
+				t.Fatal("begin Direct Message identity-change transaction failed")
+			}
+			txQueries := queries.WithTx(tx)
+			if _, err := txQueries.CreateDirectMessage(ctx, CreateDirectMessageParams{
+				TenantID:    testCase.originalKey.TenantID,
+				DmID:        testCase.originalKey.DmID,
+				E2eeGroupID: testCase.groupID,
+			}); err != nil {
+				t.Fatal("create Direct Message identity-change fixture failed")
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE domain.direct_messages
+				SET tenant_id = $1, dm_id = $2
+				WHERE tenant_id = $3 AND dm_id = $4
+			`, testCase.changedKey.TenantID, testCase.changedKey.DmID,
+				testCase.originalKey.TenantID, testCase.originalKey.DmID); err == nil {
+				t.Fatal("database accepted an unsealed Direct Message identity change")
+			}
+			if err := tx.Rollback(ctx); err != nil {
+				t.Fatal("rollback Direct Message identity-change transaction failed")
+			}
+
+			for _, key := range []GetDirectMessageParams{testCase.originalKey, testCase.changedKey} {
+				if _, err := queries.GetDirectMessage(ctx, key); !errors.Is(err, pgx.ErrNoRows) {
+					t.Fatal("failed Direct Message identity-change transaction left a parent row")
+				}
+				participants, err := queries.ListDirectMessageParticipants(ctx, ListDirectMessageParticipantsParams(key))
+				if err != nil || len(participants) != 0 {
+					t.Fatal("failed Direct Message identity-change transaction left participant rows")
+				}
+			}
+		})
 	}
 }
 
