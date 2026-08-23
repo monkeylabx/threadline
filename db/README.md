@@ -8,9 +8,9 @@ Space directory/policy-inheritance metadata. Migration `000005` adds Channel
 directory/lifecycle metadata plus Direct Message identity and immutable
 participant rows. Migration `000006` adds the application-level Channel
 Membership lifecycle. Migration `000007` adds immutable, versioned Resource ACL
-snapshots and an atomic current head for Space and Channel resources. It does
-not define Message, Session, Device, key,
-recovery, or Outbox tables.
+snapshots and an atomic current head for Space and Channel resources. Migration
+`000008` adds the Transactional Outbox persistence foundation. This directory
+does not yet define Message, Session, Device, key, or recovery tables.
 
 ## Migration rules
 
@@ -386,6 +386,47 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
 The command function remains unexported and is not registered as a production
 RPC. A future task must add visible Approval and durable Audit enforcement
 before exporting or otherwise making this high-impact mutation reachable.
+
+## Transactional Outbox persistence
+
+Migration `000008` adds immutable tenant-scoped Domain Events, permanent
+destination Outbox Entries, and append-only delivery Attempts. Core can insert
+one Event and its registry-owned `domain-events` Entry atomically inside a
+caller-owned PostgreSQL `read committed` transaction. The wrapper neither
+begins nor commits that transaction, and it remains private until a later task
+registers an exact Event-Type descriptor. An exact retry observes immutable
+Event facts and the singleton destination; conflicting facts fail closed.
+
+The schema stores only 32-byte claim-token digests and never raw tokens. The
+ordinary generated Core query surface cannot select those digests or mutate
+Event facts, destinations, policy snapshots, Attempts, claims, or terminal
+evidence. Worker claim, renew, failure, ACK, replay, and purge operations remain
+later work.
+
+Run the static migration checks without a database:
+
+```text
+make -C db migration-static
+```
+
+Run the complete synthetic constraint and `up -> down -> up` matrix against
+PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db transactional-outbox-test
+```
+
+Run the caller-owned transaction integration test with an operator-supplied
+maintenance DSN:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db transactional-outbox-go-test
+```
+
+All fixtures are synthetic and contain no production identifiers, credentials,
+raw claim tokens, message plaintext, keys, prompts, or user data.
 
 ## Query generation
 

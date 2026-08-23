@@ -17,6 +17,10 @@ CHANNEL_MEMBERSHIP_UP="$DB_DIR/migrations/000006_channel_membership.up.sql"
 CHANNEL_MEMBERSHIP_DOWN="$DB_DIR/migrations/000006_channel_membership.down.sql"
 RESOURCE_ACL_UP="$DB_DIR/migrations/000007_resource_acl.up.sql"
 RESOURCE_ACL_DOWN="$DB_DIR/migrations/000007_resource_acl.down.sql"
+OUTBOX_UP="$DB_DIR/migrations/000008_transactional_outbox.up.sql"
+OUTBOX_DOWN="$DB_DIR/migrations/000008_transactional_outbox.down.sql"
+OUTBOX_CORE_QUERY="$DB_DIR/queries/core/transactional_outbox.sql"
+CORE_DBGEN_DIR="$DB_DIR/../services/core/internal/dbgen"
 
 . "$TESTS_DIR/postgres_harness.sh"
 POSTGRES_TEST_SUITE=migration
@@ -44,6 +48,9 @@ verify_static_contract() {
   test -f "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "missing 000006 down migration"
   test -f "$RESOURCE_ACL_UP" || postgres_test_fail "missing 000007 up migration"
   test -f "$RESOURCE_ACL_DOWN" || postgres_test_fail "missing 000007 down migration"
+  test -f "$OUTBOX_UP" || postgres_test_fail "missing 000008 up migration"
+  test -f "$OUTBOX_DOWN" || postgres_test_fail "missing 000008 down migration"
+  test -f "$OUTBOX_CORE_QUERY" || postgres_test_fail "missing 000008 Core query surface"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -86,6 +93,21 @@ verify_static_contract() {
   grep -Eq '^DROP FUNCTION domain\.enforce_resource_acl_entry_lifecycle\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL entry lifecycle function exactly"
   grep -Eq '^DROP FUNCTION domain\.require_resource_acl_snapshot_sealed\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL sealing function exactly"
   grep -Eq '^DROP FUNCTION domain\.enforce_resource_acl_snapshot_lifecycle\(\);$' "$RESOURCE_ACL_DOWN" || postgres_test_fail "000007 down must drop ACL snapshot lifecycle function exactly"
+  grep -Eq '^CREATE TABLE domain\.domain_events \($' "$OUTBOX_UP" || postgres_test_fail "000008 up must create domain.domain_events"
+  grep -Eq '^CREATE TABLE domain\.transactional_outbox \($' "$OUTBOX_UP" || postgres_test_fail "000008 up must create domain.transactional_outbox"
+  grep -Eq '^CREATE TABLE domain\.outbox_delivery_attempts \($' "$OUTBOX_UP" || postgres_test_fail "000008 up must create domain.outbox_delivery_attempts"
+  grep -Eq '^CREATE TRIGGER domain_events_immutable_guard$' "$OUTBOX_UP" || postgres_test_fail "000008 up must guard immutable Domain Events"
+  grep -Eq '^CREATE TRIGGER transactional_outbox_lifecycle_guard$' "$OUTBOX_UP" || postgres_test_fail "000008 up must guard Outbox identity and policy facts"
+  grep -Eq '^CREATE TRIGGER outbox_delivery_attempts_lifecycle_guard$' "$OUTBOX_UP" || postgres_test_fail "000008 up must guard Attempt identity and terminal evidence"
+  grep -Eq '^DROP TABLE domain\.outbox_delivery_attempts;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop attempts exactly"
+  grep -Eq '^DROP TABLE domain\.transactional_outbox;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop entries exactly"
+  grep -Eq '^DROP TABLE domain\.domain_events;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop events exactly"
+  if grep -Eiq 'claim_token_digest|UPDATE[[:space:]]+domain\.(domain_events|transactional_outbox|outbox_delivery_attempts)|DELETE[[:space:]]+FROM[[:space:]]+domain\.(domain_events|transactional_outbox|outbox_delivery_attempts)' "$OUTBOX_CORE_QUERY"; then
+    postgres_test_fail "000008 Core query surface exposes claim digests or generic mutation"
+  fi
+  if grep -REiq 'claim_token_digest|ClaimTokenDigest' "$CORE_DBGEN_DIR"; then
+    postgres_test_fail "generated Core surface exposes claim-token digest storage"
+  fi
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -110,9 +132,11 @@ apply_up_migrations() {
   psql_test --file="$CHANNEL_DM_UP"
   psql_test --file="$CHANNEL_MEMBERSHIP_UP"
   psql_test --file="$RESOURCE_ACL_UP"
+  psql_test --file="$OUTBOX_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$OUTBOX_DOWN"
   psql_test --file="$RESOURCE_ACL_DOWN"
   psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
   psql_test --file="$CHANNEL_DM_DOWN"
@@ -132,6 +156,14 @@ psql_test --command="
   INSERT INTO domain.organizations (tenant_id, display_name, state, policy_version)
   VALUES ('tenant-acl-roundtrip-synthetic', 'ACL Roundtrip Synthetic', 1, 'policy-acl-roundtrip-v1')
 "
+psql_test --file="$OUTBOX_DOWN"
+roundtrip_tenant_count=$(
+  psql_test --tuples-only --no-align \
+    --command="SELECT count(*) FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
+)
+test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000008 down changed data owned by a prior migration"
+psql_test --file="$OUTBOX_UP"
+psql_test --file="$OUTBOX_DOWN"
 psql_test --file="$RESOURCE_ACL_DOWN"
 roundtrip_tenant_count=$(
   psql_test --tuples-only --no-align \
@@ -139,6 +171,7 @@ roundtrip_tenant_count=$(
 )
 test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000007 down changed data owned by a prior migration"
 psql_test --file="$RESOURCE_ACL_UP"
+psql_test --file="$OUTBOX_UP"
 psql_test --command="DELETE FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
 
 apply_down_migrations
@@ -149,6 +182,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$OUTBOX_DOWN"
 psql_test --file="$RESOURCE_ACL_DOWN"
 psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
 psql_test --file="$CHANNEL_DM_DOWN"
