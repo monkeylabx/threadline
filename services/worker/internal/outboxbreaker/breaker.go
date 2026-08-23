@@ -183,6 +183,13 @@ func New(mapping outboxpublish.Mapping, clock Clock) (*Breaker, error) {
 	}, nil
 }
 
+// Valid reports whether Breaker was constructed with its immutable trusted
+// mapping and clock dependencies. Startup readiness is intentionally not part
+// of structural validity.
+func (breaker *Breaker) Valid() bool {
+	return breaker != nil && breaker.mapping.Valid() && !nilLike(breaker.clock)
+}
+
 // Ready records the one startup readiness success for this breaker instance.
 // It cannot be reused as a reload-time state reset.
 func (breaker *Breaker) Ready() error {

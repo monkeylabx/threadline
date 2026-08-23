@@ -49,6 +49,23 @@ func TestBreakerStartsOpenAndReadinessIsOneShot(t *testing.T) {
 	assertAcquireDecision(t, breaker, DecisionDenied)
 }
 
+func TestBreakerValidDistinguishesConstructedAndZeroValues(t *testing.T) {
+	t.Parallel()
+
+	var nilBreaker *Breaker
+	if nilBreaker.Valid() || (&Breaker{}).Valid() {
+		t.Fatal("nil or zero-value Breaker reported structurally valid")
+	}
+	breaker, _ := newFunctionalBreaker(t, true)
+	if !breaker.Valid() {
+		t.Fatal("constructed Breaker reported invalid")
+	}
+	tripBreaker(t, breaker)
+	if !breaker.Valid() {
+		t.Fatal("open Breaker reported structurally invalid")
+	}
+}
+
 func TestBreakerCountsOnlyConsecutiveInfrastructureOutcomes(t *testing.T) {
 	breaker, _ := newFunctionalBreaker(t, true)
 
