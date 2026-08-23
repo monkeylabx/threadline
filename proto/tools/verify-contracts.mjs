@@ -263,9 +263,9 @@ assert(statSync(t019GeneratedCompatTestPath).isFile(), "T019 scoped generated co
 assert(statSync(t019GeneratedCompatManifestPath).isFile(), "T019 scoped generated compatibility manifest must exist");
 assert(statSync(t019GeneratedCompatManifestModulePath).isFile(), "T019 scoped manifest validator must exist");
 const { manifest: t019GeneratedCompatManifest } = loadScopedGeneratedCompatManifest("test/fixtures/proto/crypto/generated-compat-manifest.json");
-const t019VerificationCommand = "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=509e4331b9366a671893912b5bade7790d9fb752 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift";
+const t019VerificationCommand = "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=19e64a8d727a496c3526057ea690f3495012ad90 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift";
 assert(t019GeneratedCompatManifest.baselineCommit === "b997fd70f1b4a115c9046df4db15fea4849df487", "T019 scoped compatibility baseline must remain pinned to T015 main");
-assert(t019GeneratedCompatManifest.targetSchemaCommit === "509e4331b9366a671893912b5bade7790d9fb752", "T019 scoped compatibility target must remain pinned to the reviewed parent schema commit");
+assert(t019GeneratedCompatManifest.targetSchemaCommit === "19e64a8d727a496c3526057ea690f3495012ad90", "T019 scoped compatibility target must remain pinned to the reviewed parent schema commit");
 assert(t019GeneratedCompatManifest.verificationCommand === t019VerificationCommand, "T019 scoped compatibility command must document every pinned input");
 assert(t019GeneratedCompatManifest.failClosedEvidence.verifier === "proto/tools/verify-crypto-contracts.mjs", "T019 scoped fail-closed evidence must use the canonical crypto verifier");
 for (const scenarioId of t019GeneratedCompatManifest.failClosedEvidence.scenarioIds) {

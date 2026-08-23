@@ -3,8 +3,8 @@
   "classification": "synthetic-protocol-compatibility-no-secrets",
   "owner": "contracts/T019-A",
   "baselineCommit": "b997fd70f1b4a115c9046df4db15fea4849df487",
-  "targetSchemaCommit": "509e4331b9366a671893912b5bade7790d9fb752",
-  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=509e4331b9366a671893912b5bade7790d9fb752 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
+  "targetSchemaCommit": "19e64a8d727a496c3526057ea690f3495012ad90",
+  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=19e64a8d727a496c3526057ea690f3495012ad90 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
   "targetSchema": {
     "file": "proto/threadline/crypto/v1/recovery.proto",
     "sha256": "3a8569906290e24e6157abcad81b754aabbf4a1146a78e372f2e92133089e0de"
