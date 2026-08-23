@@ -36,6 +36,34 @@ _Avoid_: Channel membership, blanket permission
 An identified Human, Agent, or Service that can participate in Threadline under explicit membership, responsibility, and audit rules. Actor identity alone does not confer cryptographic access.
 _Avoid_: User, process
 
+**Authenticated Principal**:
+The Tenant, Actor, Device, and Session identity produced by a trusted authentication boundary for one request. Request fields cannot construct or replace it, and it never contains the bearer credential.
+_Avoid_: Caller identity, request user
+
+**Member**:
+The current participation fact for one Actor in one Organization, including lifecycle state and Organization Role. An Actor is not automatically a Member of every Organization.
+_Avoid_: Actor, user account
+
+**Organization Role**:
+The Tenant-level RBAC ceiling attached to a Member. It cannot create Channel Membership or content access by itself.
+_Avoid_: Channel Role, global content access
+
+**Channel Role**:
+The permission ceiling attached to one current Channel Membership interval. Leaving ends that interval; rejoining creates a new interval without restoring historical access.
+_Avoid_: Organization Role, permanent membership
+
+**Authorization Action**:
+A stable, auditable operation evaluated against one resource. It is not an RPC procedure name, Capability, or blanket permission.
+_Avoid_: Endpoint name, Capability Grant
+
+**Resource ACL**:
+A versioned set of Actor-specific allow or deny constraints for one resource. It can only narrow permission already allowed by current Membership and Roles; matching deny takes precedence.
+_Avoid_: Channel Membership, effective permission cache
+
+**Authorization Decision**:
+A one-time allow or deny result for the current Authenticated Principal, Authorization Action, resource, and versioned facts. It is re-evaluated for each protected action and is never persisted as effective permission.
+_Avoid_: Session claim, cached permission
+
 **Channel Membership**:
 The application-level right of an Actor to participate in a Channel. For a Human, content access is exercised through authorized Devices; Agent and Service membership does not create MLS membership.
 _Avoid_: E2EE Group membership, Capability Grant
