@@ -332,6 +332,158 @@ func TestInvalidReplacementFactsFailBeforePersistence(t *testing.T) {
 	}
 }
 
+func TestLoadCurrentReturnsSnapshotIdentityWithInvalidStoredFacts(t *testing.T) {
+	tests := []struct {
+		name        string
+		prepareDDL  string
+		corruptSQL  string
+		wantActor   authorization.ActorRef
+		wantDefault authorization.ACLEffect
+		wantAction  authorization.Action
+		wantEffect  authorization.ACLEffect
+	}{
+		{
+			name: "default effect",
+			prepareDDL: `
+				ALTER TABLE domain.resource_acl_snapshots
+				  DROP CONSTRAINT resource_acl_snapshots_default_effect_known;
+				ALTER TABLE domain.resource_acl_snapshots
+				  DISABLE TRIGGER resource_acl_snapshots_lifecycle_guard;
+			`,
+			corruptSQL: `
+				UPDATE domain.resource_acl_snapshots SET default_effect = 99
+				WHERE tenant_id = $1 AND acl_version = $2
+			`,
+			wantActor:  authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: "actor-acl-store-synthetic"},
+			wantAction: authorization.ActionSpaceDiscover,
+			wantEffect: authorization.ACLEffectAllow,
+		},
+		{
+			name: "entry action",
+			prepareDDL: `
+				ALTER TABLE domain.resource_acl_entries
+				  DROP CONSTRAINT resource_acl_entries_action_known;
+				ALTER TABLE domain.resource_acl_entries
+				  DISABLE TRIGGER resource_acl_entries_lifecycle_guard;
+			`,
+			corruptSQL: `
+				UPDATE domain.resource_acl_entries SET action = 99
+				WHERE tenant_id = $1 AND acl_version = $2
+			`,
+			wantActor:   authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: "actor-acl-store-synthetic"},
+			wantDefault: authorization.ACLEffectAllow,
+			wantEffect:  authorization.ACLEffectAllow,
+		},
+		{
+			name: "entry effect",
+			prepareDDL: `
+				ALTER TABLE domain.resource_acl_entries
+				  DROP CONSTRAINT resource_acl_entries_effect_known;
+				ALTER TABLE domain.resource_acl_entries
+				  DISABLE TRIGGER resource_acl_entries_lifecycle_guard;
+			`,
+			corruptSQL: `
+				UPDATE domain.resource_acl_entries SET effect = 99
+				WHERE tenant_id = $1 AND acl_version = $2
+			`,
+			wantActor:   authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: "actor-acl-store-synthetic"},
+			wantDefault: authorization.ACLEffectAllow,
+			wantAction:  authorization.ActionSpaceDiscover,
+		},
+		{
+			name: "entry actor ID",
+			prepareDDL: `
+				ALTER TABLE domain.resource_acl_entries
+				  DROP CONSTRAINT resource_acl_entries_actor_id_not_blank;
+				ALTER TABLE domain.resource_acl_entries
+				  DROP CONSTRAINT resource_acl_entries_member_fk;
+				ALTER TABLE domain.resource_acl_entries
+				  DISABLE TRIGGER resource_acl_entries_lifecycle_guard;
+			`,
+			corruptSQL: `
+				UPDATE domain.resource_acl_entries SET actor_id = ' actor-acl-store-synthetic '
+				WHERE tenant_id = $1 AND acl_version = $2
+			`,
+			wantActor:   authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman},
+			wantDefault: authorization.ACLEffectAllow,
+			wantAction:  authorization.ActionSpaceDiscover,
+			wantEffect:  authorization.ACLEffectAllow,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, database := openACLStoreDatabase(t)
+			createACLStoreFixtures(t, ctx, database)
+			resource := authorization.ResourceRef{
+				TenantID: "tenant-acl-store-synthetic", Kind: authorization.ResourceKindSpace, ID: "space-acl-store-synthetic",
+			}
+			actor := authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: "actor-acl-store-synthetic"}
+			created := replaceAndCommit(t, ctx, database, aclstore.Replacement{
+				Resource: resource, DefaultEffect: authorization.ACLEffectAllow,
+				Entries: []authorization.ACLEntry{{
+					Actor: actor, Action: authorization.ActionSpaceDiscover, Effect: authorization.ACLEffectAllow,
+				}},
+			})
+			version, err := strconv.ParseInt(created.Version, 10, 64)
+			if err != nil {
+				t.Fatal("parse generated ACL version fixture failed")
+			}
+			if _, err := database.Exec(ctx, test.prepareDDL); err != nil {
+				t.Fatal("prepare invalid stored ACL fixture failed")
+			}
+			if _, err := database.Exec(ctx, test.corruptSQL, resource.TenantID, version); err != nil {
+				t.Fatal("corrupt stored ACL fixture failed")
+			}
+
+			tx, err := database.Begin(ctx)
+			if err != nil {
+				t.Fatal("begin invalid stored ACL load transaction failed")
+			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			facts, err := aclstore.LoadCurrent(ctx, tx, resource)
+			if !hasStoreErrorCode(err, aclstore.ErrorInvalidStoredFacts) {
+				t.Fatalf("LoadCurrent() error = %v, want invalid-stored-facts", err)
+			}
+			if facts.Resource != resource || facts.Version != created.Version || len(facts.Entries) != 1 {
+				t.Fatalf("LoadCurrent() facts = %#v, want actual resource/version and one entry", facts)
+			}
+			if facts.DefaultEffect != test.wantDefault ||
+				facts.Entries[0].Actor != test.wantActor ||
+				facts.Entries[0].Action != test.wantAction ||
+				facts.Entries[0].Effect != test.wantEffect {
+				t.Fatalf("LoadCurrent() invalid facts = %#v, want partial typed facts", facts)
+			}
+		})
+	}
+}
+
+func TestLoadCurrentKeepsUnknownSQLFailureClassifiedAsPersistence(t *testing.T) {
+	ctx, database := openACLStoreDatabase(t)
+	createACLStoreFixtures(t, ctx, database)
+	resource := authorization.ResourceRef{
+		TenantID: "tenant-acl-store-synthetic", Kind: authorization.ResourceKindSpace, ID: "space-acl-store-synthetic",
+	}
+	replaceAndCommit(t, ctx, database, aclstore.Replacement{
+		Resource: resource, DefaultEffect: authorization.ACLEffectAllow,
+	})
+	if _, err := database.Exec(ctx, "DROP TABLE domain.resource_acl_entries CASCADE"); err != nil {
+		t.Fatal("remove disposable ACL entry table fixture failed")
+	}
+	tx, err := database.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin ACL persistence failure transaction failed")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	facts, err := aclstore.LoadCurrent(ctx, tx, resource)
+	if !hasStoreErrorCode(err, aclstore.ErrorPersistence) {
+		t.Fatalf("LoadCurrent() error = %v, want persistence-failure", err)
+	}
+	if !reflect.DeepEqual(facts, authorization.ResourceACLFacts{}) {
+		t.Fatalf("LoadCurrent() facts = %#v, want zero facts for unknown SQL failure", facts)
+	}
+}
+
 func replaceAndCommit(
 	t *testing.T,
 	ctx context.Context,

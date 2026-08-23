@@ -329,6 +329,41 @@ authorization vocabulary. They contain no request Principal, Authorization
 Decision, message or file content, Prompt, credential, token, Device, E2EE
 Group key, history authority, or production data.
 
+## Current authorization fact locks
+
+`db/queries/core/authorization_facts.sql` exposes only focused row-mapping
+queries for the trusted current-fact resolver. The caller-owned transaction
+must use PostgreSQL `read committed` and acquire locks in this deterministic
+order: exact Organization `FOR SHARE`, authenticated Member `FOR SHARE`, exact
+Space or Channel parent `FOR UPDATE`, then an existing active Channel
+Membership `FOR SHARE`, followed by the exact current Resource ACL head `FOR
+SHARE`. The Resource parent lock conflicts with ACL replacement and protects
+the absence of a current Channel Membership or current ACL head from a
+concurrent first insertion. The explicit ACL-head lock keeps an existing
+version stable through the subsequent complete ACL load. A missing active
+Membership query never reads a departed interval.
+
+The resolver retains these locks until its caller commits or rolls back after
+the protected mutation. Exact Tenant and resource predicates keep unrelated
+keys independent; the queries return database rows only and never persist or
+synthesize an Authorization Decision.
+
+Run the PostgreSQL 16.4 exact-row, departed-history exclusion, writer-blocking,
+and unrelated-key concurrency checks:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db authorization-current-test
+```
+
+Run the trusted resolver's caller-owned transaction integration tests with an
+operator-supplied maintenance DSN:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db authorization-current-go-test
+```
+
 ## Query generation
 
 The reviewed generator is sqlc 1.31.1 from `toolchains.json`. Generated Go uses

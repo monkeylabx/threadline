@@ -3,7 +3,7 @@ GO ?= go
 SQLC_VERSION := 1.31.1
 GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
 
-.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test
+.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test
 
 check-sqlc:
 	@actual="$$($(SQLC) version)"; test "$$actual" = "v$(SQLC_VERSION)" || { echo "sqlc v$(SQLC_VERSION) required; found $$actual" >&2; exit 1; }
@@ -61,6 +61,14 @@ resource-acl-go-test:
 	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
 	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly \
 		./core/internal/authorization/aclstore -count=1
+
+authorization-current-test:
+	@sh "$(CURDIR)/tests/authorization_current.sh"
+
+authorization-current-go-test:
+	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
+	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly \
+		./core/internal/authorization/current -count=1
 
 generate: check-sqlc migration-static
 	@cd "$(CURDIR)" && "$(SQLC)" generate
