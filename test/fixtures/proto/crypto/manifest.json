@@ -21,7 +21,7 @@
   "cleanup": "Versioned repository fixture; replace only through Contracts and Security review with a source digest update.",
   "source": {
     "file": "scenarios.json",
-    "sha256": "f243168edca90826be8757c6c0f1f046e47e6e670131d87c15e47416d9894a0f"
+    "sha256": "a43f1b7e8a920721c1ce2058a5b470dec9c5af53de0305ce0d6b610fc487c91f"
   },
   "transcripts": {
     "file": "transcripts.json",
@@ -286,6 +286,12 @@
     "recovery-execution-conflict",
     "legacy-recovery-current-execute-unavailable",
     "legacy-recovery-create-targetless-audit-only",
+    "crypto-compatibility-capability-valid",
+    "crypto-compatibility-capability-unimplemented",
+    "crypto-compatibility-capability-missing-surface",
+    "crypto-compatibility-capability-duplicate-surface",
+    "crypto-compatibility-capability-unknown-surface",
+    "crypto-compatibility-capability-cross-surface-floor-not-reused",
     "current-to-n-minus-one-device-credential-blocked",
     "current-to-n-minus-one-group-baseline-read-only",
     "current-to-n-minus-one-group-successor-blocked",

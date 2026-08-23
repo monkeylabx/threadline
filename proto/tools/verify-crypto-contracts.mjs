@@ -1072,12 +1072,48 @@ const currentToNMinusOneErrors = {
   "history-grant": "ERROR_CODE_HISTORY_SHARING_DENIED",
 };
 
+const cryptoContractSurfaces = [
+  "CRYPTO_CONTRACT_SURFACE_DEVICE_CREDENTIAL",
+  "CRYPTO_CONTRACT_SURFACE_E2EE_GROUP",
+  "CRYPTO_CONTRACT_SURFACE_MEMBERSHIP_AUTHORIZATION",
+  "CRYPTO_CONTRACT_SURFACE_MLS_WIRE",
+  "CRYPTO_CONTRACT_SURFACE_HISTORY_GRANT",
+];
+
+const currentToNMinusOneSurfaceEnum = {
+  "device-credential": cryptoContractSurfaces[0],
+  "e2ee-group": cryptoContractSurfaces[1],
+  "membership-authorization": cryptoContractSurfaces[2],
+  "mls-wire": cryptoContractSurfaces[3],
+  "history-grant": cryptoContractSurfaces[4],
+};
+
+function evaluateCryptoCompatibilityCapability(testCase) {
+  const capability = testCase.cryptoCompatibilityCapability;
+  const floors = capability?.surfaceFloors;
+  const surfaces = Array.isArray(floors) ? floors.map((floor) => floor.surface) : [];
+  const exactSurfaceSet = surfaces.length === cryptoContractSurfaces.length
+    && new Set(surfaces).size === cryptoContractSurfaces.length
+    && cryptoContractSurfaces.every((surface) => surfaces.includes(surface));
+  const valid = capability?.rpcStatus === "OK"
+    && capability.contractVersion === 1
+    && exactSurfaceSet
+    && floors.every((floor) => floor.minimumActiveClientContractVersion === 1
+      && floor.legacyMutationDisabled === true);
+  return valid
+    ? { status: "accepted", contractVersion: 1, surfaces: cryptoContractSurfaces }
+    : reject("ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED", { readOnly: true });
+}
+
 function evaluateCurrentToNMinusOne(testCase) {
   const downgrade = testCase.currentToNMinusOne;
   const errorCode = currentToNMinusOneErrors[downgrade.surface];
   assert(errorCode, `${testCase.id}: unknown current-to-N-1 surface ${downgrade.surface}`);
-  const floor = downgrade.protocolFloor;
-  const floorRecorded = downgrade.contractVersion === 1
+  const capability = evaluateCryptoCompatibilityCapability(testCase);
+  const expectedSurface = currentToNMinusOneSurfaceEnum[downgrade.surface];
+  const floor = testCase.cryptoCompatibilityCapability?.surfaceFloors
+    ?.find((candidate) => candidate.surface === expectedSurface);
+  const floorRecorded = capability.status === "accepted"
     && floor?.minimumActiveClientContractVersion === 1
     && floor.legacyMutationDisabled === true;
   const gateActive = floorRecorded
@@ -1171,6 +1207,7 @@ function evaluate(testCase) {
   if (testCase.kind === "legacy-recovery-targets") return evaluateLegacyRecoveryTargets(testCase);
   if (testCase.kind === "n-minus-one-recovery") return evaluateNMinusOneRecovery(testCase);
   if (testCase.kind === "n-minus-one-matrix") return evaluateNMinusOneMatrix(testCase);
+  if (testCase.kind === "crypto-compatibility-capability") return evaluateCryptoCompatibilityCapability(testCase);
   if (testCase.kind === "current-to-n-minus-one") return evaluateCurrentToNMinusOne(testCase);
   if (testCase.kind === "membership-canonical-order") {
     const values = testCase.membershipCanonicalOrder.values;
