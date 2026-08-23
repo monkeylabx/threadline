@@ -183,14 +183,26 @@ function publicationTranscript(keyPackage) {
   };
 }
 
+function compareUtf8(left, right) {
+  return Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
+}
+
+function sortedUtf8(values) {
+  return [...values].sort(compareUtf8);
+}
+
+function hasDuplicates(values) {
+  return new Set(values).size !== values.length;
+}
+
 function membershipTranscript(source, kind) {
   return {
     authorizationId: source.authorizationId,
     tenantId: source.tenantId,
     groupId: source.groupId,
     kind: String(membershipKindWireNumber[kind] ?? 0),
-    addKeyPackageIds: [...source.addKeyPackageIds].sort(),
-    removeDeviceIds: [...source.removeDeviceIds].sort(),
+    addKeyPackageIds: sortedUtf8(source.addKeyPackageIds),
+    removeDeviceIds: sortedUtf8(source.removeDeviceIds),
     expectedEpoch: uint64(source.expectedEpoch),
     changeSeq: uint64(source.changeSeq),
     committerDeviceId: source.committerDeviceId,
@@ -201,7 +213,7 @@ function membershipTranscript(source, kind) {
     successorProfile: source.successorProfile && typeof source.successorProfile === "object"
       ? canonicalProfile(source.successorProfile)
       : null,
-    updateDeviceIds: [...source.updateDeviceIds].sort(),
+    updateDeviceIds: sortedUtf8(source.updateDeviceIds),
     successorRecoveryKeyVersion: source.successorRecoveryKeyVersion,
     successorE2eeGroupId: source.successorE2eeGroupId,
   };
@@ -505,12 +517,12 @@ function evaluateKeyPackage(testCase) {
   }
   const publicationProjection = publicationTranscript(keyPackage);
   const expectedPublicationBinding = transcriptHash("publication", publicationProjection);
-  const expectedPublicationSignature = transcriptHash("publication", {
-    deviceId: keyPackage.deviceId,
-    publicationBindingHashHex: expectedPublicationBinding,
-  });
   if (keyPackage.publicationBindingHash !== expectedPublicationBinding
-    || keyPackage.publicationSignature !== expectedPublicationSignature) return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
+    || !keyPackage.publicationSignature
+    || !keyPackage.publicationSignatureValid
+    || keyPackage.publicationSignatureInputHash !== expectedPublicationBinding) {
+    return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
+  }
   if (keyPackage.tenantId !== claim.tenantId) return reject("ERROR_CODE_TENANT_MISMATCH");
   if (keyPackage.deviceId !== claim.deviceId) return reject("ERROR_CODE_DEVICE_NOT_ENROLLED");
   if (keyPackage.credentialVersion !== claim.credentialVersion) return reject("ERROR_CODE_DEVICE_REVOKED");
@@ -568,6 +580,8 @@ function evaluateMembership(testCase) {
   if (membership.callerDeviceId !== membership.committerDeviceId) return reject("ERROR_CODE_PERMISSION_DENIED");
   if (now > membership.expiresAt) return reject("ERROR_CODE_GRANT_EXPIRED");
   if (!membership.bindingHashValid) return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
+  if ([membership.addKeyPackageIds, membership.removeDeviceIds, membership.updateDeviceIds]
+    .some(hasDuplicates)) return reject("ERROR_CODE_PERMISSION_DENIED");
   const actualBindingHash = transcriptHash("membership", membershipTranscript(membership, changeKind));
   const boundBindingHash = transcriptHash("membership", membershipTranscript(
     membership.authorizationBinding,
@@ -702,7 +716,9 @@ function evaluateRecovery(testCase) {
   const { recovery, now } = testCase;
   const expectedReasonBindingHash = transcriptHash("recovery-reason", encryptedFieldTranscript(recovery.reason));
   if (recovery.reasonBindingHash !== expectedReasonBindingHash) return reject("ERROR_CODE_CIPHERTEXT_CORRUPT");
-  if (!recovery.explicitTargetCapabilityObserved) return reject("ERROR_CODE_RECOVERY_UNAVAILABLE");
+  if (!targetedRecoveryCapabilityActive(recovery.targetCapabilityObserved)) {
+    return reject("ERROR_CODE_RECOVERY_UNAVAILABLE");
+  }
   if (!recovery.executionId) return reject("ERROR_CODE_INVALID_STATE_TRANSITION");
   if (!recovery.requestId) return reject("ERROR_CODE_RECOVERY_APPROVAL_INSUFFICIENT");
   const exactExecutionRetry = recovery.state === "RECOVERY_CASE_STATE_EXECUTED"
@@ -946,11 +962,17 @@ function evaluateLegacyRecoveryCreate(testCase) {
   });
 }
 
+function targetedRecoveryCapabilityActive(capability) {
+  return capability?.rpcStatus === "OK"
+    && capability.explicitProtectedTargets === true
+    && capability.contractVersion === 1
+    && capability.protocolFloor?.minimumTargetedContractVersion === 1
+    && capability.protocolFloor.legacyMutationDisabled === true;
+}
+
 function evaluateRecoveryCapabilities(testCase) {
   const capability = testCase.recoveryCapability;
-  if (capability.rpcStatus === "UNIMPLEMENTED"
-    || !capability.explicitProtectedTargets
-    || capability.contractVersion !== 1) {
+  if (!targetedRecoveryCapabilityActive(capability)) {
     return reject("ERROR_CODE_RECOVERY_UNAVAILABLE", { readOnly: true });
   }
   return { status: "accepted", contractVersion: 1, explicitProtectedTargets: true };
@@ -1042,6 +1064,41 @@ function evaluateNMinusOneMatrix(testCase) {
   throw new Error(`${testCase.id}: unknown N-1 surface ${legacy.surface}`);
 }
 
+const currentToNMinusOneErrors = {
+  "device-credential": "ERROR_CODE_DEVICE_NOT_ENROLLED",
+  "e2ee-group": "ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED",
+  "membership-authorization": "ERROR_CODE_PERMISSION_DENIED",
+  "mls-wire": "ERROR_CODE_PERMISSION_DENIED",
+  "history-grant": "ERROR_CODE_HISTORY_SHARING_DENIED",
+};
+
+function evaluateCurrentToNMinusOne(testCase) {
+  const downgrade = testCase.currentToNMinusOne;
+  const errorCode = currentToNMinusOneErrors[downgrade.surface];
+  assert(errorCode, `${testCase.id}: unknown current-to-N-1 surface ${downgrade.surface}`);
+  const floor = downgrade.protocolFloor;
+  const floorRecorded = downgrade.contractVersion === 1
+    && floor?.minimumActiveClientContractVersion === 1
+    && floor.legacyMutationDisabled === true;
+  const gateActive = floorRecorded
+    && downgrade.recipientClientContractVersion >= floor.minimumActiveClientContractVersion;
+  if (downgrade.surface === "e2ee-group"
+    && downgrade.semanticVariant === "baseline-generation-one"
+    && downgrade.generation === 1
+    && !downgrade.predecessorGroupId
+    && !downgrade.successorGroupId) {
+    return { status: "readable", readOnly: true, semanticVariant: "baseline-generation-one" };
+  }
+  return reject(errorCode, {
+    direction: "current-to-n-minus-one",
+    floorRecorded,
+    rolloutGateSatisfied: gateActive,
+    deliveryBlocked: true,
+    legacyMutationAllowed: false,
+    auditOnly: true,
+  });
+}
+
 function decodeVarint(bytes, start) {
   let value = 0n;
   let shift = 0n;
@@ -1114,6 +1171,13 @@ function evaluate(testCase) {
   if (testCase.kind === "legacy-recovery-targets") return evaluateLegacyRecoveryTargets(testCase);
   if (testCase.kind === "n-minus-one-recovery") return evaluateNMinusOneRecovery(testCase);
   if (testCase.kind === "n-minus-one-matrix") return evaluateNMinusOneMatrix(testCase);
+  if (testCase.kind === "current-to-n-minus-one") return evaluateCurrentToNMinusOne(testCase);
+  if (testCase.kind === "membership-canonical-order") {
+    const values = testCase.membershipCanonicalOrder.values;
+    return hasDuplicates(values)
+      ? reject("ERROR_CODE_PERMISSION_DENIED")
+      : { status: "accepted", sortedValues: sortedUtf8(values) };
+  }
   if (testCase.kind === "compatibility") return evaluateCompatibility(testCase);
   throw new Error(`${testCase.id}: unknown case kind ${testCase.kind}`);
 }
@@ -1262,6 +1326,7 @@ for (const assertion of [
   [crypto, /google\.protobuf\.Timestamp\s+issued_at\s*=\s*14;/u, "KeyPackage issuance time"],
   [crypto, /bytes\s+publication_binding_hash\s*=\s*15;/u, "KeyPackage immutable publication binding"],
   [crypto, /bytes\s+publication_signature\s*=\s*16;/u, "KeyPackage Device publication signature"],
+  [crypto, /Device Identity signature over `publication_binding_hash`/u, "raw KeyPackage publication-signature input"],
   [crypto, /fields 1-6, 8-10 and 14[\s\S]*fields 7 and 11-13 are intentionally excluded/u, "KeyPackage publication signed projection"],
   [crypto, /KeyPackageState\s+state\s*=\s*11;/u, "KeyPackage terminal state"],
   [crypto, /uint64\s+generation\s*=\s*10;/u, "Group generation"],
@@ -1298,14 +1363,18 @@ for (const assertion of [
   [recovery, /fields 1-16[\s\S]*and 18[\s\S]*Field 17 is the digest itself and is excluded/u, "complete RecoveryEnvelope delivery projection"],
   [services, /MessageService\.SendEvent/u, "single durable MLS sequencing path"],
   [services, /string\s+claim_id\s*=\s*4;/u, "atomic claim replay identity"],
+  [services, /enum\s+CryptoContractSurface\s*\{[\s\S]*DEVICE_CREDENTIAL\s*=\s*1;[\s\S]*E2EE_GROUP\s*=\s*2;[\s\S]*MEMBERSHIP_AUTHORIZATION\s*=\s*3;[\s\S]*MLS_WIRE\s*=\s*4;[\s\S]*HISTORY_GRANT\s*=\s*5;/u, "five-surface compatibility vocabulary"],
+  [services, /service\s+CryptoCompatibilityService\s*\{[\s\S]*GetCryptoCompatibilityCapabilities[\s\S]*minimum_active_client_contract_version\s*=\s*2;[\s\S]*legacy_mutation_disabled\s*=\s*3;/u, "server-enforced current-to-N-1 rollout floor"],
+  [services, /current writer\/server must not publish, mutate or deliver[\s\S]*Missing, duplicate, zero, unknown or rollback-lowered entries fail closed[\s\S]*Core enforces the floor before/u, "current-to-N-1 enforcement boundary"],
   [services, /message\s+DecideTargetedRecoveryCaseRequest\s*\{[\s\S]*bytes\s+case_binding_hash\s*=\s*5;[\s\S]*bytes\s+decision_signature\s*=\s*6;[\s\S]*string\s+approver_device_id\s*=\s*7;/u, "approver-submitted targeted Recovery Case binding and Device signature"],
   [services, /message\s+ExecuteTargetedRecoveryCaseRequest\s*\{[\s\S]*Required idempotency key[\s\S]*string\s+execution_id\s*=\s*2;/u, "non-empty targeted Recovery execution idempotency key"],
   [services, /rpc\s+GetTargetedRecoveryCapabilities[\s\S]*explicit_protected_targets\s*=\s*1;[\s\S]*contract_version\s*=\s*2;[\s\S]*RecoveryProtocolFloor\s+protocol_floor\s*=\s*3;/u, "server-first targeted Recovery capability and protocol floor"],
+  [services, /RecoveryProtocolFloor\s*\{[\s\S]*minimum_targeted_contract_version\s*=\s*1;[\s\S]*legacy_mutation_disabled\s*=\s*2;/u, "targeted Recovery rollback floor"],
   [services, /service\s+RecoveryEvidenceService\s*\{[\s\S]*GetRecoveryEvidence[\s\S]*RecoveryEvidenceGrant\s+grant\s*=\s*1;[\s\S]*repeated\s+RecoveryEvidenceItem\s+items\s*=\s*1;[\s\S]*RecoveryEnvelope\s+envelope\s*=\s*1;[\s\S]*RecoveryScopeCommitAttestation\s+attestation\s*=\s*2;/u, "Core Recovery evidence fetch seam"],
   [services, /TargetedRecoveryService is a separate additive protocol boundary[\s\S]*never reuses or reinterprets RecoveryService[\s\S]*older server therefore returns UNIMPLEMENTED/u, "additive targeted Recovery downgrade boundary"],
   [services, /message\s+ExecuteTargetedRecoveryCaseResponse\s*\{[\s\S]*repeated\s+RecoveryEnvelope\s+delivered_envelopes\s*=\s*2;/u, "targeted recovery delivery surface"],
   [crypto, /Required and non-empty for WELCOME[\s\S]*only for non-WELCOME message types/u, "WELCOME target requirement"],
-  [services, /HistoryService and the internal[\s\S]*RecoveryEvidenceService are served by[\s\S]*threadline-core[\s\S]*RecoveryService and the additive TargetedRecoveryService are served only by[\s\S]*threadline-recovery-control/u, "History and Recovery service ownership boundary"],
+  [services, /CryptoCompatibilityService, KeyDirectoryService, MembershipService,[\s\S]*HistoryService and the internal RecoveryEvidenceService are served by[\s\S]*threadline-core[\s\S]*RecoveryService and the additive TargetedRecoveryService are served only by[\s\S]*threadline-recovery-control/u, "History and Recovery service ownership boundary"],
 ]) assert(assertion[1].test(assertion[0]), `contract is missing ${assertion[2]}`);
 assert(!/message\s+ExecuteTargetedRecoveryCaseRequest\s*\{[^}]*scope_commit_attestations/u.test(services), "targeted Execute caller must not submit Recovery attestations");
 assert(!/message\s+RecoveryDeliveryEnvelope\s*\{/u.test(recovery), "T019 must not add a second recovery delivery message");

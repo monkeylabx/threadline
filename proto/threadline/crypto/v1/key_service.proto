@@ -3,9 +3,10 @@ syntax = "proto3";
 // Key directory, membership change, History Sharing and enterprise recovery
 // services.
 //
-// KeyDirectoryService, MembershipService, HistoryService and the internal
-// RecoveryEvidenceService are served by threadline-core. Core only policy-checks
-// and routes opaque History grants; it cannot unwrap or derive History Keys.
+// CryptoCompatibilityService, KeyDirectoryService, MembershipService,
+// HistoryService and the internal RecoveryEvidenceService are served by
+// threadline-core. Core only policy-checks and routes opaque History grants; it
+// cannot unwrap or derive History Keys.
 // RecoveryService and the additive TargetedRecoveryService are served only by
 // threadline-recovery-control, which runs in a
 // separate namespace with its own identity, network policy, database role and
@@ -16,6 +17,43 @@ package threadline.crypto.v1;
 import "threadline/crypto/v1/crypto.proto";
 import "threadline/crypto/v1/recovery.proto";
 import "threadline/type/v1/common.proto";
+
+// CryptoContractSurface names each additive surface whose current semantics
+// cannot be safely executed by an N-1 client that ignores unknown fields.
+enum CryptoContractSurface {
+  CRYPTO_CONTRACT_SURFACE_UNSPECIFIED = 0;
+  CRYPTO_CONTRACT_SURFACE_DEVICE_CREDENTIAL = 1;
+  CRYPTO_CONTRACT_SURFACE_E2EE_GROUP = 2;
+  CRYPTO_CONTRACT_SURFACE_MEMBERSHIP_AUTHORIZATION = 3;
+  CRYPTO_CONTRACT_SURFACE_MLS_WIRE = 4;
+  CRYPTO_CONTRACT_SURFACE_HISTORY_GRANT = 5;
+}
+
+// CryptoCompatibilityService exposes the audited, server-enforced rollout
+// floor. A current writer/server must not publish, mutate or deliver a surface
+// using current-only semantics until exactly one entry for that surface reports
+// minimum_active_client_contract_version >= 1 and legacy_mutation_disabled.
+// Missing, duplicate, zero, unknown or rollback-lowered entries fail closed.
+// An N-1 server returns UNIMPLEMENTED; a current client remains read/audit-only.
+// An N-1 client cannot bypass this gate because Core enforces the floor before
+// delivery or mutation, rather than trusting a self-reported client capability.
+service CryptoCompatibilityService {
+  rpc GetCryptoCompatibilityCapabilities(GetCryptoCompatibilityCapabilitiesRequest) returns (GetCryptoCompatibilityCapabilitiesResponse);
+}
+
+message GetCryptoCompatibilityCapabilitiesRequest {}
+
+message GetCryptoCompatibilityCapabilitiesResponse {
+  // Current v1 requires exactly 1. Unknown versions fail closed.
+  uint32 contract_version = 1;
+  repeated CryptoSurfaceProtocolFloor surface_floors = 2;
+}
+
+message CryptoSurfaceProtocolFloor {
+  CryptoContractSurface surface = 1;
+  uint32 minimum_active_client_contract_version = 2;
+  bool legacy_mutation_disabled = 3;
+}
 
 // KeyDirectoryService publishes and consumes public KeyPackages.
 //
@@ -262,7 +300,12 @@ message GetTargetedRecoveryCapabilitiesResponse {
 }
 
 message RecoveryProtocolFloor {
+  // Targeted Recovery activation requires exactly 1. Missing, zero, unknown or
+  // rollback-lowered values fail closed.
   uint32 minimum_targeted_contract_version = 1;
+
+  // Must be true before activation and remain true through rollback. Otherwise
+  // TargetedRecoveryService stays read/audit-only even when its RPC exists.
   bool legacy_mutation_disabled = 2;
 }
 

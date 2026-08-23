@@ -36,7 +36,7 @@ of any language runtime or cryptographic provider. A transcript is UTF-8 bytes
 of the ASCII domain prefix `threadline.crypto.transcript/v1/<domain>`, one LF,
 then the RFC 8785 JSON Canonicalization Scheme (JCS) encoding of the projection.
 The allowed domains are `credential`, `publication`, `membership`, `history`,
-`recovery-case`, `recovery-decision`, `recovery-protected-scope`,
+`recovery-reason`, `recovery-case`, `recovery-decision`, `recovery-protected-scope`,
 `recovery-scope-binding`, `recovery-envelope`,
 `channel-event-sender-binding`, `recovery-evidence-grant`,
 `recovery-delivery`, and `recovery-commit-attestation`.
@@ -107,28 +107,34 @@ Core verifies `sender_signature` before producing this JCS SHA-256. Neither
 - HistorySharingGrant missing fields 12-15 remains readable for audit only. It
   cannot unwrap or grant History access; the client requests a current grant.
 
-The reverse direction is separate: an N-1 reader may ignore additive fields on
-a current writer's established surface. That does not authorize an N-1 writer
-to omit bindings required by a current executor.
+The reverse direction is explicit and server-enforced. Before using current-only
+semantics, Core requires the exact `CryptoCompatibilityService` v1 surface floor,
+`minimum_active_client_contract_version >= 1`, and
+`legacy_mutation_disabled=true`. Missing, duplicate, unknown, zero, or
+rollback-lowered entries block delivery/mutation; an old server returns
+UNIMPLEMENTED. Per surface:
 
-Explicit protected targets use a server-first rollout gate. A current
-administrative client calls `GetRecoveryCapabilities` and proceeds only after
-observing `explicit_protected_targets=true` with contract version 1. An old
-server returns UNIMPLEMENTED, which leaves recovery decode/audit-only. Rollback
-must preserve that same fail-closed state: N-1 Cases, requests and grants lack
-targets, so current Create, Decide and Execute return
-`ERROR_CODE_RECOVERY_UNAVAILABLE`; shared Group/Epoch/time bounds are never used
-to infer an object or History range. Each current scope has a non-empty,
-unique, canonical target list. Objects match kind and resource ID exactly;
-History envelopes must remain inside an approved range.
+- A current DeviceCredential cannot be validated by an N-1 signature projection,
+  so it is audit/preserve-only and cannot publish or sign.
+- An E2EEGroup with generation 1 and no predecessor/successor has the same legacy
+  read projection and may remain read-only. A reinitialized/successor Group is
+  blocked from N-1 delivery.
+- A current MembershipChangeAuthorization is audit-only for N-1 and can never
+  execute a Commit; legacy membership mutation stays disabled.
+- A current MlsWireMessage is not applied by N-1. It remains audit-only and the
+  server blocks delivery until the client floor is satisfied.
+- A current HistorySharingGrant is audit-only for N-1 and never unwraps History
+  Keys; legacy grant mutation and current grant delivery remain blocked.
 
-The targetful current writer also provides a rollback gate independent of the
-capability RPC: Create requests and persisted Cases deliberately serialize an
-empty/default legacy Group/Epoch/TimeRange projection. A base-`6ee924d` N-1
-binary ignores unknown scopes and targets, then rejects Create, Decide and
-Execute because it sees no Group authority. Reading a persisted current Case
-after binary rollback has the same read/audit-only result. No broad window is
-available for an old binary to execute.
+Explicit protected targets use an independent server-first gate. A current
+administrative client calls `GetTargetedRecoveryCapabilities` and proceeds only
+after observing `explicit_protected_targets=true`, contract version 1, and a
+recorded `RecoveryProtocolFloor` with minimum targeted version 1 and
+`legacy_mutation_disabled=true`. Missing/unknown floors and rollback fail closed.
+The separate additive `TargetedRecoveryService` never serializes a targeted Case
+into legacy Recovery request/Case bytes; an N-1 server therefore returns
+UNIMPLEMENTED without invoking or mutating `RecoveryService`. Legacy Cases remain
+decode/audit-only and cannot infer exact object or History targets.
 
 The final compatibility scenario reuses T014's persisted RecoveryEnvelope
 Golden Frame and confirms only a local static seam: field `50000` exists and the
