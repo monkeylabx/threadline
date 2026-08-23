@@ -8,6 +8,8 @@ ORGANIZATION_UP="$DB_DIR/migrations/000002_organization.up.sql"
 ORGANIZATION_DOWN="$DB_DIR/migrations/000002_organization.down.sql"
 MEMBER_UP="$DB_DIR/migrations/000003_member.up.sql"
 MEMBER_DOWN="$DB_DIR/migrations/000003_member.down.sql"
+SPACE_UP="$DB_DIR/migrations/000004_space.up.sql"
+SPACE_DOWN="$DB_DIR/migrations/000004_space.down.sql"
 
 fail() {
   printf '%s\n' "migration test failed: $1" >&2
@@ -21,12 +23,16 @@ verify_static_contract() {
   test -f "$ORGANIZATION_DOWN" || fail "missing 000002 down migration"
   test -f "$MEMBER_UP" || fail "missing 000003 up migration"
   test -f "$MEMBER_DOWN" || fail "missing 000003 down migration"
+  test -f "$SPACE_UP" || fail "missing 000004 up migration"
+  test -f "$SPACE_DOWN" || fail "missing 000004 down migration"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || fail "000002 up must create domain.organizations"
   grep -Eq '^DROP TABLE domain\.organizations;$' "$ORGANIZATION_DOWN" || fail "000002 down must drop domain.organizations exactly"
   grep -Eq '^CREATE TABLE domain\.members \($' "$MEMBER_UP" || fail "000003 up must create domain.members"
   grep -Eq '^DROP TABLE domain\.members;$' "$MEMBER_DOWN" || fail "000003 down must drop domain.members exactly"
+  grep -Eq '^CREATE TABLE domain\.spaces \($' "$SPACE_UP" || fail "000004 up must create domain.spaces"
+  grep -Eq '^DROP TABLE domain\.spaces;$' "$SPACE_DOWN" || fail "000004 down must drop domain.spaces exactly"
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -102,9 +108,11 @@ apply_up_migrations() {
   psql_test --file="$FOUNDATION_UP"
   psql_test --file="$ORGANIZATION_UP"
   psql_test --file="$MEMBER_UP"
+  psql_test --file="$SPACE_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$SPACE_DOWN"
   psql_test --file="$MEMBER_DOWN"
   psql_test --file="$ORGANIZATION_DOWN"
   psql_test --file="$FOUNDATION_DOWN"
@@ -124,6 +132,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || fail "up migrations produced different schemas"
 
+psql_test --file="$SPACE_DOWN"
 psql_test --file="$MEMBER_DOWN"
 psql_test --file="$ORGANIZATION_DOWN"
 psql_test --command='CREATE TABLE domain.down_guard (marker integer NOT NULL)'

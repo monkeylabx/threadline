@@ -3,8 +3,9 @@
 This directory owns the PostgreSQL migration and sqlc inputs for
 `threadline-core`. Migration `000001` creates the physical schema namespace
 `domain`. Migration `000002` adds the root Organization/Tenant boundary, and
-migration `000003` adds Member directory/RBAC metadata. It does not define
-Space, Channel, Message, Session, Device, key, recovery, or Outbox tables.
+migration `000003` adds Member directory/RBAC metadata. Migration `000004` adds
+Space directory/policy-inheritance metadata. It does not define Channel,
+Message, Session, Device, key, recovery, or Outbox tables.
 
 ## Migration rules
 
@@ -122,6 +123,45 @@ It invokes `CreateMember`, `GetMember`, and `UpdateMemberRoleState` directly and
 verifies complete round-trip, exact-key misses, constraints, optional
 org-unit-path behavior, and immutable identity/join time. Ordinary Go tests
 skip this live test when the environment variable is absent.
+
+## Space persistence
+
+`domain.spaces` stores the normalized fields of `threadline.identity.v1.Space`
+beneath an existing Organization. Its immutable identity is
+`(tenant_id, space_id)`, identifiers must be nonblank and trimmed, and
+`created_at` is server-assigned. Generated updates expose only directory
+`display_name` and `discoverable`, so identity and creation time cannot be
+mutated through the typed query surface.
+
+Stored discoverability is directory metadata, not authorization. It describes
+whether tenant members may find and request to join contained public Channels;
+it does not grant Space or Channel access. P03-05 must still evaluate current
+Membership, Role and resource ACL. Exact Tenant query arguments are likewise
+storage scope rather than caller authority; P03-02 must derive Tenant and Actor
+from the authenticated Session before invoking these queries.
+
+Run the synthetic duplicate, Organization-FK, identifier, exact-key miss,
+tenant-isolation, metadata lifecycle and immutable-field cases against
+PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db space-test
+```
+
+The generated Space API has a separately gated live Go test. It creates and
+drops its own `threadline_space_go_test_*` database and never prints the DSN or
+credentials:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db space-go-test
+```
+
+It invokes `CreateSpace`, `GetSpace`, and `UpdateSpaceDirectoryMetadata`
+directly and verifies complete round-trip, exact-key misses, constraints,
+same-ID cross-Tenant isolation, and immutable identity/creation time. Ordinary
+Go tests skip this live test when the environment variable is absent.
 
 ## Query generation
 

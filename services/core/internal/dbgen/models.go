@@ -26,3 +26,11 @@ type DomainOrganization struct {
 	PolicyVersion string
 	CreatedAt     pgtype.Timestamptz
 }
+
+type DomainSpace struct {
+	TenantID     string
+	SpaceID      string
+	DisplayName  string
+	Discoverable bool
+	CreatedAt    pgtype.Timestamptz
+}

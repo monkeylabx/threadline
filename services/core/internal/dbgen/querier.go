@@ -11,11 +11,14 @@ import (
 type Querier interface {
 	CreateMember(ctx context.Context, arg CreateMemberParams) (DomainMember, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (DomainOrganization, error)
+	CreateSpace(ctx context.Context, arg CreateSpaceParams) (DomainSpace, error)
 	DatabaseReady(ctx context.Context) (int64, error)
 	GetMember(ctx context.Context, arg GetMemberParams) (DomainMember, error)
 	GetOrganization(ctx context.Context, tenantID string) (DomainOrganization, error)
+	GetSpace(ctx context.Context, arg GetSpaceParams) (DomainSpace, error)
 	UpdateMemberRoleState(ctx context.Context, arg UpdateMemberRoleStateParams) (DomainMember, error)
 	UpdateOrganizationStatePolicy(ctx context.Context, arg UpdateOrganizationStatePolicyParams) (DomainOrganization, error)
+	UpdateSpaceDirectoryMetadata(ctx context.Context, arg UpdateSpaceDirectoryMetadataParams) (DomainSpace, error)
 }
 
 var _ Querier = (*Queries)(nil)
