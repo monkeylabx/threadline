@@ -50,7 +50,7 @@ postgres_test_cleanup() {
 postgres_test_start() {
   POSTGRES_TEST_SUITE=$1
   case "$POSTGRES_TEST_SUITE" in
-    organization | member | space | channel_dm | channel_membership | resource_acl | authorization_current | transactional_outbox | migration) ;;
+    organization | member | space | channel_dm | channel_membership | resource_acl | authorization_current | transactional_outbox | transactional_outbox_worker_ops | migration) ;;
     *) printf '%s\n' "refusing unexpected PostgreSQL test suite" >&2; exit 1 ;;
   esac
 

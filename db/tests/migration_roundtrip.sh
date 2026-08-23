@@ -19,8 +19,12 @@ RESOURCE_ACL_UP="$DB_DIR/migrations/000007_resource_acl.up.sql"
 RESOURCE_ACL_DOWN="$DB_DIR/migrations/000007_resource_acl.down.sql"
 OUTBOX_UP="$DB_DIR/migrations/000008_transactional_outbox.up.sql"
 OUTBOX_DOWN="$DB_DIR/migrations/000008_transactional_outbox.down.sql"
+OUTBOX_WORKER_OPS_UP="$DB_DIR/migrations/000009_transactional_outbox_worker_ops.up.sql"
+OUTBOX_WORKER_OPS_DOWN="$DB_DIR/migrations/000009_transactional_outbox_worker_ops.down.sql"
 OUTBOX_CORE_QUERY="$DB_DIR/queries/core/transactional_outbox.sql"
+OUTBOX_WORKER_QUERY="$DB_DIR/queries/worker/transactional_outbox.sql"
 CORE_DBGEN_DIR="$DB_DIR/../services/core/internal/dbgen"
+WORKER_DBGEN_DIR="$DB_DIR/../services/worker/internal/dbgen"
 
 . "$TESTS_DIR/postgres_harness.sh"
 POSTGRES_TEST_SUITE=migration
@@ -50,7 +54,10 @@ verify_static_contract() {
   test -f "$RESOURCE_ACL_DOWN" || postgres_test_fail "missing 000007 down migration"
   test -f "$OUTBOX_UP" || postgres_test_fail "missing 000008 up migration"
   test -f "$OUTBOX_DOWN" || postgres_test_fail "missing 000008 down migration"
+  test -f "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "missing 000009 up migration"
+  test -f "$OUTBOX_WORKER_OPS_DOWN" || postgres_test_fail "missing 000009 down migration"
   test -f "$OUTBOX_CORE_QUERY" || postgres_test_fail "missing 000008 Core query surface"
+  test -f "$OUTBOX_WORKER_QUERY" || postgres_test_fail "missing 000009 Worker query surface"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -102,11 +109,28 @@ verify_static_contract() {
   grep -Eq '^DROP TABLE domain\.outbox_delivery_attempts;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop attempts exactly"
   grep -Eq '^DROP TABLE domain\.transactional_outbox;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop entries exactly"
   grep -Eq '^DROP TABLE domain\.domain_events;$' "$OUTBOX_DOWN" || postgres_test_fail "000008 down must drop events exactly"
+  grep -Eq '^CREATE TYPE domain\.transactional_outbox_claim_result AS \($' "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "000009 up must create the digest-safe claim result type"
+  grep -Eq '^CREATE FUNCTION domain\.claim_transactional_outbox_batch\($' "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "000009 up must create ClaimBatch"
+  grep -Eq '^CREATE FUNCTION domain\.renew_transactional_outbox_claim\($' "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "000009 up must create RenewClaim"
+  grep -Eq '^CREATE FUNCTION domain\.acknowledge_transactional_outbox_published\($' "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "000009 up must create AcknowledgePublished"
+  grep -Eq '^CREATE FUNCTION domain\.record_transactional_outbox_publish_failure\($' "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "000009 up must create RecordPublishFailure"
+  if grep -Eiq 'CREATE[[:space:]]+EXTENSION|DROP[[:space:]]+EXTENSION' "$OUTBOX_WORKER_OPS_UP" "$OUTBOX_WORKER_OPS_DOWN"; then
+    postgres_test_fail "000009 must not create or drop the deployment-owned pgcrypto extension"
+  fi
+  if grep -Eiq 'claim_token_digest' "$OUTBOX_WORKER_QUERY"; then
+    postgres_test_fail "000009 Worker query surface exposes stored claim-token digests"
+  fi
+  if grep -Eiq '(FROM|JOIN|UPDATE|INTO|DELETE[[:space:]]+FROM)[[:space:]]+domain\.(domain_events|transactional_outbox|outbox_delivery_attempts)' "$OUTBOX_WORKER_QUERY"; then
+    postgres_test_fail "000009 Worker query surface bypasses reviewed database functions"
+  fi
   if grep -Eiq 'claim_token_digest|UPDATE[[:space:]]+domain\.(domain_events|transactional_outbox|outbox_delivery_attempts)|DELETE[[:space:]]+FROM[[:space:]]+domain\.(domain_events|transactional_outbox|outbox_delivery_attempts)' "$OUTBOX_CORE_QUERY"; then
     postgres_test_fail "000008 Core query surface exposes claim digests or generic mutation"
   fi
   if grep -REiq 'claim_token_digest|ClaimTokenDigest' "$CORE_DBGEN_DIR"; then
     postgres_test_fail "generated Core surface exposes claim-token digest storage"
+  fi
+  if grep -REiq 'claim_token_digest|ClaimTokenDigest' "$WORKER_DBGEN_DIR"; then
+    postgres_test_fail "generated Worker surface exposes claim-token digest storage"
   fi
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
@@ -123,6 +147,7 @@ if test "${1:-}" = "--static"; then
 fi
 
 postgres_test_start migration
+psql_test --command='CREATE EXTENSION pgcrypto'
 
 apply_up_migrations() {
   psql_test --file="$FOUNDATION_UP"
@@ -133,9 +158,11 @@ apply_up_migrations() {
   psql_test --file="$CHANNEL_MEMBERSHIP_UP"
   psql_test --file="$RESOURCE_ACL_UP"
   psql_test --file="$OUTBOX_UP"
+  psql_test --file="$OUTBOX_WORKER_OPS_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
   psql_test --file="$OUTBOX_DOWN"
   psql_test --file="$RESOURCE_ACL_DOWN"
   psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
@@ -156,6 +183,7 @@ psql_test --command="
   INSERT INTO domain.organizations (tenant_id, display_name, state, policy_version)
   VALUES ('tenant-acl-roundtrip-synthetic', 'ACL Roundtrip Synthetic', 1, 'policy-acl-roundtrip-v1')
 "
+psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
 psql_test --file="$OUTBOX_DOWN"
 roundtrip_tenant_count=$(
   psql_test --tuples-only --no-align \
@@ -163,6 +191,8 @@ roundtrip_tenant_count=$(
 )
 test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000008 down changed data owned by a prior migration"
 psql_test --file="$OUTBOX_UP"
+psql_test --file="$OUTBOX_WORKER_OPS_UP"
+psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
 psql_test --file="$OUTBOX_DOWN"
 psql_test --file="$RESOURCE_ACL_DOWN"
 roundtrip_tenant_count=$(
@@ -172,6 +202,7 @@ roundtrip_tenant_count=$(
 test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000007 down changed data owned by a prior migration"
 psql_test --file="$RESOURCE_ACL_UP"
 psql_test --file="$OUTBOX_UP"
+psql_test --file="$OUTBOX_WORKER_OPS_UP"
 psql_test --command="DELETE FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
 
 apply_down_migrations
@@ -182,6 +213,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
 psql_test --file="$OUTBOX_DOWN"
 psql_test --file="$RESOURCE_ACL_DOWN"
 psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
