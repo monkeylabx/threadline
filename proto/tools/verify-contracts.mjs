@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadScopedGeneratedCompatManifest } from "./generated-envelope-compat/scoped-manifest.mjs";
+
 const protoRoot = fileURLToPath(new URL("../", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 const errors = [];
@@ -253,6 +255,22 @@ const messageSyncTestPath = join(protoRoot, "tools", "verify-message-sync-contra
 assert(statSync(messageSyncTestPath).isFile(), "T015 message/sync behavior verifier must exist");
 const cryptoContractTestPath = join(protoRoot, "tools", "verify-crypto-contracts.mjs");
 assert(statSync(cryptoContractTestPath).isFile(), "T019 crypto/recovery behavior verifier must exist");
+const cryptoContractManifest = JSON.parse(read(join(repositoryRoot, "test", "fixtures", "proto", "crypto", "manifest.json")));
+const t019GeneratedCompatTestPath = join(protoRoot, "tools", "verify-t019-generated-compat.mjs");
+const t019GeneratedCompatManifestPath = join(repositoryRoot, "test", "fixtures", "proto", "crypto", "generated-compat-manifest.json");
+const t019GeneratedCompatManifestModulePath = join(protoRoot, "tools", "generated-envelope-compat", "scoped-manifest.mjs");
+assert(statSync(t019GeneratedCompatTestPath).isFile(), "T019 scoped generated compatibility verifier must exist");
+assert(statSync(t019GeneratedCompatManifestPath).isFile(), "T019 scoped generated compatibility manifest must exist");
+assert(statSync(t019GeneratedCompatManifestModulePath).isFile(), "T019 scoped manifest validator must exist");
+const { manifest: t019GeneratedCompatManifest } = loadScopedGeneratedCompatManifest("test/fixtures/proto/crypto/generated-compat-manifest.json");
+const t019VerificationCommand = "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=8c842371b8abece7829c95634a14d56cebbba2c6 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift";
+assert(t019GeneratedCompatManifest.baselineCommit === "b997fd70f1b4a115c9046df4db15fea4849df487", "T019 scoped compatibility baseline must remain pinned to T015 main");
+assert(t019GeneratedCompatManifest.targetSchemaCommit === "8c842371b8abece7829c95634a14d56cebbba2c6", "T019 scoped compatibility target must remain pinned to the reviewed parent head");
+assert(t019GeneratedCompatManifest.verificationCommand === t019VerificationCommand, "T019 scoped compatibility command must document every pinned input");
+assert(t019GeneratedCompatManifest.failClosedEvidence.verifier === "proto/tools/verify-crypto-contracts.mjs", "T019 scoped fail-closed evidence must use the canonical crypto verifier");
+for (const scenarioId of t019GeneratedCompatManifest.failClosedEvidence.scenarioIds) {
+  assert(cryptoContractManifest.requiredCases.includes(scenarioId), `T019 scoped fail-closed scenario is not aggregated: ${scenarioId}`);
+}
 const rustEnvelopeTestPath = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
 const generatedEnvelopeTestPath = join(protoRoot, "tools", "verify-generated-envelope-compat.mjs");
 const rustEnvelopeHarnessRoot = join(protoRoot, "tools", "rust-envelope-compat");

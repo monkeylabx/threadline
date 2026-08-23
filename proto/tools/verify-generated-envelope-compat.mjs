@@ -12,25 +12,46 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+import {
+  loadScopedGeneratedCompatManifest,
+  oneField,
+  parseWire,
+  repositoryFile,
+  repositoryRoot,
+} from "./generated-envelope-compat/scoped-manifest.mjs";
+
 const protoRoot = join(repositoryRoot, "proto");
 const goldenRoot = join(protoRoot, "golden", "v1");
-const manifest = JSON.parse(readFileSync(join(goldenRoot, "manifest.json"), "utf8"));
+const goldenManifest = JSON.parse(readFileSync(join(goldenRoot, "manifest.json"), "utf8"));
 const toolchainLock = JSON.parse(readFileSync(join(protoRoot, "toolchain.lock.json"), "utf8"));
 const supportedLanguages = new Set(["go", "typescript", "rust", "kotlin", "swift"]);
 
-function parseLanguages() {
-  const argument = process.argv.slice(2).find((value) => value.startsWith("--languages="));
-  if (!argument || process.argv.length !== 3) {
-    throw new Error("usage: node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,kotlin,swift");
+function parseOptions() {
+  const arguments_ = process.argv.slice(2);
+  const singleArgument = (prefix) => {
+    const matches = arguments_.filter((value) => value.startsWith(prefix));
+    if (matches.length > 1) throw new Error(`${prefix} may be supplied only once`);
+    return matches[0];
+  };
+  const argument = singleArgument("--languages=");
+  const baselineArgument = singleArgument("--baseline=");
+  const frameManifestArgument = singleArgument("--frame-manifest=");
+  const allowed = new Set([argument, baselineArgument, frameManifestArgument].filter(Boolean));
+  if (!argument || arguments_.some((value) => !allowed.has(value))) {
+    throw new Error("usage: node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,kotlin,swift [--baseline=<full-sha>] [--frame-manifest=<repository-relative-json>]");
   }
   const languages = argument.slice("--languages=".length).split(",").filter(Boolean);
   if (languages.length === 0 || new Set(languages).size !== languages.length || languages.some((value) => !supportedLanguages.has(value))) {
     throw new Error(`languages must be a unique subset of ${[...supportedLanguages].join(",")}`);
   }
-  return languages;
+  const baseline = baselineArgument?.slice("--baseline=".length);
+  const frameManifest = frameManifestArgument?.slice("--frame-manifest=".length);
+  if ((baseline && !frameManifest) || (!baseline && frameManifest)) {
+    throw new Error("--baseline and --frame-manifest must be supplied together");
+  }
+  if (baseline && !/^[0-9a-f]{40}$/u.test(baseline)) throw new Error("--baseline must be a full Git object ID");
+  return { languages, baseline, frameManifest };
 }
 
 function executable(name, candidates) {
@@ -73,6 +94,78 @@ function collectFiles(root, extension) {
 
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function protobufRuntimeRoot(protocGenEs) {
+  const candidates = [
+    resolve(dirname(protocGenEs), "../../protobuf"),
+    join(repositoryRoot, "node_modules", "@bufbuild", "protobuf"),
+  ];
+  return executable("@bufbuild/protobuf runtime", candidates);
+}
+
+function prepareFixtureRoot(frameManifestPath, work, baseline) {
+  if (!frameManifestPath) return { root: goldenRoot, scoped: undefined };
+  const loaded = loadScopedGeneratedCompatManifest(frameManifestPath, { baseline });
+  const scoped = loaded.manifest;
+  const root = join(work, "scoped-fixtures");
+  mkdirSync(root, { recursive: true });
+  for (const file of ["channel-event-envelope.golden.hex", "ciphertext-envelope.canary.hex"]) {
+    cpSync(join(goldenRoot, file), join(root, file));
+  }
+  cpSync(repositoryFile(scoped.frame.file), join(root, "recovery-envelope.golden.hex"));
+  cpSync(repositoryFile(scoped.frame.canary.file), join(root, "crypto-envelope.canary.hex"));
+  return { legacyRoot: goldenRoot, root, scoped: { ...scoped, originalFields: loaded.fields } };
+}
+
+function verifyScopedSourceEncoding(buf, work, scoped) {
+  if (!scoped) return;
+  const knownOutput = join(work, "scoped-recovery-known.binpb");
+  run(buf, [
+    "convert",
+    "proto",
+    "--type",
+    scoped.frame.contract,
+    "--from",
+    `${scoped.frame.sourceJson}#format=json`,
+    "--to",
+    `${knownOutput}#format=binpb`,
+  ]);
+  const expected = Buffer.concat([
+    readFileSync(knownOutput),
+    Buffer.from(scoped.frame.canary.hex, "hex"),
+  ]);
+  const actual = Buffer.from(readFileSync(repositoryFile(scoped.frame.file), "utf8").trim(), "hex");
+  if (!expected.equals(actual)) throw new Error("scoped RecoveryEnvelope frame does not match its JSON source plus exact canary");
+}
+
+function verifyScopedRelayOutputs(work, prefix, scoped) {
+  if (!scoped) return;
+  const original = new Map(scoped.originalFields.map((field) => [field.number, field.raw]));
+  for (const suffix of ["current-first", "previous-relay", "current-final", "previous-first", "current-relay", "previous-final"]) {
+    const output = join(work, `${prefix}-${suffix}`, "recovery.bin");
+    const fields = parseWire(readFileSync(output));
+    for (const number of scoped.frame.preservedFields) {
+      const actual = oneField(fields, number).raw;
+      if (!actual.equals(original.get(number))) throw new Error(`${prefix} ${suffix} changed preserved RecoveryEnvelope field ${number}`);
+    }
+    for (const number of scoped.frame.currentOnlyFields) oneField(fields, number);
+  }
+}
+
+function verifyLegacyRelayOutputs(work, prefix, fixtures) {
+  if (!fixtures.scoped) return;
+  for (const suffix of ["current-first", "previous-relay", "current-final", "previous-first", "current-relay", "previous-final"]) {
+    const fields = parseWire(readFileSync(join(work, `${prefix}-legacy-${suffix}`, "recovery.bin")));
+    for (const number of fixtures.scoped.frame.currentOnlyFields) {
+      if (fields.some((field) => field.number === number)) {
+        throw new Error(`${prefix} legacy ${suffix} invented current-only RecoveryEnvelope field ${number}`);
+      }
+    }
+    if (oneField(fields, fixtures.scoped.frame.unknownFieldNumber).raw.toString("hex") !== fixtures.scoped.frame.canary.hex) {
+      throw new Error(`${prefix} legacy ${suffix} changed the field-50000 canary`);
+    }
+  }
 }
 
 function kotlinJars(root) {
@@ -132,7 +225,16 @@ function tscPath() {
   return executable("TypeScript compiler 5.4.5", candidates);
 }
 
-function compileTypescript(node, tsc, source, output, work) {
+function compileTypescript(node, tsc, source, output, work, protobufRuntime) {
+  const packageMetadata = JSON.parse(readFileSync(join(protobufRuntime, "package.json"), "utf8"));
+  if (packageMetadata.name !== "@bufbuild/protobuf" || packageMetadata.version !== "2.14.0") {
+    throw new Error("TypeScript compatibility runtime must be @bufbuild/protobuf 2.14.0");
+  }
+  for (const root of [source, output]) {
+    const destination = join(root, "node_modules", "@bufbuild", "protobuf");
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(protobufRuntime, destination, { recursive: true });
+  }
   const config = join(work, `tsconfig-${basename(source)}.json`);
   writeFileSync(config, `${JSON.stringify({
     compilerOptions: {
@@ -149,25 +251,43 @@ function compileTypescript(node, tsc, source, output, work) {
   run(node, [tsc, "-p", config]);
 }
 
-function exchange(command, prefix, currentRoot, previousRoot, work) {
+function exchange(command, prefix, currentRoot, previousRoot, work, fixtureRoot) {
   const currentFirst = join(work, `${prefix}-current-first`);
   const previousRelay = join(work, `${prefix}-previous-relay`);
   const currentFinal = join(work, `${prefix}-current-final`);
-  run(command[0], [...command.slice(1), "produce", currentRoot, goldenRoot, currentFirst, "", `${prefix}-current-1`]);
-  run(command[0], [...command.slice(1), "relay", previousRoot, currentFirst, previousRelay, `${prefix}-current-1`, `${prefix}-n-minus-one-1`]);
-  run(command[0], [...command.slice(1), "relay", currentRoot, previousRelay, currentFinal, `${prefix}-n-minus-one-1`, `${prefix}-current-2`]);
-  run(command[0], [...command.slice(1), "consume", previousRoot, currentFinal, "", `${prefix}-current-2`, ""]);
+  run(command[0], [...command.slice(1), "produce", currentRoot, fixtureRoot, fixtureRoot, currentFirst, "", `${prefix}-current-1`]);
+  run(command[0], [...command.slice(1), "relay", previousRoot, fixtureRoot, currentFirst, previousRelay, `${prefix}-current-1`, `${prefix}-n-minus-one-1`]);
+  run(command[0], [...command.slice(1), "relay", currentRoot, fixtureRoot, previousRelay, currentFinal, `${prefix}-n-minus-one-1`, `${prefix}-current-2`]);
+  run(command[0], [...command.slice(1), "consume", previousRoot, fixtureRoot, currentFinal, "", `${prefix}-current-2`, ""]);
 
   const previousFirst = join(work, `${prefix}-previous-first`);
   const currentRelay = join(work, `${prefix}-current-relay`);
   const previousFinal = join(work, `${prefix}-previous-final`);
-  run(command[0], [...command.slice(1), "produce", previousRoot, goldenRoot, previousFirst, "", `${prefix}-n-minus-one-2`]);
-  run(command[0], [...command.slice(1), "relay", currentRoot, previousFirst, currentRelay, `${prefix}-n-minus-one-2`, `${prefix}-current-3`]);
-  run(command[0], [...command.slice(1), "relay", previousRoot, currentRelay, previousFinal, `${prefix}-current-3`, `${prefix}-n-minus-one-3`]);
-  run(command[0], [...command.slice(1), "consume", currentRoot, previousFinal, "", `${prefix}-n-minus-one-3`, ""]);
+  run(command[0], [...command.slice(1), "produce", previousRoot, fixtureRoot, fixtureRoot, previousFirst, "", `${prefix}-n-minus-one-2`]);
+  run(command[0], [...command.slice(1), "relay", currentRoot, fixtureRoot, previousFirst, currentRelay, `${prefix}-n-minus-one-2`, `${prefix}-current-3`]);
+  run(command[0], [...command.slice(1), "relay", previousRoot, fixtureRoot, currentRelay, previousFinal, `${prefix}-current-3`, `${prefix}-n-minus-one-3`]);
+  run(command[0], [...command.slice(1), "consume", currentRoot, fixtureRoot, previousFinal, "", `${prefix}-n-minus-one-3`, ""]);
 }
 
-function verifyTypescript(tools, sources, work) {
+function exchangeVariants(invoke, current, previous, prefix, work, fixtureRoot) {
+  const currentFirst = join(work, `${prefix}-current-first`);
+  const previousRelay = join(work, `${prefix}-previous-relay`);
+  const currentFinal = join(work, `${prefix}-current-final`);
+  invoke(current, ["produce", fixtureRoot, fixtureRoot, currentFirst, "", `${prefix}-current-1`]);
+  invoke(previous, ["relay", fixtureRoot, currentFirst, previousRelay, `${prefix}-current-1`, `${prefix}-n-minus-one-1`]);
+  invoke(current, ["relay", fixtureRoot, previousRelay, currentFinal, `${prefix}-n-minus-one-1`, `${prefix}-current-2`]);
+  invoke(previous, ["consume", fixtureRoot, currentFinal, "", `${prefix}-current-2`, ""]);
+
+  const previousFirst = join(work, `${prefix}-previous-first`);
+  const currentRelay = join(work, `${prefix}-current-relay`);
+  const previousFinal = join(work, `${prefix}-previous-final`);
+  invoke(previous, ["produce", fixtureRoot, fixtureRoot, previousFirst, "", `${prefix}-n-minus-one-2`]);
+  invoke(current, ["relay", fixtureRoot, previousFirst, currentRelay, `${prefix}-n-minus-one-2`, `${prefix}-current-3`]);
+  invoke(previous, ["relay", fixtureRoot, currentRelay, previousFinal, `${prefix}-current-3`, `${prefix}-n-minus-one-3`]);
+  invoke(current, ["consume", fixtureRoot, previousFinal, "", `${prefix}-n-minus-one-3`, ""]);
+}
+
+function verifyTypescript(tools, sources, work, fixtures) {
   const template = join(work, "typescript-template.json");
   writeTemplate(template, tools.protocGenEs, "typescript", ["target=ts", "import_extension=.js"]);
   const currentGenerated = join(work, "typescript-current-source");
@@ -176,10 +296,20 @@ function verifyTypescript(tools, sources, work) {
   generate(tools.buf, sources.previous, template, previousGenerated);
   const currentJs = join(work, "typescript-current-js");
   const previousJs = join(work, "typescript-previous-js");
-  compileTypescript(tools.node, tools.tsc, join(currentGenerated, "typescript"), currentJs, work);
-  compileTypescript(tools.node, tools.tsc, join(previousGenerated, "typescript"), previousJs, work);
-  const runner = join(protoRoot, "tools", "generated-envelope-compat", "typescript.mjs");
-  exchange([tools.node, runner], "typescript", currentJs, previousJs, work);
+  const protobufRuntime = protobufRuntimeRoot(tools.protocGenEs);
+  compileTypescript(tools.node, tools.tsc, join(currentGenerated, "typescript"), currentJs, work, protobufRuntime);
+  compileTypescript(tools.node, tools.tsc, join(previousGenerated, "typescript"), previousJs, work, protobufRuntime);
+  const runner = join(work, "typescript-runner.mjs");
+  cpSync(join(protoRoot, "tools", "generated-envelope-compat", "typescript.mjs"), runner);
+  const runnerRuntime = join(work, "node_modules", "@bufbuild", "protobuf");
+  mkdirSync(dirname(runnerRuntime), { recursive: true });
+  cpSync(protobufRuntime, runnerRuntime, { recursive: true });
+  exchange([tools.node, runner], "typescript", currentJs, previousJs, work, fixtures.root);
+  verifyScopedRelayOutputs(work, "typescript", fixtures.scoped);
+  if (fixtures.legacyRoot) {
+    exchange([tools.node, runner], "typescript-legacy", currentJs, previousJs, work, fixtures.legacyRoot);
+    verifyLegacyRelayOutputs(work, "typescript", fixtures);
+  }
 }
 
 function writeGoModule(root) {
@@ -197,7 +327,7 @@ function writeGoModule(root) {
   cpSync(runner, destination);
 }
 
-function verifyGo(tools, sources, work) {
+function verifyGo(tools, sources, work, fixtures) {
   const template = join(work, "go-template.json");
   writeTemplate(template, tools.protocGenGo, "go", ["paths=source_relative"], {
     enabled: true,
@@ -226,21 +356,12 @@ function verifyGo(tools, sources, work) {
   run(tools.go, ["mod", "tidy"], { cwd: previousModule, env: goEnvironment });
   const invoke = (module, args) => run(tools.go, ["run", "./cmd/compat", ...args], { cwd: module, env: goEnvironment });
 
-  const currentFirst = join(work, "go-current-first");
-  const previousRelay = join(work, "go-previous-relay");
-  const currentFinal = join(work, "go-current-final");
-  invoke(currentModule, ["produce", goldenRoot, goldenRoot, currentFirst, "", "go-current-1"]);
-  invoke(previousModule, ["relay", goldenRoot, currentFirst, previousRelay, "go-current-1", "go-n-minus-one-1"]);
-  invoke(currentModule, ["relay", goldenRoot, previousRelay, currentFinal, "go-n-minus-one-1", "go-current-2"]);
-  invoke(previousModule, ["consume", goldenRoot, currentFinal, "", "go-current-2", ""]);
-
-  const previousFirst = join(work, "go-previous-first");
-  const currentRelay = join(work, "go-current-relay");
-  const previousFinal = join(work, "go-previous-final");
-  invoke(previousModule, ["produce", goldenRoot, goldenRoot, previousFirst, "", "go-n-minus-one-2"]);
-  invoke(currentModule, ["relay", goldenRoot, previousFirst, currentRelay, "go-n-minus-one-2", "go-current-3"]);
-  invoke(previousModule, ["relay", goldenRoot, currentRelay, previousFinal, "go-current-3", "go-n-minus-one-3"]);
-  invoke(currentModule, ["consume", goldenRoot, previousFinal, "", "go-n-minus-one-3", ""]);
+  exchangeVariants(invoke, currentModule, previousModule, "go", work, fixtures.root);
+  verifyScopedRelayOutputs(work, "go", fixtures.scoped);
+  if (fixtures.legacyRoot) {
+    exchangeVariants(invoke, currentModule, previousModule, "go-legacy", work, fixtures.legacyRoot);
+    verifyLegacyRelayOutputs(work, "go", fixtures);
+  }
 }
 
 function writeKotlinTemplate(path, protoc) {
@@ -295,7 +416,7 @@ function compileKotlinVariant(tools, generatedRoot, outputRoot) {
   };
 }
 
-function verifyKotlin(tools, sources, work) {
+function verifyKotlin(tools, sources, work, fixtures) {
   const template = join(work, "kotlin-template.json");
   writeKotlinTemplate(template, tools.protoc);
   const currentGenerated = join(work, "kotlin-current-generated");
@@ -306,21 +427,12 @@ function verifyKotlin(tools, sources, work) {
   const previous = compileKotlinVariant(tools, previousGenerated, join(work, "kotlin-previous-build"));
 
   const invoke = (variant, args) => run(variant.command[0], [...variant.command.slice(1), ...args]);
-  const currentFirst = join(work, "kotlin-current-first");
-  const previousRelay = join(work, "kotlin-previous-relay");
-  const currentFinal = join(work, "kotlin-current-final");
-  invoke(current, ["produce", goldenRoot, goldenRoot, currentFirst, "", "kotlin-current-1"]);
-  invoke(previous, ["relay", goldenRoot, currentFirst, previousRelay, "kotlin-current-1", "kotlin-n-minus-one-1"]);
-  invoke(current, ["relay", goldenRoot, previousRelay, currentFinal, "kotlin-n-minus-one-1", "kotlin-current-2"]);
-  invoke(previous, ["consume", goldenRoot, currentFinal, "", "kotlin-current-2", ""]);
-
-  const previousFirst = join(work, "kotlin-previous-first");
-  const currentRelay = join(work, "kotlin-current-relay");
-  const previousFinal = join(work, "kotlin-previous-final");
-  invoke(previous, ["produce", goldenRoot, goldenRoot, previousFirst, "", "kotlin-n-minus-one-2"]);
-  invoke(current, ["relay", goldenRoot, previousFirst, currentRelay, "kotlin-n-minus-one-2", "kotlin-current-3"]);
-  invoke(previous, ["relay", goldenRoot, currentRelay, previousFinal, "kotlin-current-3", "kotlin-n-minus-one-3"]);
-  invoke(current, ["consume", goldenRoot, previousFinal, "", "kotlin-n-minus-one-3", ""]);
+  exchangeVariants(invoke, current, previous, "kotlin", work, fixtures.root);
+  verifyScopedRelayOutputs(work, "kotlin", fixtures.scoped);
+  if (fixtures.legacyRoot) {
+    exchangeVariants(invoke, current, previous, "kotlin-legacy", work, fixtures.legacyRoot);
+    verifyLegacyRelayOutputs(work, "kotlin", fixtures);
+  }
 }
 
 function writeSwiftTemplate(path, plugin) {
@@ -359,7 +471,7 @@ function writeSwiftPackage(root, sourceRoot, currentGenerated, previousGenerated
   }
 }
 
-function verifySwift(tools, sources, work) {
+function verifySwift(tools, sources, work, fixtures) {
   const sourceRoot = join(work, "swift-protobuf-source");
   extractSwiftProtobuf(tools.sourceArchive, sourceRoot);
   const swiftEnvironmentVariables = swiftEnvironment(work);
@@ -395,26 +507,18 @@ function verifySwift(tools, sources, work) {
   const previous = [join(packageBuild, "arm64-apple-macosx", "release", "PreviousCompat")];
   const invoke = (command, args) => run(command[0], args);
 
-  const currentFirst = join(work, "swift-current-first");
-  const previousRelay = join(work, "swift-previous-relay");
-  const currentFinal = join(work, "swift-current-final");
-  invoke(current, ["produce", goldenRoot, goldenRoot, currentFirst, "", "swift-current-1"]);
-  invoke(previous, ["relay", goldenRoot, currentFirst, previousRelay, "swift-current-1", "swift-n-minus-one-1"]);
-  invoke(current, ["relay", goldenRoot, previousRelay, currentFinal, "swift-n-minus-one-1", "swift-current-2"]);
-  invoke(previous, ["consume", goldenRoot, currentFinal, "", "swift-current-2", ""]);
-
-  const previousFirst = join(work, "swift-previous-first");
-  const currentRelay = join(work, "swift-current-relay");
-  const previousFinal = join(work, "swift-previous-final");
-  invoke(previous, ["produce", goldenRoot, goldenRoot, previousFirst, "", "swift-n-minus-one-2"]);
-  invoke(current, ["relay", goldenRoot, previousFirst, currentRelay, "swift-n-minus-one-2", "swift-current-3"]);
-  invoke(previous, ["relay", goldenRoot, currentRelay, previousFinal, "swift-current-3", "swift-n-minus-one-3"]);
-  invoke(current, ["consume", goldenRoot, previousFinal, "", "swift-n-minus-one-3", ""]);
+  exchangeVariants(invoke, current, previous, "swift", work, fixtures.root);
+  verifyScopedRelayOutputs(work, "swift", fixtures.scoped);
+  if (fixtures.legacyRoot) {
+    exchangeVariants(invoke, current, previous, "swift-legacy", work, fixtures.legacyRoot);
+    verifyLegacyRelayOutputs(work, "swift", fixtures);
+  }
 }
 
 function main() {
-  const languages = parseLanguages();
-  const baseline = manifest.compatibilityEvidence?.nMinusOneCommit;
+  const options = parseOptions();
+  const { languages } = options;
+  const baseline = options.baseline ?? goldenManifest.compatibilityEvidence?.nMinusOneCommit;
   if (typeof baseline !== "string" || !/^[0-9a-f]{40}$/u.test(baseline)) {
     throw new Error("manifest compatibilityEvidence.nMinusOneCommit must pin a full Git commit");
   }
@@ -424,26 +528,37 @@ function main() {
   exactVersion("Node", run(node, ["--version"], { capture: true }), "24.19.0");
   const work = mkdtempSync(join(repositoryRoot, ".threadline-envelope-compat-"));
   try {
+    const fixtures = prepareFixtureRoot(options.frameManifest, work, baseline);
+    verifyScopedSourceEncoding(buf, work, fixtures.scoped);
     const previousRoot = join(work, "n-minus-one");
     extractProtoSnapshot(baseline, previousRoot);
     const sources = { current: protoRoot, previous: join(previousRoot, "proto") };
     if (languages.includes("typescript")) {
       const protocGenEs = executable("protoc-gen-es", [process.env.THREADLINE_PROTOC_GEN_ES, join(repositoryRoot, "node_modules", ".bin", "protoc-gen-es")]);
       exactVersion("protoc-gen-es", run(protocGenEs, ["--version"], { capture: true }), "2.14.0");
-      verifyTypescript({ buf, node, protocGenEs, tsc: tscPath() }, sources, work);
+      verifyTypescript({ buf, node, protocGenEs, tsc: tscPath() }, sources, work, fixtures);
     }
     if (languages.includes("go")) {
       const go = executable("Go", [process.env.THREADLINE_GO]);
       const protocGenGo = executable("protoc-gen-go", [process.env.THREADLINE_PROTOC_GEN_GO]);
       exactVersion("Go", run(go, ["version"], { capture: true }), "1.26.5");
       exactVersion("protoc-gen-go", run(protocGenGo, ["--version"], { capture: true }), "1.36.11");
-      verifyGo({ buf, go, protocGenGo }, sources, work);
+      verifyGo({ buf, go, protocGenGo }, sources, work, fixtures);
     }
     if (languages.includes("rust")) {
       const cargo = executable("Cargo", [process.env.THREADLINE_CARGO]);
       const rustVerifier = join(protoRoot, "tools", "verify-rust-envelope-preservation.mjs");
       const rustMode = process.env.THREADLINE_ENVELOPE_COMPAT_OFFLINE === "1" ? "--offline" : "--connected";
-      run(node, [rustVerifier, rustMode], {
+      run(node, [
+        rustVerifier,
+        rustMode,
+        `--baseline=${baseline}`,
+        `--frame-root=${fixtures.root}`,
+        ...(fixtures.scoped ? [
+          "--require-current-recovery-bindings",
+          `--legacy-recovery-frame=${repositoryFile(fixtures.scoped.historicalT014RecoveryFrame.file)}`,
+        ] : []),
+      ], {
         env: { ...process.env, THREADLINE_BUF: buf, THREADLINE_CARGO: cargo },
       });
     }
@@ -458,7 +573,7 @@ function main() {
       exactVersion("Java", run(java, ["-version"], { capture: true }), "17.0.19");
       exactVersion("javac", run(javac, ["-version"], { capture: true }), "17.0.19");
       exactVersion("protoc", run(protoc, ["--version"], { capture: true }), "35.1");
-      verifyKotlin({ buf, java, javac, protoc, jars: kotlinJars(jarRoot) }, sources, work);
+      verifyKotlin({ buf, java, javac, protoc, jars: kotlinJars(jarRoot) }, sources, work, fixtures);
     }
     if (languages.includes("swift")) {
       const swift = executable("Swift", [process.env.THREADLINE_SWIFT]);
@@ -466,7 +581,7 @@ function main() {
       const sourceArchive = executable("SwiftProtobuf source archive", [process.env.THREADLINE_SWIFT_PROTOBUF_ARCHIVE]);
       if (!process.env.THREADLINE_SWIFT_SDK || !existsSync(sdk)) throw new Error("THREADLINE_SWIFT_SDK is required for Swift verification");
       exactVersion("Swift", run(swift, ["--version"], { capture: true }), "6.3.2");
-      verifySwift({ buf, swift, sdk, sourceArchive }, sources, work);
+      verifySwift({ buf, swift, sdk, sourceArchive }, sources, work, fixtures);
     }
     console.log(`Generated-envelope compatibility passed: ${languages.join(", ")} against N-1 ${baseline}.`);
   } finally {

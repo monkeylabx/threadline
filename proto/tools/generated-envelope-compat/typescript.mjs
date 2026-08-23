@@ -3,9 +3,9 @@ import { pathToFileURL } from "node:url";
 import { join, resolve } from "node:path";
 import { fromBinary, toBinary } from "@bufbuild/protobuf";
 
-const [mode, generatedRoot, inputRoot, outputRoot, expectedLabel, outputLabel] = process.argv.slice(2);
-if (!new Set(["produce", "relay", "consume"]).has(mode) || !generatedRoot || !inputRoot) {
-  throw new Error("usage: typescript.mjs produce|relay|consume GENERATED_ROOT INPUT_ROOT [OUTPUT_ROOT EXPECTED_LABEL OUTPUT_LABEL]");
+const [mode, generatedRoot, fixtureRoot, inputRoot, outputRoot, expectedLabel, outputLabel] = process.argv.slice(2);
+if (!new Set(["produce", "relay", "consume"]).has(mode) || !generatedRoot || !fixtureRoot || !inputRoot) {
+  throw new Error("usage: typescript.mjs produce|relay|consume GENERATED_ROOT FIXTURE_ROOT INPUT_ROOT [OUTPUT_ROOT EXPECTED_LABEL OUTPUT_LABEL]");
 }
 
 const messageModule = await import(pathToFileURL(resolve(generatedRoot, "threadline/message/v1/envelope_pb.js")));
@@ -23,10 +23,8 @@ function contains(haystack, needle) {
   return Buffer.from(haystack).includes(Buffer.from(needle));
 }
 
-const repositoryRoot = resolve(import.meta.dirname, "../../..");
-const goldenRoot = join(repositoryRoot, "proto/golden/v1");
-const channelCanary = hexFile(join(goldenRoot, "ciphertext-envelope.canary.hex"));
-const recoveryCanary = hexFile(join(goldenRoot, "crypto-envelope.canary.hex"));
+const channelCanary = hexFile(join(fixtureRoot, "ciphertext-envelope.canary.hex"));
+const recoveryCanary = hexFile(join(fixtureRoot, "crypto-envelope.canary.hex"));
 const sourceIsGolden = mode === "produce";
 const channelInput = sourceIsGolden
   ? hexFile(join(inputRoot, "channel-event-envelope.golden.hex"))
