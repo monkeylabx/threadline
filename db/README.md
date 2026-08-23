@@ -21,6 +21,14 @@ Message, Session, Device, key, recovery, or Outbox tables.
   Fixtures must be synthetic and must not contain credentials, tenant data,
   message content, keys, tokens, or production identifiers.
 
+All live shell tests source `tests/postgres_harness.sh` for the PostgreSQL 16.4
+version gate, pinned tool resolution, disposable-database lifecycle, cleanup
+guards, and secret-safe diagnostics. The Organization, Member, and Space typed
+Go tests likewise share `postgres_integration_test.go` for the operator-supplied
+DSN gate, maintenance/test connection lifecycle, migration loading, version
+check, and guarded database deletion. Aggregate test files contain only their
+domain fixtures and assertions.
+
 Run the static contract without a database:
 
 ```text

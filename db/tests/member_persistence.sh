@@ -2,78 +2,13 @@
 set -eu
 
 DB_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+TESTS_DIR="$DB_DIR/tests"
 FOUNDATION_UP="$DB_DIR/migrations/000001_core_foundation.up.sql"
 ORGANIZATION_UP="$DB_DIR/migrations/000002_organization.up.sql"
 MEMBER_UP="$DB_DIR/migrations/000003_member.up.sql"
 
-fail() {
-  printf '%s\n' "member persistence test failed: $1" >&2
-  exit 1
-}
-
-resolve_tool() {
-  tool_name=$1
-  if test -n "${THREADLINE_PG_BIN:-}"; then
-    tool_path="$THREADLINE_PG_BIN/$tool_name"
-    test -x "$tool_path" || fail "missing PostgreSQL tool: $tool_name"
-    printf '%s\n' "$tool_path"
-    return
-  fi
-  command -v "$tool_name" 2>/dev/null || fail "missing PostgreSQL tool: $tool_name"
-}
-
-PSQL=$(resolve_tool psql)
-CREATEDB=$(resolve_tool createdb)
-DROPDB=$(resolve_tool dropdb)
-
-: "${PGHOST:=127.0.0.1}"
-: "${PGPORT:=5432}"
-: "${PGUSER:=threadline_postgres_dev}"
-: "${PGDATABASE:=postgres}"
-export PGHOST PGPORT PGUSER PGDATABASE
-
-test_db="threadline_member_test_$$"
-case "$test_db" in
-  threadline_member_test_[0-9]*) ;;
-  *) fail "unsafe disposable database name" ;;
-esac
-
-temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/threadline-member.XXXXXX")
-created=0
-cleanup() {
-  if test "$created" -eq 1; then
-    "$DROPDB" --if-exists --maintenance-db="$PGDATABASE" "$test_db" >/dev/null 2>&1 || true
-  fi
-  case "$temp_dir" in
-    "${TMPDIR:-/tmp}"/threadline-member.*) rm -rf "$temp_dir" ;;
-    *) printf '%s\n' "refusing to remove unexpected temporary path: $temp_dir" >&2 ;;
-  esac
-}
-trap cleanup EXIT HUP INT TERM
-
-server_version=$(
-  "$PSQL" --no-psqlrc --tuples-only --no-align --dbname="$PGDATABASE" \
-    --command='SHOW server_version'
-)
-case "$server_version" in
-  16.4 | 16.4.*) ;;
-  *) fail "PostgreSQL 16.4 required" ;;
-esac
-
-"$CREATEDB" --maintenance-db="$PGDATABASE" "$test_db" >/dev/null
-created=1
-
-psql_test() {
-  "$PSQL" --no-psqlrc --quiet --set=ON_ERROR_STOP=1 --dbname="$test_db" "$@"
-}
-
-expect_sql_failure() {
-  label=$1
-  statement=$2
-  if psql_test --command="$statement" >"$temp_dir/failure.out" 2>"$temp_dir/failure.err"; then
-    fail "$label unexpectedly succeeded"
-  fi
-}
+. "$TESTS_DIR/postgres_harness.sh"
+postgres_test_start member
 
 psql_test --file="$FOUNDATION_UP"
 psql_test --file="$ORGANIZATION_UP"
@@ -103,7 +38,7 @@ joined_at=$(
       AND actor_id = 'actor-shared-synthetic';
   "
 )
-test -n "$joined_at" || fail "create did not assign join time"
+test -n "$joined_at" || postgres_test_fail "create did not assign join time"
 
 expect_sql_failure "duplicate Member identity" "
   INSERT INTO domain.members (tenant_id, actor_type, actor_id, display_name, role, state)
@@ -147,7 +82,7 @@ exact_scope_count=$(
       AND actor_id = 'actor-shared-synthetic';
   "
 )
-test "$exact_scope_count" = "1" || fail "exact Member key did not resolve one row"
+test "$exact_scope_count" = "1" || postgres_test_fail "exact Member key did not resolve one row"
 
 missing_key_count=$(
   psql_test --tuples-only --no-align --command="
@@ -158,7 +93,7 @@ missing_key_count=$(
       AND actor_id = 'actor-shared-synthetic';
   "
 )
-test "$missing_key_count" = "0" || fail "missing exact Member key returned a row"
+test "$missing_key_count" = "0" || postgres_test_fail "missing exact Member key returned a row"
 
 missing_update=$(
   psql_test --tuples-only --no-align --command="
@@ -173,7 +108,7 @@ missing_update=$(
     SELECT count(*) FROM updated;
   "
 )
-test "$missing_update" = "0" || fail "missing exact Member update changed a row"
+test "$missing_update" = "0" || postgres_test_fail "missing exact Member update changed a row"
 
 updated=$(
   psql_test --tuples-only --no-align --field-separator='|' --command="
@@ -186,7 +121,7 @@ updated=$(
   "
 )
 test "$updated" = "tenant-member-alpha-synthetic|1|actor-shared-synthetic|Human Alpha Synthetic|2|2|engineering/synthetic|$joined_at" || \
-  fail "role-state update mutated Member identity, directory fields, or join time"
+  postgres_test_fail "role-state update mutated Member identity, directory fields, or join time"
 
 null_path_count=$(
   psql_test --tuples-only --no-align --command="
@@ -196,7 +131,7 @@ null_path_count=$(
       AND org_unit_path IS NULL;
   "
 )
-test "$null_path_count" = "2" || fail "optional org-unit paths were not preserved as NULL"
+test "$null_path_count" = "2" || postgres_test_fail "optional org-unit paths were not preserved as NULL"
 
 beta_unchanged=$(
   psql_test --tuples-only --no-align --field-separator='|' --command="
@@ -207,11 +142,9 @@ beta_unchanged=$(
       AND actor_id = 'actor-shared-synthetic';
   "
 )
-test "$beta_unchanged" = "Human Beta Synthetic|5|2" || fail "exact-Tenant update changed another Member row"
+test "$beta_unchanged" = "Human Beta Synthetic|5|2" || postgres_test_fail "exact-Tenant update changed another Member row"
 
 row_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM domain.members")
-test "$row_count" = "4" || fail "negative cases changed persisted Member row count"
+test "$row_count" = "4" || postgres_test_fail "negative cases changed persisted Member row count"
 
-"$DROPDB" --maintenance-db="$PGDATABASE" "$test_db" >/dev/null
-created=0
-printf '%s\n' "PostgreSQL $server_version Member persistence passed"
+postgres_test_finish "Member persistence passed"

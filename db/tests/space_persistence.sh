@@ -2,79 +2,14 @@
 set -eu
 
 DB_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+TESTS_DIR="$DB_DIR/tests"
 FOUNDATION_UP="$DB_DIR/migrations/000001_core_foundation.up.sql"
 ORGANIZATION_UP="$DB_DIR/migrations/000002_organization.up.sql"
 MEMBER_UP="$DB_DIR/migrations/000003_member.up.sql"
 SPACE_UP="$DB_DIR/migrations/000004_space.up.sql"
 
-fail() {
-  printf '%s\n' "space persistence test failed: $1" >&2
-  exit 1
-}
-
-resolve_tool() {
-  tool_name=$1
-  if test -n "${THREADLINE_PG_BIN:-}"; then
-    tool_path="$THREADLINE_PG_BIN/$tool_name"
-    test -x "$tool_path" || fail "missing PostgreSQL tool: $tool_name"
-    printf '%s\n' "$tool_path"
-    return
-  fi
-  command -v "$tool_name" 2>/dev/null || fail "missing PostgreSQL tool: $tool_name"
-}
-
-PSQL=$(resolve_tool psql)
-CREATEDB=$(resolve_tool createdb)
-DROPDB=$(resolve_tool dropdb)
-
-: "${PGHOST:=127.0.0.1}"
-: "${PGPORT:=5432}"
-: "${PGUSER:=threadline_postgres_dev}"
-: "${PGDATABASE:=postgres}"
-export PGHOST PGPORT PGUSER PGDATABASE
-
-test_db="threadline_space_test_$$"
-case "$test_db" in
-  threadline_space_test_[0-9]*) ;;
-  *) fail "unsafe disposable database name" ;;
-esac
-
-temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/threadline-space.XXXXXX")
-created=0
-cleanup() {
-  if test "$created" -eq 1; then
-    "$DROPDB" --if-exists --maintenance-db="$PGDATABASE" "$test_db" >/dev/null 2>&1 || true
-  fi
-  case "$temp_dir" in
-    "${TMPDIR:-/tmp}"/threadline-space.*) rm -rf "$temp_dir" ;;
-    *) printf '%s\n' "refusing to remove unexpected temporary path: $temp_dir" >&2 ;;
-  esac
-}
-trap cleanup EXIT HUP INT TERM
-
-server_version=$(
-  "$PSQL" --no-psqlrc --tuples-only --no-align --dbname="$PGDATABASE" \
-    --command='SHOW server_version'
-)
-case "$server_version" in
-  16.4 | 16.4.*) ;;
-  *) fail "PostgreSQL 16.4 required" ;;
-esac
-
-"$CREATEDB" --maintenance-db="$PGDATABASE" "$test_db" >/dev/null
-created=1
-
-psql_test() {
-  "$PSQL" --no-psqlrc --quiet --set=ON_ERROR_STOP=1 --dbname="$test_db" "$@"
-}
-
-expect_sql_failure() {
-  label=$1
-  statement=$2
-  if psql_test --command="$statement" >"$temp_dir/failure.out" 2>"$temp_dir/failure.err"; then
-    fail "$label unexpectedly succeeded"
-  fi
-}
+. "$TESTS_DIR/postgres_harness.sh"
+postgres_test_start space
 
 psql_test --file="$FOUNDATION_UP"
 psql_test --file="$ORGANIZATION_UP"
@@ -101,7 +36,7 @@ created_at=$(
       AND space_id = 'space-shared-synthetic';
   "
 )
-test -n "$created_at" || fail "create did not assign creation time"
+test -n "$created_at" || postgres_test_fail "create did not assign creation time"
 
 expect_sql_failure "duplicate Space identity" "
   INSERT INTO domain.spaces (tenant_id, space_id, display_name, discoverable)
@@ -128,7 +63,7 @@ exact_scope_count=$(
       AND space_id = 'space-shared-synthetic';
   "
 )
-test "$exact_scope_count" = "1" || fail "exact Space key did not resolve one row"
+test "$exact_scope_count" = "1" || postgres_test_fail "exact Space key did not resolve one row"
 
 missing_key_count=$(
   psql_test --tuples-only --no-align --command="
@@ -138,7 +73,7 @@ missing_key_count=$(
       AND space_id = 'space-missing-synthetic';
   "
 )
-test "$missing_key_count" = "0" || fail "missing exact Space key returned a row"
+test "$missing_key_count" = "0" || postgres_test_fail "missing exact Space key returned a row"
 
 missing_update=$(
   psql_test --tuples-only --no-align --command="
@@ -152,7 +87,7 @@ missing_update=$(
     SELECT count(*) FROM updated;
   "
 )
-test "$missing_update" = "0" || fail "missing exact Space update changed a row"
+test "$missing_update" = "0" || postgres_test_fail "missing exact Space update changed a row"
 
 updated=$(
   psql_test --tuples-only --no-align --field-separator='|' --command="
@@ -164,7 +99,7 @@ updated=$(
   "
 )
 test "$updated" = "tenant-space-alpha-synthetic|space-shared-synthetic|Alpha Renamed Synthetic|f|$created_at" || \
-  fail "directory metadata update mutated Space identity or creation time"
+  postgres_test_fail "directory metadata update mutated Space identity or creation time"
 
 beta_unchanged=$(
   psql_test --tuples-only --no-align --field-separator='|' --command="
@@ -174,11 +109,9 @@ beta_unchanged=$(
       AND space_id = 'space-shared-synthetic';
   "
 )
-test "$beta_unchanged" = "Beta Shared Synthetic|f" || fail "exact-Tenant update changed another Space row"
+test "$beta_unchanged" = "Beta Shared Synthetic|f" || postgres_test_fail "exact-Tenant update changed another Space row"
 
 row_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM domain.spaces")
-test "$row_count" = "2" || fail "negative cases changed persisted Space row count"
+test "$row_count" = "2" || postgres_test_fail "negative cases changed persisted Space row count"
 
-"$DROPDB" --maintenance-db="$PGDATABASE" "$test_db" >/dev/null
-created=0
-printf '%s\n' "PostgreSQL $server_version Space persistence passed"
+postgres_test_finish "Space persistence passed"
