@@ -2,6 +2,7 @@ use std::{
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
+    sync::{Mutex, MutexGuard, OnceLock},
 };
 
 use threadline_client_core::storage::{
@@ -12,6 +13,7 @@ const SQLITE_HEADER: &[u8] = b"SQLite format 3\0";
 
 #[test]
 fn production_interface_is_keyed_fail_closed_and_preserves_opaque_bytes() {
+    let _sqlcipher_guard = sqlcipher_open_guard();
     let test_directory = EphemeralDirectory::create();
     let database_path = test_directory.path().join("client-core.db");
     let key = random_distinct_from(&[]);
@@ -114,6 +116,7 @@ fn empty_key_is_unrepresentable_and_does_not_rewrite_database_family() {
 
 #[test]
 fn public_errors_do_not_echo_key_or_path_material() {
+    let _sqlcipher_guard = sqlcipher_open_guard();
     let test_directory = EphemeralDirectory::create();
     let secret_path_fragment = "path-secret-canary";
     let database_path = test_directory.path().join(secret_path_fragment);
@@ -145,6 +148,7 @@ fn public_errors_do_not_echo_key_or_path_material() {
 
 #[test]
 fn corrupted_ciphertext_is_not_misclassified_as_a_confirmed_key_error() {
+    let _sqlcipher_guard = sqlcipher_open_guard();
     let test_directory = EphemeralDirectory::create();
     let database_path = test_directory.path().join("client-core.db");
     let key = random_distinct_from(&[]);
@@ -197,6 +201,18 @@ fn database_family_matches(family_paths: &[PathBuf; 3], expected: &[Vec<u8>; 3])
                 .map(|actual_bytes| actual_bytes == *expected_bytes)
                 .unwrap_or(false)
         })
+}
+
+fn sqlcipher_open_guard() -> MutexGuard<'static, ()> {
+    // Two hosted Windows runs overflowed in different SQLCipher-opening tests
+    // during parallel startup, while the earlier single-test evidence passed.
+    // Serialize this regression harness to match the single-owner production
+    // contract and planned P05-02 StoreActor without assuming a library cause.
+    static SQLCIPHER_OPEN: OnceLock<Mutex<()>> = OnceLock::new();
+    SQLCIPHER_OPEN
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn assert_hidden(haystack: &[u8], needle: &[u8], message: &str) {
