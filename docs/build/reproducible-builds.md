@@ -29,12 +29,53 @@ P03-01A owns generated-query determinism and migration round trips; this
 toolchain baseline does not create or alter a database.
 
 The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
-features disabled. `client-core` tests enable its bundled plain-SQLite backend,
-which supplies SQLite 3.53.2 and satisfies the repository's SQLite 3.51.3
-minimum. This test backend is not encryption evidence and must not be used as a
-production database-open path. P05-01B owns selection and validation of the
-keyed SQLCipher/SEE-compatible production backend, including DB/WAL/SHM
-encryption and wrong-key rejection on every release platform.
+features disabled. P05-01B-1 selects its
+`bundled-sqlcipher-vendored-openssl` feature as the source-built encryption
+candidate used only by `client-core` tests. The resulting lock graph contains
+`libsqlite3-sys` 0.38.2 with bundled SQLCipher 4.14.0 Community Edition and a
+vendored OpenSSL source build. `rusqlite` and `libsqlite3-sys` are MIT licensed,
+the bundled SQLCipher source carries its BSD-style license, and OpenSSL is
+Apache-2.0 licensed. These are free/open-source components: no commercial
+SQLCipher artifact, account, download, or service is required.
+
+The ordinary `client-core` dependency keeps all `rusqlite` defaults and backend
+features disabled. Only the evidence/test graph enables SQLCipher; this task
+does not add a production database-open path or decide OS key lifecycle. The
+locked test builds the SQLCipher amalgamation and OpenSSL locally through the
+crates.io source archives and the checked-in Cargo lockfile.
+
+| Locked input | Source | License used for distribution |
+| --- | --- | --- |
+| `rusqlite` 0.40.2 | `crates.io` archive from [`rusqlite/rusqlite`](https://github.com/rusqlite/rusqlite) | MIT |
+| `libsqlite3-sys` 0.38.2, including SQLCipher 4.14.0 Community amalgamation | `crates.io` archive from [`rusqlite/rusqlite`](https://github.com/rusqlite/rusqlite); embedded source from [`sqlcipher/sqlcipher`](https://github.com/sqlcipher/sqlcipher) | MIT wrapper; bundled SQLCipher BSD-style license |
+| `openssl-sys` 0.9.117 | `crates.io` archive from [`rust-openssl/rust-openssl`](https://github.com/rust-openssl/rust-openssl) | MIT |
+| `openssl-src` 300.6.1+3.6.3, including OpenSSL 3.6.3 | `crates.io` archive from [`alexcrichton/openssl-src-rs`](https://github.com/alexcrichton/openssl-src-rs); embedded source from [`openssl/openssl`](https://github.com/openssl/openssl) | MIT/Apache-2.0 wrapper; OpenSSL Apache-2.0 |
+| `getrandom` 0.3.4 (test key/canary generation only) | `crates.io` archive from [`rust-random/getrandom`](https://github.com/rust-random/getrandom) | MIT OR Apache-2.0 |
+
+Cargo verifies each archive against `Cargo.lock`. The source build requires the
+pinned Rust toolchain plus a supported native C compiler, Perl, and the host
+make tool selected by `openssl-src`; it does not download a prebuilt database or
+cryptographic library. The selected Cargo feature enables the bundled SQLCipher
+amalgamation and vendored OpenSSL source explicitly.
+
+Run the candidate evidence with:
+
+```text
+cargo test -p threadline-client-core --test sqlcipher_backend --locked
+```
+
+The test obtains a fresh database key and fixture canary from the OS CSPRNG,
+confirms the linked `PRAGMA cipher_version`, performs a byte-exact Golden
+Envelope keyed reopen, scans the live DB/WAL/SHM family for the SQLite header,
+fixture canary, and key, and confirms empty/wrong keys fail without rewriting
+the encrypted database. Diagnostics intentionally omit keys, canaries, complete
+database paths, and reusable secrets.
+
+This candidate evidence was run on `aarch64-apple-darwin` (Darwin 25.4.0) with
+Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make 3.81. It is not
+release-platform admission: P05-01B-2 still owns the same checks on macOS,
+Windows, Linux, iOS, and Android, and P05-01B owns the eventual production
+adapter.
 
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 

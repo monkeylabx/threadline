@@ -12,4 +12,5 @@ workspace = true
 rusqlite.workspace = true
 
 [dev-dependencies]
-rusqlite = { workspace = true, features = ["bundled", "hooks"] }
+getrandom.workspace = true
+rusqlite = { workspace = true, features = ["bundled-sqlcipher-vendored-openssl", "hooks"] }
