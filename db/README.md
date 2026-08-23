@@ -4,8 +4,10 @@ This directory owns the PostgreSQL migration and sqlc inputs for
 `threadline-core`. Migration `000001` creates the physical schema namespace
 `domain`. Migration `000002` adds the root Organization/Tenant boundary, and
 migration `000003` adds Member directory/RBAC metadata. Migration `000004` adds
-Space directory/policy-inheritance metadata. It does not define Channel,
-Message, Session, Device, key, recovery, or Outbox tables.
+Space directory/policy-inheritance metadata. Migration `000005` adds Channel
+directory/lifecycle metadata plus Direct Message identity and immutable
+participant rows. It does not define Channel Membership, Message, Session,
+Device, key, recovery, or Outbox tables.
 
 ## Migration rules
 
@@ -23,11 +25,11 @@ Message, Session, Device, key, recovery, or Outbox tables.
 
 All live shell tests source `tests/postgres_harness.sh` for the PostgreSQL 16.4
 version gate, pinned tool resolution, disposable-database lifecycle, cleanup
-guards, and secret-safe diagnostics. The Organization, Member, and Space typed
-Go tests likewise share `postgres_integration_test.go` for the operator-supplied
-DSN gate, maintenance/test connection lifecycle, migration loading, version
-check, and guarded database deletion. Aggregate test files contain only their
-domain fixtures and assertions.
+guards, and secret-safe diagnostics. The Organization, Member, Space, and
+Channel/DM typed Go tests likewise share `postgres_integration_test.go` for the
+operator-supplied DSN gate, maintenance/test connection lifecycle, migration
+loading, version check, and guarded database deletion. Aggregate test files
+contain only their domain fixtures and assertions.
 
 Run the static contract without a database:
 
@@ -170,6 +172,63 @@ It invokes `CreateSpace`, `GetSpace`, and `UpdateSpaceDirectoryMetadata`
 directly and verifies complete round-trip, exact-key misses, constraints,
 same-ID cross-Tenant isolation, and immutable identity/creation time. Ordinary
 Go tests skip this live test when the environment variable is absent.
+
+## Channel and Direct Message persistence
+
+`domain.channels` stores minimal `threadline.channel.v1.Channel` directory and
+lifecycle metadata beneath a tenant-scoped Space. Its immutable identity is
+`(tenant_id, channel_id)`. Name is normalized nonempty C2 directory data;
+visibility uses published values `1` public and `2` private, while lifecycle
+state uses `1` active, `2` archived and `3` pending deletion. The opaque
+`e2ee_group_id` binding and server-assigned `created_at` are immutable through
+the generated API. Encrypted topic, RetentionPolicy and ChannelAgentPolicy are
+deliberately outside this slice.
+
+`domain.direct_messages` stores tenant-scoped DM identity, opaque E2EE Group
+binding and creation time. `domain.direct_message_participants` normalizes the
+immutable Actor set with tenant-scoped foreign keys to both the DM and Member.
+DM creation is one transaction: create the unsealed parent, append the intended
+participants, then call `FinalizeDirectMessageParticipants`. A deferred
+database constraint rejects commit while the parent remains unsealed. Database
+triggers reject participant append after finalization, every participant update
+or delete, any attempt to reopen a sealed set, and every change to the
+tenant-scoped `(tenant_id, dm_id)` identity. Identity immutability also ensures
+the deferred sealing check cannot be bypassed by moving an unsealed row to a new
+key before commit. The triggers intentionally impose no minimum participant
+count because that domain rule is not present in the proto contract. The append
+trigger locks the parent DM row, so participant insertion and finalization
+serialize on that row and a concurrent insert cannot cross the sealed
+transition. The composite participant-to-DM and participant-to-Member foreign
+keys remain authoritative after that lifecycle check. Generated queries expose
+participant creation and deterministic reads only; there is no participant
+update or delete operation. Production
+create-or-get concurrency behavior remains a later RPC transaction concern.
+
+Visibility, state, participant rows and E2EE Group identifiers are routing
+facts, not authorization or proof of key possession. P03-02 must derive Tenant
+scope from the authenticated Session, P03-05 owns effective Membership/RBAC/ACL
+decisions, and the Crypto owner admits actual E2EE Group state.
+
+Run the synthetic constraints, exact-Tenant isolation, immutable-field and
+failed-DM-transaction cases against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db channel-dm-test
+```
+
+The generated Channel/DM API has a separately gated Go integration test. It
+creates and drops only a guarded `threadline_channel_dm_go_test_*` database and
+invokes every generated Channel/DM operation directly:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-dm-go-test
+```
+
+Fixtures contain only synthetic C2 directory/routing metadata. They contain no
+message or topic plaintext, prompt, credential, token, Device or MLS key,
+Epoch/History/Recovery material, or production identifier.
 
 ## Query generation
 

@@ -11,6 +11,8 @@ MEMBER_UP="$DB_DIR/migrations/000003_member.up.sql"
 MEMBER_DOWN="$DB_DIR/migrations/000003_member.down.sql"
 SPACE_UP="$DB_DIR/migrations/000004_space.up.sql"
 SPACE_DOWN="$DB_DIR/migrations/000004_space.down.sql"
+CHANNEL_DM_UP="$DB_DIR/migrations/000005_channel_dm.up.sql"
+CHANNEL_DM_DOWN="$DB_DIR/migrations/000005_channel_dm.down.sql"
 
 . "$TESTS_DIR/postgres_harness.sh"
 POSTGRES_TEST_SUITE=migration
@@ -32,6 +34,8 @@ verify_static_contract() {
   test -f "$MEMBER_DOWN" || postgres_test_fail "missing 000003 down migration"
   test -f "$SPACE_UP" || postgres_test_fail "missing 000004 up migration"
   test -f "$SPACE_DOWN" || postgres_test_fail "missing 000004 down migration"
+  test -f "$CHANNEL_DM_UP" || postgres_test_fail "missing 000005 up migration"
+  test -f "$CHANNEL_DM_DOWN" || postgres_test_fail "missing 000005 down migration"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -40,6 +44,17 @@ verify_static_contract() {
   grep -Eq '^DROP TABLE domain\.members;$' "$MEMBER_DOWN" || postgres_test_fail "000003 down must drop domain.members exactly"
   grep -Eq '^CREATE TABLE domain\.spaces \($' "$SPACE_UP" || postgres_test_fail "000004 up must create domain.spaces"
   grep -Eq '^DROP TABLE domain\.spaces;$' "$SPACE_DOWN" || postgres_test_fail "000004 down must drop domain.spaces exactly"
+  grep -Eq '^CREATE TABLE domain\.channels \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.channels"
+  grep -Eq '^CREATE TABLE domain\.direct_messages \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.direct_messages"
+  grep -Eq '^CREATE TABLE domain\.direct_message_participants \($' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must create domain.direct_message_participants"
+  grep -Eq '^CREATE CONSTRAINT TRIGGER direct_messages_participants_sealed_at_commit$' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must defer participant sealing validation until commit"
+  grep -Eq '^CREATE TRIGGER direct_messages_lifecycle_update_guard$' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must guard immutable Direct Message identity"
+  grep -Eq '^  FOR UPDATE;$' "$CHANNEL_DM_UP" || postgres_test_fail "000005 up must serialize participant append with finalization"
+  grep -Eq '^DROP TABLE domain\.direct_message_participants;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.direct_message_participants exactly"
+  grep -Eq '^DROP TABLE domain\.direct_messages;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.direct_messages exactly"
+  grep -Eq '^DROP TABLE domain\.channels;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.channels exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_direct_message_participants_append_only\(\);$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop participant lifecycle function exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_direct_message_lifecycle_update\(\);$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop Direct Message lifecycle function exactly"
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -61,9 +76,11 @@ apply_up_migrations() {
   psql_test --file="$ORGANIZATION_UP"
   psql_test --file="$MEMBER_UP"
   psql_test --file="$SPACE_UP"
+  psql_test --file="$CHANNEL_DM_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$CHANNEL_DM_DOWN"
   psql_test --file="$SPACE_DOWN"
   psql_test --file="$MEMBER_DOWN"
   psql_test --file="$ORGANIZATION_DOWN"
@@ -84,6 +101,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$CHANNEL_DM_DOWN"
 psql_test --file="$SPACE_DOWN"
 psql_test --file="$MEMBER_DOWN"
 psql_test --file="$ORGANIZATION_DOWN"

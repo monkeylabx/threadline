@@ -8,6 +8,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DomainChannel struct {
+	TenantID    string
+	ChannelID   string
+	SpaceID     string
+	Name        string
+	Visibility  int16
+	State       int16
+	E2eeGroupID string
+	CreatedAt   pgtype.Timestamptz
+}
+
+type DomainDirectMessage struct {
+	TenantID           string
+	DmID               string
+	E2eeGroupID        string
+	ParticipantsSealed bool
+	CreatedAt          pgtype.Timestamptz
+}
+
+type DomainDirectMessageParticipant struct {
+	TenantID  string
+	DmID      string
+	ActorType int16
+	ActorID   string
+}
+
 type DomainMember struct {
 	TenantID    string
 	ActorType   int16
