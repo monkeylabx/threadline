@@ -20,10 +20,11 @@ import (
 type ErrorCode string
 
 const (
-	ErrorInvalidInput     ErrorCode = "invalid-input"
-	ErrorCurrentNotFound  ErrorCode = "current-not-found"
-	ErrorResourceNotFound ErrorCode = "resource-not-found"
-	ErrorPersistence      ErrorCode = "persistence-failure"
+	ErrorInvalidInput       ErrorCode = "invalid-input"
+	ErrorCurrentNotFound    ErrorCode = "current-not-found"
+	ErrorResourceNotFound   ErrorCode = "resource-not-found"
+	ErrorInvalidStoredFacts ErrorCode = "invalid-stored-facts"
+	ErrorPersistence        ErrorCode = "persistence-failure"
 )
 
 // Error is a stable, secret-safe ACL-store error.
@@ -77,22 +78,28 @@ func LoadCurrent(
 	if err != nil {
 		return authorization.ResourceACLFacts{}, persistenceError(ctx)
 	}
+	facts := authorization.ResourceACLFacts{
+		Resource: ref, Version: strconv.FormatInt(snapshot.AclVersion, 10),
+	}
+	invalidStoredFacts := false
 	entries := make([]authorization.ACLEntry, len(rows))
 	for index, row := range rows {
 		entry, ok := authorizationEntry(row.ActorType, row.ActorID, row.Action, row.Effect)
 		if !ok {
-			return authorization.ResourceACLFacts{}, storeError(ErrorPersistence)
+			invalidStoredFacts = true
 		}
 		entries[index] = entry
 	}
+	facts.Entries = entries
 	defaultEffect, ok := authorizationEffect(snapshot.DefaultEffect)
 	if !ok {
-		return authorization.ResourceACLFacts{}, storeError(ErrorPersistence)
+		invalidStoredFacts = true
 	}
-	return authorization.ResourceACLFacts{
-		Resource: ref, Version: strconv.FormatInt(snapshot.AclVersion, 10),
-		DefaultEffect: defaultEffect, Entries: entries,
-	}, nil
+	facts.DefaultEffect = defaultEffect
+	if invalidStoredFacts {
+		return facts, storeError(ErrorInvalidStoredFacts)
+	}
+	return facts, nil
 }
 
 // ReplaceCurrent appends, seals, and makes current one complete snapshot inside
@@ -281,18 +288,23 @@ func validatedEntries(input []authorization.ACLEntry) ([]authorization.ACLEntry,
 }
 
 func authorizationEntry(actorType int16, actorID string, action, effect int16) (authorization.ACLEntry, bool) {
-	if !knownActorType(rpcmiddleware.ActorType(actorType)) || !validID(actorID) {
-		return authorization.ACLEntry{}, false
+	entry := authorization.ACLEntry{
+		Actor: authorization.ActorRef{Type: rpcmiddleware.ActorType(actorType), ID: actorID},
 	}
+	actorIDValid := validID(actorID)
+	if !actorIDValid {
+		entry.Actor.ID = ""
+	}
+	valid := knownActorType(entry.Actor.Type) && actorIDValid
 	decodedAction, actionOK := authorizationAction(action)
 	decodedEffect, effectOK := authorizationEffect(effect)
-	if !actionOK || !effectOK {
-		return authorization.ACLEntry{}, false
+	if actionOK {
+		entry.Action = decodedAction
 	}
-	return authorization.ACLEntry{
-		Actor:  authorization.ActorRef{Type: rpcmiddleware.ActorType(actorType), ID: actorID},
-		Action: decodedAction, Effect: decodedEffect,
-	}, true
+	if effectOK {
+		entry.Effect = decodedEffect
+	}
+	return entry, valid && actionOK && effectOK
 }
 
 func knownActorType(actorType rpcmiddleware.ActorType) bool {
