@@ -25,7 +25,7 @@ func TestTrustedMappingRejectsAliasesAndBrokerWildcards(t *testing.T) {
 		Stream:             "DOMAIN_EVENTS",
 		Subject:            "threadline.domain.events.v1",
 	}
-	if !validMapping(valid) {
+	if !valid.Valid() || !validMapping(valid) {
 		t.Fatal("valid trusted mapping rejected")
 	}
 
@@ -44,7 +44,7 @@ func TestTrustedMappingRejectsAliasesAndBrokerWildcards(t *testing.T) {
 		"empty subject token": {LogicalDestination: LogicalDestinationDomainEvents, Stream: valid.Stream, Subject: "threadline..events"},
 	}
 	for name, mapping := range invalid {
-		if validMapping(mapping) {
+		if mapping.Valid() || validMapping(mapping) {
 			t.Errorf("%s accepted: %#v", name, mapping)
 		}
 	}

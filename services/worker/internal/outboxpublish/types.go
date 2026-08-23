@@ -30,6 +30,11 @@ type Mapping struct {
 	Subject            string
 }
 
+// Valid reports whether Mapping names the sole trusted v1 logical
+// destination and one exact concrete Stream and subject. It lets later Worker
+// modules bind the already-reviewed mapping without duplicating its rules.
+func (mapping Mapping) Valid() bool { return validMapping(mapping) }
+
 func (Mapping) String() string   { return "<redacted-outbox-publish-mapping>" }
 func (Mapping) GoString() string { return "<redacted-outbox-publish-mapping>" }
 func (Mapping) MarshalJSON() ([]byte, error) {

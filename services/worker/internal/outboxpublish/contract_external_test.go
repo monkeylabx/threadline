@@ -20,6 +20,9 @@ func TestRelayPackageCanConsumeProductionAndScriptedPublishers(t *testing.T) {
 		Stream:             "DOMAIN_EVENTS",
 		Subject:            "threadline.domain.events.v1",
 	}
+	if !mapping.Valid() {
+		t.Fatal("valid mapping rejected by exported validation seam")
+	}
 	production, err := outboxpublish.NewJetStreamPublisher(externalJetStream{}, mapping)
 	if err != nil {
 		t.Fatal(err)
