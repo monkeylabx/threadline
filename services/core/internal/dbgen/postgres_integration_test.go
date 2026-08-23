@@ -110,7 +110,7 @@ func applyPostgresTestMigrations(
 
 func knownPostgresTestSuite(suite string) bool {
 	switch suite {
-	case "organization", "member", "space":
+	case "organization", "member", "space", "channel_dm":
 		return true
 	default:
 		return false
@@ -161,6 +161,9 @@ func TestPostgresIntegrationHarnessGuards(t *testing.T) {
 
 	if !safePostgresTestDatabaseName("threadline_space_go_test_123_456", "space") {
 		t.Fatal("expected generated Space test database name to pass the deletion guard")
+	}
+	if !safePostgresTestDatabaseName("threadline_channel_dm_go_test_123_456", "channel_dm") {
+		t.Fatal("expected generated Channel/DM test database name to pass the deletion guard")
 	}
 	for _, testCase := range []struct {
 		name  string
