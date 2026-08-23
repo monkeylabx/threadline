@@ -1,4 +1,9 @@
-use std::{fmt::Write as _, path::Path, time::Duration};
+use std::{
+    fmt::Write as _,
+    path::Path,
+    sync::{Mutex, MutexGuard, OnceLock},
+    time::Duration,
+};
 
 use rusqlite::{Connection, OpenFlags};
 use zeroize::{Zeroize, Zeroizing};
@@ -42,6 +47,7 @@ pub struct EncryptedDatabase {
 
 impl EncryptedDatabase {
     pub fn open(path: impl AsRef<Path>, key: DatabaseKey) -> Result<Self, StorageError> {
+        let _open_guard = encrypted_database_open_guard();
         let mut connection = Connection::open_with_flags(
             path,
             OpenFlags::SQLITE_OPEN_READ_WRITE
@@ -70,6 +76,19 @@ impl EncryptedDatabase {
 
         Ok(Self { connection })
     }
+}
+
+fn encrypted_database_open_guard() -> MutexGuard<'static, ()> {
+    // Two hosted Windows runs overflowed in different concurrent callers of
+    // EncryptedDatabase::open, while an earlier hosted Windows run with one
+    // SQLCipher-opening test passed.
+    // Serialize only construction; the returned connection is not locked here.
+    // P05-02 will define the longer-lived single-owner StoreActor boundary.
+    static DATABASE_OPEN: OnceLock<Mutex<()>> = OnceLock::new();
+    DATABASE_OPEN
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn apply_key(connection: &Connection, key: &DatabaseKey) -> Result<(), StorageError> {
