@@ -2,7 +2,7 @@ SQLC ?= sqlc
 SQLC_VERSION := 1.31.1
 GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
 
-.PHONY: check check-sqlc generate generate-check migration-static migration-test
+.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test
 
 check-sqlc:
 	@actual="$$($(SQLC) version)"; test "$$actual" = "v$(SQLC_VERSION)" || { echo "sqlc v$(SQLC_VERSION) required; found $$actual" >&2; exit 1; }
@@ -12,6 +12,9 @@ migration-static:
 
 migration-test:
 	@sh "$(CURDIR)/tests/migration_roundtrip.sh"
+
+organization-test:
+	@sh "$(CURDIR)/tests/organization_persistence.sh"
 
 generate: check-sqlc migration-static
 	@cd "$(CURDIR)" && "$(SQLC)" generate

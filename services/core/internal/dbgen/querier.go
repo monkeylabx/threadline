@@ -9,7 +9,10 @@ import (
 )
 
 type Querier interface {
+	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (DomainOrganization, error)
 	DatabaseReady(ctx context.Context) (int64, error)
+	GetOrganization(ctx context.Context, tenantID string) (DomainOrganization, error)
+	UpdateOrganizationStatePolicy(ctx context.Context, arg UpdateOrganizationStatePolicyParams) (DomainOrganization, error)
 }
 
 var _ Querier = (*Queries)(nil)

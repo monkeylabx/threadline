@@ -2,8 +2,10 @@
 set -eu
 
 DB_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-UP_MIGRATION="$DB_DIR/migrations/000001_core_foundation.up.sql"
-DOWN_MIGRATION="$DB_DIR/migrations/000001_core_foundation.down.sql"
+FOUNDATION_UP="$DB_DIR/migrations/000001_core_foundation.up.sql"
+FOUNDATION_DOWN="$DB_DIR/migrations/000001_core_foundation.down.sql"
+ORGANIZATION_UP="$DB_DIR/migrations/000002_organization.up.sql"
+ORGANIZATION_DOWN="$DB_DIR/migrations/000002_organization.down.sql"
 
 fail() {
   printf '%s\n' "migration test failed: $1" >&2
@@ -11,13 +13,19 @@ fail() {
 }
 
 verify_static_contract() {
-  test -f "$UP_MIGRATION" || fail "missing 000001 up migration"
-  test -f "$DOWN_MIGRATION" || fail "missing 000001 down migration"
-  grep -Eq '^CREATE SCHEMA domain;$' "$UP_MIGRATION" || fail "up must create only schema domain"
-  grep -Eq '^DROP SCHEMA domain;$' "$DOWN_MIGRATION" || fail "down must drop schema domain"
-  if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$DOWN_MIGRATION"; then
-    fail "down migration must not use CASCADE"
-  fi
+  test -f "$FOUNDATION_UP" || fail "missing 000001 up migration"
+  test -f "$FOUNDATION_DOWN" || fail "missing 000001 down migration"
+  test -f "$ORGANIZATION_UP" || fail "missing 000002 up migration"
+  test -f "$ORGANIZATION_DOWN" || fail "missing 000002 down migration"
+  grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || fail "000001 up must create schema domain"
+  grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || fail "000001 down must drop schema domain"
+  grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || fail "000002 up must create domain.organizations"
+  grep -Eq '^DROP TABLE domain\.organizations;$' "$ORGANIZATION_DOWN" || fail "000002 down must drop domain.organizations exactly"
+  for down_migration in "$DB_DIR"/migrations/*.down.sql; do
+    if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
+      fail "down migration must not use CASCADE: $(basename "$down_migration")"
+    fi
+  done
 }
 
 verify_static_contract
@@ -84,22 +92,33 @@ psql_test() {
   "$PSQL" --no-psqlrc --quiet --set=ON_ERROR_STOP=1 --dbname="$test_db" "$@"
 }
 
+apply_up_migrations() {
+  psql_test --file="$FOUNDATION_UP"
+  psql_test --file="$ORGANIZATION_UP"
+}
+
+apply_down_migrations() {
+  psql_test --file="$ORGANIZATION_DOWN"
+  psql_test --file="$FOUNDATION_DOWN"
+}
+
 schema_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM pg_namespace WHERE nspname = 'domain'")
 test "$schema_count" = "0" || fail "disposable database is not clean"
 
-psql_test --file="$UP_MIGRATION"
+apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/first.sql"
 
-psql_test --file="$DOWN_MIGRATION"
+apply_down_migrations
 schema_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM pg_namespace WHERE nspname = 'domain'")
 test "$schema_count" = "0" || fail "down migration did not remove schema domain"
 
-psql_test --file="$UP_MIGRATION"
+apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || fail "up migrations produced different schemas"
 
+psql_test --file="$ORGANIZATION_DOWN"
 psql_test --command='CREATE TABLE domain.down_guard (marker integer NOT NULL)'
-if psql_test --file="$DOWN_MIGRATION" >"$temp_dir/down.out" 2>"$temp_dir/down.err"; then
+if psql_test --file="$FOUNDATION_DOWN" >"$temp_dir/down.out" 2>"$temp_dir/down.err"; then
   fail "down unexpectedly removed a non-empty schema"
 fi
 guard_count=$(
@@ -108,7 +127,7 @@ guard_count=$(
 )
 test "$guard_count" = "0" || fail "unexpected guard table contents"
 psql_test --command='DROP TABLE domain.down_guard'
-psql_test --file="$DOWN_MIGRATION"
+psql_test --file="$FOUNDATION_DOWN"
 
 "$DROPDB" --maintenance-db="$PGDATABASE" "$test_db" >/dev/null
 created=0
