@@ -9,9 +9,12 @@ import (
 )
 
 type Querier interface {
+	CreateMember(ctx context.Context, arg CreateMemberParams) (DomainMember, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (DomainOrganization, error)
 	DatabaseReady(ctx context.Context) (int64, error)
+	GetMember(ctx context.Context, arg GetMemberParams) (DomainMember, error)
 	GetOrganization(ctx context.Context, tenantID string) (DomainOrganization, error)
+	UpdateMemberRoleState(ctx context.Context, arg UpdateMemberRoleStateParams) (DomainMember, error)
 	UpdateOrganizationStatePolicy(ctx context.Context, arg UpdateOrganizationStatePolicyParams) (DomainOrganization, error)
 }
 
