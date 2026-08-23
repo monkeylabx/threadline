@@ -19,6 +19,17 @@ type DomainChannel struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type DomainChannelMembership struct {
+	IntervalID int64
+	TenantID   string
+	ChannelID  string
+	ActorType  int16
+	ActorID    string
+	Role       int16
+	JoinedAt   pgtype.Timestamptz
+	LeftAt     pgtype.Timestamptz
+}
+
 type DomainDirectMessage struct {
 	TenantID           string
 	DmID               string
