@@ -70,6 +70,7 @@ func TestValidateAndNarrowCapabilities(t *testing.T) {
 		{"empty", nil, ErrorInvalidInput},
 		{"unspecified", []Capability{0}, ErrorInvalidInput},
 		{"unknown", []Capability{15}, ErrorInvalidInput},
+		{"unknown_large", []Capability{257}, ErrorInvalidInput},
 		{"duplicate", []Capability{CapabilityMessageRead, CapabilityMessageRead}, ErrorInvalidInput},
 	}
 	for _, test := range requestCases {
@@ -98,6 +99,16 @@ func TestValidateAndNarrowCapabilities(t *testing.T) {
 				return ValidateAndNarrow(at, request, invalid)
 			})
 		})
+	}
+}
+
+func TestCapabilityValuesMatchPublishedProtocol(t *testing.T) {
+	t.Parallel()
+
+	for index, capability := range allCapabilities {
+		if want := Capability(index + 1); capability != want {
+			t.Fatalf("capability index %d = %d, want published value %d", index, capability, want)
+		}
 	}
 }
 
@@ -134,9 +145,9 @@ func TestValidateAndNarrowScopeFields(t *testing.T) {
 				}
 			})
 
-			t.Run("outside_ceiling", func(t *testing.T) {
+			t.Run("superset", func(t *testing.T) {
 				requestScope := ResourceScope{}
-				field.set(&requestScope, []string{"value-outside"})
+				field.set(&requestScope, []string{"value-a", "value-outside"})
 				assertErrorCode(t, ErrorScopeDenied, func() (ValidatedRequest, error) {
 					return ValidateAndNarrow(at, validRequest(at, requestScope), authority)
 				})
@@ -219,6 +230,7 @@ func TestValidateAndNarrowAuthority(t *testing.T) {
 		mutate func(*IssuanceAuthority)
 	}{
 		{"grantee_type", func(a *IssuanceAuthority) { a.Grantee.Type = 0 }},
+		{"grantee_type_large", func(a *IssuanceAuthority) { a.Grantee.Type = 258 }},
 		{"grantee_id", func(a *IssuanceAuthority) { a.Grantee.ID = "" }},
 		{"initiator_type", func(a *IssuanceAuthority) { a.Initiator.Type = 4 }},
 		{"initiator_id", func(a *IssuanceAuthority) { a.Initiator.ID = " actor" }},
@@ -516,14 +528,22 @@ func assertErrorCode(t *testing.T, want ErrorCode, validate func() (ValidatedReq
 
 func cloneRequest(request Request) Request {
 	request.Capabilities = append([]Capability(nil), request.Capabilities...)
-	request.Scope = cloneScope(request.Scope)
+	request.Scope = cloneTestScope(request.Scope)
 	return request
 }
 
 func cloneAuthority(authority IssuanceAuthority) IssuanceAuthority {
 	authority.Capabilities = append([]Capability(nil), authority.Capabilities...)
-	authority.Scope = cloneScope(authority.Scope)
+	authority.Scope = cloneTestScope(authority.Scope)
 	return authority
+}
+
+func cloneTestScope(scope ResourceScope) ResourceScope {
+	cloned := ResourceScope{}
+	for _, field := range scopeFields {
+		field.set(&cloned, append([]string(nil), field.get(scope)...))
+	}
+	return cloned
 }
 
 func equalValidated(left, right ValidatedRequest) bool {

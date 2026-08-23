@@ -5,32 +5,32 @@ package grantpolicy
 import "time"
 
 // Capability mirrors the published Protocol capability values.
-type Capability uint8
+type Capability int32
 
 const (
-	CapabilityMessageRead Capability = iota + 1
-	CapabilityMessageReadHistory
-	CapabilityMessagePublish
-	CapabilityMessagePublishDraft
-	CapabilityFileRead
-	CapabilityFileWrite
-	CapabilityWorkspaceRead
-	CapabilityWorkspaceWrite
-	CapabilityToolInvoke
-	CapabilityActionExecute
-	CapabilityAgentDelegate
-	CapabilityMemoryRetain
-	CapabilityTaskApprove
-	CapabilityAuditRead
+	CapabilityMessageRead         Capability = 1
+	CapabilityMessageReadHistory  Capability = 2
+	CapabilityMessagePublish      Capability = 3
+	CapabilityMessagePublishDraft Capability = 4
+	CapabilityFileRead            Capability = 5
+	CapabilityFileWrite           Capability = 6
+	CapabilityWorkspaceRead       Capability = 7
+	CapabilityWorkspaceWrite      Capability = 8
+	CapabilityToolInvoke          Capability = 9
+	CapabilityActionExecute       Capability = 10
+	CapabilityAgentDelegate       Capability = 11
+	CapabilityMemoryRetain        Capability = 12
+	CapabilityTaskApprove         Capability = 13
+	CapabilityAuditRead           Capability = 14
 )
 
 // ActorType mirrors the published Protocol actor types.
-type ActorType uint8
+type ActorType int32
 
 const (
-	ActorTypeHuman ActorType = iota + 1
-	ActorTypeAgent
-	ActorTypeService
+	ActorTypeHuman   ActorType = 1
+	ActorTypeAgent   ActorType = 2
+	ActorTypeService ActorType = 3
 )
 
 // ActorRef identifies one trusted actor binding.
