@@ -1,9 +1,11 @@
 use std::{
     fmt::Write as _,
-    path::Path,
-    sync::{Mutex, MutexGuard, OnceLock},
+    path::{Path, PathBuf},
     time::Duration,
 };
+
+#[cfg(target_os = "windows")]
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use rusqlite::{Connection, OpenFlags};
 use zeroize::{Zeroize, Zeroizing};
@@ -11,6 +13,8 @@ use zeroize::{Zeroize, Zeroizing};
 use super::{migrate, StorageError};
 
 const DATABASE_KEY_BYTES: usize = 32;
+#[cfg(target_os = "windows")]
+const DATABASE_OPEN_STACK_BYTES: usize = 8 * 1024 * 1024;
 const EXPECTED_CIPHER_VERSION: &str = "4.14.0 community";
 
 /// A host-supplied SQLCipher key.
@@ -47,7 +51,31 @@ pub struct EncryptedDatabase {
 
 impl EncryptedDatabase {
     pub fn open(path: impl AsRef<Path>, key: DatabaseKey) -> Result<Self, StorageError> {
-        let _open_guard = encrypted_database_open_guard();
+        let path = path.as_ref().to_path_buf();
+
+        #[cfg(target_os = "windows")]
+        {
+            let _open_guard = windows_database_open_guard();
+
+            // Three hosted Windows runs overflowed the default test-thread
+            // stack during this complete secure construction path. P05-02
+            // will replace this short-lived worker with the longer-lived
+            // StoreActor boundary.
+            let result = std::thread::Builder::new()
+                .name("threadline-database-open".to_owned())
+                .stack_size(DATABASE_OPEN_STACK_BYTES)
+                .spawn(move || Self::open_on_current_thread(path, key))
+                .map_err(|_| StorageError::Database)?
+                .join();
+
+            return result.unwrap_or_else(|payload| std::panic::resume_unwind(payload));
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        Self::open_on_current_thread(path, key)
+    }
+
+    fn open_on_current_thread(path: PathBuf, key: DatabaseKey) -> Result<Self, StorageError> {
         let mut connection = Connection::open_with_flags(
             path,
             OpenFlags::SQLITE_OPEN_READ_WRITE
@@ -78,12 +106,10 @@ impl EncryptedDatabase {
     }
 }
 
-fn encrypted_database_open_guard() -> MutexGuard<'static, ()> {
-    // Two hosted Windows runs overflowed in different concurrent callers of
-    // EncryptedDatabase::open, while an earlier hosted Windows run with one
-    // SQLCipher-opening test passed.
-    // Serialize only construction; the returned connection is not locked here.
-    // P05-02 will define the longer-lived single-owner StoreActor boundary.
+#[cfg(target_os = "windows")]
+fn windows_database_open_guard() -> MutexGuard<'static, ()> {
+    // Limit concurrent short-lived workers and their 8 MiB stack reservations.
+    // This guard is only a scheduling token, so a poisoned lock is recoverable.
     static DATABASE_OPEN: OnceLock<Mutex<()>> = OnceLock::new();
     DATABASE_OPEN
         .get_or_init(|| Mutex::new(()))
