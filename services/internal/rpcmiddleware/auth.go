@@ -171,7 +171,7 @@ func (i *authenticationInterceptor) authenticate(
 	if verifyErr != nil {
 		return Principal{}, mapVerificationError(verifyErr)
 	}
-	if !validVerifiedSession(verified) {
+	if !validVerifiedSession(verified, credential) {
 		return Principal{}, connectError(connect.CodeInternal, "session verifier returned invalid claims")
 	}
 
@@ -241,21 +241,22 @@ func connectError(code connect.Code, message string) error {
 	return connect.NewError(code, errors.New(message))
 }
 
-func validVerifiedSession(verified VerifiedSession) bool {
+func validVerifiedSession(verified VerifiedSession, credential string) bool {
 	if verified.ActorType != ActorTypeHuman &&
 		verified.ActorType != ActorTypeAgent &&
 		verified.ActorType != ActorTypeService {
 		return false
 	}
-	return validClaim(verified.TenantID) &&
-		validClaim(verified.ActorID) &&
-		validClaim(verified.DeviceID) &&
-		validClaim(verified.SessionID)
+	return validClaim(verified.TenantID, credential) &&
+		validClaim(verified.ActorID, credential) &&
+		validClaim(verified.DeviceID, credential) &&
+		validClaim(verified.SessionID, credential)
 }
 
-func validClaim(value string) bool {
+func validClaim(value, credential string) bool {
 	return value != "" && value == strings.TrimSpace(value) &&
-		!strings.ContainsFunc(value, unicode.IsControl)
+		!strings.ContainsFunc(value, unicode.IsControl) &&
+		!strings.Contains(value, credential)
 }
 
 func readBearerCredential(header http.Header) (string, error) {

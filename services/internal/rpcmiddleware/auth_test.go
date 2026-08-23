@@ -236,6 +236,14 @@ func TestInvalidVerifiedClaimsFailClosed(t *testing.T) {
 		{name: "empty session", mutate: func(v *rpcmiddleware.VerifiedSession) { v.SessionID = "" }},
 		{name: "untrimmed session", mutate: func(v *rpcmiddleware.VerifiedSession) { v.SessionID = "\ninvalid" }},
 		{name: "unsupported actor type", mutate: func(v *rpcmiddleware.VerifiedSession) { v.ActorType = 99 }},
+		{name: "tenant equals credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.TenantID = credentialCanary }},
+		{name: "tenant embeds credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.TenantID = "tenant-" + credentialCanary + "-suffix" }},
+		{name: "actor equals credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.ActorID = credentialCanary }},
+		{name: "actor embeds credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.ActorID = "actor-" + credentialCanary + "-suffix" }},
+		{name: "device equals credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.DeviceID = credentialCanary }},
+		{name: "device embeds credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.DeviceID = "device-" + credentialCanary + "-suffix" }},
+		{name: "session equals credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.SessionID = credentialCanary }},
+		{name: "session embeds credential", mutate: func(v *rpcmiddleware.VerifiedSession) { v.SessionID = "session-" + credentialCanary + "-suffix" }},
 	}
 
 	for _, test := range tests {
