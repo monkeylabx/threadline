@@ -57,7 +57,7 @@ fn foreign_database_fails_closed_without_rewriting_it() {
     let error = rejected_open(&fixture);
 
     assert_eq!(error, StorageError::ForeignDatabase);
-    assert_eq!(fixture.database_family_state(), before);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
@@ -74,7 +74,7 @@ fn newer_schema_fails_closed_without_changing_version() {
     let error = rejected_open(&fixture);
 
     assert_eq!(error, StorageError::NewerSchema);
-    assert_eq!(fixture.database_family_state(), before);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn checksum_drift_fails_closed_without_repairing_the_ledger() {
     let error = rejected_open(&fixture);
 
     assert_eq!(error, StorageError::MigrationLedgerInvalid);
-    assert_eq!(fixture.database_family_state(), before);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
@@ -112,7 +112,7 @@ fn live_schema_tampering_fails_closed() {
     let error = rejected_open(&fixture);
 
     assert_eq!(error, StorageError::MigrationLedgerInvalid);
-    assert_eq!(fixture.database_family_state(), before);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
@@ -441,6 +441,13 @@ impl DatabaseFixture {
             path.exists()
                 .then(|| fs::read(path).expect("read encrypted database-family member"))
         })
+    }
+
+    fn database_family_matches(&self, expected: &[Option<Vec<u8>>; 3]) -> bool {
+        self.database_family_state()
+            .iter()
+            .zip(expected)
+            .all(|(actual, expected)| actual == expected)
     }
 }
 

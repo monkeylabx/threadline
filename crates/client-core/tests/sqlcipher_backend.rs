@@ -69,13 +69,12 @@ fn production_interface_is_keyed_fail_closed_and_preserves_opaque_bytes() {
         Err(error) => error,
     };
     assert_eq!(error, StorageError::Database);
-    assert_eq!(
-        snapshot_database_family(&family_paths),
-        family_before_rejection,
+    let family_unchanged = database_family_matches(&family_paths, &family_before_rejection);
+    drop(database);
+    assert!(
+        family_unchanged,
         "wrong-key open rewrote the DB/WAL/SHM family"
     );
-
-    drop(database);
     let reopened = EncryptedDatabase::open(
         &database_path,
         DatabaseKey::new(key).expect("accept generated fixed-size key"),
@@ -93,23 +92,11 @@ fn production_interface_is_keyed_fail_closed_and_preserves_opaque_bytes() {
 fn empty_key_is_unrepresentable_and_does_not_rewrite_database_family() {
     let test_directory = EphemeralDirectory::create();
     let database_path = test_directory.path().join("client-core.db");
-    let key = random_distinct_from(&[]);
-    let mut database = EncryptedDatabase::open(
-        &database_path,
-        DatabaseKey::new(key).expect("accept generated fixed-size key"),
-    )
-    .expect("create encrypted database");
-    database
-        .insert_committed_event(CommittedEvent {
-            tenant_id: "tenant-empty-key",
-            conversation: ConversationRef::channel("channel-empty-key")
-                .expect("valid conversation"),
-            event_id: "evt-empty-key",
-            committed_sequence: 1,
-            envelope_bytes: &[0x8A, 0x01, 0x01],
-        })
-        .expect("create live WAL/SHM evidence");
     let family_paths = database_family(&database_path);
+    for (index, path) in family_paths.iter().enumerate() {
+        fs::write(path, vec![index as u8 + 1; 64 + index])
+            .expect("create immutable database-family sentinel");
+    }
     let family_before_rejection = snapshot_database_family(&family_paths);
 
     let error = match DatabaseKey::new([0_u8; 32]) {
@@ -118,12 +105,11 @@ fn empty_key_is_unrepresentable_and_does_not_rewrite_database_family() {
     };
 
     assert_eq!(error, StorageError::InvalidKey);
-    assert_eq!(
-        snapshot_database_family(&family_paths),
-        family_before_rejection,
+    let family_unchanged = database_family_matches(&family_paths, &family_before_rejection);
+    assert!(
+        family_unchanged,
         "empty-key rejection rewrote the DB/WAL/SHM family"
     );
-    drop(database);
 }
 
 #[test]
@@ -184,9 +170,10 @@ fn corrupted_ciphertext_is_not_misclassified_as_a_confirmed_key_error() {
 
     assert_eq!(error, StorageError::Database);
     assert_eq!(error.code(), "storage_database_error");
-    assert_eq!(
-        fs::read(&database_path).expect("read rejected corrupted fixture"),
-        corrupted,
+    assert!(
+        fs::read(&database_path)
+            .map(|actual| actual == corrupted)
+            .unwrap_or(false),
         "corrupt database rejection rewrote ciphertext"
     );
 }
@@ -199,6 +186,17 @@ fn snapshot_database_family(family_paths: &[PathBuf; 3]) -> [Vec<u8>; 3] {
         );
         fs::read(&family_paths[index]).expect("read encrypted database-family member")
     })
+}
+
+fn database_family_matches(family_paths: &[PathBuf; 3], expected: &[Vec<u8>; 3]) -> bool {
+    family_paths
+        .iter()
+        .zip(expected)
+        .all(|(path, expected_bytes)| {
+            fs::read(path)
+                .map(|actual_bytes| actual_bytes == *expected_bytes)
+                .unwrap_or(false)
+        })
 }
 
 fn assert_hidden(haystack: &[u8], needle: &[u8], message: &str) {
