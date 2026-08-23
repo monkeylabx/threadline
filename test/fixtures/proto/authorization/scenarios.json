@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 1,
+  "classification": "synthetic-authorization-contract-no-secrets",
+  "actions": [
+    "space.discover",
+    "space.channel.create",
+    "channel.discover",
+    "channel.read",
+    "channel.publish",
+    "channel.update",
+    "channel.archive",
+    "channel.membership.list",
+    "channel.membership.add",
+    "channel.membership.remove",
+    "channel.acl.update"
+  ],
+  "roleMatrix": [
+    {
+      "organizationRole": "ROLE_OWNER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_NONE",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover"]
+    },
+    {
+      "organizationRole": "ROLE_OWNER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_OWNER",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.archive", "channel.membership.list", "channel.membership.add", "channel.membership.remove", "channel.acl.update"]
+    },
+    {
+      "organizationRole": "ROLE_OWNER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MODERATOR",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.membership.list", "channel.membership.add", "channel.membership.remove"]
+    },
+    {
+      "organizationRole": "ROLE_OWNER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MEMBER",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_OWNER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_GUEST",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_NONE",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover"]
+    },
+    {
+      "organizationRole": "ROLE_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_OWNER",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.archive", "channel.membership.list", "channel.membership.add", "channel.membership.remove", "channel.acl.update"]
+    },
+    {
+      "organizationRole": "ROLE_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MODERATOR",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.membership.list", "channel.membership.add", "channel.membership.remove"]
+    },
+    {
+      "organizationRole": "ROLE_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MEMBER",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_GUEST",
+      "allowedActions": ["space.discover", "space.channel.create", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_SECURITY_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_NONE",
+      "allowedActions": ["space.discover", "channel.discover"]
+    },
+    {
+      "organizationRole": "ROLE_SECURITY_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_OWNER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list", "channel.membership.remove", "channel.acl.update"]
+    },
+    {
+      "organizationRole": "ROLE_SECURITY_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MODERATOR",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list", "channel.membership.remove"]
+    },
+    {
+      "organizationRole": "ROLE_SECURITY_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MEMBER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_SECURITY_ADMIN",
+      "channelRole": "CHANNEL_MEMBER_ROLE_GUEST",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_MEMBER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_NONE",
+      "allowedActions": ["space.discover", "channel.discover"]
+    },
+    {
+      "organizationRole": "ROLE_MEMBER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_OWNER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.archive", "channel.membership.list", "channel.membership.add", "channel.membership.remove", "channel.acl.update"]
+    },
+    {
+      "organizationRole": "ROLE_MEMBER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MODERATOR",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.update", "channel.membership.list", "channel.membership.add", "channel.membership.remove"]
+    },
+    {
+      "organizationRole": "ROLE_MEMBER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MEMBER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_MEMBER",
+      "channelRole": "CHANNEL_MEMBER_ROLE_GUEST",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_GUEST",
+      "channelRole": "CHANNEL_MEMBER_ROLE_NONE",
+      "allowedActions": ["space.discover"]
+    },
+    {
+      "organizationRole": "ROLE_GUEST",
+      "channelRole": "CHANNEL_MEMBER_ROLE_OWNER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_GUEST",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MODERATOR",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_GUEST",
+      "channelRole": "CHANNEL_MEMBER_ROLE_MEMBER",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    },
+    {
+      "organizationRole": "ROLE_GUEST",
+      "channelRole": "CHANNEL_MEMBER_ROLE_GUEST",
+      "allowedActions": ["space.discover", "channel.discover", "channel.read", "channel.publish", "channel.membership.list"]
+    }
+  ],
+  "cases": [
+    {
+      "id": "member-read-allowed",
+      "action": "channel.read",
+      "principal": {"tenantId": "tenant-a", "actorType": "ACTOR_TYPE_HUMAN", "actorId": "actor-alice"},
+      "factsAvailable": true,
+      "resource": {"kind": "channel", "tenantId": "tenant-a", "resourceId": "channel-a", "exists": true, "visibility": "public", "state": "active", "cryptographicAdmission": true},
+      "organization": {"tenantId": "tenant-a", "state": "active", "policyVersion": "policy-7"},
+      "member": {"tenantId": "tenant-a", "actorType": "ACTOR_TYPE_HUMAN", "actorId": "actor-alice", "state": "active", "role": "ROLE_MEMBER"},
+      "channelMembership": {"tenantId": "tenant-a", "channelId": "channel-a", "actorType": "ACTOR_TYPE_HUMAN", "actorId": "actor-alice", "active": true, "role": "CHANNEL_MEMBER_ROLE_MEMBER", "currentIntervalId": "membership-2", "departedIntervalIds": ["membership-1"]},
+      "acl": {"resource": {"kind": "channel", "tenantId": "tenant-a", "resourceId": "channel-a"}, "version": "acl-3", "defaultEffect": "allow", "entries": []},
+      "runtime": {"required": false, "capabilityPresent": false, "capabilityAllows": false, "delegationAllows": false},
+      "approval": {"required": false, "present": false},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "missing-principal-denied-first",
+      "extends": "member-read-allowed",
+      "principal": null,
+      "expected": {"effect": "deny", "reason": "authentication-required", "policyVersion": "", "aclVersion": ""}
+    },
+    {
+      "id": "tenant-mismatch-precedes-resource-existence",
+      "extends": "member-read-allowed",
+      "resource": {"tenantId": "tenant-b", "exists": false},
+      "expected": {"effect": "deny", "reason": "tenant-mismatch", "policyVersion": "", "aclVersion": ""}
+    },
+    {
+      "id": "facts-unavailable-fails-closed",
+      "extends": "member-read-allowed",
+      "factsAvailable": false,
+      "expected": {"effect": "deny", "reason": "facts-unavailable", "policyVersion": "", "aclVersion": ""}
+    },
+    {
+      "id": "organization-facts-from-another-tenant-fail-closed",
+      "extends": "member-read-allowed",
+      "organization": {"tenantId": "tenant-b"},
+      "expected": {"effect": "deny", "reason": "facts-unavailable", "policyVersion": "", "aclVersion": ""}
+    },
+    {
+      "id": "member-facts-from-another-actor-fail-closed",
+      "extends": "member-read-allowed",
+      "member": {"actorId": "actor-bob"},
+      "expected": {"effect": "deny", "reason": "facts-unavailable", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "membership-facts-from-another-channel-fail-closed",
+      "extends": "member-read-allowed",
+      "channelMembership": {"channelId": "channel-b"},
+      "expected": {"effect": "deny", "reason": "facts-unavailable", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "membership-facts-from-another-actor-type-fail-closed",
+      "extends": "member-read-allowed",
+      "channelMembership": {"actorType": "ACTOR_TYPE_AGENT"},
+      "expected": {"effect": "deny", "reason": "facts-unavailable", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "frozen-organization-denied",
+      "extends": "member-read-allowed",
+      "organization": {"state": "frozen"},
+      "expected": {"effect": "deny", "reason": "organization-unavailable", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "inactive-member-immediate-deny",
+      "extends": "member-read-allowed",
+      "member": {"state": "deactivated"},
+      "expected": {"effect": "deny", "reason": "member-inactive", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "organization-owner-without-membership-cannot-read",
+      "extends": "member-read-allowed",
+      "member": {"role": "ROLE_OWNER"},
+      "channelMembership": {"active": false},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "organization-admin-without-membership-cannot-manage",
+      "extends": "member-read-allowed",
+      "action": "channel.membership.add",
+      "member": {"role": "ROLE_ADMIN"},
+      "channelMembership": {"active": false},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "public-channel-discoverable-without-membership",
+      "extends": "member-read-allowed",
+      "action": "channel.discover",
+      "channelMembership": {"active": false},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "public-channel-not-readable-without-membership",
+      "extends": "member-read-allowed",
+      "channelMembership": {"active": false},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "guest-ceiling-denies-channel-owner-update",
+      "extends": "member-read-allowed",
+      "action": "channel.update",
+      "member": {"role": "ROLE_GUEST"},
+      "channelMembership": {"role": "CHANNEL_MEMBER_ROLE_OWNER"},
+      "expected": {"effect": "deny", "reason": "organization-role-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "departed-membership-denied",
+      "extends": "member-read-allowed",
+      "channelMembership": {"active": false, "currentIntervalId": "", "departedIntervalIds": ["membership-1"]},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "rejoin-uses-only-current-membership-interval",
+      "extends": "member-read-allowed",
+      "channelMembership": {"active": true, "currentIntervalId": "membership-2", "departedIntervalIds": ["membership-1"]},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3", "historicalAccessGranted": false}
+    },
+    {
+      "id": "acl-allow-cannot-create-membership",
+      "extends": "member-read-allowed",
+      "channelMembership": {"active": false},
+      "acl": {"entries": [{"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "allow"}]},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "acl-matching-deny-overrides-allow",
+      "extends": "member-read-allowed",
+      "acl": {"entries": [{"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "allow"}, {"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "deny"}]},
+      "expected": {"effect": "deny", "reason": "acl-matched-deny", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "acl-no-match-explicit-allow-default",
+      "extends": "member-read-allowed",
+      "acl": {"entries": [{"actorId": "actor-bob", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "deny"}]},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "acl-no-match-explicit-deny-default",
+      "extends": "member-read-allowed",
+      "acl": {"defaultEffect": "deny"},
+      "expected": {"effect": "deny", "reason": "acl-default-deny", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "acl-unspecified-default-fails-closed",
+      "extends": "member-read-allowed",
+      "acl": {"defaultEffect": "unspecified"},
+      "expected": {"effect": "deny", "reason": "acl-invalid", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "acl-unknown-entry-effect-fails-closed",
+      "extends": "member-read-allowed",
+      "acl": {"entries": [{"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "future-effect"}]},
+      "expected": {"effect": "deny", "reason": "acl-invalid", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "acl-resource-mismatch-fails-closed",
+      "extends": "member-read-allowed",
+      "acl": {"resource": {"resourceId": "channel-b"}},
+      "expected": {"effect": "deny", "reason": "acl-invalid", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "missing-policy-version-fails-closed",
+      "extends": "member-read-allowed",
+      "organization": {"policyVersion": ""},
+      "expected": {"effect": "deny", "reason": "policy-version-invalid", "policyVersion": "", "aclVersion": ""}
+    },
+    {
+      "id": "missing-acl-version-fails-closed",
+      "extends": "member-read-allowed",
+      "acl": {"version": ""},
+      "expected": {"effect": "deny", "reason": "acl-version-invalid", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "acl-version-change-invalidates-prior-allow",
+      "extends": "member-read-allowed",
+      "acl": {"version": "acl-4", "entries": [{"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "deny"}]},
+      "priorDecision": {"effect": "allow", "policyVersion": "policy-7", "aclVersion": "acl-3"},
+      "expected": {"effect": "deny", "reason": "acl-matched-deny", "policyVersion": "policy-7", "aclVersion": "acl-4"}
+    },
+    {
+      "id": "archived-channel-remains-readable",
+      "extends": "member-read-allowed",
+      "resource": {"state": "archived"},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "archived-channel-rejects-publish",
+      "extends": "member-read-allowed",
+      "action": "channel.publish",
+      "resource": {"state": "archived"},
+      "expected": {"effect": "deny", "reason": "resource-state-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "agent-runtime-requires-capability",
+      "extends": "member-read-allowed",
+      "principal": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent"},
+      "member": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent"},
+      "channelMembership": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent"},
+      "acl": {"entries": [{"actorId": "actor-agent", "actorType": "ACTOR_TYPE_AGENT", "action": "channel.read", "effect": "allow"}]},
+      "runtime": {"required": true, "capabilityPresent": false, "capabilityAllows": false, "delegationAllows": false},
+      "expected": {"effect": "deny", "reason": "capability-required", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "capability-cannot-expand-standing-authorization",
+      "extends": "member-read-allowed",
+      "principal": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent"},
+      "member": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent"},
+      "channelMembership": {"actorType": "ACTOR_TYPE_AGENT", "actorId": "actor-agent", "active": false},
+      "runtime": {"required": true, "capabilityPresent": true, "capabilityAllows": true, "delegationAllows": true},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "runtime-delegation-is-additional-narrowing",
+      "extends": "agent-runtime-requires-capability",
+      "runtime": {"capabilityPresent": true, "capabilityAllows": true, "delegationAllows": false},
+      "expected": {"effect": "deny", "reason": "delegation-denied", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "runtime-capability-explicit-deny-fails-closed",
+      "extends": "agent-runtime-requires-capability",
+      "runtime": {"capabilityPresent": true, "capabilityAllows": false, "delegationAllows": true},
+      "expected": {"effect": "deny", "reason": "capability-denied", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "approval-is-checked-last",
+      "extends": "member-read-allowed",
+      "approval": {"required": true, "present": false},
+      "expected": {"effect": "deny", "reason": "approval-required", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "application-allow-does-not-create-crypto-admission",
+      "extends": "member-read-allowed",
+      "resource": {"cryptographicAdmission": false},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3", "cryptographicAdmission": false}
+    },
+    {
+      "id": "security-admin-without-membership-cannot-update-acl",
+      "extends": "member-read-allowed",
+      "action": "channel.acl.update",
+      "member": {"role": "ROLE_SECURITY_ADMIN"},
+      "channelMembership": {"active": false},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "private-channel-not-discoverable-without-membership",
+      "extends": "member-read-allowed",
+      "action": "channel.discover",
+      "resource": {"visibility": "private"},
+      "channelMembership": {"active": false},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "owner-can-create-channel-in-space",
+      "extends": "member-read-allowed",
+      "action": "space.channel.create",
+      "resource": {"kind": "space", "resourceId": "space-a", "visibility": "explicit", "state": "active"},
+      "acl": {"resource": {"kind": "space", "resourceId": "space-a"}},
+      "member": {"role": "ROLE_OWNER"},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "ordinary-member-cannot-create-channel-in-space",
+      "extends": "owner-can-create-channel-in-space",
+      "member": {"role": "ROLE_MEMBER"},
+      "expected": {"effect": "deny", "reason": "organization-role-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "invited-member-fails-closed",
+      "extends": "member-read-allowed",
+      "member": {"state": "invited"},
+      "expected": {"effect": "deny", "reason": "member-inactive", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unspecified-organization-role-fails-closed",
+      "extends": "member-read-allowed",
+      "member": {"role": "ROLE_UNSPECIFIED"},
+      "expected": {"effect": "deny", "reason": "organization-role-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unspecified-channel-role-fails-closed",
+      "extends": "member-read-allowed",
+      "channelMembership": {"role": "CHANNEL_MEMBER_ROLE_UNSPECIFIED"},
+      "expected": {"effect": "deny", "reason": "channel-role-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "active-membership-without-current-interval-fails-closed",
+      "extends": "member-read-allowed",
+      "channelMembership": {"active": true, "currentIntervalId": ""},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "public-discovery-with-malformed-active-membership-fails-closed",
+      "extends": "member-read-allowed",
+      "action": "channel.discover",
+      "channelMembership": {"active": true, "currentIntervalId": ""},
+      "expected": {"effect": "deny", "reason": "not-a-member", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unknown-channel-visibility-fails-closed",
+      "extends": "member-read-allowed",
+      "resource": {"visibility": "future-visibility"},
+      "expected": {"effect": "deny", "reason": "unknown-resource", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unknown-channel-state-fails-closed",
+      "extends": "member-read-allowed",
+      "resource": {"state": "future-state"},
+      "expected": {"effect": "deny", "reason": "resource-state-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "pending-deletion-channel-read-fails-closed",
+      "extends": "member-read-allowed",
+      "resource": {"state": "pending-deletion"},
+      "expected": {"effect": "deny", "reason": "resource-state-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "acl-matching-allow-satisfies-deny-default-only",
+      "extends": "member-read-allowed",
+      "acl": {"defaultEffect": "deny", "entries": [{"actorId": "actor-alice", "actorType": "ACTOR_TYPE_HUMAN", "action": "channel.read", "effect": "allow"}]},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "valid-runtime-capability-and-delegation-can-pass",
+      "extends": "agent-runtime-requires-capability",
+      "runtime": {"capabilityPresent": true, "capabilityAllows": true, "delegationAllows": true},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "required-approval-can-pass",
+      "extends": "member-read-allowed",
+      "approval": {"required": true, "present": true},
+      "expected": {"effect": "allow", "reason": "allowed", "policyVersion": "policy-7", "aclVersion": "acl-3"}
+    },
+    {
+      "id": "policy-version-change-re-evaluates-current-role",
+      "extends": "member-read-allowed",
+      "action": "channel.update",
+      "member": {"role": "ROLE_GUEST"},
+      "channelMembership": {"role": "CHANNEL_MEMBER_ROLE_OWNER"},
+      "priorDecision": {"effect": "allow", "policyVersion": "policy-6", "aclVersion": "acl-3"},
+      "expected": {"effect": "deny", "reason": "organization-role-denied", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unknown-action-fails-closed",
+      "extends": "member-read-allowed",
+      "action": "channel.future.action",
+      "expected": {"effect": "deny", "reason": "unknown-action", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "unknown-resource-fails-closed",
+      "extends": "member-read-allowed",
+      "resource": {"kind": "future-resource"},
+      "expected": {"effect": "deny", "reason": "unknown-resource", "policyVersion": "policy-7", "aclVersion": ""}
+    },
+    {
+      "id": "empty-resource-id-fails-closed",
+      "extends": "member-read-allowed",
+      "resource": {"resourceId": ""},
+      "expected": {"effect": "deny", "reason": "unknown-resource", "policyVersion": "policy-7", "aclVersion": ""}
+    }
+  ]
+}

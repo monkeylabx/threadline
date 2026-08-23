@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+// Standing authorization vocabulary for Space and Channel resources.
+//
+// This package is intentionally data-only. It defines no RPC and accepts no
+// caller-supplied Principal. A server authorizer obtains the authenticated
+// Principal from its trusted interceptor context and resolves ResourceRef from
+// current, tenant-scoped facts before producing an AuthorizationDecision.
+package threadline.authorization.v1;
+
+import "threadline/type/v1/common.proto";
+
+option go_package = "github.com/monkeylabx/threadline/services/gen/threadline/authorization/v1;authorizationv1";
+option java_multiple_files = true;
+option java_outer_classname = "AuthorizationProto";
+option java_package = "com.threadline.proto.threadline.authorization.v1";
+option swift_prefix = "";
+
+// AuthorizationAction is a stable, auditable operation rather than an RPC
+// procedure name or a short-lived Capability.
+enum AuthorizationAction {
+  AUTHORIZATION_ACTION_UNSPECIFIED = 0;
+  // Canonical name: space.discover.
+  AUTHORIZATION_ACTION_SPACE_DISCOVER = 1;
+  // Canonical name: space.channel.create.
+  AUTHORIZATION_ACTION_SPACE_CHANNEL_CREATE = 2;
+  // Canonical name: channel.discover.
+  AUTHORIZATION_ACTION_CHANNEL_DISCOVER = 3;
+  // Canonical name: channel.read. Reading does not include pre-join history,
+  // E2EE Group membership, decryption capability, or keys.
+  AUTHORIZATION_ACTION_CHANNEL_READ = 4;
+  // Canonical name: channel.publish.
+  AUTHORIZATION_ACTION_CHANNEL_PUBLISH = 5;
+  // Canonical name: channel.update.
+  AUTHORIZATION_ACTION_CHANNEL_UPDATE = 6;
+  // Canonical name: channel.archive.
+  AUTHORIZATION_ACTION_CHANNEL_ARCHIVE = 7;
+  // Canonical name: channel.membership.list.
+  AUTHORIZATION_ACTION_CHANNEL_MEMBERSHIP_LIST = 8;
+  // Canonical name: channel.membership.add.
+  AUTHORIZATION_ACTION_CHANNEL_MEMBERSHIP_ADD = 9;
+  // Canonical name: channel.membership.remove.
+  AUTHORIZATION_ACTION_CHANNEL_MEMBERSHIP_REMOVE = 10;
+  // Canonical name: channel.acl.update.
+  AUTHORIZATION_ACTION_CHANNEL_ACL_UPDATE = 11;
+}
+
+// ResourceRef is a server-resolved authorization fact. Its tenant_id is not
+// request identity and must be compared with the authenticated Principal before
+// resource existence or membership details are disclosed.
+message ResourceRef {
+  string tenant_id = 1;
+
+  oneof resource {
+    string space_id = 2;
+    string channel_id = 3;
+  }
+}
+
+// AclEffect is one resource-level constraint. Unspecified and unknown values
+// always deny. Allow can satisfy the ACL layer only; it cannot override a deny
+// from tenant, Member, relationship, role, Capability, or Approval policy.
+enum AclEffect {
+  ACL_EFFECT_UNSPECIFIED = 0;
+  ACL_EFFECT_ALLOW = 1;
+  ACL_EFFECT_DENY = 2;
+}
+
+// ActorAclEntry constrains exactly one action for exactly one Actor. Group and
+// inherited subjects are deliberately outside the v1 contract.
+message ActorAclEntry {
+  threadline.type.v1.ActorRef actor = 1;
+  AuthorizationAction action = 2;
+  AclEffect effect = 3;
+}
+
+// ResourceAcl is the complete, versioned ACL snapshot used for one decision.
+// With no matching entry, default_effect applies. The default must be an
+// explicit ALLOW or DENY; unspecified and unknown values fail closed. An empty
+// entry set uses default_effect, while conflicting matching entries use DENY.
+// Missing resource, actor, action, effect, identifier, or version data makes
+// the ACL invalid and denies the whole evaluation.
+message ResourceAcl {
+  ResourceRef resource = 1;
+  string acl_version = 2;
+  AclEffect default_effect = 3;
+  repeated ActorAclEntry entries = 4;
+}
+
+// AuthorizationEffect is the binary result of evaluating current facts.
+// Missing, unspecified, or unknown results are never treated as allow.
+enum AuthorizationEffect {
+  AUTHORIZATION_EFFECT_UNSPECIFIED = 0;
+  AUTHORIZATION_EFFECT_ALLOW = 1;
+  AUTHORIZATION_EFFECT_DENY = 2;
+}
+
+// AuthorizationReason is stable audit vocabulary. A denied result may report
+// unavailable facts separately from a policy denial while still failing closed.
+enum AuthorizationReason {
+  AUTHORIZATION_REASON_UNSPECIFIED = 0;
+  AUTHORIZATION_REASON_ALLOWED = 1;
+  AUTHORIZATION_REASON_AUTHENTICATION_REQUIRED = 2;
+  AUTHORIZATION_REASON_TENANT_MISMATCH = 3;
+  AUTHORIZATION_REASON_ORGANIZATION_UNAVAILABLE = 4;
+  AUTHORIZATION_REASON_MEMBER_INACTIVE = 5;
+  AUTHORIZATION_REASON_NOT_A_MEMBER = 6;
+  AUTHORIZATION_REASON_ORGANIZATION_ROLE_DENIED = 7;
+  AUTHORIZATION_REASON_CHANNEL_ROLE_DENIED = 8;
+  AUTHORIZATION_REASON_RESOURCE_STATE_DENIED = 9;
+  AUTHORIZATION_REASON_ACL_MATCHED_DENY = 10;
+  AUTHORIZATION_REASON_ACL_DEFAULT_DENY = 11;
+  AUTHORIZATION_REASON_ACL_INVALID = 12;
+  AUTHORIZATION_REASON_POLICY_VERSION_INVALID = 13;
+  AUTHORIZATION_REASON_ACL_VERSION_INVALID = 14;
+  AUTHORIZATION_REASON_CAPABILITY_REQUIRED = 15;
+  AUTHORIZATION_REASON_CAPABILITY_DENIED = 16;
+  AUTHORIZATION_REASON_DELEGATION_DENIED = 17;
+  AUTHORIZATION_REASON_APPROVAL_REQUIRED = 18;
+  AUTHORIZATION_REASON_FACTS_UNAVAILABLE = 19;
+  AUTHORIZATION_REASON_UNKNOWN_ACTION = 20;
+  AUTHORIZATION_REASON_UNKNOWN_RESOURCE = 21;
+}
+
+// AuthorizationDecision records one evaluation of current, versioned facts.
+// It is evidence, not a reusable effective-permission cache or a persisted wire
+// envelope. It contains no bearer credential, message body, file content,
+// Prompt, key, or database row. An ALLOW never creates E2EE Group membership,
+// key access, decryption capability, or pre-join history authority.
+message AuthorizationDecision {
+  AuthorizationEffect effect = 1;
+  AuthorizationReason reason = 2;
+  AuthorizationAction action = 3;
+  ResourceRef resource = 4;
+  threadline.type.v1.ActorRef actor = 5;
+  string policy_version = 6;
+  string acl_version = 7;
+}
