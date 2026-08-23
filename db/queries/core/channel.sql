@@ -24,6 +24,14 @@ FROM domain.channels
 WHERE tenant_id = sqlc.arg(tenant_id)
   AND channel_id = sqlc.arg(channel_id);
 
+-- name: ArchiveActiveChannel :one
+UPDATE domain.channels
+SET state = 2
+WHERE tenant_id = sqlc.arg(tenant_id)
+  AND channel_id = sqlc.arg(channel_id)
+  AND state = 1
+RETURNING tenant_id, channel_id, state;
+
 -- name: UpdateChannelNameState :one
 UPDATE domain.channels
 SET
