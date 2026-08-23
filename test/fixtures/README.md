@@ -1,6 +1,6 @@
 # Threadline test fixture policy
 
-Status: T017 Draft
+Status: T017 Final
 
 Owner: Quality / SDET; fixture family owners are listed below
 
@@ -10,10 +10,10 @@ Test plan: [Private Enterprise v1.0 test plan](../../docs/quality/test-plan.md)
 
 `test/fixtures/` is the registry and policy boundary for versioned cross-workstream test inputs. A fixture represents public contract data, a deterministic state transition, an expected stable result, or an irreversible digest. It is not a copy of a production Tenant, a plaintext conversation, an Agent Session, a credential store, or a key archive.
 
-This Draft intentionally does not add concrete Envelope fixtures merely
-because candidate schemas now exist on `main`. Contract owners add those
-families only after T019 freezes the authoritative schema/error semantics and
-T014's Golden/N-1 workflow is reconciled with the merged generation templates.
+Contract owners have added the authoritative message and crypto contract
+families under `test/fixtures/proto/` after T014/T015/T019 froze their schemas,
+error semantics, formal code generation and Golden/N-1 workflow. This registry
+defines the shared policy and does not duplicate or reinterpret those fixtures.
 
 ## Non-negotiable data rules
 
@@ -114,7 +114,7 @@ Crypto fixtures describe external behavior, not OpenMLS or another provider's in
 
 Private test material is generated in memory from a runtime CSPRNG with a fresh nonce; it is not deterministically derived from a committed seed. A committed file may hold public KAT material only when the manifest identifies the public source and Security confirms that it is non-secret test material. No fixture may become a Device identity, recovery recipient, package signing key or environment credential.
 
-The existing `test/crypto/e2ee-interop-v1.vector` is a semantic spike vector. It does not prove production readiness, KMS/HSM recovery, real Swift/Kotlin FFI or independent MLS interoperability. New fixture descriptions must retain those limitations until the corresponding evidence exists.
+The existing `test/crypto/e2ee-interop-v1.manifest.json` and its `.vector` payload are semantic spike evidence. The T019 contract fixture at `test/fixtures/proto/crypto/manifest.json` adds frozen schema and five-language compatibility evidence. Neither proves production readiness, KMS/HSM recovery, real Swift/Kotlin Crypto FFI or an approved production MLS provider; fixture descriptions must retain those limitations until the corresponding evidence exists.
 
 ## FFI Crash/Resume fixtures
 
@@ -159,13 +159,13 @@ If only forbidden synthetic plaintext is found, fail the gate, remove it from al
 
 ## Dependency convergence
 
-Before this policy is marked final:
+Convergence status at policy freeze:
 
-1. T002 acceptance scenarios are merged; every future fixture family must map to those final AC IDs and evidence requirements, and CI must detect drift.
-2. T011's Crypto Owner must migrate `test/crypto/e2ee-interop-v1.vector` into a fixture family with every required manifest field, without changing the semantic spike into production evidence.
-3. T014's Contracts/Integration Owner must extend `proto/golden/v1/manifest.json` with this registry's required schema fields and migration verification; its hardened verifier must be reconciled with the merged five generation templates, and Golden Frame/N-1 rules must then be exercised from `main`.
-4. T019 must freeze the existing Device/Epoch/History/Recovery candidate contracts and their Crypto Review before those fixture files are created.
-5. Security must resolve ADR-0003's candidate status; the OpenMLS 0.8.1 spike remains a production failure until its recorded blockers are closed or a reviewed provider replaces it.
-6. T010-B / Issue #41, currently `READY FOR HUMAN`, must supply real-device FFI results; the merged simulator/emulator fault fixtures remain useful but cannot satisfy the device Gate.
+1. **Complete:** T002 acceptance scenarios are merged; future fixture families must map to those AC IDs and evidence requirements, and CI must detect drift.
+2. **Complete:** T011's Crypto Owner published a manifest-backed semantic spike fixture without turning it into production evidence.
+3. **Complete:** T014/T015 integrated the required manifest, hardened verifier, formal five-language generation and Golden/N-1 workflow.
+4. **Complete:** T019 froze Device/Epoch/History/Recovery contracts with Architecture/Security review and generated compatibility evidence.
+5. **Gate remains HOLD:** ADR-0003 and ADR-0004 remain `proposed`; OpenMLS `0.8.1` is rejected and the `0.9.0` final provider implementation and production admission evidence are not established.
+6. **Gate remains NOT RUN:** T010-B / Issue #41, currently `READY FOR HUMAN`, must supply real-device FFI results; simulator/emulator fixtures cannot satisfy the device Gate.
 
-T017 owns only this policy and registry description. It must not edit T011/T014 contract artifacts, invent their schema values, or copy them into a parallel location to make convergence appear complete. Until the owners land those migrations, this directory contains policy only and must not become a parallel guessed contract.
+T017 owns only this policy and registry description. It does not edit T011/T014/T019 artifacts, invent schema values, or copy them into a parallel location. A final policy is not Gate PASS evidence: unresolved Security/provider and real-device results remain external `HOLD/NOT RUN` inputs.

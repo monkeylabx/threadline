@@ -1,6 +1,6 @@
 # Threadline Private Enterprise v1.0 测试计划
 
-状态：T017 Draft / 依赖收敛前不得作为 Gate 通过证据
+状态：T017 Final / 测试计划已冻结；Gate 结果仍取决于独立执行证据
 
 Gate：G0 / M0 至 G7 / M7、Pilot Hardening 与 GA
 
@@ -14,15 +14,15 @@ Issue：[#31 T017](https://github.com/monkeylabx/threadline/issues/31)
 
 本文把功能、权限、离线、兼容、E2EE/Recovery、Rust FFI、性能、安全和五平台要求映射到测试层级、责任人、证据与 Gate。它定义如何证明候选制品满足要求，不把测试替代产品签字、安全控制、独立评审或企业试点。
 
-当前文本是可并行评审的 Draft，不表示任何 Gate 已通过：
+本文已完成测试设计冻结，但不表示任何 Gate 已通过：
 
 - T002 / Issue #16 的 `docs/acceptance/v1-scenarios.md` 已进入主分支。本文的 AC-001 至 AC-012 与其 Gate、步骤、失败路径、证据包和签字 Owner 已完成逐项校验；后续场景变更必须同时更新本矩阵，不能静默漂移。
-- 多域 Proto 基线与五语言本地生成模板已进入主分支，兼容策略为 Buf `WIRE_JSON`。T014 / Issue #28 的加固生成验证器、Golden Frame manifest 与正式生成证据仍在 Draft PR #44；其旧单消息生成计划尚未与主分支五套模板收敛。T014 的 `proto/golden/v1/manifest.json` 与 T011 的 `test/crypto/e2ee-interop-v1.vector` 也尚未满足本文的 fixture manifest schema：它们是收敛 blocker，必须分别由 Contracts/Integration Owner 与 Crypto Owner 在其 Owned Paths 中补齐 schema 字段和迁移验证。T017 不越界修改、复制或重新解释这些文件。
-- T005 已进入主分支，但 [ADR-0003](../adr/0003-group-e2ee-recovery.md) 仍是 `proposed`。T011 已明确判定 OpenMLS `0.8.1` 生产准入失败，见 [互操作 Spike](../spikes/e2ee-interop.md)。在 Security Owner 重新批准候选库、未豁免漏洞与损坏密文 panic 被解决、独立 RFC 9420 互操作及真机证据完成前，Crypto 相关 Gate 保持 `HOLD`。
+- 多域 Proto、五语言正式生成、Golden/N-1 manifest 与 T019 Device/Epoch/History/Recovery 契约证据已进入主分支；T019 在 merge commit `010dd8167c5f1e28c83485fb794be7872c8cf670` 完成 Architecture/Security 复核。它们证明契约和兼容流程，不证明生产 Crypto Provider、真实 MLS 密码实现或真机安全边界。
+- T005 已进入主分支，但 [ADR-0003](../adr/0003-group-e2ee-recovery.md) 与 [ADR-0004](../adr/0004-e2ee-crypto-library-selection.md) 仍是 `proposed`。ADR-0004 排除 OpenMLS `0.8.1`，将实现任务收窄到 `0.9.0` 正式版；生产 provider 准入尚未建立。在 Security Owner 接受 ADR、实现与独立互操作证据完成前，Crypto 相关 Gate 保持 `HOLD`。
 - T010-A 的 Simulator/Emulator FFI 实现与 CI 证据已进入主分支，但不能替代 T010-B / Issue #41 的 iOS/Android 真机、签名、后台回收、安全存储和内存证据；#41 当前为 `READY FOR HUMAN`。
-- 主分支已有 Device、Epoch、History 和 Recovery Envelope 候选 Schema；T019 / Issue #37 仍需完成最终契约冻结、Crypto Review 和 Golden/N-1 证据。本文引用已合入的外部语义，不把候选 Schema 冒充冻结完成。
+- T019 / Issue #37 已完成 Device、Epoch、History 和 Recovery Envelope 契约冻结、Crypto Review 与 Golden/N-1 证据；本文只引用其已合入的外部语义，不把契约验证冒充密码实现或运行时验证。
 
-定稿收敛条件：仍处于 Draft/Human Gate 的输入完成并进入可获取的主分支 Commit；本文只引用已合入契约；所有测试 ID 可追溯到最终验收步骤；执行命令可由独立人员从干净 checkout 重复；Security、Contracts、Client-core、iOS、Android、Recovery 和 Quality Owner 完成评审。依赖未满足时只允许评审测试设计和合成 Fixture 方案，不允许把猜测接口合入实现或将 `NOT RUN` 报为 `PASS`。
+定稿表示计划、矩阵和 Fixture 策略可执行且仅引用已合入契约：所有测试 ID 可追溯到验收步骤，执行命令可由独立人员从干净 checkout 重复。它不等于 Gate 通过。仍处于 `proposed`、Human Gate 或未实现状态的输入必须继续记为 `NOT RUN/FAIL/HOLD`；不得把猜测接口合入实现，也不得将 `NOT RUN` 报为 `PASS`。
 
 ## 2. 通过规则与证据强度
 
@@ -161,7 +161,7 @@ Crypto 最高测试 seam 是 library-independent 的 `client-crypto` Protocol Ha
 
 向量输出只记录状态、稳定错误、公共元数据、长度桶和不可逆 digest。公开 KAT 与纯 `synthetic_opaque` parser/state-machine 输入可使用记录的固定 seed。C3/C4 canary、测试私钥、nonce 和任何可还原敏感输入必须由运行时 CSPRNG 逐 run 生成，不得从仓库 seed 派生；进程内使用后清零，不得写入仓库 Fixture、日志、Crash Dump 或 evidence。敏感 fuzz 复现只把 seed 暂存于访问受限、短期加密的测试 vault，Git 和常规 artifact 仅保留 seed policy、最小化 shrink trace 与 keyed digest。公开标准 KAT 如必须包含公开的测试密钥材料，须标记 `public_test_material`、记录规范出处和 hash，并证明从未用于任何真实身份、Tenant 或制品签名。
 
-当前 T011 semantic vector 是起点，不是生产批准：缺少真实 Swift/Kotlin FFI、独立 MLS 实现、KMS/HSM 恢复解密，且 OpenMLS 0.8.1 有生产阻断。所有这些必须作为 M0/M5 的显式 `NOT RUN/FAIL` 保留，不能用 wrapper `catch_unwind` 或服务端明文修饰成通过。
+T011 semantic vector 与 T019 契约/五语言兼容证据是已验证起点，不是生产批准：仍缺少真实 Swift/Kotlin Crypto FFI、获准的 OpenMLS `0.9.0` 正式版实现、KMS/HSM 恢复解密和真机证据。所有这些必须作为 M0/M5 的显式 `NOT RUN/FAIL` 保留，不能用 wrapper `catch_unwind`、契约生成结果或服务端明文修饰成通过。
 
 ## 9. E2E、Load、Soak 与 Chaos 策略
 
@@ -293,9 +293,11 @@ Chaos 每次声明稳态、不变量、故障开始/结束、预期退化和恢�
 - [Client Platform ADR](../adr/0001-client-platform.md)
 - [Server / Protocol / Storage ADR](../adr/0002-server-protocol-storage.md)
 - [Group E2EE / Recovery ADR](../adr/0003-group-e2ee-recovery.md)
+- [E2EE 加密库选型 ADR](../adr/0004-e2ee-crypto-library-selection.md)
 - [数据分类](../security/data-classification.md)
 - [威胁模型](../security/threat-model.md)
 - [风险台账](../security/risk-register.md)
 - [平台兼容性基线](../build/platform-compatibility.md)
 - [可重复构建 Runbook](../build/reproducible-builds.md)
 - [T011 E2EE 互操作 Spike](../spikes/e2ee-interop.md)
+- [T019 Crypto Contract Fixture](../../test/fixtures/proto/crypto/manifest.json)
