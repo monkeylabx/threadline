@@ -6,6 +6,7 @@ sql:
       - migrations/000001_core_foundation.up.sql
       - migrations/000002_organization.up.sql
       - migrations/000003_member.up.sql
+      - migrations/000004_space.up.sql
     queries:
       - queries/core
     gen:
