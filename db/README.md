@@ -62,6 +62,22 @@ PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
   make -C db organization-test
 ```
 
+The generated sqlc API has a separate Go integration test. It is explicitly
+gated by an operator-supplied maintenance DSN, creates and drops its own
+`threadline_organization_go_test_*` database, verifies PostgreSQL 16.4, and
+never prints the DSN or credentials:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db organization-go-test
+```
+
+It invokes `CreateOrganization`, `GetOrganization`, and
+`UpdateOrganizationStatePolicy` directly, including exact-key misses,
+duplicate and invalid-state failures, and immutable identity/creation-time
+checks. Ordinary `go test ./...` skips this live test when the environment
+variable is absent.
+
 The test creates only disposable identifiers containing `synthetic`. It uses no
 production data, member content, message plaintext, credentials, tokens, keys,
 Device, Crypto, Recovery, or Outbox data. Organization display names are the
