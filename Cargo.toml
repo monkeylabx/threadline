@@ -16,6 +16,7 @@ license = "Apache-2.0"
 publish = false
 
 [workspace.dependencies]
+getrandom = { version = "=0.3.4" }
 rusqlite = { version = "=0.40.2", default-features = false }
 
 [workspace.lints.rust]
