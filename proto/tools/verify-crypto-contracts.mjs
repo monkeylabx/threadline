@@ -10,6 +10,12 @@ const scenarioBytes = readFileSync(join(fixtureRoot, manifest.source.file));
 const scenarios = JSON.parse(scenarioBytes.toString("utf8"));
 const transcriptBytesFixture = readFileSync(join(fixtureRoot, manifest.transcripts.file));
 const transcriptVectors = JSON.parse(transcriptBytesFixture.toString("utf8"));
+const formalEvidenceBytes = readFileSync(join(fixtureRoot, "formal-codegen-evidence.json"));
+const formalEvidence = JSON.parse(formalEvidenceBytes.toString("utf8"));
+const nMinusOneEvidenceBytes = readFileSync(join(fixtureRoot, "generated-n-minus-one-evidence.json"));
+const nMinusOneEvidence = JSON.parse(nMinusOneEvidenceBytes.toString("utf8"));
+const generatedCompatManifest = JSON.parse(readFileSync(join(fixtureRoot, "generated-compat-manifest.json"), "utf8"));
+const toolchain = JSON.parse(readFileSync(join(repositoryRoot, "proto", "toolchain.lock.json"), "utf8"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -1290,10 +1296,61 @@ assert(JSON.stringify(manifest.reviewers) === JSON.stringify(["Contracts", "Arch
 assert(manifest.provenance.issue === 37 && manifest.provenance.generator === "none", "fixture provenance must remain bound to T019");
 assert(manifest.acceptance.physicalDevices === "NOT RUN", "T019 must not claim physical-device evidence");
 assert(manifest.acceptance.productionOpenMlsAdmission === "NOT ESTABLISHED", "T019 must not claim production OpenMLS admission");
-assert(manifest.acceptance.generatedFiveLanguageNMinusOne === "PENDING_INTEGRATION", "five-language N-1 evidence must remain an Integration-owned pending gate");
+assert(manifest.acceptance.generatedFiveLanguageNMinusOne === "PASSED", "five-language N-1 evidence must remain Integration-verified");
 for (const [name, value] of Object.entries(manifest.acceptance.localContractScenarioCoverage)) assert(value === true, `${name} local scenario coverage must remain true`);
-assert(manifest.nMinusOne.generatedFiveLanguageNMinusOne === "PENDING_INTEGRATION", "manifest must not promote the local wire seam to generated evidence");
+assert(manifest.nMinusOne.generatedFiveLanguageNMinusOne === "PASSED", "manifest must bind the generated five-language evidence");
 assert(manifest.nMinusOne.legacyKeyPackageMigration.includes("PENDING_IMPLEMENTATION"), "N-1 KeyPackage migration must not claim client crypto evidence");
+assert(manifest.integrationEvidence.status === "passed", "Integration evidence must remain passed");
+assert(canonicalEqual(manifest.integrationEvidence.formalCodegen, {
+  file: "formal-codegen-evidence.json",
+  sha256: "eaac60135061cacffe8cd1aad5ae2774ada6a68a7fb5ed711e2375fcc70bc657",
+}), "formal codegen evidence binding changed");
+assert(canonicalEqual(manifest.integrationEvidence.generatedFiveLanguageNMinusOne, {
+  file: "generated-n-minus-one-evidence.json",
+  sha256: "82c865250a336ce8b4278ab23da19fddccb382cb6663895b0d1fadc9154d4a91",
+}), "generated N-1 evidence binding changed");
+assert(sha256(formalEvidenceBytes) === manifest.integrationEvidence.formalCodegen.sha256, "formal codegen evidence SHA-256 mismatch");
+assert(sha256(nMinusOneEvidenceBytes) === manifest.integrationEvidence.generatedFiveLanguageNMinusOne.sha256, "generated N-1 evidence SHA-256 mismatch");
+const expectedGenerationTrees = Object.fromEntries(Object.entries(toolchain.generationChecks).map(([name, value]) => [name, {
+  fileCount: value.fileCount,
+  treeSha256: value.treeSha256,
+}]));
+assert(formalEvidence.schemaVersion === 1 && formalEvidence.status === "passed", "formal codegen evidence must be passed v1 evidence");
+assert(formalEvidence.targetPr === "94" && formalEvidence.targetSha === "f367a2412a1f0e3afdb8d8ca0de6fe37dbfbc4f2", "formal evidence target PR/SHA mismatch");
+assert(formalEvidence.preparedRunId === "32620498494" && formalEvidence.verifyRunId === "32620744741", "formal evidence protected run IDs mismatch");
+assert(formalEvidence.runnerImageVersion === "20260728.0273.1", "formal evidence runner image mismatch");
+assert(formalEvidence.manifestSha256 === "35f827306b794fd26922b928032354c4de539d3df36e6517d964adbf94ff3564", "formal evidence manifest digest mismatch");
+assert(canonicalEqual(formalEvidence.generationTrees, expectedGenerationTrees), "formal evidence generation trees differ from toolchain lock");
+assert(formalEvidence.physicalDevices === "NOT RUN", "formal evidence must not claim physical-device execution");
+assert(nMinusOneEvidence.schemaVersion === 1 && nMinusOneEvidence.status === "passed" && nMinusOneEvidence.issue === 79, "generated N-1 evidence identity mismatch");
+assert(nMinusOneEvidence.parentPr === "77" && nMinusOneEvidence.companionPr === "94"
+  && nMinusOneEvidence.verificationCommit === "cc614ca9f80f5f5daa975a133902b406a25e24ff", "generated N-1 evidence PR/commit binding mismatch");
+assert(nMinusOneEvidence.baselineCommit === generatedCompatManifest.baselineCommit
+  && nMinusOneEvidence.targetSchemaCommit === generatedCompatManifest.targetSchemaCommit
+  && nMinusOneEvidence.verificationCommand === generatedCompatManifest.verificationCommand, "generated N-1 evidence command or commit binding mismatch");
+assert(nMinusOneEvidence.frameManifest.file === "test/fixtures/proto/crypto/generated-compat-manifest.json"
+  && nMinusOneEvidence.frameManifest.sha256 === sha256(readFileSync(join(fixtureRoot, "generated-compat-manifest.json"))), "generated N-1 frame manifest binding mismatch");
+assert(nMinusOneEvidence.scenarioSource.file === "test/fixtures/proto/crypto/scenarios.json"
+  && nMinusOneEvidence.scenarioSource.sha256 === manifest.source.sha256
+  && nMinusOneEvidence.scenarioSource.verifiedCases === scenarios.cases.length, "generated N-1 scenario binding mismatch");
+assert(canonicalEqual(nMinusOneEvidence.adapters, {
+  go: "passed",
+  typescript: "passed",
+  rust: "passed",
+  kotlin: "passed",
+  swift: "passed",
+}), "generated N-1 adapter set must remain exactly five-language passed");
+assert(canonicalEqual(nMinusOneEvidence.directions, [
+  "current-write-n-minus-one-read-mutate-write-current-read",
+  "n-minus-one-write-current-read-mutate-write-n-minus-one-read",
+]) && canonicalEqual(nMinusOneEvidence.frames, [
+  "current-recovery-envelope-fields-1-through-18-plus-50000",
+  "historical-binding-less-recovery-envelope-plus-50000",
+]), "generated N-1 direction/frame coverage changed");
+assert(nMinusOneEvidence.legacyScopedExecute === "failed-closed", "generated N-1 legacy Execute must remain fail-closed");
+assert(nMinusOneEvidence.physicalDevices === "NOT RUN"
+  && nMinusOneEvidence.clientCryptoImplementation === "PENDING_IMPLEMENTATION"
+  && nMinusOneEvidence.productionOpenMlsAdmission === "NOT ESTABLISHED", "generated N-1 evidence overclaims its boundary");
 assert(sha256(scenarioBytes) === manifest.source.sha256, "scenario source SHA-256 mismatch");
 assert(sha256(transcriptBytesFixture) === manifest.transcripts.sha256, "canonical transcript source SHA-256 mismatch");
 assert(manifest.transcripts.format === "RFC8785-JCS" && manifest.transcripts.domainPrefix === transcriptPrefix, "canonical transcript format metadata changed");

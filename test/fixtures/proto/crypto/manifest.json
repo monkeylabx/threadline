@@ -55,7 +55,13 @@
       "MEMBERSHIP_CHANGE_KIND_REVOKE_DEVICE": {"scenarioId":"transition-revoke-device","sha256":"432507d9f648b764ad278a1eba994f66e0147da46c571f296854d259c0f18b16"}
     }
   },
-  "requiredFiles": ["scenarios.json", "transcripts.json", "README.md"],
+  "requiredFiles": [
+    "scenarios.json",
+    "transcripts.json",
+    "generated-n-minus-one-evidence.json",
+    "formal-codegen-evidence.json",
+    "README.md"
+  ],
   "contracts": [
     "threadline/crypto/v1/crypto.proto",
     "threadline/crypto/v1/recovery.proto",
@@ -321,6 +327,17 @@
     "decodedSha256": "bdfbda9cbf6634bcee1a1d7653abecfcfc7cbe3dac2c57620ccfc8ee927a515d",
     "unknownFieldNumber": 50000
   },
+  "integrationEvidence": {
+    "status": "passed",
+    "formalCodegen": {
+      "file": "formal-codegen-evidence.json",
+      "sha256": "eaac60135061cacffe8cd1aad5ae2774ada6a68a7fb5ed711e2375fcc70bc657"
+    },
+    "generatedFiveLanguageNMinusOne": {
+      "file": "generated-n-minus-one-evidence.json",
+      "sha256": "82c865250a336ce8b4278ab23da19fddccb382cb6663895b0d1fadc9154d4a91"
+    }
+  },
   "nMinusOne": {
     "localStaticSeam": "The T014 RecoveryEnvelope wire canary exists and the local field slicer retains its input bytes. This is not generated-adapter or five-language evidence.",
     "legacyKeyPackageMigration": "A limited authenticated Device-bound publish-session path atomically and terminally claims an N-1 package before the current Committer validates its opaque MLS Credential/Profile/Leaf lifetime/signature; failure produces no Commit and does not restore availability. Client crypto implementation evidence remains PENDING_IMPLEMENTATION.",
@@ -331,7 +348,7 @@
       "nMinusOneReadCurrentWrite": "N-1 readers ignore additive fields on current messages only where the established baseline surface remains meaningful; this never authorizes N-1 writers to omit current execution or authorization bindings."
     },
     "targetfulRecoveryRollback": "Current targetful Create requests and Cases poison the legacy projection with empty Group IDs, zero Epochs and absent TimeRange. Base-6ee924d N-1 Create/Decide/Execute and rollback reads therefore fail closed and remain audit-only after unknown scopes/targets are ignored.",
-    "generatedFiveLanguageNMinusOne": "PENDING_INTEGRATION"
+    "generatedFiveLanguageNMinusOne": "PASSED"
   },
   "acceptance": {
     "localContractScenarioCoverage": {
@@ -356,7 +373,7 @@
       "replayAndScopeMismatchFailClosed": true,
       "wireCanaryStaticSeamPresent": true
     },
-    "generatedFiveLanguageNMinusOne": "PENDING_INTEGRATION",
+    "generatedFiveLanguageNMinusOne": "PASSED",
     "physicalDevices": "NOT RUN",
     "productionOpenMlsAdmission": "NOT ESTABLISHED"
   }
