@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "issue": 79,
+  "parentPr": "77",
+  "companionPr": "94",
+  "verificationCommit": "cc614ca9f80f5f5daa975a133902b406a25e24ff",
+  "baselineCommit": "b997fd70f1b4a115c9046df4db15fea4849df487",
+  "targetSchemaCommit": "19e64a8d727a496c3526057ea690f3495012ad90",
+  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=19e64a8d727a496c3526057ea690f3495012ad90 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
+  "frameManifest": {
+    "file": "test/fixtures/proto/crypto/generated-compat-manifest.json",
+    "sha256": "ff03579548c2086cdac4fef8bde08679d06a98c0b084ac93af3e1eba71d28fff"
+  },
+  "scenarioSource": {
+    "file": "test/fixtures/proto/crypto/scenarios.json",
+    "sha256": "a43f1b7e8a920721c1ce2058a5b470dec9c5af53de0305ce0d6b610fc487c91f",
+    "verifiedCases": 253
+  },
+  "adapters": {
+    "go": "passed",
+    "typescript": "passed",
+    "rust": "passed",
+    "kotlin": "passed",
+    "swift": "passed"
+  },
+  "directions": [
+    "current-write-n-minus-one-read-mutate-write-current-read",
+    "n-minus-one-write-current-read-mutate-write-n-minus-one-read"
+  ],
+  "frames": [
+    "current-recovery-envelope-fields-1-through-18-plus-50000",
+    "historical-binding-less-recovery-envelope-plus-50000"
+  ],
+  "legacyScopedExecute": "failed-closed",
+  "physicalDevices": "NOT RUN",
+  "clientCryptoImplementation": "PENDING_IMPLEMENTATION",
+  "productionOpenMlsAdmission": "NOT ESTABLISHED"
+}

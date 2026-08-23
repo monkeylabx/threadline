@@ -139,8 +139,10 @@ decode/audit-only and cannot infer exact object or History targets.
 The final compatibility scenario reuses T014's persisted RecoveryEnvelope
 Golden Frame and confirms only a local static seam: field `50000` exists and the
 fixture field slicer retains its input bytes. It does not prove generated-code
-round trips or five-language N-1 compatibility. Those checks remain
-`PENDING_INTEGRATION` on the protected formal-codegen workflow.
+round trips or five-language N-1 compatibility by itself. T019-B separately
+records the protected formal result in `formal-codegen-evidence.json` and the
+five-language bidirectional result in `generated-n-minus-one-evidence.json`;
+the fixture manifest and verifier bind both files by SHA-256.
 
 An N-1 KeyPackage without the additive current publication fields has a narrow
 migration path: it must arrive through an authenticated Device-bound publish
