@@ -1,9 +1,10 @@
-# Core database foundation
+# Core database persistence
 
 This directory owns the PostgreSQL migration and sqlc inputs for
-`threadline-core`. The M1 foundation creates only the physical schema namespace
-`domain`; it does not define Organization, Channel, Message, identity, key, or
-recovery tables.
+`threadline-core`. Migration `000001` creates the physical schema namespace
+`domain`. Migration `000002` adds the root Organization/Tenant boundary only;
+it does not define Member, Space, Channel, Message, Session, Device, key,
+recovery, or Outbox tables.
 
 ## Migration rules
 
@@ -37,12 +38,57 @@ PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
 The live test compares normalized schema dumps and proves that a down migration
 fails without deleting an unexpected object in the owned schema.
 
+## Organization persistence
+
+`domain.organizations` stores the normalized fields of
+`threadline.identity.v1.Organization`: stable `tenant_id`, directory
+`display_name`, lifecycle `state`, `policy_version`, and server-assigned
+`created_at`. State values use the published Protobuf numbers: `1` active, `2`
+frozen, and `3` pending deletion. Unspecified and unknown values fail closed.
+
+Generated writes expose creation plus a state/policy update. They do not expose
+an identity or creation-time update. Every lookup and update requires an exact
+Tenant identifier. This internal argument is not caller authority: a later RPC
+layer must derive it from the authenticated P03-02 Session and must never copy a
+caller-selected Tenant into these queries.
+
+Run the synthetic lifecycle, duplicate, invalid-state, and wrong-Tenant
+exact-key miss cases against the same pinned development server. These storage
+checks do not model an authenticated caller; authorization remains the later
+P03-02 RPC layer's responsibility.
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db organization-test
+```
+
+The generated sqlc API has a separate Go integration test. It is explicitly
+gated by an operator-supplied maintenance DSN, creates and drops its own
+`threadline_organization_go_test_*` database, verifies PostgreSQL 16.4, and
+never prints the DSN or credentials:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db organization-go-test
+```
+
+It invokes `CreateOrganization`, `GetOrganization`, and
+`UpdateOrganizationStatePolicy` directly, including exact-key misses,
+duplicate and invalid-state failures, and immutable identity/creation-time
+checks. Ordinary `go test ./...` skips this live test when the environment
+variable is absent.
+
+The test creates only disposable identifiers containing `synthetic`. It uses no
+production data, member content, message plaintext, credentials, tokens, keys,
+Device, Crypto, Recovery, or Outbox data. Organization display names are the
+unencrypted enterprise-directory data defined by the published contract.
+
 ## Query generation
 
 The reviewed generator is sqlc 1.31.1 from `toolchains.json`. Generated Go uses
-`pgx/v5` and is written only to `services/core/internal/dbgen/`. Queries in this
-foundation are content-free health checks; later domain tasks own business
-tables and queries.
+`pgx/v5` and is written only to `services/core/internal/dbgen/`. Query inputs
+remain schema-qualified and Tenant-scoped; generated files are never hand
+edited.
 
 ```text
 node scripts/toolchain.mjs doctor --scope=database

@@ -4,6 +4,7 @@ sql:
   - engine: postgresql
     schema:
       - migrations/000001_core_foundation.up.sql
+      - migrations/000002_organization.up.sql
     queries:
       - queries/core
     gen:
