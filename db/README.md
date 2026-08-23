@@ -364,6 +364,27 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
   make -C db authorization-current-go-test
 ```
 
+## Protected Channel archive command
+
+`channelcommand.Archive` binds the authenticated Principal to the fixed
+`channel.archive` action and the exact tenant-scoped Channel. It first evaluates
+current authorization facts, then runs the dedicated `ArchiveActiveChannel`
+query in the same caller-owned PostgreSQL `read committed` transaction. The
+query accepts neither a Tenant from the request, a caller-selected Action, a
+target state, nor a Channel name; it only changes an ACTIVE Channel to
+ARCHIVED. Denials and database failures never fall through to the mutation.
+
+Run the rollback/commit, exact-Tenant, denial, isolation, writer-first, and
+retained-lock integration tests against PostgreSQL 16.4:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-archive-go-test
+```
+
+The command is not registered as a production RPC. Audit integration is
+required before this high-impact mutation becomes externally reachable.
+
 ## Query generation
 
 The reviewed generator is sqlc 1.31.1 from `toolchains.json`. Generated Go uses

@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AddDirectMessageParticipant(ctx context.Context, arg AddDirectMessageParticipantParams) (DomainDirectMessageParticipant, error)
+	ArchiveActiveChannel(ctx context.Context, arg ArchiveActiveChannelParams) (ArchiveActiveChannelRow, error)
 	CreateActiveChannelMembership(ctx context.Context, arg CreateActiveChannelMembershipParams) (DomainChannelMembership, error)
 	CreateChannel(ctx context.Context, arg CreateChannelParams) (DomainChannel, error)
 	CreateDirectMessage(ctx context.Context, arg CreateDirectMessageParams) (DomainDirectMessage, error)

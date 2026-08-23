@@ -9,6 +9,33 @@ import (
 	"context"
 )
 
+const archiveActiveChannel = `-- name: ArchiveActiveChannel :one
+UPDATE domain.channels
+SET state = 2
+WHERE tenant_id = $1
+  AND channel_id = $2
+  AND state = 1
+RETURNING tenant_id, channel_id, state
+`
+
+type ArchiveActiveChannelParams struct {
+	TenantID  string
+	ChannelID string
+}
+
+type ArchiveActiveChannelRow struct {
+	TenantID  string
+	ChannelID string
+	State     int16
+}
+
+func (q *Queries) ArchiveActiveChannel(ctx context.Context, arg ArchiveActiveChannelParams) (ArchiveActiveChannelRow, error) {
+	row := q.db.QueryRow(ctx, archiveActiveChannel, arg.TenantID, arg.ChannelID)
+	var i ArchiveActiveChannelRow
+	err := row.Scan(&i.TenantID, &i.ChannelID, &i.State)
+	return i, err
+}
+
 const createChannel = `-- name: CreateChannel :one
 INSERT INTO domain.channels (
   tenant_id,
