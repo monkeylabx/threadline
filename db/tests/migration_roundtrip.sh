@@ -13,6 +13,8 @@ SPACE_UP="$DB_DIR/migrations/000004_space.up.sql"
 SPACE_DOWN="$DB_DIR/migrations/000004_space.down.sql"
 CHANNEL_DM_UP="$DB_DIR/migrations/000005_channel_dm.up.sql"
 CHANNEL_DM_DOWN="$DB_DIR/migrations/000005_channel_dm.down.sql"
+CHANNEL_MEMBERSHIP_UP="$DB_DIR/migrations/000006_channel_membership.up.sql"
+CHANNEL_MEMBERSHIP_DOWN="$DB_DIR/migrations/000006_channel_membership.down.sql"
 
 . "$TESTS_DIR/postgres_harness.sh"
 POSTGRES_TEST_SUITE=migration
@@ -36,6 +38,8 @@ verify_static_contract() {
   test -f "$SPACE_DOWN" || postgres_test_fail "missing 000004 down migration"
   test -f "$CHANNEL_DM_UP" || postgres_test_fail "missing 000005 up migration"
   test -f "$CHANNEL_DM_DOWN" || postgres_test_fail "missing 000005 down migration"
+  test -f "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "missing 000006 up migration"
+  test -f "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "missing 000006 down migration"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -55,6 +59,14 @@ verify_static_contract() {
   grep -Eq '^DROP TABLE domain\.channels;$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop domain.channels exactly"
   grep -Eq '^DROP FUNCTION domain\.enforce_direct_message_participants_append_only\(\);$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop participant lifecycle function exactly"
   grep -Eq '^DROP FUNCTION domain\.enforce_direct_message_lifecycle_update\(\);$' "$CHANNEL_DM_DOWN" || postgres_test_fail "000005 down must drop Direct Message lifecycle function exactly"
+  grep -Eq '^CREATE TABLE domain\.channel_memberships \($' "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "000006 up must create domain.channel_memberships"
+  grep -Eq '^CREATE UNIQUE INDEX channel_memberships_one_active_actor$' "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "000006 up must enforce one active Channel Membership"
+  grep -Eq '^CREATE TRIGGER channel_memberships_require_active_member$' "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "000006 up must enforce active Member creation"
+  grep -Eq '^  FOR SHARE;$' "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "000006 up must serialize active Member validation with state updates"
+  grep -Eq '^CREATE TRIGGER channel_memberships_interval_lifecycle_guard$' "$CHANNEL_MEMBERSHIP_UP" || postgres_test_fail "000006 up must guard immutable membership intervals"
+  grep -Eq '^DROP TABLE domain\.channel_memberships;$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop domain.channel_memberships exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_channel_membership_interval_lifecycle\(\);$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop membership lifecycle function exactly"
+  grep -Eq '^DROP FUNCTION domain\.require_active_member_for_channel_membership\(\);$' "$CHANNEL_MEMBERSHIP_DOWN" || postgres_test_fail "000006 down must drop active Member validation function exactly"
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -77,9 +89,11 @@ apply_up_migrations() {
   psql_test --file="$MEMBER_UP"
   psql_test --file="$SPACE_UP"
   psql_test --file="$CHANNEL_DM_UP"
+  psql_test --file="$CHANNEL_MEMBERSHIP_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
   psql_test --file="$CHANNEL_DM_DOWN"
   psql_test --file="$SPACE_DOWN"
   psql_test --file="$MEMBER_DOWN"
@@ -101,6 +115,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$CHANNEL_MEMBERSHIP_DOWN"
 psql_test --file="$CHANNEL_DM_DOWN"
 psql_test --file="$SPACE_DOWN"
 psql_test --file="$MEMBER_DOWN"
