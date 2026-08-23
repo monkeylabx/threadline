@@ -1,9 +1,14 @@
 syntax = "proto3";
 
-// Key directory, membership change and enterprise recovery services.
+// Key directory, membership change, History Sharing and enterprise recovery
+// services.
 //
-// KeyDirectoryService and MembershipService are served by threadline-core.
-// RecoveryService is served by threadline-recovery-control, which runs in a
+// CryptoCompatibilityService, KeyDirectoryService, MembershipService,
+// HistoryService and the internal RecoveryEvidenceService are served by
+// threadline-core. Core only policy-checks and routes opaque History grants; it
+// cannot unwrap or derive History Keys.
+// RecoveryService and the additive TargetedRecoveryService are served only by
+// threadline-recovery-control, which runs in a
 // separate namespace with its own identity, network policy, database role and
 // audit sink; Core, Realtime, Worker, Runtime Gateway, Model Control and model
 // Endpoints cannot call it.
@@ -12,6 +17,43 @@ package threadline.crypto.v1;
 import "threadline/crypto/v1/crypto.proto";
 import "threadline/crypto/v1/recovery.proto";
 import "threadline/type/v1/common.proto";
+
+// CryptoContractSurface names each additive surface whose current semantics
+// cannot be safely executed by an N-1 client that ignores unknown fields.
+enum CryptoContractSurface {
+  CRYPTO_CONTRACT_SURFACE_UNSPECIFIED = 0;
+  CRYPTO_CONTRACT_SURFACE_DEVICE_CREDENTIAL = 1;
+  CRYPTO_CONTRACT_SURFACE_E2EE_GROUP = 2;
+  CRYPTO_CONTRACT_SURFACE_MEMBERSHIP_AUTHORIZATION = 3;
+  CRYPTO_CONTRACT_SURFACE_MLS_WIRE = 4;
+  CRYPTO_CONTRACT_SURFACE_HISTORY_GRANT = 5;
+}
+
+// CryptoCompatibilityService exposes the audited, server-enforced rollout
+// floor. A current writer/server must not publish, mutate or deliver a surface
+// using current-only semantics until exactly one entry for that surface reports
+// minimum_active_client_contract_version >= 1 and legacy_mutation_disabled.
+// Missing, duplicate, zero, unknown or rollback-lowered entries fail closed.
+// An N-1 server returns UNIMPLEMENTED; a current client remains read/audit-only.
+// An N-1 client cannot bypass this gate because Core enforces the floor before
+// delivery or mutation, rather than trusting a self-reported client capability.
+service CryptoCompatibilityService {
+  rpc GetCryptoCompatibilityCapabilities(GetCryptoCompatibilityCapabilitiesRequest) returns (GetCryptoCompatibilityCapabilitiesResponse);
+}
+
+message GetCryptoCompatibilityCapabilitiesRequest {}
+
+message GetCryptoCompatibilityCapabilitiesResponse {
+  // Current v1 requires exactly 1. Unknown versions fail closed.
+  uint32 contract_version = 1;
+  repeated CryptoSurfaceProtocolFloor surface_floors = 2;
+}
+
+message CryptoSurfaceProtocolFloor {
+  CryptoContractSurface surface = 1;
+  uint32 minimum_active_client_contract_version = 2;
+  bool legacy_mutation_disabled = 3;
+}
 
 // KeyDirectoryService publishes and consumes public KeyPackages.
 //
@@ -24,13 +66,25 @@ service KeyDirectoryService {
 
   // Claims one KeyPackage per target Device for an upcoming Commit. Claiming is
   // atomic: a package handed out here is marked consumed and never returned to
-  // a second caller.
+  // a second caller. A limited N-1 migration package without additive fields
+  // 8-10 and 14-16 is eligible only when its authenticated Device-bound publish
+  // session supplies the Tenant/Device binding, its existing outer Device and
+  // Profile fields match, its published_at/expires_at window is current and no
+  // wider than 7,261,200 seconds. The server first claims it atomically and
+  // terminally, then returns its public bytes. Before forming a Commit, the
+  // current Committer validates the opaque MLS Credential/Profile/Leaf
+  // lifetime/signature. Validation failure leaves the package consumed or
+  // invalid, and no Commit is produced. Current-format packages must use the
+  // signed additive publication path.
   rpc ClaimKeyPackages(ClaimKeyPackagesRequest) returns (ClaimKeyPackagesResponse);
 
   rpc GetE2eeGroup(GetE2eeGroupRequest) returns (GetE2eeGroupResponse);
 }
 
 message PublishKeyPackagesRequest {
+  // The authenticated Device-bound session supplies Tenant, Actor and Device.
+  // Every package must match that Device and its current authorized credential;
+  // cross-tenant, revoked and unknown-profile inputs fail closed.
   repeated KeyPackage key_packages = 1;
 }
 
@@ -44,6 +98,14 @@ message ClaimKeyPackagesRequest {
   string e2ee_group_id = 1;
 
   repeated string target_device_ids = 2;
+
+  // The pending membership authorization that will consume these packages.
+  // A claim is committed atomically with its consumption markers.
+  string authorization_id = 3;
+
+  // Client-generated replay identity. An exact retry returns the original
+  // package set; a conflicting retry fails with ERROR_CODE_REPLAY_DETECTED.
+  string claim_id = 4;
 }
 
 message ClaimKeyPackagesResponse {
@@ -52,6 +114,8 @@ message ClaimKeyPackagesResponse {
   // Devices with no package available. They cannot be added to the Group until
   // they publish more; the caller must not proceed as though they were added.
   repeated string unavailable_device_ids = 2;
+
+  string claim_id = 3;
 }
 
 message GetE2eeGroupRequest {
@@ -67,7 +131,10 @@ message GetE2eeGroupResponse {
 //
 // The control plane owns the ordering of membership changes and holds no group
 // keys. Concurrent changes are resolved by the sequence assigned here, not by
-// whichever Commit lands first.
+// whichever Commit lands first. The resulting opaque MlsWireMessage is sent
+// through threadline.message.v1.MessageService.SendEvent, the single durable
+// sequencing path; this service deliberately does not create a second write
+// or ACK path.
 service MembershipService {
   // Records a membership change and returns an authorization naming the
   // Committer Device, the expected Epoch and the KeyPackages to consume. The
@@ -93,6 +160,23 @@ message AuthorizeMembershipChangeRequest {
 
   // Individual Devices to remove, for revocation rather than membership change.
   repeated string remove_device_ids = 5;
+
+  // Replay identity for the exact requested transition. A duplicate with the
+  // same body returns the original authorization; a conflict fails closed.
+  string request_id = 6;
+
+  // Required for REINITIALIZE and forbidden otherwise.
+  CryptoProfile successor_crypto_profile = 7;
+
+  // Exact targets for UPDATE_DEVICE_KEY, SELF_UPDATE or REVOKE_DEVICE.
+  repeated string update_device_ids = 8;
+
+  // Required only for RECOVERY_KEY_ROTATION.
+  uint32 successor_recovery_key_version = 9;
+
+  // Required only for REINITIALIZE; a random tenant-scoped identifier for the
+  // successor generation, never an in-place rename of the current Group.
+  string successor_e2ee_group_id = 10;
 }
 
 message AuthorizeMembershipChangeResponse {
@@ -136,6 +220,8 @@ message RequestHistorySharingRequest {
 
   uint64 first_epoch = 3;
   uint64 last_epoch = 4;
+
+  string request_id = 5;
 }
 
 message RequestHistorySharingResponse {
@@ -145,6 +231,8 @@ message RequestHistorySharingResponse {
   // exists: the target then starts from its current authorization point, and
   // recovering earlier history requires a separate approved Recovery Case.
   repeated string eligible_source_device_ids = 2;
+
+  HistorySharingRequest request = 3;
 }
 
 message SubmitHistorySharingRequest {
@@ -188,6 +276,78 @@ service RecoveryService {
   rpc ListRecoveryCases(ListRecoveryCasesRequest) returns (ListRecoveryCasesResponse);
 }
 
+// TargetedRecoveryService is a separate additive protocol boundary for exact,
+// typed recovery targets. It never reuses or reinterprets RecoveryService
+// request or Case bytes. An older server therefore returns UNIMPLEMENTED.
+//
+// Activation requires an externally recorded server protocol floor and
+// disabling legacy recovery mutation before targeted clients are enabled.
+// These messages describe that migration gate; they do not claim it is
+// implemented. Rollback must preserve the floor or keep mutation disabled.
+service TargetedRecoveryService {
+  rpc GetTargetedRecoveryCapabilities(GetTargetedRecoveryCapabilitiesRequest) returns (GetTargetedRecoveryCapabilitiesResponse);
+  rpc CreateTargetedRecoveryCase(CreateTargetedRecoveryCaseRequest) returns (CreateTargetedRecoveryCaseResponse);
+  rpc DecideTargetedRecoveryCase(DecideTargetedRecoveryCaseRequest) returns (DecideTargetedRecoveryCaseResponse);
+  rpc ExecuteTargetedRecoveryCase(ExecuteTargetedRecoveryCaseRequest) returns (ExecuteTargetedRecoveryCaseResponse);
+}
+
+message GetTargetedRecoveryCapabilitiesRequest {}
+
+message GetTargetedRecoveryCapabilitiesResponse {
+  bool explicit_protected_targets = 1;
+  uint32 contract_version = 2;
+  RecoveryProtocolFloor protocol_floor = 3;
+}
+
+message RecoveryProtocolFloor {
+  // Targeted Recovery activation requires exactly 1. Missing, zero, unknown or
+  // rollback-lowered values fail closed.
+  uint32 minimum_targeted_contract_version = 1;
+
+  // Must be true before activation and remain true through rollback. Otherwise
+  // TargetedRecoveryService stays read/audit-only even when its RPC exists.
+  bool legacy_mutation_disabled = 2;
+}
+
+message CreateTargetedRecoveryCaseRequest {
+  threadline.type.v1.EncryptedField reason = 1;
+  string recovery_recipient_device_id = 2;
+  repeated RecoveryScope scopes = 3;
+  string request_id = 4;
+}
+
+message CreateTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+}
+
+message DecideTargetedRecoveryCaseRequest {
+  string recovery_case_id = 1;
+  bool approved = 2;
+  threadline.type.v1.EncryptedField note = 3;
+  string decision_id = 4;
+  bytes case_binding_hash = 5;
+  bytes decision_signature = 6;
+  string approver_device_id = 7;
+}
+
+message DecideTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+}
+
+message ExecuteTargetedRecoveryCaseRequest {
+  string recovery_case_id = 1;
+  // Required idempotency key. An exact retry is allowed only for the same
+  // stored non-empty value after successful targeted execution.
+  string execution_id = 2;
+}
+
+message ExecuteTargetedRecoveryCaseResponse {
+  TargetedRecoveryCase recovery_case = 1;
+  // The targeted RPC requires the additive scope/delivery bindings on every
+  // returned envelope; their absence is not invalid in legacy RPC contexts.
+  repeated RecoveryEnvelope delivered_envelopes = 2;
+}
+
 message CreateRecoveryCaseRequest {
   threadline.type.v1.EncryptedField reason = 1;
 
@@ -219,6 +379,41 @@ message DecideRecoveryCaseResponse {
 
 message ExecuteRecoveryCaseRequest {
   string recovery_case_id = 1;
+}
+
+// Internal Core evidence seam. Only the threadline-recovery-control workload
+// identity may call this service; clients, administrators and RecoveryService
+// callers cannot submit or substitute attestations. Core derives and signs the
+// response after discovering only exact object matches or contained History
+// ranges within a signed RecoveryEvidenceGrant in the single durable event
+// store. Recovery Control fetches these items during
+// Execute and passes the still-opaque wrapped material to the KMS/HSM. It
+// requires exactly one matching attestation per returned envelope and neither
+// service shares a database or accepts a client-supplied envelope.
+service RecoveryEvidenceService {
+  rpc GetRecoveryEvidence(GetRecoveryEvidenceRequest) returns (GetRecoveryEvidenceResponse);
+}
+
+message GetRecoveryEvidenceRequest {
+  // Signed by isolated Recovery Control after approval. Core verifies the mTLS
+  // caller, signature and expiry before discovering records; the caller need
+  // not and must not pre-supply envelope hashes.
+  RecoveryEvidenceGrant grant = 1;
+}
+
+message GetRecoveryEvidenceResponse {
+  repeated RecoveryEvidenceItem items = 1;
+}
+
+message RecoveryEvidenceItem {
+  // Exact persisted sender envelope, including the wrapped material that stays
+  // opaque to Core and Recovery Control and is passed only to the KMS/HSM.
+  RecoveryEnvelope envelope = 1;
+
+  // Core-produced proof for this exact envelope. The transcript hash in the
+  // attestation must match `envelope` one-for-one; missing or duplicate items
+  // fail closed.
+  RecoveryScopeCommitAttestation attestation = 2;
 }
 
 message ExecuteRecoveryCaseResponse {

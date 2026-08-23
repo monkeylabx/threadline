@@ -12,6 +12,19 @@ package threadline.crypto.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// The cross-platform contract identifies protocol behavior, never the library
+// release that implements it. OpenMLS names and versions are intentionally not
+// representable here.
+
+// CredentialIssuerKind distinguishes the approval roots permitted by ADR-0003.
+// Unknown issuers fail closed.
+enum CredentialIssuerKind {
+  CREDENTIAL_ISSUER_KIND_UNSPECIFIED = 0;
+  CREDENTIAL_ISSUER_KIND_DEVICE_AUTHORITY = 1;
+  CREDENTIAL_ISSUER_KIND_EXISTING_AUTHORIZED_DEVICE = 2;
+  CREDENTIAL_ISSUER_KIND_ADMIN_EXCEPTION = 3;
+}
+
 // CipherSuite mirrors the RFC 9420 registry. v1 pins exactly one suite; the
 // enum exists so an unknown suite is an explicit incompatibility rather than a
 // silent reinterpretation.
@@ -25,11 +38,17 @@ enum CipherSuite {
 // suite and Threadline envelope versions used by one E2EE Group.
 //
 // A library release is not a Crypto Profile: replacing OpenMLS must not change
-// `tl-mls-1` on the wire. A client that does not recognize `name` enters an
-// explicit incompatible state and never downgrades.
+// `tl-mls-1` on the wire. `tl-mls-1` is exactly the full tuple: name
+// "tl-mls-1", MLS protocol "1.0", cipher suite
+// MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, and message, History and
+// recovery envelope versions all equal to 1. The name is not an alias for any
+// other tuple. Unknown enum values, zero versions and any same-name mismatch
+// fail closed with ERROR_CODE_CRYPTO_PROFILE_UNSUPPORTED; clients never
+// negotiate individual tuple members or downgrade.
 message CryptoProfile {
-  // Profile identifier, e.g. "tl-mls-1". This is the value clients compare;
-  // the version fields below are descriptive, not negotiable.
+  // Profile identifier, e.g. "tl-mls-1". Clients compare the complete tuple;
+  // this name is neither authoritative by itself nor an alias. Every version
+  // and cipher field below is normative and non-negotiable.
   string name = 1;
 
   // MLS protocol version, e.g. "1.0" (RFC 9420).
@@ -73,16 +92,36 @@ message DeviceCredential {
   CryptoProfile crypto_profile = 8;
 
   // Signature by the Device Authority, or by an already-authorized Device of
-  // the same Member, over the canonical encoding of fields 1-8.
+  // the same Member, over the canonical DeviceCredential approval projection:
+  // fields 1-8 followed by fields 10-12, in field-number order. Field 9 is the
+  // signature itself and is never part of its own input. Therefore
+  // `approved_by`, `credential_format_version`, and `issuer_kind` cannot be
+  // changed without invalidating the signature.
   //
   // This is the approval chain clients verify to detect a control plane that
-  // silently inserts a ghost device. The exact canonicalization is frozen by
-  // the Golden Vectors in test/crypto/ and validated by P00-08.
+  // silently inserts a ghost device. Its signing-input digest uses the
+  // `credential` v1 canonical transcript frozen in the T019 vectors.
   bytes approval_signature = 9;
 
   // Identifier of the signer above: a Device Authority key ID, or the
   // endorsing Device's ID.
   string approved_by = 10;
+
+  // Version of the canonical credential encoding covered by
+  // `approval_signature`. v1 accepts exactly 1; an unknown value fails closed.
+  uint32 credential_format_version = 11;
+
+  CredentialIssuerKind issuer_kind = 12;
+}
+
+// KeyPackageState is the directory's append-only view of a public package.
+// CONSUMED and INVALIDATED are terminal; a package never becomes AVAILABLE
+// again and the identifier is never reused.
+enum KeyPackageState {
+  KEY_PACKAGE_STATE_UNSPECIFIED = 0;
+  KEY_PACKAGE_STATE_AVAILABLE = 1;
+  KEY_PACKAGE_STATE_CONSUMED = 2;
+  KEY_PACKAGE_STATE_INVALIDATED = 3;
 }
 
 // KeyPackage is the short-lived, normally single-use public package through
@@ -106,9 +145,45 @@ message KeyPackage {
   google.protobuf.Timestamp published_at = 5;
   google.protobuf.Timestamp expires_at = 6;
 
-  // False once the directory has handed this package to a Committer Device.
-  // Reuse is rejected with ERROR_CODE_KEY_PACKAGE_CONSUMED.
-  bool available = 7;
+  // N-1 availability projection. Current writers set this true exactly when
+  // `state` is AVAILABLE; a mismatch fails closed. Reuse is rejected with
+  // ERROR_CODE_KEY_PACKAGE_CONSUMED.
+  bool available = 7 [deprecated = true];
+
+  // The credential and tenant bindings are repeated outside the opaque MLS
+  // bytes so the directory can fail closed without parsing MLS plaintext.
+  string tenant_id = 8;
+  uint32 credential_version = 9;
+
+  // `not_before` is issued as `issued_at - 3600 seconds`. The inclusive validity
+  // interval is [not_before, expires_at], and its maximum permitted width is
+  // 7,261,200 seconds. Both exact boundaries are valid; one second outside is
+  // rejected.
+  google.protobuf.Timestamp not_before = 10;
+
+  KeyPackageState state = 11;
+
+  // Set exactly once by the atomic claim transaction. Replays return
+  // ERROR_CODE_KEY_PACKAGE_CONSUMED and never expose the package again.
+  google.protobuf.Timestamp consumed_at = 12;
+  string consumed_by_authorization_id = 13;
+
+  // Device signing time for the MLS KeyPackage/LeafNode. `not_before` must
+  // equal `issued_at - 3600 seconds`; validation time is used only to decide
+  // whether the resulting inclusive interval is currently usable.
+  google.protobuf.Timestamp issued_at = 14;
+
+  // Digest over the `publication` v1 canonical transcript of the immutable
+  // projection: fields 1-6, 8-10 and 14
+  // in field-number order. This includes the opaque MLS bytes, Profile, Tenant,
+  // credential version and exact issuance/lifetime timestamps. Mutable
+  // availability/consumption fields 7 and 11-13 are intentionally excluded.
+  bytes publication_binding_hash = 15;
+
+  // Device Identity signature over `publication_binding_hash`. The directory
+  // verifies it against the current authorized Device Credential before making
+  // the package available; the server cannot mint or alter a package.
+  bytes publication_signature = 16;
 }
 
 // E2eeGroupState is the safety state of one E2EE Group.
@@ -159,6 +234,14 @@ message E2EEGroup {
   string successor_e2ee_group_id = 8;
 
   google.protobuf.Timestamp created_at = 9;
+
+  // Starts at 1 and changes only when REINITIALIZE creates a successor Group.
+  // Epoch changes within a Group do not change its generation.
+  uint64 generation = 10;
+
+  // Set on a successor created by REINITIALIZE. The predecessor points back
+  // through `successor_e2ee_group_id`; neither link may cross Tenant or parent.
+  string predecessor_e2ee_group_id = 11;
 }
 
 // MembershipChangeKind enumerates the events that must advance an Epoch.
@@ -175,6 +258,9 @@ enum MembershipChangeKind {
   MEMBERSHIP_CHANGE_KIND_RECOVERY_KEY_ROTATION = 5;
   // Crypto Profile migration into a successor generation.
   MEMBERSHIP_CHANGE_KIND_REINITIALIZE = 6;
+  // Immediate credential revocation. Semantically distinct from removing a
+  // still-valid Device because it also invalidates every unused KeyPackage.
+  MEMBERSHIP_CHANGE_KIND_REVOKE_DEVICE = 7;
 }
 
 // MembershipChangeAuthorization is issued by the IM Control Plane, which owns
@@ -211,6 +297,40 @@ message MembershipChangeAuthorization {
 
   google.protobuf.Timestamp issued_at = 9;
   google.protobuf.Timestamp expires_at = 10;
+
+  string tenant_id = 11;
+
+  // Must equal expected_epoch + 1. Skipping or reusing an Epoch fails closed.
+  uint64 successor_epoch = 12;
+
+  // Policy snapshot that authorized the exact mutation and committer.
+  string policy_version = 13;
+
+  // Stable digest over the `membership` v1 canonical transcript: fields 1-13
+  // followed by fields 15-18, in field-number order. Field 14 is the digest
+  // itself and is excluded. This binds policy_version, successor_crypto_profile,
+  // update_device_ids, successor_recovery_key_version and
+  // successor_e2ee_group_id in addition to every identity, target, Epoch,
+  // sequence, committer and lifetime field. Repeated target identifiers use
+  // their canonical sorted order. Any mutation is rejected before MLS bytes are
+  // accepted.
+  bytes authorization_binding_hash = 14;
+
+  // Set only for REINITIALIZE; it names the immutable profile of the successor
+  // generation. It can never mutate the current Group in place.
+  CryptoProfile successor_crypto_profile = 15;
+
+  // Required for credential/leaf rotation and self-update, and for revocation
+  // when the affected Device is not already named in `remove_device_ids`.
+  repeated string update_device_ids = 16;
+
+  // Required only for RECOVERY_KEY_ROTATION and greater than the current
+  // version. The key identifier itself remains KMS/HSM configuration.
+  uint32 successor_recovery_key_version = 17;
+
+  // Required only for REINITIALIZE. It names the new Group generation; the
+  // current Group becomes SUPERSEDED only after the Commit is accepted.
+  string successor_e2ee_group_id = 18;
 }
 
 // MlsWireMessageType names the MLS object carried in an MlsWireMessage.
@@ -221,6 +341,16 @@ enum MlsWireMessageType {
   MLS_WIRE_MESSAGE_TYPE_PROPOSAL = 3;
   // GroupInfo / ratchet tree material for external joins and recovery.
   MLS_WIRE_MESSAGE_TYPE_GROUP_INFO = 4;
+}
+
+// MlsWireFormat freezes the RFC 9420 handshake representation independently of
+// any library default. Commit and Proposal in tl-mls-1 must be PRIVATE_MESSAGE;
+// Welcome and GroupInfo are INDEPENDENT and have no Public/Private form.
+enum MlsWireFormat {
+  MLS_WIRE_FORMAT_UNSPECIFIED = 0;
+  MLS_WIRE_FORMAT_PRIVATE_MESSAGE = 1;
+  MLS_WIRE_FORMAT_PUBLIC_MESSAGE = 2;
+  MLS_WIRE_FORMAT_INDEPENDENT = 3;
 }
 
 // MlsWireMessage transports MLS handshake material.
@@ -234,8 +364,9 @@ enum MlsWireMessageType {
 message MlsWireMessage {
   MlsWireMessageType message_type = 1;
 
-  // Serialized MLS message. Whether the public or private wire format is used
-  // is frozen by the Golden Vectors and P00-08 interop evidence.
+  // Serialized MLS message. Commit and Proposal use PrivateMessage under
+  // tl-mls-1. Welcome and GroupInfo are independent MLS objects. The bytes are
+  // opaque to all server workloads.
   bytes mls_data = 2;
 
   // Epoch this message builds on, replicated outside `mls_data` so the server
@@ -248,7 +379,25 @@ message MlsWireMessage {
   // Authorization consumed by a COMMIT. Empty for PROPOSAL and WELCOME.
   string authorization_id = 5;
 
-  // Devices this message is addressed to. Set for WELCOME, which is delivered
-  // to joining Devices only. Empty means "all current members".
+  // Devices this message is addressed to. Required and non-empty for WELCOME,
+  // which is delivered to joining Devices only. Empty means "all current
+  // members" only for non-WELCOME message types.
   repeated string target_device_ids = 6;
+
+  // Required outer routing and ordering bindings. Servers validate these
+  // fields but treat `mls_data` as an opaque byte string.
+  string tenant_id = 7;
+  string e2ee_group_id = 8;
+  uint64 change_seq = 9;
+  string sender_device_id = 10;
+  MlsWireFormat wire_format = 11;
+
+  // Sender-chosen replay identity. The same ID with different binding fields
+  // or bytes is rejected; an exact duplicate is idempotent.
+  string handshake_id = 12;
+
+  // For Welcome, the accepted Commit handshake that created the joining Epoch.
+  // Empty for Commit/Proposal and optional for independently refreshed
+  // GroupInfo. This correlation does not require parsing the MLS bytes.
+  string related_handshake_id = 13;
 }
