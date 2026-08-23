@@ -41,12 +41,15 @@ commercial SQLCipher artifact, account, download, or service is required.
 The workspace pin keeps `rusqlite` default features disabled, while the ordinary
 `client-core` dependency explicitly enables only the source-built SQLCipher
 candidate. Therefore a non-test `cargo tree -p threadline-client-core -e=no-dev`
-does not select a plain system-SQLite backend. This is a dependency-graph
-invariant, not production-provider admission: `client-core` still exposes no
-database constructor or key adapter, and this task does not decide OS key
-lifecycle. The evidence harness remains test-only. Locked builds compile the
-SQLCipher amalgamation and OpenSSL locally through the crates.io source archives
-and the checked-in Cargo lockfile.
+does not select a plain system-SQLite backend. P05-01B-3 adds the
+production-shaped `EncryptedDatabase::open` seam: a host supplies a nonzero
+fixed-size `DatabaseKey`, while `client-core` owns key application, Community
+cipher verification, schema validation/migration, foreign-key enforcement, WAL
+mode, full synchronous durability, and the connection. The raw connection and
+PRAGMA ordering are not exposed. Key generation, persistence, rotation, and OS
+key lifecycle remain P05-05. Locked builds compile the SQLCipher amalgamation
+and OpenSSL locally through the crates.io source archives and the checked-in
+Cargo lockfile.
 
 `libsqlite3-sys` retains `pkg-config` and `vcpkg` as portable discovery build
 dependencies, but its enabled `bundled-sqlcipher` feature selects the bundled
@@ -62,6 +65,7 @@ forbidden because it bypasses the selected source backend. The executable
 | `openssl-sys` 0.9.117 | `crates.io` archive from [`rust-openssl/rust-openssl`](https://github.com/rust-openssl/rust-openssl) | MIT |
 | `openssl-src` 300.6.1+3.6.3, including OpenSSL 3.6.3 | `crates.io` archive from [`alexcrichton/openssl-src-rs`](https://github.com/alexcrichton/openssl-src-rs); embedded source from [`openssl/openssl`](https://github.com/openssl/openssl) | MIT/Apache-2.0 wrapper; OpenSSL Apache-2.0 |
 | `getrandom` 0.3.4 (test key/canary generation only) | `crates.io` archive from [`rust-random/getrandom`](https://github.com/rust-random/getrandom) | MIT OR Apache-2.0 |
+| `zeroize` 1.8.2 | `crates.io` archive from [`RustCrypto/utils`](https://github.com/RustCrypto/utils) | Apache-2.0 OR MIT |
 
 Cargo verifies each archive against `Cargo.lock`. The source build requires the
 pinned Rust toolchain plus a supported native C compiler, Perl, and the host
@@ -73,16 +77,21 @@ Run the candidate evidence with:
 
 ```text
 cargo test -p threadline-client-core --test sqlcipher_backend --locked
+cargo test -p threadline-client-core --test storage_migrations --locked
 ```
 
-The test obtains a fresh database key and fixture canary from the OS CSPRNG,
-confirms the linked `PRAGMA cipher_version`, performs a byte-exact Golden
-Envelope keyed reopen, scans the live DB/WAL/SHM family for the SQLite header,
-fixture canary, and key, and confirms empty/wrong keys fail without rewriting
-any member of the live DB/WAL/SHM family. A correct-key reopen then verifies the
-schema objects, `user_version`, migration ledger, and Golden Envelope remained
-unchanged. Diagnostics intentionally omit keys, canaries, complete database
-paths, and reusable secrets.
+The tests obtain fresh database keys and fixture canaries from the OS CSPRNG;
+all production behavior is exercised through the owning interface. Raw keyed
+connections are limited to malicious-fixture injection and post-open invariant
+inspection. A successful open requires the exact locked nonempty Community
+`cipher_version`. The tests perform a byte-exact Golden Envelope keyed reopen,
+scan the live DB/WAL/SHM family for the SQLite header, fixture canary, accepted
+key, and rejected key, and confirm empty/wrong keys fail without rewriting any
+family member. Separate fixtures verify the application ID, schema version,
+migration ledger, foreign/newer schema rejection, checksum drift, and
+live-schema tampering. Public diagnostics omit keys, canaries, complete database
+paths, and reusable secrets. `DatabaseKey` cannot be cloned or formatted; its
+owned bytes and the temporary SQLCipher key command use `zeroize` on drop.
 
 The P05-01B-1 candidate evidence was run locally on `aarch64-apple-darwin`
 (Darwin 25.4.0) with Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make
@@ -105,10 +114,10 @@ retained; standard job logs contain only the non-secret test name and diagnostic
 designed not to expose those values. The three run bindings above must reference
 one immutable run of the reviewed commit before P05-01B-2A can be accepted.
 
-This remains desktop-host candidate evidence, not production-provider or
-release-platform admission. iOS and Android runtime/simulator/physical-device
-SQLCipher evidence, OS Secure Storage and key lifecycle, the production
-adapter, P05-01, and M0/G0 remain `NOT RUN` or out of scope.
+This remains desktop-host and keyed-database evidence, not release-platform
+admission. iOS and Android runtime/simulator/physical-device SQLCipher evidence,
+OS Secure Storage and key lifecycle, P05-05, the complete P05-01 work package,
+and M0/G0 remain `NOT RUN` or out of scope.
 
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
