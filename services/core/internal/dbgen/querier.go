@@ -29,6 +29,7 @@ type Querier interface {
 	GetDirectMessage(ctx context.Context, arg GetDirectMessageParams) (DomainDirectMessage, error)
 	GetMember(ctx context.Context, arg GetMemberParams) (DomainMember, error)
 	GetOrganization(ctx context.Context, tenantID string) (DomainOrganization, error)
+	GetOutboxTransactionIsolation(ctx context.Context) (string, error)
 	GetSpace(ctx context.Context, arg GetSpaceParams) (DomainSpace, error)
 	ListActiveChannelMemberships(ctx context.Context, arg ListActiveChannelMembershipsParams) ([]DomainChannelMembership, error)
 	ListChannelMembershipHistory(ctx context.Context, arg ListChannelMembershipHistoryParams) ([]DomainChannelMembership, error)
@@ -42,8 +43,10 @@ type Querier interface {
 	LockChannelForACLReplacement(ctx context.Context, arg LockChannelForACLReplacementParams) (string, error)
 	LockCurrentAuthorizationACL(ctx context.Context, arg LockCurrentAuthorizationACLParams) (int64, error)
 	LockSpaceForACLReplacement(ctx context.Context, arg LockSpaceForACLReplacementParams) (string, error)
+	ObserveExactDomainEventAndInitialDestination(ctx context.Context, arg ObserveExactDomainEventAndInitialDestinationParams) (ObserveExactDomainEventAndInitialDestinationRow, error)
 	SealResourceACLSnapshot(ctx context.Context, arg SealResourceACLSnapshotParams) (int64, error)
 	SetCurrentResourceACL(ctx context.Context, arg SetCurrentResourceACLParams) error
+	TryInsertDomainEventAndInitialEntry(ctx context.Context, arg TryInsertDomainEventAndInitialEntryParams) (TryInsertDomainEventAndInitialEntryRow, error)
 	UpdateChannelNameState(ctx context.Context, arg UpdateChannelNameStateParams) (DomainChannel, error)
 	UpdateMemberRoleState(ctx context.Context, arg UpdateMemberRoleStateParams) (DomainMember, error)
 	UpdateOrganizationStatePolicy(ctx context.Context, arg UpdateOrganizationStatePolicyParams) (DomainOrganization, error)
