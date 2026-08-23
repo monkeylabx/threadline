@@ -103,14 +103,23 @@ registry and cannot make an unknown Event Type valid.
 | `tenant_id`, `event_id` | Core | immutable | Composite foreign key to the exact Domain Event |
 | `destination` | Core descriptor | immutable | Registered logical destination; never arbitrary request or broker address |
 | `delivery_state` | Worker relay | state machine | Exactly `pending`, `claimed`, `delivered`, or `parked` |
-| `total_attempt_count` | database claim query | monotonic | Lifetime count; never reset by replay |
+| `total_attempt_count` | database claim query | monotonic signed `bigint` | Lifetime count; never reset by replay; checked increment at `MaxInt64` or atomic `persistence-failure` |
 | `replay_generation` | replay command | monotonic | Starts at zero; explicit approved replay increments it |
-| `generation_attempt_count` | database claim query | generation-local | Reset only when an approved replay creates a new generation |
-| `generation_failure_count` | database failure query | generation-local | Counts only allowlisted event-specific retryable failures |
+| `generation_attempt_count` | database claim query | generation-local signed `bigint` | Reset only when an approved replay creates a new generation; checked increment |
+| `generation_transport_failure_count` | database failure query | generation-local signed `bigint` | Counts only `transport-unavailable`; never consumes the event-failure budget; checked increment |
+| `generation_unknown_outcome_count` | database failure query | generation-local signed `bigint` | Counts only `publish-outcome-unknown`; never consumes the event-failure budget; checked increment |
+| `generation_failure_count` | database failure query | generation-local signed `bigint` | Counts only allowlisted event-specific retryable failures; checked increment |
 | `next_attempt_at` | database failure query | mutable | Non-null only for `pending`; computed from trusted policy and database time |
 | `current_attempt_id` | database claim query | mutable | Non-null only for `claimed`; references the sole active attempt |
 | `last_failure_code` | database failure query | current-generation summary | Allowlisted code or null; never raw text |
 | `parked_at` | database failure query | current-generation summary | Non-null only for `parked`; cleared only by approved replay |
+| `policy_id`, `policy_snapshot_digest` | trusted Integration policy | immutable per generation | Known policy plus exact 32-byte snapshot binding; no runtime fallback |
+| `effective_lease_ms`, `effective_absolute_lifetime_ms` | trusted Integration policy | immutable per generation | Exact bounded positive integers used by every Claim/Renew in this generation |
+| `effective_event_retry_ceiling` | trusted Integration policy | immutable per generation | Exact bounded positive integer; current config cannot reinterpret it |
+| `effective_transport_base_ms`, `effective_transport_cap_ms` | trusted Integration policy | immutable per generation | Exact bounded transport backoff pair |
+| `effective_unknown_base_ms`, `effective_unknown_cap_ms` | trusted Integration policy | immutable per generation | Exact bounded unknown-outcome backoff pair |
+| `effective_event_base_ms`, `effective_event_cap_ms` | trusted Integration policy | immutable per generation | Exact bounded event-retry backoff pair |
+| `effective_retention_days` | trusted Integration policy | immutable per generation | Exact bounded evidence window copied into each Attempt |
 
 Required constraints include unique `(tenant_id, event_id, destination)`, exact
 composite Tenant/Event foreign keys, known non-zero state, non-negative counters,
@@ -131,7 +140,7 @@ under its absolute cap; terminal fields are filled once.
 | `delivery_attempt_id` | database | Stable attempt identity and fencing reference |
 | `tenant_id`, `event_id`, `outbox_entry_id` | database claim query | Exact composite parent binding used by every later operation |
 | `replay_generation` | database claim query | Copies the current Entry generation |
-| `total_attempt_number`, `generation_attempt_number` | database claim query | Exact incremented lifetime and generation-local ordinals |
+| `total_attempt_number`, `generation_attempt_number` | database claim query | Exact positive signed-`bigint` lifetime and generation-local ordinals copied after checked increment |
 | `claim_owner_id` | Worker adapter | Bounded diagnostic replica label; DB role plus claim token provide authority |
 | `claim_token_digest` | database | Digest of a database-generated token with at least 128 bits of entropy |
 | `claimed_at`, `lease_expires_at`, `absolute_lease_expires_at` | database | PostgreSQL time; renewal only increases lease expiry up to the immutable cap |
@@ -140,6 +149,8 @@ under its absolute cap; terminal fields are filled once.
 | `failure_code` | Worker relay | Same allowlisted code as relay-classified outcomes; null for database-classified `lease_expired` |
 | `broker_stream`, `broker_sequence`, `broker_duplicate` | trusted Worker adapter | Bounded normalized PubAck evidence required only for `delivered` |
 | `broker_message_id` | database/Worker adapter | Exact deterministic message ID for this Entry generation |
+| `policy_id`, `policy_snapshot_digest`, `effective_lease_ms`, `effective_retention_days` | database claim query | Copies the Entry generation's trusted values so reload cannot reinterpret renewal or evidence cutoff |
+| `evidence_not_before` | database terminal query | Immutable database-time cutoff for later Retention evaluation; null while active |
 
 An active attempt has no terminal fields. A delivered attempt has exact PubAck
 evidence and no failure code. `transport_unavailable`,
@@ -182,6 +193,9 @@ Worker receives no generic `INSERT`, `UPDATE`, or `DELETE` authority on Domain
 tables. Deployment/Platform provisions credentials and non-login grants;
 feature migrations do not create or drop login roles. A migration owner, not
 runtime startup, creates tables, functions, grants, and triggers.
+The Worker role cannot select `claim_token_digest`; it supplies a candidate
+digest only to reviewed least-privilege claim functions, which compare and
+mutate atomically without returning the stored digest.
 
 ## 6. State Machine
 
@@ -226,8 +240,8 @@ Entry postconditions are exact:
 | `parked` | null | null | required allowlisted event failure | required |
 
 Approved replay moves `delivered` or `parked` to `pending`, increments the
-generation, resets both generation counters, and sets failure/park summary to
-null. Lifetime count and all Event/attempt/replay rows remain unchanged.
+generation, resets all generation-local counters, and sets failure/park summary
+to null. Lifetime count and all Event/attempt/replay rows remain unchanged.
 
 ## 7. SQL-Shaped Operations
 
@@ -493,9 +507,11 @@ own these surfaces:
 - PostgreSQL integration tests for immutable Event facts, exact destination
   foreign keys, entry/attempt/generation state constraints, and rollback.
 
-Before claiming P03-08B, Integration must pin the trusted payload byte limit,
-batch limit, claim lease/absolute lifetime, event-failure ceiling,
-backoff/jitter policy, token encoding/digest, and delivery-evidence retention.
+P03-08B consumes the trusted payload, batch, lease/absolute lifetime,
+event-failure ceiling, backoff/jitter, token, policy-snapshot, and evidence
+retention values frozen in
+[`transactional-outbox-policy.md`](transactional-outbox-policy.md); it may not
+substitute implementation defaults.
 P03-08B keeps purge, replay, and production insert unexported. A producer
 Contract task must register at least one Event
 Type/version/aggregate/destination descriptor before a production insert can
