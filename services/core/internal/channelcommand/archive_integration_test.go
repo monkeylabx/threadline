@@ -1,4 +1,4 @@
-package channelcommand_test
+package channelcommand
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 
 	"github.com/monkeylabx/threadline/services/core/internal/authorization"
 	"github.com/monkeylabx/threadline/services/core/internal/authorization/aclstore"
-	"github.com/monkeylabx/threadline/services/core/internal/channelcommand"
 	"github.com/monkeylabx/threadline/services/core/internal/dbgen"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
@@ -125,6 +124,12 @@ func TestArchiveDenialsNeverMutateAnyChannel(t *testing.T) {
 				ctx, archiveTenantID, test.actorID, tx, test.channelID,
 			)
 			assertArchiveDenied(t, commandErr, authenticationErr, test.reason)
+			if got := getArchiveChannel(t, ctx, tx, archiveTenantID, archiveChannelID); got.State != 1 {
+				t.Fatal("denied Archive() wrote the authorized fixture Channel before rollback")
+			}
+			if got := getArchiveChannel(t, ctx, tx, archiveBetaTenantID, archiveBetaOnlyID); got.State != 1 {
+				t.Fatal("denied Archive() wrote a cross-Tenant Channel before rollback")
+			}
 			if err := tx.Rollback(ctx); err != nil {
 				t.Fatal("rollback denied archive transaction failed")
 			}
@@ -152,12 +157,109 @@ func TestArchiveRejectsSnapshotIsolationWithoutMutation(t *testing.T) {
 	if authenticationErr != nil {
 		t.Fatalf("authenticate test Principal: %v", authenticationErr)
 	}
-	var typed *channelcommand.Error
-	if !errors.As(commandErr, &typed) || typed.Code() != channelcommand.ErrorInvalidInput {
+	var typed *Error
+	if !errors.As(commandErr, &typed) || typed.Code() != ErrorInvalidInput {
 		t.Fatalf("Archive() error = %v, want typed invalid-input", commandErr)
+	}
+	if got := getArchiveChannel(t, ctx, tx, archiveTenantID, archiveChannelID); got.State != 1 {
+		t.Fatal("non-READ-COMMITTED Archive() wrote Channel before rollback")
 	}
 	if got := getArchiveChannel(t, ctx, database, archiveTenantID, archiveChannelID); got.State != 1 {
 		t.Fatal("non-READ-COMMITTED Archive() mutated Channel")
+	}
+}
+
+func TestArchiveDeadlineDuringAuthorizationLockWaitNeverMutates(t *testing.T) {
+	ctx, database := openArchiveDatabase(t)
+	createArchiveFixtures(t, ctx, database)
+	writer, err := pgx.ConnectConfig(ctx, database.Config().Copy())
+	if err != nil {
+		t.Fatal("connect deadline lock writer failed")
+	}
+	defer func() { _ = writer.Close(context.Background()) }()
+	writerTx, err := writer.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin deadline lock writer failed")
+	}
+	defer func() { _ = writerTx.Rollback(context.Background()) }()
+	if _, err := writerTx.Exec(ctx, `
+		UPDATE domain.channels SET name = name WHERE tenant_id = $1 AND channel_id = $2
+	`, archiveTenantID, archiveChannelID); err != nil {
+		t.Fatal("lock Channel for deadline test failed")
+	}
+
+	resolver, err := pgx.ConnectConfig(ctx, database.Config().Copy())
+	if err != nil {
+		t.Fatal("connect deadline archive resolver failed")
+	}
+	defer func() { _ = resolver.Close(context.Background()) }()
+	resolverTx, err := resolver.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin deadline archive resolver failed")
+	}
+	defer func() { _ = resolverTx.Rollback(context.Background()) }()
+	deadlineCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+	_, commandErr, authenticationErr := archiveAuthenticated(
+		deadlineCtx, archiveTenantID, archiveOwnerActorID, resolverTx, archiveChannelID,
+	)
+	if authenticationErr != nil {
+		t.Fatalf("authenticate test Principal: %v", authenticationErr)
+	}
+	if !errors.Is(commandErr, context.DeadlineExceeded) {
+		t.Fatalf("Archive() error = %v, want context.DeadlineExceeded", commandErr)
+	}
+	if got := getArchiveChannel(t, ctx, database, archiveTenantID, archiveChannelID); got.State != 1 {
+		t.Fatal("deadline during authorization lock wait mutated Channel")
+	}
+}
+
+func TestArchiveMutationFailureIsTypedAndNeverPersists(t *testing.T) {
+	ctx, database := openArchiveDatabase(t)
+	createArchiveFixtures(t, ctx, database)
+	if _, err := database.Exec(ctx, `
+		CREATE FUNCTION domain.fail_channel_archive_synthetic()
+		RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN
+		  IF NEW.state = 2 THEN
+		    RAISE EXCEPTION 'synthetic archive failure';
+		  END IF;
+		  RETURN NEW;
+		END;
+		$$
+	`); err != nil {
+		t.Fatal("create synthetic archive failure function failed")
+	}
+	if _, err := database.Exec(ctx, `
+		CREATE TRIGGER channel_archive_failure_synthetic
+		BEFORE UPDATE ON domain.channels
+		FOR EACH ROW EXECUTE FUNCTION domain.fail_channel_archive_synthetic()
+	`); err != nil {
+		t.Fatal("create synthetic archive failure trigger failed")
+	}
+	tx, err := database.Begin(ctx)
+	if err != nil {
+		t.Fatal("begin mutation-failure archive transaction failed")
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	_, commandErr, authenticationErr := archiveAuthenticated(
+		ctx, archiveTenantID, archiveOwnerActorID, tx, archiveChannelID,
+	)
+	if authenticationErr != nil {
+		t.Fatalf("authenticate test Principal: %v", authenticationErr)
+	}
+	var typed *Error
+	if !errors.As(commandErr, &typed) || typed.Code() != ErrorPersistence {
+		t.Fatalf("Archive() error = %v, want typed persistence-failure", commandErr)
+	}
+	if commandErr.Error() != "channel archive: persistence-failure" {
+		t.Fatalf("Archive() error text = %q, want stable secret-safe failure", commandErr.Error())
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal("rollback failed archive mutation transaction failed")
+	}
+	if got := getArchiveChannel(t, ctx, database, archiveTenantID, archiveChannelID); got.State != 1 {
+		t.Fatal("failed archive mutation became visible")
 	}
 }
 
@@ -200,6 +302,53 @@ func TestArchiveReadsWriterCommittedDenialBeforeMutation(t *testing.T) {
 }
 
 func TestArchiveRetainsAuthorizationLocksUntilCallerRollback(t *testing.T) {
+	tests := []struct {
+		name            string
+		applicationName string
+		mutate          func(context.Context, pgx.Tx) error
+		wantChannelName string
+	}{
+		{
+			name:            "ACL writer",
+			applicationName: "threadline-channel-archive-acl-writer",
+			mutate: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := aclstore.ReplaceCurrent(ctx, tx, aclstore.Replacement{
+					Resource: authorization.ResourceRef{
+						TenantID: archiveTenantID, Kind: authorization.ResourceKindChannel, ID: archiveChannelID,
+					},
+					DefaultEffect: authorization.ACLEffectDeny,
+				})
+				return err
+			},
+			wantChannelName: "Alpha Same-ID Channel Synthetic",
+		},
+		{
+			name:            "direct Channel writer",
+			applicationName: "threadline-channel-archive-resource-writer",
+			mutate: func(ctx context.Context, tx pgx.Tx) error {
+				_, err := tx.Exec(ctx, `
+					UPDATE domain.channels SET name = 'Channel Writer Synthetic'
+					WHERE tenant_id = $1 AND channel_id = $2
+				`, archiveTenantID, archiveChannelID)
+				return err
+			},
+			wantChannelName: "Channel Writer Synthetic",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runArchiveLockRetention(t, test.applicationName, test.mutate, test.wantChannelName)
+		})
+	}
+}
+
+func runArchiveLockRetention(
+	t *testing.T,
+	applicationName string,
+	mutate func(context.Context, pgx.Tx) error,
+	wantChannelName string,
+) {
+	t.Helper()
 	ctx, database := openArchiveDatabase(t)
 	createArchiveFixtures(t, ctx, database)
 	archiveTx, err := database.Begin(ctx)
@@ -215,11 +364,11 @@ func TestArchiveRetainsAuthorizationLocksUntilCallerRollback(t *testing.T) {
 	}
 
 	writerConfig := database.Config().Copy()
-	writerConfig.RuntimeParams["application_name"] = "threadline-channel-archive-acl-writer"
+	writerConfig.RuntimeParams["application_name"] = applicationName
 	writer, err := pgx.ConnectConfig(ctx, writerConfig)
 	if err != nil {
 		_ = archiveTx.Rollback(ctx)
-		t.Fatal("connect lock-retention ACL writer failed")
+		t.Fatal("connect lock-retention writer failed")
 	}
 	defer func() { _ = writer.Close(context.Background()) }()
 	type writerResult struct{ err error }
@@ -230,24 +379,18 @@ func TestArchiveRetainsAuthorizationLocksUntilCallerRollback(t *testing.T) {
 			resultChannel <- writerResult{err: beginErr}
 			return
 		}
-		_, replaceErr := aclstore.ReplaceCurrent(ctx, writerTx, aclstore.Replacement{
-			Resource: authorization.ResourceRef{
-				TenantID: archiveTenantID, Kind: authorization.ResourceKindChannel, ID: archiveChannelID,
-			},
-			DefaultEffect: authorization.ACLEffectDeny,
-		})
-		if replaceErr != nil {
+		if mutationErr := mutate(ctx, writerTx); mutationErr != nil {
 			_ = writerTx.Rollback(context.Background())
-			resultChannel <- writerResult{err: replaceErr}
+			resultChannel <- writerResult{err: mutationErr}
 			return
 		}
 		resultChannel <- writerResult{err: writerTx.Commit(ctx)}
 	}()
-	waitForArchiveApplicationLock(t, ctx, database, "threadline-channel-archive-acl-writer")
+	waitForArchiveApplicationLock(t, ctx, database, applicationName)
 	select {
 	case got := <-resultChannel:
 		_ = archiveTx.Rollback(ctx)
-		t.Fatalf("ACL writer completed before caller ended archive transaction: %v", got.err)
+		t.Fatalf("writer completed before caller ended archive transaction: %v", got.err)
 	default:
 	}
 	if err := archiveTx.Rollback(ctx); err != nil {
@@ -256,13 +399,13 @@ func TestArchiveRetainsAuthorizationLocksUntilCallerRollback(t *testing.T) {
 	select {
 	case got := <-resultChannel:
 		if got.err != nil {
-			t.Fatalf("ACL writer failed after archive rollback: %v", got.err)
+			t.Fatalf("writer failed after archive rollback: %v", got.err)
 		}
 	case <-time.After(5 * time.Second):
-		t.Fatal("ACL writer did not resume after archive rollback")
+		t.Fatal("writer did not resume after archive rollback")
 	}
-	if got := getArchiveChannel(t, ctx, database, archiveTenantID, archiveChannelID); got.State != 1 {
-		t.Fatal("caller rollback did not restore ACTIVE Channel")
+	if got := getArchiveChannel(t, ctx, database, archiveTenantID, archiveChannelID); got.State != 1 || got.Name != wantChannelName {
+		t.Fatal("caller rollback or resumed writer produced unexpected Channel state")
 	}
 }
 
@@ -318,6 +461,9 @@ func runWriterFirstArchiveDenial(
 	select {
 	case got := <-resultChannel:
 		assertArchiveDenied(t, got.commandErr, got.authenticationErr, wantReason)
+		if channel := getArchiveChannel(t, ctx, resolverTx, archiveTenantID, archiveChannelID); channel.State != 1 {
+			t.Fatal("writer-first authorization denial wrote Channel before rollback")
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Archive() did not resume after writer commit")
 	}
@@ -336,9 +482,9 @@ func assertArchiveDenied(
 	if authenticationErr != nil {
 		t.Fatalf("authenticate test Principal: %v", authenticationErr)
 	}
-	var typed *channelcommand.Error
+	var typed *Error
 	if !errors.As(commandErr, &typed) ||
-		typed.Code() != channelcommand.ErrorDenied ||
+		typed.Code() != ErrorDenied ||
 		typed.Reason() != wantReason {
 		t.Fatalf("Archive() error = %v, want typed denial %s", commandErr, wantReason)
 	}

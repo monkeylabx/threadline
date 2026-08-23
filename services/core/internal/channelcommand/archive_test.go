@@ -1,4 +1,4 @@
-package channelcommand_test
+package channelcommand
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/monkeylabx/threadline/services/core/internal/authorization"
-	"github.com/monkeylabx/threadline/services/core/internal/channelcommand"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
 
@@ -33,10 +32,10 @@ type archiveRequest struct{}
 func TestArchiveRequiresAuthenticatedPrincipalBeforeSQL(t *testing.T) {
 	t.Parallel()
 
-	_, err := channelcommand.Archive(context.Background(), nil, "channel-archive-synthetic")
-	var commandError *channelcommand.Error
+	_, err := archive(context.Background(), nil, "channel-archive-synthetic")
+	var commandError *Error
 	if !errors.As(err, &commandError) ||
-		commandError.Code() != channelcommand.ErrorDenied ||
+		commandError.Code() != ErrorDenied ||
 		commandError.Reason() != authorization.ReasonAuthenticationRequired {
 		t.Fatalf("Archive() error = %v, want typed authentication-required denial", err)
 	}
@@ -50,7 +49,7 @@ func TestArchivePreservesCancellationBeforeSQL(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err := channelcommand.Archive(ctx, nil, "channel-archive-synthetic")
+	_, err := archive(ctx, nil, "channel-archive-synthetic")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Archive() error = %v, want context.Canceled", err)
 	}
@@ -66,8 +65,8 @@ func TestArchiveRejectsInvalidTransactionWithStableError(t *testing.T) {
 	if authenticationErr != nil {
 		t.Fatalf("authenticate test Principal: %v", authenticationErr)
 	}
-	var commandError *channelcommand.Error
-	if !errors.As(err, &commandError) || commandError.Code() != channelcommand.ErrorInvalidInput {
+	var commandError *Error
+	if !errors.As(err, &commandError) || commandError.Code() != ErrorInvalidInput {
 		t.Fatalf("Archive() error = %v, want typed invalid-input", err)
 	}
 	if err.Error() != "channel archive: invalid-input" {
@@ -81,21 +80,21 @@ func archiveAuthenticated(
 	actorID string,
 	tx pgx.Tx,
 	channelID string,
-) (channelcommand.Result, error, error) {
+) (Result, error, error) {
 	interceptor := rpcmiddleware.NewAuthenticationInterceptor(archiveVerifier{
 		tenantID: tenantID,
 		actorID:  actorID,
 	})
 	request := connect.NewRequest(&archiveRequest{})
 	request.Header().Set("Authorization", "Bearer channel-archive-fixture-credential")
-	var result channelcommand.Result
+	var result Result
 	var commandErr error
 	handler := interceptor.WrapUnary(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-		result, commandErr = channelcommand.Archive(ctx, tx, channelID)
+		result, commandErr = archive(ctx, tx, channelID)
 		return connect.NewResponse(&archiveRequest{}), nil
 	})
 	if _, err := handler(ctx, request); err != nil {
-		return channelcommand.Result{}, nil, err
+		return Result{}, nil, err
 	}
 	return result, commandErr, nil
 }

@@ -63,10 +63,12 @@ type Result struct {
 	ACLVersion    string
 }
 
-// Archive authorizes and archives one Channel in a caller-owned transaction.
-// Tenant, action, and target state are intentionally not caller-controlled.
-// The caller must commit or roll back tx after all same-operation work ends.
-func Archive(ctx context.Context, tx pgx.Tx, channelID string) (Result, error) {
+// archive authorizes and archives one Channel in a caller-owned transaction.
+// It deliberately remains unexported until a visible Approval and durable
+// Audit boundary can wrap it. Tenant, action, and target state are not
+// caller-controlled. The caller must commit or roll back tx after all
+// same-operation work ends.
+func archive(ctx context.Context, tx pgx.Tx, channelID string) (Result, error) {
 	tenantID := ""
 	principal, authenticated := rpcmiddleware.PrincipalFromContext(ctx)
 	if authenticated {
