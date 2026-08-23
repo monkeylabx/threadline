@@ -31,18 +31,29 @@ toolchain baseline does not create or alter a database.
 The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
 features disabled. P05-01B-1 selects its
 `bundled-sqlcipher-vendored-openssl` feature as the source-built encryption
-candidate used only by `client-core` tests. The resulting lock graph contains
-`libsqlite3-sys` 0.38.2 with bundled SQLCipher 4.14.0 Community Edition and a
-vendored OpenSSL source build. `rusqlite` and `libsqlite3-sys` are MIT licensed,
-the bundled SQLCipher source carries its BSD-style license, and OpenSSL is
-Apache-2.0 licensed. These are free/open-source components: no commercial
-SQLCipher artifact, account, download, or service is required.
+candidate in the ordinary `client-core` dependency graph. The resulting lock
+graph contains `libsqlite3-sys` 0.38.2 with bundled SQLCipher 4.14.0 Community
+Edition and a vendored OpenSSL source build. `rusqlite` and `libsqlite3-sys` are
+MIT licensed, the bundled SQLCipher source carries its BSD-style license, and
+OpenSSL is Apache-2.0 licensed. These are free/open-source components: no
+commercial SQLCipher artifact, account, download, or service is required.
 
-The ordinary `client-core` dependency keeps all `rusqlite` defaults and backend
-features disabled. Only the evidence/test graph enables SQLCipher; this task
-does not add a production database-open path or decide OS key lifecycle. The
-locked test builds the SQLCipher amalgamation and OpenSSL locally through the
-crates.io source archives and the checked-in Cargo lockfile.
+The workspace pin keeps `rusqlite` default features disabled, while the ordinary
+`client-core` dependency explicitly enables only the source-built SQLCipher
+candidate. Therefore a non-test `cargo tree -p threadline-client-core -e=no-dev`
+does not select a plain system-SQLite backend. This is a dependency-graph
+invariant, not production-provider admission: `client-core` still exposes no
+database constructor or key adapter, and this task does not decide OS key
+lifecycle. The evidence harness remains test-only. Locked builds compile the
+SQLCipher amalgamation and OpenSSL locally through the crates.io source archives
+and the checked-in Cargo lockfile.
+
+`libsqlite3-sys` retains `pkg-config` and `vcpkg` as portable discovery build
+dependencies, but its enabled `bundled-sqlcipher` feature selects the bundled
+build branch rather than either discovery path. Reproducible builds must leave
+`LIBSQLITE3_SYS_USE_PKG_CONFIG` unset (or set it to `0`); a nonzero override is
+forbidden because it bypasses the selected source backend. The executable
+`cipher_version` assertion below also fails if a plain system library is linked.
 
 | Locked input | Source | License used for distribution |
 | --- | --- | --- |
@@ -68,8 +79,10 @@ The test obtains a fresh database key and fixture canary from the OS CSPRNG,
 confirms the linked `PRAGMA cipher_version`, performs a byte-exact Golden
 Envelope keyed reopen, scans the live DB/WAL/SHM family for the SQLite header,
 fixture canary, and key, and confirms empty/wrong keys fail without rewriting
-the encrypted database. Diagnostics intentionally omit keys, canaries, complete
-database paths, and reusable secrets.
+any member of the live DB/WAL/SHM family. A correct-key reopen then verifies the
+schema objects, `user_version`, migration ledger, and Golden Envelope remained
+unchanged. Diagnostics intentionally omit keys, canaries, complete database
+paths, and reusable secrets.
 
 This candidate evidence was run on `aarch64-apple-darwin` (Darwin 25.4.0) with
 Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make 3.81. It is not

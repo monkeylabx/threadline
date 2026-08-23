@@ -9,8 +9,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-rusqlite.workspace = true
+rusqlite = { workspace = true, features = ["bundled-sqlcipher-vendored-openssl"] }
 
 [dev-dependencies]
 getrandom.workspace = true
-rusqlite = { workspace = true, features = ["bundled-sqlcipher-vendored-openssl", "hooks"] }
+rusqlite = { workspace = true, features = ["hooks"] }

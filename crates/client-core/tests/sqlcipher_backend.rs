@@ -64,23 +64,31 @@ fn community_sqlcipher_is_keyed_fail_closed_and_preserves_opaque_bytes() {
         .expect("Golden Envelope row exists");
     assert!(loaded == golden, "Golden Envelope bytes changed");
 
-    for evidence_path in database_family(&database_path) {
-        assert!(evidence_path.exists(), "expected DB/WAL/SHM evidence file");
-        let bytes = fs::read(evidence_path).expect("read encrypted evidence file");
-        assert_hidden(&bytes, SQLITE_HEADER, "SQLite header is visible at rest");
-        assert_hidden(&bytes, &canary, "fixture canary is visible at rest");
-        assert_hidden(&bytes, &key, "database key is visible at rest");
+    let schema_before_rejection = schema_state(&connection);
+    let family_paths = database_family(&database_path);
+    let family_before_rejection = snapshot_database_family(&family_paths);
+    for bytes in &family_before_rejection {
+        assert_hidden(bytes, SQLITE_HEADER, "SQLite header is visible at rest");
+        assert_hidden(bytes, &canary, "fixture canary is visible at rest");
+        assert_hidden(bytes, &key, "database key is visible at rest");
     }
-    drop(connection);
 
-    let encrypted_before_rejection =
-        fs::read(&database_path).expect("snapshot encrypted database before rejection checks");
-    assert_rejected_without_rewrite(&database_path, &wrong_key, &encrypted_before_rejection);
-    assert_rejected_without_rewrite(&database_path, &[], &encrypted_before_rejection);
+    assert_rejected_without_rewrite(
+        &database_path,
+        &family_paths,
+        &wrong_key,
+        &family_before_rejection,
+    );
+    assert_rejected_without_rewrite(&database_path, &family_paths, &[], &family_before_rejection);
+    drop(connection);
 
     let mut reopened = Connection::open(&database_path).expect("reopen evidence database");
     apply_raw_key(&reopened, &key).expect("reapply correct runtime key");
     verify_key(&reopened).expect("accept correct runtime key");
+    assert!(
+        schema_state(&reopened) == schema_before_rejection,
+        "schema version or migration ledger changed after rejected opens"
+    );
     let storage = Storage::attach(&mut reopened).expect("reattach keyed storage");
     let reopened_golden = storage
         .load_committed_event("tenant-sqlcipher", conversation, "evt-golden")
@@ -109,7 +117,12 @@ fn verify_key(connection: &Connection) -> rusqlite::Result<i64> {
     connection.query_row("SELECT count(*) FROM sqlite_schema", [], |row| row.get(0))
 }
 
-fn assert_rejected_without_rewrite(database_path: &Path, key: &[u8], original: &[u8]) {
+fn assert_rejected_without_rewrite(
+    database_path: &Path,
+    family_paths: &[PathBuf; 3],
+    key: &[u8],
+    original: &[Vec<u8>; 3],
+) {
     let connection = Connection::open(database_path).expect("open database for rejection check");
     let rejected = match apply_raw_key(&connection, key) {
         Ok(()) => verify_key(&connection).is_err(),
@@ -118,11 +131,65 @@ fn assert_rejected_without_rewrite(database_path: &Path, key: &[u8], original: &
     assert!(rejected, "invalid key unexpectedly opened database");
     drop(connection);
 
-    let after = fs::read(database_path).expect("read database after rejection check");
     assert!(
-        after == original,
-        "rejected open rewrote the encrypted database"
+        snapshot_database_family(family_paths) == *original,
+        "rejected open rewrote the DB/WAL/SHM family"
     );
+}
+
+fn snapshot_database_family(family_paths: &[PathBuf; 3]) -> [Vec<u8>; 3] {
+    std::array::from_fn(|index| {
+        assert!(
+            family_paths[index].exists(),
+            "expected DB/WAL/SHM evidence file"
+        );
+        fs::read(&family_paths[index]).expect("read encrypted evidence file")
+    })
+}
+
+#[derive(Eq, PartialEq)]
+struct SchemaState {
+    user_version: i64,
+    objects: Vec<(String, String, String, Option<String>)>,
+    migration_ledger: Vec<(i64, Vec<u8>)>,
+}
+
+fn schema_state(connection: &Connection) -> SchemaState {
+    let user_version = connection
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .expect("read schema version");
+    let mut schema_statement = connection
+        .prepare(
+            "SELECT type, name, tbl_name, sql
+             FROM sqlite_schema
+             ORDER BY type, name, tbl_name",
+        )
+        .expect("prepare schema snapshot");
+    let objects = schema_statement
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .expect("query schema snapshot")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("read schema snapshot");
+    let mut ledger_statement = connection
+        .prepare(
+            "SELECT version, sha256
+             FROM threadline_schema_migrations
+             ORDER BY version",
+        )
+        .expect("prepare migration-ledger snapshot");
+    let migration_ledger = ledger_statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .expect("query migration-ledger snapshot")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("read migration-ledger snapshot");
+
+    SchemaState {
+        user_version,
+        objects,
+        migration_ledger,
+    }
 }
 
 fn assert_hidden(haystack: &[u8], needle: &[u8], message: &str) {
