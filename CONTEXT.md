@@ -64,6 +64,18 @@ _Avoid_: Channel Membership, effective permission cache
 A one-time allow or deny result for the current Authenticated Principal, Authorization Action, resource, and versioned facts. It is re-evaluated for each protected action and is never persisted as effective permission.
 _Avoid_: Session claim, cached permission
 
+**Domain Event**:
+An immutable, Tenant-scoped fact that a domain change committed successfully. Delivery state, broker routing, retries, and projections cannot rewrite the fact.
+_Avoid_: Command, broker message, Outbox Entry
+
+**Transactional Outbox Entry**:
+A durable delivery record created atomically with one Domain Event for one destination. Its delivery state may advance, but the referenced event facts never change.
+_Avoid_: Domain Event, queue message, Job
+
+**Delivery Claim**:
+Short-lived, fenced authority for one Worker attempt to advance one Transactional Outbox Entry. After expiry, an atomic replacement claim supersedes it without transferring ownership of the Domain Event.
+_Avoid_: Domain ownership, permanent lock, consumer ACK
+
 **Channel Membership**:
 The application-level right of an Actor to participate in a Channel. For a Human, content access is exercised through authorized Devices; Agent and Service membership does not create MLS membership.
 _Avoid_: E2EE Group membership, Capability Grant
