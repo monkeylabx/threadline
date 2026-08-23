@@ -84,11 +84,31 @@ schema objects, `user_version`, migration ledger, and Golden Envelope remained
 unchanged. Diagnostics intentionally omit keys, canaries, complete database
 paths, and reusable secrets.
 
-This candidate evidence was run on `aarch64-apple-darwin` (Darwin 25.4.0) with
-Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make 3.81. It is not
-release-platform admission: P05-01B-2 still owns the same checks on macOS,
-Windows, Linux, iOS, and Android, and P05-01B owns the eventual production
-adapter.
+The P05-01B-1 candidate evidence was run locally on `aarch64-apple-darwin`
+(Darwin 25.4.0) with Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make
+3.81. P05-01B-2A adds one explicit evidence step to each of three existing
+protected `build.yml` jobs, using their standard pinned runner labels and the
+same locked command:
+
+| Host evidence | Runner | Protected job | Run binding |
+| --- | --- | --- | --- |
+| Ubuntu | `ubuntu-24.04` | `workspace-linux` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
+| Windows | `windows-2025` | `desktop-windows` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
+| macOS | `macos-26` | `apple` | `NOT RUN` — populate the hosted run ID and job URL after Integration triggers this commit |
+
+The existing jobs retain the workflow's read-only `contents` permission and
+pinned Actions. They now have 45-minute bounds for `workspace-linux` and both
+`desktop` matrix hosts, and a 60-minute bound for `apple`. Each dedicated
+SQLCipher step sets `LIBSQLITE3_SYS_USE_PKG_CONFIG=0` and uploads no artifact.
+Runtime database keys, canaries, database paths, and DB/WAL/SHM files are not
+retained; standard job logs contain only the non-secret test name and diagnostics
+designed not to expose those values. The three run bindings above must reference
+one immutable run of the reviewed commit before P05-01B-2A can be accepted.
+
+This remains desktop-host candidate evidence, not production-provider or
+release-platform admission. iOS and Android runtime/simulator/physical-device
+SQLCipher evidence, OS Secure Storage and key lifecycle, the production
+adapter, P05-01, and M0/G0 remain `NOT RUN` or out of scope.
 
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
