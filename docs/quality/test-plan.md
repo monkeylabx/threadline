@@ -19,7 +19,7 @@ Issue：[#31 T017](https://github.com/monkeylabx/threadline/issues/31)
 - T002 / Issue #16 的 `docs/acceptance/v1-scenarios.md` 已进入主分支。本文的 AC-001 至 AC-012 与其 Gate、步骤、失败路径、证据包和签字 Owner 已完成逐项校验；后续场景变更必须同时更新本矩阵，不能静默漂移。
 - 多域 Proto、五语言正式生成、Golden/N-1 manifest 与 T019 Device/Epoch/History/Recovery 契约证据已进入主分支；T019 在 merge commit `010dd8167c5f1e28c83485fb794be7872c8cf670` 完成 Architecture/Security 复核。它们证明契约和兼容流程，不证明生产 Crypto Provider、真实 MLS 密码实现或真机安全边界。
 - T005 已进入主分支，但 [ADR-0003](../adr/0003-group-e2ee-recovery.md) 与 [ADR-0004](../adr/0004-e2ee-crypto-library-selection.md) 仍是 `proposed`。ADR-0004 排除 OpenMLS `0.8.1`，将实现任务收窄到 `0.9.0` 正式版；生产 provider 准入尚未建立。在 Security Owner 接受 ADR、实现与独立互操作证据完成前，Crypto 相关 Gate 保持 `HOLD`。
-- T010-A 的 Simulator/Emulator FFI 实现与 CI 证据已进入主分支，但不能替代 T010-B / Issue #41 的 iOS/Android 真机、签名、后台回收、安全存储和内存证据；#41 当前为 `READY FOR HUMAN`。
+- T010-A 的 Simulator/Emulator FFI 实现与 CI 证据已进入主分支，但不能替代 T010-B / Issue #41 的 iOS/Android 真机、签名、后台回收、安全存储和内存证据；#41 当前标记为 `ready-for-human`。
 - T019 / Issue #37 已完成 Device、Epoch、History 和 Recovery Envelope 契约冻结、Crypto Review 与 Golden/N-1 证据；本文只引用其已合入的外部语义，不把契约验证冒充密码实现或运行时验证。
 
 定稿表示计划、矩阵和 Fixture 策略可执行且仅引用已合入契约：所有测试 ID 可追溯到验收步骤，执行命令可由独立人员从干净 checkout 重复。它不等于 Gate 通过。仍处于 `proposed`、Human Gate 或未实现状态的输入必须继续记为 `NOT RUN/FAIL/HOLD`；不得把猜测接口合入实现，也不得将 `NOT RUN` 报为 `PASS`。

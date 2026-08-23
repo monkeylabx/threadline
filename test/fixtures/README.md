@@ -166,6 +166,6 @@ Convergence status at policy freeze:
 3. **Complete:** T014/T015 integrated the required manifest, hardened verifier, formal five-language generation and Golden/N-1 workflow.
 4. **Complete:** T019 froze Device/Epoch/History/Recovery contracts with Architecture/Security review and generated compatibility evidence.
 5. **Gate remains HOLD:** ADR-0003 and ADR-0004 remain `proposed`; OpenMLS `0.8.1` is rejected and the `0.9.0` final provider implementation and production admission evidence are not established.
-6. **Gate remains NOT RUN:** T010-B / Issue #41, currently `READY FOR HUMAN`, must supply real-device FFI results; simulator/emulator fixtures cannot satisfy the device Gate.
+6. **Gate remains NOT RUN:** T010-B / Issue #41, currently labeled `ready-for-human`, must supply real-device FFI results; simulator/emulator fixtures cannot satisfy the device Gate.
 
 T017 owns only this policy and registry description. It does not edit T011/T014/T019 artifacts, invent schema values, or copy them into a parallel location. A final policy is not Gate PASS evidence: unresolved Security/provider and real-device results remain external `HOLD/NOT RUN` inputs.
