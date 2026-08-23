@@ -1,0 +1,24 @@
+{
+  "version": "v2",
+  "clean": true,
+  "managed": {
+    "enabled": true,
+    "override": [
+      { "file_option": "go_package_prefix", "value": "github.com/monkeylabx/threadline/services/gen" },
+      { "file_option": "java_package_prefix", "value": "com.threadline.proto" }
+    ]
+  },
+  "plugins": [
+    { "local": "protoc-gen-go", "out": "services/gen", "opt": ["paths=source_relative"] },
+    { "local": "protoc-gen-connect-go", "out": "services/gen", "opt": ["paths=source_relative"] },
+    { "local": "protoc-gen-es", "out": "packages/generated-ts/src", "opt": ["target=ts", "import_extension=.js"] },
+    { "local": "protoc-gen-prost", "out": "crates/client-proto/src/generated", "opt": ["bytes=.", "compile_well_known_types=false"] },
+    { "local": "protoc-gen-prost-crate", "out": "crates/client-proto/src/generated", "opt": ["no_features"], "strategy": "all" },
+    { "local": "protoc-gen-swift", "out": "packages/generated-swift/Sources/ThreadlineProto", "opt": ["Visibility=Public", "FileNaming=PathToUnderscores"] },
+    { "local": "protoc-gen-connect-swift", "out": "packages/generated-swift/Sources/ThreadlineProto", "opt": ["Visibility=Public", "FileNaming=PathToUnderscores"] },
+    { "protoc_builtin": "java", "protoc_path": "protoc", "out": "packages/generated-kotlin/src/main/java" },
+    { "protoc_builtin": "kotlin", "protoc_path": "protoc", "out": "packages/generated-kotlin/src/main/kotlin" },
+    { "local": "protoc-gen-connect-kotlin", "out": "packages/generated-kotlin/src/main/kotlin" }
+  ],
+  "inputs": [{ "directory": "proto" }]
+}

@@ -170,12 +170,13 @@ private final class CallbackGate: @unchecked Sendable {
     private var activeCallbacks = 0
     private var activeThreads: [ObjectIdentifier: Int] = [:]
 
-    func perform(_ body: () -> Void) {
+    @discardableResult
+    func perform(_ body: () -> Void) -> Bool {
         let thread = ObjectIdentifier(Thread.current)
         condition.lock()
         guard !closed else {
             condition.unlock()
-            return
+            return false
         }
         activeCallbacks += 1
         activeThreads[thread, default: 0] += 1
@@ -192,6 +193,7 @@ private final class CallbackGate: @unchecked Sendable {
         }
         condition.broadcast()
         condition.unlock()
+        return true
     }
 
     func close() {
@@ -203,6 +205,37 @@ private final class CallbackGate: @unchecked Sendable {
             condition.wait()
         }
         condition.unlock()
+    }
+}
+
+private enum StreamDeliveryTrace {
+    private static let enabled =
+        ProcessInfo.processInfo.environment["THREADLINE_STREAM_TRACE"] == "1"
+    private static let lock = NSLock()
+
+    static func emit(
+        _ phase: String,
+        traceID: String,
+        ordinal: UInt64? = nil,
+        status: ThreadlineBridgeStatus? = nil
+    ) {
+        guard enabled else { return }
+        var fields = [
+            "[threadline-stream-order]",
+            "monotonic_ns=\(DispatchTime.now().uptimeNanoseconds)",
+            "phase=\(phase)",
+            "trace_id=\(traceID)",
+        ]
+        if let ordinal {
+            fields.append("ordinal=\(ordinal)")
+        }
+        if let status {
+            fields.append("status=\(status.rawValue)")
+        }
+        let record = Data((fields.joined(separator: " ") + "\n").utf8)
+        lock.lock()
+        FileHandle.standardError.write(record)
+        lock.unlock()
     }
 }
 
@@ -426,6 +459,7 @@ public final class ThreadlineStream: @unchecked Sendable {
     private let stateLock = NSLock()
     private let callbackGate = CallbackGate()
     private var nativeHandle: UInt64
+    private weak var deliveryPump: StreamDeliveryPump?
 
     fileprivate init(
         nativeHandle: UInt64,
@@ -435,38 +469,16 @@ public final class ThreadlineStream: @unchecked Sendable {
         onCompletion: @escaping @Sendable (ThreadlineBridgeStatus) -> Void
     ) {
         self.nativeHandle = nativeHandle
-        let streamGate = callbackGate
-        DispatchQueue.global(qos: .userInitiated).async {
-            while true {
-                var sequence: UInt64 = 0
-                let status = ThreadlineBridgeStatus.decode(
-                    nativeStreamNext(nativeHandle, 30_000, &sequence)
-                )
-                if status == .ok {
-                    let eventSequence = sequence
-                    let delivered = DispatchSemaphore(value: 0)
-                    deliveryQueue.async {
-                        clientGate.perform {
-                            streamGate.perform {
-                                onEvent(eventSequence)
-                            }
-                        }
-                        delivered.signal()
-                    }
-                    delivered.wait()
-                    continue
-                }
-
-                deliveryQueue.async {
-                    clientGate.perform {
-                        streamGate.perform {
-                            onCompletion(status)
-                        }
-                    }
-                }
-                return
-            }
-        }
+        let pump = StreamDeliveryPump(
+            nativeHandle: nativeHandle,
+            clientGate: clientGate,
+            streamGate: callbackGate,
+            deliveryQueue: deliveryQueue,
+            onEvent: onEvent,
+            onCompletion: onCompletion
+        )
+        deliveryPump = pump
+        pump.start()
     }
 
     deinit {
@@ -496,6 +508,7 @@ public final class ThreadlineStream: @unchecked Sendable {
 
     public func close() {
         callbackGate.close()
+        deliveryPump?.stop(phase: "stream-close")
         let handle = currentHandle()
         if handle != 0 {
             _ = nativeStreamClose(handle)
@@ -504,6 +517,7 @@ public final class ThreadlineStream: @unchecked Sendable {
 
     public func release() {
         callbackGate.close()
+        deliveryPump?.stop(phase: "stream-release")
         stateLock.lock()
         let handle = nativeHandle
         nativeHandle = 0
@@ -518,5 +532,202 @@ public final class ThreadlineStream: @unchecked Sendable {
         stateLock.lock()
         defer { stateLock.unlock() }
         return nativeHandle
+    }
+
+    var hasPendingDeliveryForDiagnostics: Bool {
+        deliveryPump?.hasPendingDelivery ?? false
+    }
+}
+
+private final class StreamDeliveryPump: @unchecked Sendable {
+    private let stateLock = NSLock()
+    private let nativeHandle: UInt64
+    private let clientGate: CallbackGate
+    private let streamGate: CallbackGate
+    private let deliveryQueue: DispatchQueue
+    private let traceID = UUID().uuidString.lowercased()
+    private var onEvent: (@Sendable (UInt64) -> Void)?
+    private var onCompletion: (@Sendable (ThreadlineBridgeStatus) -> Void)?
+    private var stopped = false
+    private var pendingDelivery = false
+    private var nextOrdinal: UInt64 = 1
+    private var keepAlive: StreamDeliveryPump?
+
+    init(
+        nativeHandle: UInt64,
+        clientGate: CallbackGate,
+        streamGate: CallbackGate,
+        deliveryQueue: DispatchQueue,
+        onEvent: @escaping @Sendable (UInt64) -> Void,
+        onCompletion: @escaping @Sendable (ThreadlineBridgeStatus) -> Void
+    ) {
+        self.nativeHandle = nativeHandle
+        self.clientGate = clientGate
+        self.streamGate = streamGate
+        self.deliveryQueue = deliveryQueue
+        self.onEvent = onEvent
+        self.onCompletion = onCompletion
+    }
+
+    func start() {
+        stateLock.lock()
+        guard !stopped else {
+            stateLock.unlock()
+            return
+        }
+        keepAlive = self
+        stateLock.unlock()
+        StreamDeliveryTrace.emit("pump-start", traceID: traceID)
+        pullNext()
+    }
+
+    var hasPendingDelivery: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return pendingDelivery
+    }
+
+    func stop(phase: String) {
+        stateLock.lock()
+        stopped = true
+        pendingDelivery = false
+        onEvent = nil
+        onCompletion = nil
+        keepAlive = nil
+        stateLock.unlock()
+        StreamDeliveryTrace.emit(phase, traceID: traceID)
+    }
+
+    private func pullNext() {
+        guard isRunning else { return }
+        StreamDeliveryTrace.emit("pull-enqueued", traceID: traceID)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self, self.isRunning else { return }
+            StreamDeliveryTrace.emit("pull-start", traceID: self.traceID)
+            var sequence: UInt64 = 0
+            let status = ThreadlineBridgeStatus.decode(
+                nativeStreamNext(self.nativeHandle, 30_000, &sequence)
+            )
+            guard self.isRunning else { return }
+            StreamDeliveryTrace.emit(
+                "pull-finished",
+                traceID: self.traceID,
+                status: status
+            )
+            if status == .ok {
+                let eventSequence = sequence
+                let ordinal = self.reservePendingDelivery()
+                guard let ordinal else { return }
+                StreamDeliveryTrace.emit(
+                    "event-enqueued",
+                    traceID: self.traceID,
+                    ordinal: ordinal
+                )
+                self.deliveryQueue.async { [weak self] in
+                    self?.deliverEvent(eventSequence, ordinal: ordinal)
+                }
+                return
+            }
+
+            StreamDeliveryTrace.emit(
+                "completion-enqueued",
+                traceID: self.traceID,
+                status: status
+            )
+            self.deliveryQueue.async { [weak self] in
+                self?.deliverCompletion(status)
+            }
+        }
+    }
+
+    private var isRunning: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return !stopped
+    }
+
+    private func reservePendingDelivery() -> UInt64? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !stopped else { return nil }
+        let ordinal = nextOrdinal
+        nextOrdinal += 1
+        pendingDelivery = true
+        return ordinal
+    }
+
+    private func eventCallback() -> (@Sendable (UInt64) -> Void)? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        pendingDelivery = false
+        guard !stopped else { return nil }
+        return onEvent
+    }
+
+    private func completionCallback() -> (@Sendable (ThreadlineBridgeStatus) -> Void)? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !stopped else { return nil }
+        return onCompletion
+    }
+
+    private func deliverEvent(_ sequence: UInt64, ordinal: UInt64) {
+        StreamDeliveryTrace.emit(
+            "event-callback-start",
+            traceID: traceID,
+            ordinal: ordinal
+        )
+        guard let callback = eventCallback() else {
+            StreamDeliveryTrace.emit(
+                "event-callback-suppressed",
+                traceID: traceID,
+                ordinal: ordinal
+            )
+            return
+        }
+        var streamDelivered = false
+        let clientDelivered = clientGate.perform {
+            streamDelivered = streamGate.perform {
+                callback(sequence)
+            }
+        }
+        StreamDeliveryTrace.emit(
+            clientDelivered && streamDelivered
+                ? "event-callback-finished"
+                : "event-callback-suppressed",
+            traceID: traceID,
+            ordinal: ordinal
+        )
+        pullNext()
+    }
+
+    private func deliverCompletion(_ status: ThreadlineBridgeStatus) {
+        StreamDeliveryTrace.emit(
+            "completion-callback-start",
+            traceID: traceID,
+            status: status
+        )
+        guard let callback = completionCallback() else {
+            StreamDeliveryTrace.emit(
+                "completion-callback-suppressed",
+                traceID: traceID,
+                status: status
+            )
+            return
+        }
+        var streamDelivered = false
+        let clientDelivered = clientGate.perform {
+            streamDelivered = streamGate.perform {
+                callback(status)
+            }
+        }
+        StreamDeliveryTrace.emit(
+            clientDelivered && streamDelivered
+                ? "completion-callback-finished"
+                : "completion-callback-suppressed",
+            traceID: traceID,
+            status: status
+        )
+        stop(phase: "pump-finished")
     }
 }

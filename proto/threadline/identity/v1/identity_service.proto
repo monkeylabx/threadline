@@ -2,9 +2,11 @@ syntax = "proto3";
 
 // Identity, directory and Device services, served by threadline-core.
 //
-// Every RPC here derives the tenant from the caller's authenticated session.
-// Tenant is never a request parameter: making it one would turn a missing
-// authorization check into cross-tenant access.
+// Every RPC here derives the tenant and calling Actor from the authenticated,
+// Device-bound session. Tenant is never a request parameter: making it one
+// would turn a missing authorization check into cross-tenant access. An object
+// resolved outside that tenant fails with ERROR_CODE_TENANT_MISMATCH before any
+// directory data is returned.
 package threadline.identity.v1;
 
 import "threadline/identity/v1/device.proto";
@@ -13,10 +15,16 @@ import "threadline/type/v1/common.proto";
 
 // IdentityService serves the organization directory.
 service IdentityService {
+  // Returns only the Organization bound to the authenticated session. There is
+  // no caller-selected tenant lookup in the v1 client contract.
   rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
 
+  // Results are intersected with the caller's directory-read permission and
+  // Organization boundary before pagination is applied.
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
 
+  // `actor_id` is resolved inside the authenticated tenant. It never widens
+  // the tenant scope or authorizes access on its own.
   rpc GetMember(GetMemberRequest) returns (GetMemberResponse);
 
   // Lists Agent Actors with their owner, responsibility, default participation
@@ -73,6 +81,8 @@ service DeviceService {
   // becomes AUTHORIZED only once an endorsement arrives.
   rpc EnrollDevice(EnrollDeviceRequest) returns (EnrollDeviceResponse);
 
+  // Listing another Actor's Devices requires the explicit device-directory
+  // permission. Empty `actor_id` remains the caller's own Actor.
   rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
 
   // Revokes a Device: invalidates its credential and unused KeyPackages, and
@@ -94,6 +104,9 @@ service DeviceService {
 }
 
 message EnrollDeviceRequest {
+  // Tenant and Actor are intentionally absent: Core binds the enrollment to
+  // the authenticated session and rejects a Device Identity already bound to
+  // another tenant or Actor.
   string display_name = 1;
 
   DevicePlatform platform = 2;

@@ -48,7 +48,7 @@
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
     </svg>
 
-    <main class="app-shell">
+    <main class="app-shell" id="app-shell">
       <aside class="org-rail" aria-label="组织导航">
         <span class="brand-mark" aria-label="Threadline">R</span>
         <nav class="rail-nav">
@@ -99,16 +99,18 @@
         <header class="workspace-header">
           <div class="header-title">
             <span class="channel-hash">#</span>
-            <div><strong id="view-title">产品研发</strong><small id="view-subtitle">18 位成员 · 2 个 Agent · 1 个工作区</small></div>
+            <div><h1 id="view-title" tabindex="-1" style="margin:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; font-weight:700;">产品研发</h1><small id="view-subtitle">18 位成员 · 2 个 Agent · 1 个工作区</small></div>
           </div>
           <div class="header-actions">
             <button class="runtime-pill" data-route="runtime" title="查看工作区"><span></span>client-app / main</button>
             <button class="icon-button" title="成员"><svg><use href="#i-users"></use></svg></button>
             <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
           </div>
+          <span id="route-announcement" role="status" aria-live="polite" aria-atomic="true" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;"></span>
         </header>
 
         <section class="screen screen-channel is-visible" data-screen="channel">
+          <h2 style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道消息</h2>
           <div class="conversation-pane">
             <div class="timeline" id="timeline">
               <div class="date-divider"><span>今天</span></div>
@@ -160,6 +162,7 @@
             <div class="composer-wrap">
               <div class="reply-context"><span>回复 ENG-248</span><button title="取消回复"><svg><use href="#i-close"></use></svg></button></div>
               <div class="composer">
+                <label for="composer-input" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">发消息到产品研发频道</label>
                 <textarea id="composer-input" rows="2" placeholder="发消息到 #产品研发"></textarea>
                 <div class="composer-toolbar">
                   <div><button class="icon-button" title="添加附件"><svg><use href="#i-paperclip"></use></svg></button><button class="composer-mode"><span>消息</span></button></div>
@@ -243,7 +246,7 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
               <div class="impact-summary"><strong>为什么需要</strong><p>并发测试生成了两份失效的 lease fixture。删除后才能验证崩溃恢复路径，不影响源代码。</p></div>
               <div class="approval-scope"><div class="scope-row"><span>能力</span><code>workspace.file.delete</code></div><div class="scope-row"><span>目标</span><div><code>fixtures/lease-old.json</code><code>fixtures/owner-stale.json</code></div></div><div class="scope-row"><span>有效期</span><strong>仅本次操作 · 10 分钟</strong></div><div class="scope-row"><span>执行位置</span><strong>林嘉的 Mac Studio</strong></div></div>
               <div class="policy-note"><svg><use href="#i-shield"></use></svg><p>授权不会扩大到其他目录，也不会允许 Atlas 再次删除文件。</p></div>
-              <label class="approval-comment"><span>审批意见（可选）</span><textarea placeholder="添加限制或说明"></textarea></label>
+              <label class="approval-comment" for="desktop-approval-comment"><span>审批意见（可选）</span><textarea id="desktop-approval-comment" placeholder="添加限制或说明"></textarea></label>
               <div class="approval-actions"><button class="danger-outline">拒绝</button><button class="approve-button" id="approve-action"><svg><use href="#i-checks"></use></svg>批准一次</button></div>
             </aside>
           </div>
@@ -365,7 +368,7 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
       </section>
     </main>
 
-    <div class="modal-backdrop" id="task-modal" aria-hidden="true">
+    <div class="modal-backdrop" id="task-modal" aria-hidden="true" inert>
       <section class="task-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-head"><div><span class="eyebrow">从 2 条消息创建</span><h2 id="modal-title">新建 Agent 任务</h2></div><button class="icon-button modal-close" title="关闭"><svg><use href="#i-close"></use></svg></button></div>
         <label><span>任务目标</span><input value="为本地 Runtime 增加 Lease 与 Fencing Token" /></label>

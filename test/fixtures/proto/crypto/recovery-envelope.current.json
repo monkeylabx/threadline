@@ -1,0 +1,33 @@
+{
+  "tenantId": "tenant-t019-current",
+  "e2eeGroupId": "group-t019-current",
+  "epoch": "73",
+  "cryptoProfile": {
+    "name": "tl-mls-1",
+    "mlsProtocolVersion": "1.0",
+    "cipherSuite": "MLS_CIPHER_SUITE_MLS_128_DHKEMX25519_AES128GCM_SHA256_ED25519",
+    "messageEnvelopeVersion": 1,
+    "historyEnvelopeVersion": 1,
+    "recoveryEnvelopeVersion": 1
+  },
+  "recoveryKeyVersion": 9,
+  "wrappedMaterial": "dDAxOS13cmFwcGVkLW9wYXF1ZQ==",
+  "envelopeVersion": 1,
+  "recoveryRecipientPresent": true,
+  "recoveryKeyId": "recovery-key-golden-v7",
+  "bindingHash": "dDAxOS1sZWdhY3ktYmluZGluZw==",
+  "scopeHash": "dDAxOS1zY29wZS1kaWdlc3Q=",
+  "scopeBindingHash": "dDAxOS1zY29wZS1iaW5kaW5n",
+  "recoveryCaseId": "recovery-case-t019-current",
+  "recoveryRecipientDeviceId": "device-t019-recipient",
+  "deliveryPolicyVersion": "recovery-policy-t019-v1",
+  "deliveryExpiresAt": "2026-08-22T12:30:00Z",
+  "deliveryBindingHash": "dDAxOS1kZWxpdmVyeS1iaW5kaW5n",
+  "protectedScope": {
+    "historyEpochRange": {
+      "e2eeGroupId": "group-t019-current",
+      "firstEpoch": "70",
+      "lastEpoch": "73"
+    }
+  }
+}

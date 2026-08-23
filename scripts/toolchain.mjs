@@ -7,6 +7,30 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
+const sqlcReleaseVersion = "1.31.1";
+const sqlcReleaseArchives = Object.freeze({
+  "darwin-amd64": Object.freeze({
+    file: "sqlc_1.31.1_darwin_amd64.tar.gz",
+    sha256: "c5af76772e3785d21663a62697056b383f07629979b1bd25b93872e73dbd519b",
+  }),
+  "darwin-arm64": Object.freeze({
+    file: "sqlc_1.31.1_darwin_arm64.tar.gz",
+    sha256: "21602158c99eb1f2bae197a66abfb1941d1e9e50b23125bb193349c6b1acc71e",
+  }),
+  "linux-amd64": Object.freeze({
+    file: "sqlc_1.31.1_linux_amd64.tar.gz",
+    sha256: "497ae4fcdfa64c5b0c311ffe4c2bd991e43991e82e5367792ed78bc2dca27354",
+  }),
+  "linux-arm64": Object.freeze({
+    file: "sqlc_1.31.1_linux_arm64.tar.gz",
+    sha256: "b7cae247740d0c51a1e657479e5b2d21e6fef428f596682a01bc55bf4ab8a23d",
+  }),
+  "windows-amd64": Object.freeze({
+    file: "sqlc_1.31.1_windows_amd64.zip",
+    sha256: "352711fa7dcb05dcdfefca0ad71b2c9a74fd090f8d7fc609419de4cbc725429f",
+  }),
+});
+
 function read(relative) {
   return readFileSync(join(root, relative), "utf8").replaceAll("\r\n", "\n");
 }
@@ -102,6 +126,111 @@ export function validateWorkflowPins(workflow, expectedPins = pins) {
   return errors;
 }
 
+function parseGoDependencyDirectives(source) {
+  const directives = {
+    directRequires: [],
+    excludes: [],
+    replacements: [],
+    uses: [],
+  };
+  let block;
+  for (const sourceLine of source.split("\n")) {
+    const commentAt = sourceLine.indexOf("//");
+    const code = (commentAt === -1 ? sourceLine : sourceLine.slice(0, commentAt)).trim();
+    const comment = commentAt === -1 ? "" : sourceLine.slice(commentAt + 2).trim();
+    const tokens = code.match(/"(?:\\.|[^"\\])*"|`[^`]*`|=>|[()]|[^\s()=>]+/g) ?? [];
+    if (
+      tokens.length === 2 &&
+      tokens[1] === "(" &&
+      ["require", "replace", "exclude", "use"].includes(tokens[0])
+    ) {
+      block = tokens[0];
+      continue;
+    }
+    if (block && tokens.length === 1 && tokens[0] === ")") {
+      block = undefined;
+      continue;
+    }
+    if (tokens.length === 0) continue;
+    const directive = block ?? tokens.shift();
+    const values = tokens;
+    if (directive === "require" && comment.split(/\s+/, 1)[0] !== "indirect") {
+      directives.directRequires.push(values.join(" "));
+    }
+    if (directive === "replace") directives.replacements.push(values);
+    if (directive === "exclude") directives.excludes.push(values);
+    if (directive === "use") directives.uses.push(...values);
+  }
+  return directives;
+}
+
+export function validateDatabasePins(databasePins, sources) {
+  const errors = [];
+  assertEqual(errors, "sqlc release version", databasePins.sqlc.version, sqlcReleaseVersion);
+  if (!/^\d+\.\d+\.\d+$/.test(databasePins.pgx)) {
+    errors.push(`pgx version is not exact: ${databasePins.pgx}`);
+  }
+  const actualPlatforms = Object.keys(databasePins.sqlc.archives).sort();
+  const expectedPlatforms = Object.keys(sqlcReleaseArchives).sort();
+  assertEqual(
+    errors,
+    "sqlc archive platform set",
+    actualPlatforms.join(","),
+    expectedPlatforms.join(","),
+  );
+  for (const platform of expectedPlatforms) {
+    const archive = databasePins.sqlc.archives[platform];
+    if (!archive) continue;
+    assertEqual(
+      errors,
+      `sqlc ${platform} archive`,
+      archive.file,
+      sqlcReleaseArchives[platform].file,
+    );
+    assertEqual(
+      errors,
+      `sqlc ${platform} SHA-256`,
+      archive.sha256,
+      sqlcReleaseArchives[platform].sha256,
+    );
+  }
+  const requiredPgx = `github.com/jackc/pgx/v5 v${databasePins.pgx}`;
+  const moduleDirectives = parseGoDependencyDirectives(sources.goModule);
+  const workspaceDirectives = parseGoDependencyDirectives(sources.goWork);
+  if (!moduleDirectives.directRequires.includes(requiredPgx)) {
+    errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
+  }
+  assertEqual(errors, "go.work use set", workspaceDirectives.uses.join(","), "./services");
+  for (const [sourceName, directives] of [
+    ["services/go.mod", moduleDirectives],
+    ["go.work", workspaceDirectives],
+  ]) {
+    const quotedPath = [...directives.replacements, ...directives.excludes].some(([modulePath]) =>
+      ['"', "'", "`"].some((quote) => modulePath?.startsWith(quote)),
+    );
+    if (quotedPath) errors.push(`${sourceName}: quoted dependency paths are forbidden`);
+    if (directives.replacements.some(([modulePath]) => modulePath === "github.com/jackc/pgx/v5")) {
+      errors.push(`${sourceName}: pgx replace directives are forbidden`);
+    }
+    if (directives.excludes.some(([modulePath]) => modulePath === "github.com/jackc/pgx/v5")) {
+      errors.push(`${sourceName}: pgx exclude directives are forbidden`);
+    }
+  }
+  assertIncludes(
+    errors,
+    "Core schema architecture",
+    sources.serviceCatalog,
+    `physical schema \`${databasePins.coreSchema}\``,
+  );
+  assertIncludes(
+    errors,
+    "database reproducibility runbook",
+    sources.reproducibleBuilds,
+    `sqlc ${databasePins.sqlc.version}`,
+  );
+  return errors;
+}
+
 function findWindowsCorepackEntrypoint(pathValue, nodeExecutable) {
   const directories = (pathValue ?? "").split(";").filter(Boolean);
   directories.push(dirname(nodeExecutable));
@@ -146,6 +275,8 @@ export function verifyPins() {
   const gradleLock = read("apps/android/gradle.lockfile");
   const wrapper = read("gradle/wrapper/gradle-wrapper.properties");
   const workflow = read(".github/workflows/build.yml");
+  const serviceCatalog = read("docs/architecture/service-catalog.md");
+  const reproducibleBuilds = read("docs/build/reproducible-builds.md");
 
   assertEqual(errors, ".node-version", read(".node-version").trim(), pins.node);
   assertEqual(errors, ".nvmrc", read(".nvmrc").trim(), pins.node);
@@ -200,6 +331,14 @@ export function verifyPins() {
   );
   assertIncludes(errors, "Android NDK install", workflow, `'ndk;${pins.android.ndk}'`);
   errors.push(...validateWorkflowPins(workflow));
+  errors.push(
+    ...validateDatabasePins(pins.database, {
+      goModule,
+      goWork,
+      serviceCatalog,
+      reproducibleBuilds,
+    }),
+  );
   assertIncludes(errors, "CI Go auto-download guard", workflow, "GOTOOLCHAIN: local");
   assertIncludes(errors, "Gradle distribution", wrapper, `gradle-${pins.android.gradle}-bin.zip`);
   assertIncludes(
@@ -264,6 +403,9 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
     valid = probe("Go", "go", ["version"], [`go${pins.goToolchain}`], {
       env: { GOTOOLCHAIN: "local" },
     }) && valid;
+  }
+  if (selected.has("database")) {
+    valid = probe("sqlc", "sqlc", ["version"], [`v${pins.database.sqlc.version}`]) && valid;
   }
   if (selected.has("desktop")) {
     valid =

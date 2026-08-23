@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "targetPr": "73",
+  "targetSha": "80f57f77060c7bf1b454a8b13500e9f1303d2618",
+  "preparedRunId": "32573352028",
+  "verifyRunId": "32573687805",
+  "runnerImageVersion": "20260728.0273.1",
+  "manifestSha256": "f34e18d2c30a980d656b884f63d0282fd3928a0d77ecdc481c9067bb59c51dc8",
+  "generationTrees": {
+    "go": {
+      "fileCount": 29,
+      "treeSha256": "e58e8a06f76132fc4fd1b9e68d7f1302f857b7767f926e0c1c33c8c29447b5eb"
+    },
+    "typescript": {
+      "fileCount": 22,
+      "treeSha256": "637b3960643cf077c3c052dfe36d5b07848ed0b21bcbb6a04360645de62c5a94"
+    },
+    "rust": {
+      "fileCount": 11,
+      "treeSha256": "33fa57e825e6e137a97855eee46d5d5598f2c45266c586d4c49afe82a7413eef"
+    },
+    "swift": {
+      "fileCount": 29,
+      "treeSha256": "2010ace7d548e3eb21ffe90eca4f31c7a85aee8da3a334315285fa17805da2cc"
+    },
+    "kotlinJava": {
+      "fileCount": 529,
+      "treeSha256": "1054c0181663c2306d7ed6e0073e460fbf73ff0306e4a7e5b1ef0c2b55cac1bf"
+    },
+    "kotlinDsl": {
+      "fileCount": 286,
+      "treeSha256": "b9e1ad4043b481bf77b7c36d8089c9c9139a8da7bdd01b2677784ccab925a718"
+    }
+  },
+  "physicalDevices": "NOT RUN"
+}

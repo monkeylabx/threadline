@@ -1,0 +1,222 @@
+name: threadline-dev
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-healthcheck: &healthcheck
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 10s
+
+services:
+  postgres:
+    <<: *restart-policy
+    image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+    pull_policy: never
+    environment:
+      POSTGRES_DB: threadline
+      POSTGRES_PASSWORD: threadline-postgres-dev-only
+      POSTGRES_USER: threadline_postgres_dev
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_POSTGRES_PORT:-5432}:5432"
+    networks: [postgres]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+
+  nats:
+    <<: *restart-policy
+    image: nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9
+    pull_policy: never
+    command:
+      - --jetstream
+      - --store_dir=/data
+      - --http_port=8222
+      - --user=threadline_nats_dev
+      - --pass=threadline-nats-dev-only
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_NATS_PORT:-4222}:4222"
+      - "127.0.0.1:${THREADLINE_DEV_NATS_MONITOR_PORT:-8222}:8222"
+    networks: [nats]
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "wget -q -O - 'http://127.0.0.1:8222/healthz?js-enabled-only=true' | grep -q ok"]
+
+  redis:
+    <<: *restart-policy
+    image: redis:7.4.0-alpine@sha256:c35af3bbcef51a62c8bae5a9a563c6f1b60d7ebaea4cb5a3ccbcc157580ae098
+    pull_policy: never
+    command: [redis-server, --appendonly, "yes", --requirepass, threadline-redis-dev-only]
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_REDIS_PORT:-6379}:6379"
+    networks: [redis]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, redis-cli, -a, threadline-redis-dev-only, ping]
+
+  minio:
+    <<: *restart-policy
+    image: minio/minio:RELEASE.2024-07-16T23-46-41Z@sha256:77ff9f7e12549d269990b167fa21da010fa8b0beb40d6064569b8887e37c456b
+    pull_policy: never
+    command: [server, /data, --console-address, ":9001"]
+    environment:
+      MINIO_ROOT_PASSWORD: threadline-minio-dev-only
+      MINIO_ROOT_USER: threadline_minio_dev
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${THREADLINE_DEV_MINIO_CONSOLE_PORT:-9001}:9001"
+    networks: [minio]
+    volumes:
+      - minio-data:/data
+
+  otel-collector:
+    <<: *restart-policy
+    image: otel/opentelemetry-collector-contrib:0.107.0@sha256:b65527791431d76d058b2813748a3f4a8912540d7b23beac2f6b4e02c872f5b7
+    pull_policy: never
+    command: [--config=/etc/otelcol-contrib/config.yaml]
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${THREADLINE_DEV_OTLP_HTTP_PORT:-4318}:4318"
+      - "127.0.0.1:${THREADLINE_DEV_OTEL_HEALTH_PORT:-13133}:13133"
+    networks: [otel-jaeger, prometheus-otel, otel-health]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+
+  prometheus:
+    <<: *restart-policy
+    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
+    pull_policy: never
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_PROMETHEUS_PORT:-9090}:9090"
+    networks: [prometheus-otel, prometheus-health]
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  jaeger:
+    <<: *restart-policy
+    image: jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+    pull_policy: never
+    environment:
+      JAEGER_LISTEN_HOST: 0.0.0.0
+    command:
+      - --set=extensions.healthcheckv2.http.endpoint=0.0.0.0:13133
+    ports:
+      - "127.0.0.1:${THREADLINE_DEV_JAEGER_PORT:-16686}:16686"
+    networks: [otel-jaeger, jaeger-health]
+
+  minio-readiness:
+    <<: *restart-policy
+    image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    pull_policy: never
+    command: [sh, -c, "while true; do sleep 3600; done"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      minio:
+        condition: service_started
+    networks: [minio]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "wget -q -O /dev/null http://minio:9000/minio/health/ready"]
+
+  otel-readiness:
+    <<: *restart-policy
+    image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    pull_policy: never
+    command: [sh, -c, "while true; do sleep 3600; done"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      otel-collector:
+        condition: service_started
+    networks: [otel-health]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "wget -q -O /dev/null http://otel-collector:13133/"]
+
+  prometheus-readiness:
+    <<: *restart-policy
+    image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    pull_policy: never
+    command: [sh, -c, "while true; do sleep 3600; done"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks: [prometheus-health]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "wget -q -O /dev/null http://prometheus:9090/-/ready"]
+
+  jaeger-readiness:
+    <<: *restart-policy
+    image: busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+    pull_policy: never
+    command: [sh, -c, "while true; do sleep 3600; done"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      jaeger:
+        condition: service_started
+    networks: [jaeger-health]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD-SHELL, "wget -q -O /dev/null http://jaeger:13133/status"]
+
+networks:
+  postgres:
+    name: threadline-dev-postgres
+    internal: true
+  nats:
+    name: threadline-dev-nats
+    internal: true
+  redis:
+    name: threadline-dev-redis
+    internal: true
+  minio:
+    name: threadline-dev-minio
+    internal: true
+  otel-jaeger:
+    name: threadline-dev-otel-jaeger
+    internal: true
+  prometheus-otel:
+    name: threadline-dev-prometheus-otel
+    internal: true
+  otel-health:
+    name: threadline-dev-otel-health
+    internal: true
+  prometheus-health:
+    name: threadline-dev-prometheus-health
+    internal: true
+  jaeger-health:
+    name: threadline-dev-jaeger-health
+    internal: true
+  recovery-control:
+    name: threadline-dev-recovery-control-isolated
+    internal: true
+
+volumes:
+  minio-data:
+  nats-data:
+  postgres-data:
+  prometheus-data:
+  redis-data:

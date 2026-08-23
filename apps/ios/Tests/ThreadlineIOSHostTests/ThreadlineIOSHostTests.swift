@@ -23,6 +23,8 @@ private final class LockedBox<Value>: @unchecked Sendable {
     }
 }
 
+private final class CallbackLifetimeToken: @unchecked Sendable {}
+
 final class ThreadlineIOSHostTests: XCTestCase {
     func testBridgeContractVersionComesFromRustFacade() {
         XCTAssertEqual(ThreadlineIOSHostSkeleton.bridgeContractVersion, 1)
@@ -196,6 +198,117 @@ final class ThreadlineIOSHostTests: XCTestCase {
         XCTAssertEqual(resumedEvents.read(), [49, 50])
         resumed.release()
         client.release()
+    }
+
+    func testSlowStreamConsumersDoNotStarveIndependentStreamCompletion() throws {
+        let client = try ThreadlineClient()
+        let blockedTarget = DispatchQueue(label: "threadline.tests.stream.blocked-target")
+        blockedTarget.suspend()
+        var blockedStreams: [ThreadlineStream] = []
+        var probeStream: ThreadlineStream?
+
+        defer {
+            blockedTarget.resume()
+            probeStream?.release()
+            for stream in blockedStreams {
+                stream.release()
+            }
+            client.release()
+        }
+
+        for index in 0 ..< 96 {
+            let deliveryQueue = DispatchQueue(
+                label: "threadline.tests.stream.blocked-\(index)",
+                qos: .userInitiated,
+                target: blockedTarget
+            )
+            let stream = try client.startStream(
+                eventCount: 1,
+                capacity: 1,
+                deliveryQueue: deliveryQueue,
+                onEvent: { _ in },
+                onCompletion: { _ in }
+            )
+            blockedStreams.append(stream)
+        }
+
+        let blockersReadyDeadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < blockersReadyDeadline,
+            blockedStreams.contains(where: { !$0.hasPendingDeliveryForDiagnostics })
+        {
+            Thread.sleep(forTimeInterval: 0.001)
+        }
+        XCTAssertTrue(
+            blockedStreams.allSatisfy(\.hasPendingDeliveryForDiagnostics),
+            "all blocked consumers must have an event queued before probing"
+        )
+
+        let probeQueue = DispatchQueue(
+            label: "threadline.tests.stream.probe",
+            qos: .userInitiated
+        )
+        for iteration in 0 ..< 5 {
+            let probeCompleted = expectation(
+                description: "independent stream completed, iteration \(iteration)"
+            )
+            let probeEvents = LockedBox<[UInt64]>([])
+            let probeStatus = LockedBox<ThreadlineBridgeStatus?>(nil)
+            probeStream = try client.startStream(
+                cursor: 40,
+                eventCount: 8,
+                capacity: 2,
+                deliveryQueue: probeQueue,
+                onEvent: { sequence in
+                    probeEvents.update { $0.append(sequence) }
+                },
+                onCompletion: { status in
+                    probeStatus.update { $0 = status }
+                    probeCompleted.fulfill()
+                }
+            )
+
+            wait(for: [probeCompleted], timeout: 2)
+            XCTAssertEqual(probeEvents.read(), Array(41 ... 48))
+            XCTAssertEqual(probeStatus.read(), .endOfStream)
+            probeStream?.release()
+            probeStream = nil
+        }
+    }
+
+    func testReleaseDropsCallbacksQueuedOnAnUndrainedDeliveryQueue() throws {
+        let client = try ThreadlineClient()
+        let blockedTarget = DispatchQueue(label: "threadline.tests.stream.release-target")
+        blockedTarget.suspend()
+        defer {
+            blockedTarget.resume()
+            client.release()
+        }
+
+        var token: CallbackLifetimeToken? = CallbackLifetimeToken()
+        weak let weakToken = token
+        let deliveryQueue = DispatchQueue(
+            label: "threadline.tests.stream.release-blocked",
+            target: blockedTarget
+        )
+        let stream = try client.startStream(
+            eventCount: 1,
+            capacity: 1,
+            deliveryQueue: deliveryQueue,
+            onEvent: { [token] _ in _ = token },
+            onCompletion: { _ in }
+        )
+
+        let pendingDeadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < pendingDeadline,
+            !stream.hasPendingDeliveryForDiagnostics
+        {
+            Thread.sleep(forTimeInterval: 0.001)
+        }
+        XCTAssertTrue(stream.hasPendingDeliveryForDiagnostics)
+
+        stream.release()
+        token = nil
+        XCTAssertNil(weakToken)
     }
 
     func testDuplicateStreamEventFailsBeforeDuplicateDelivery() throws {

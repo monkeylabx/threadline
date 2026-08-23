@@ -34,6 +34,7 @@
     </svg>
 
     <main class="desktop-window" data-view="channel">
+      <span id="mobile-route-announcement" role="status" aria-live="polite" aria-atomic="true" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;"></span>
       <aside class="sidebar">
         <div class="window-bar">
           <span class="window-dot close"></span>
@@ -99,6 +100,7 @@
 
         <section class="content-stage">
           <div class="conversation">
+            <h1 id="mobile-channel-heading" tabindex="-1" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道</h1>
             <div class="timeline" id="timeline">
               <div class="day-marker"><span>今天</span><time>7 月 22 日</time></div>
 
@@ -154,6 +156,7 @@
 
             <div class="composer-shell">
               <div class="composer">
+                <label for="message-input" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">发消息到产品研发频道</label>
                 <textarea id="message-input" rows="2" placeholder="发消息到 #产品研发"></textarea>
                 <div class="composer-tools">
                   <div>
@@ -189,10 +192,11 @@
             </section>
           </aside>
 
-          <aside class="activity-sheet task-sheet" aria-label="任务执行现场">
+          <section class="activity-sheet task-sheet" role="region" aria-labelledby="mobile-task-title" aria-hidden="true" tabindex="-1">
+            <h1 style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">任务执行现场</h1>
             <header class="sheet-header">
               <button class="icon-button close-sheet" title="返回"><svg class="desktop-sheet-close"><use href="#i-close"></use></svg><svg class="mobile-sheet-back"><use href="#i-arrow-left"></use></svg></button>
-              <div><span class="sheet-kicker"><i></i>Atlas 正在本机执行</span><h2>Runtime Lease 与 Fencing Token</h2><p>ENG-248 · Run 03</p></div>
+              <div><span class="sheet-kicker"><i></i>Atlas 正在本机执行</span><h2 id="mobile-task-title" tabindex="-1">Runtime Lease 与 Fencing Token</h2><p>ENG-248 · Run 03</p></div>
               <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
             </header>
 
@@ -203,9 +207,14 @@
                 <div><span>成本</span><strong>¥0.84</strong></div>
               </div>
 
-              <div class="sheet-tabs" role="tablist"><button class="is-active">活动</button><button>改动 <i>3</i></button><button>产物 <i>1</i></button></div>
+              <div class="sheet-tabs" role="tablist" aria-label="任务详情">
+                <button id="task-tab-activity" role="tab" aria-selected="true" aria-controls="task-panel-activity" tabindex="0" class="is-active">活动</button>
+                <button id="task-tab-changes" role="tab" aria-selected="false" aria-controls="task-panel-changes" tabindex="-1">改动 <i>3</i></button>
+                <button id="task-tab-artifacts" role="tab" aria-selected="false" aria-controls="task-panel-artifacts" tabindex="-1">产物 <i>1</i></button>
+              </div>
 
-              <div class="activity-flow">
+              <div id="task-panel-activity" role="tabpanel" aria-labelledby="task-tab-activity" tabindex="0">
+                <div class="activity-flow">
                 <article class="flow-step done">
                   <span class="flow-mark">✓</span>
                   <div><header><strong>读取运行契约</strong><time>10:24</time></header><p>检查 `runner.go`、状态写入和当前并发假设。</p><button class="file-link"><svg><use href="#i-file"></use></svg>internal/runner/runner.go</button></div>
@@ -224,28 +233,40 @@ RUN   lease recovery after crash</code></pre></div>
                   <span class="flow-mark"></span>
                   <div><header><strong>生成变更摘要与 PR</strong></header><p>测试通过后继续；删除临时文件前需要你的批准。</p></div>
                 </article>
-              </div>
+                </div>
 
-              <button class="approval-prompt" data-view-target="approval">
+                <button class="approval-prompt" data-view-target="approval">
                 <span><svg><use href="#i-shield"></use></svg></span>
                 <span><small>需要你的决定</small><strong>删除 2 个过期测试文件</strong><em>一次性授权 · 中风险</em></span>
                 <svg class="chevron"><use href="#i-chevron"></use></svg>
-              </button>
+                </button>
 
-              <section class="context-scope">
+                <section class="context-scope">
                 <div class="section-label"><span>本次上下文</span></div>
                 <div><svg><use href="#i-message"></use></svg><span><strong>2 条指定消息</strong><small>不包含频道完整历史</small></span></div>
                 <div><svg><use href="#i-folder"></use></svg><span><strong>agent-core / 只读</strong><small>写入仅限任务分支</small></span></div>
+                </section>
+              </div>
+
+              <section id="task-panel-changes" role="tabpanel" aria-labelledby="task-tab-changes" tabindex="0" class="context-scope" hidden>
+                <div class="section-label"><span>本次改动</span><i>3</i></div>
+                <p>查看 Runtime Lease、Fencing Token 与并发测试的候选改动。</p>
+              </section>
+
+              <section id="task-panel-artifacts" role="tabpanel" aria-labelledby="task-tab-artifacts" tabindex="0" class="context-scope" hidden>
+                <div class="section-label"><span>任务产物</span><i>1</i></div>
+                <p>测试证据将在 Run 完成后出现在这里。</p>
               </section>
             </div>
 
             <footer class="sheet-footer"><button class="plain-button"><svg><use href="#i-pause"></use></svg>暂停</button><button class="blue-button">打开完整任务</button></footer>
-          </aside>
+          </section>
 
-          <aside class="activity-sheet approval-sheet" aria-label="权限审批">
+          <section class="activity-sheet approval-sheet" role="region" aria-labelledby="mobile-approval-title" aria-hidden="true" tabindex="-1">
+            <h1 style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">权限审批</h1>
             <header class="sheet-header approval-head">
               <button class="icon-button close-sheet" title="返回"><svg class="desktop-sheet-close"><use href="#i-close"></use></svg><svg class="mobile-sheet-back"><use href="#i-arrow-left"></use></svg></button>
-              <div><span class="sheet-kicker amber"><i></i>一次性授权</span><h2>删除过期状态文件</h2><p>Atlas · ENG-248 · Run 03</p></div>
+              <div><span class="sheet-kicker amber"><i></i>一次性授权</span><h2 id="mobile-approval-title" tabindex="-1">删除过期状态文件</h2><p>Atlas · ENG-248 · Run 03</p></div>
               <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
             </header>
 
@@ -266,11 +287,11 @@ RUN   lease recovery after crash</code></pre></div>
 
               <div class="policy-assurance"><svg><use href="#i-shield"></use></svg><p>授权不会扩大到其他目录，也不会允许 Atlas 再次删除文件。操作会写入组织审计日志。</p></div>
 
-              <label class="comment-field"><span>审批意见 <small>可选</small></span><textarea rows="3" placeholder="添加限制或说明"></textarea></label>
+              <label class="comment-field" for="mobile-approval-comment"><span>审批意见 <small>可选</small></span><textarea id="mobile-approval-comment" rows="3" placeholder="添加限制或说明"></textarea></label>
             </div>
 
             <footer class="sheet-footer approval-actions"><button class="reject-button">拒绝</button><button class="approve-button" id="approve-action"><svg><use href="#i-checks"></use></svg>批准一次</button></footer>
-          </aside>
+          </section>
         </section>
 
       </section>

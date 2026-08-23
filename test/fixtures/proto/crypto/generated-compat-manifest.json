@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "classification": "synthetic-protocol-compatibility-no-secrets",
+  "owner": "contracts/T019-A",
+  "baselineCommit": "b997fd70f1b4a115c9046df4db15fea4849df487",
+  "targetSchemaCommit": "19e64a8d727a496c3526057ea690f3495012ad90",
+  "verificationCommand": "node proto/tools/verify-t019-generated-compat.mjs --baseline=b997fd70f1b4a115c9046df4db15fea4849df487 --target=19e64a8d727a496c3526057ea690f3495012ad90 --frame-manifest=test/fixtures/proto/crypto/generated-compat-manifest.json --languages=go,typescript,rust,kotlin,swift",
+  "targetSchema": {
+    "file": "proto/threadline/crypto/v1/recovery.proto",
+    "sha256": "3a8569906290e24e6157abcad81b754aabbf4a1146a78e372f2e92133089e0de"
+  },
+  "historicalT014RecoveryFrame": {
+    "file": "proto/golden/v1/recovery-envelope.golden.hex",
+    "sha256": "1de788721950f34249cd1c2a53fedc17c2b77be0ecc563f3a141deebfce09e5b"
+  },
+  "frame": {
+    "contract": "threadline.crypto.v1.RecoveryEnvelope",
+    "sourceJson": "test/fixtures/proto/crypto/recovery-envelope.current.json",
+    "sourceSha256": "510bd26a84fdca042aa2a9f57c6cbc8098e33a86babc0c843011f7f74e4432d4",
+    "file": "test/fixtures/proto/crypto/recovery-envelope.current.hex",
+    "fileSha256": "c9e429b5513312a135ae60860f1b98d8f6e57255a938ad9ffac1c92b9cc83731",
+    "decodedSha256": "2c6e298f6c80440ba72c7eff1094e080e502a40d2e0894067c78a923a781c803",
+    "requiredKnownFields": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+    "currentOnlyFields": [11, 12, 13, 14, 15, 16, 17, 18],
+    "preservedFields": [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 50000],
+    "mutationField": "recovery_key_id",
+    "mutationSourceValue": "recovery-key-golden-v7",
+    "expectedTenantId": "tenant-t019-current",
+    "expectedGroupId": "group-t019-current",
+    "expectedProfile": "tl-mls-1",
+    "unknownFieldNumber": 50000,
+    "canary": {
+      "file": "proto/golden/v1/crypto-envelope.canary.hex",
+      "fileSha256": "5a17a04b7fbd8d982173312a1e8a4b4c3431fb913982d0730553782d0e7744f7",
+      "hex": "82b5181b7468726561646c696e652d63727970746f2d676f6c64656e2d7631"
+    }
+  },
+  "adapterInputs": {
+    "languages": ["go", "typescript", "rust", "kotlin", "swift"],
+    "buf": "1.72.0",
+    "node": "24.19.0",
+    "go": "1.26.5",
+    "protocGenGo": "1.36.11",
+    "protocGenEs": "2.14.0",
+    "cargo": "1.97.1",
+    "prost": "0.14.1",
+    "prostReflect": "0.16.5",
+    "jdk": "17.0.19",
+    "protoc": "35.1",
+    "kotlin": "2.4.10",
+    "swift": "6.3.2",
+    "swiftProtobuf": "1.38.1",
+    "requiredEnvironment": [
+      "THREADLINE_BUF",
+      "THREADLINE_NODE",
+      "THREADLINE_GO",
+      "THREADLINE_PROTOC_GEN_GO",
+      "THREADLINE_PROTOC_GEN_ES",
+      "THREADLINE_TSC",
+      "THREADLINE_CARGO",
+      "THREADLINE_JAVA_HOME",
+      "THREADLINE_PROTOC",
+      "THREADLINE_KOTLIN_JARS",
+      "THREADLINE_SWIFT",
+      "THREADLINE_SWIFT_SDK",
+      "THREADLINE_SWIFT_PROTOBUF_ARCHIVE"
+    ],
+    "requiredEnvironmentByLanguage": {
+      "go": ["THREADLINE_GO", "THREADLINE_PROTOC_GEN_GO"],
+      "typescript": ["THREADLINE_PROTOC_GEN_ES", "THREADLINE_TSC"],
+      "rust": ["THREADLINE_CARGO"],
+      "kotlin": ["THREADLINE_JAVA_HOME", "THREADLINE_PROTOC", "THREADLINE_KOTLIN_JARS"],
+      "swift": ["THREADLINE_SWIFT", "THREADLINE_SWIFT_SDK", "THREADLINE_SWIFT_PROTOBUF_ARCHIVE"]
+    }
+  },
+  "failClosedEvidence": {
+    "verifier": "proto/tools/verify-crypto-contracts.mjs",
+    "legacyWire": {
+      "frame": "proto/golden/v1/recovery-envelope.golden.hex",
+      "generatedAdapters": ["go", "typescript", "rust", "kotlin", "swift"],
+      "absentCurrentFields": [11, 12, 13, 14, 15, 16, 17, 18],
+      "currentScopedExecuteGate": "Rust DynamicMessage decodes and preserves the legacy frame, then requires all current fields 11-18 before scoped Execute."
+    },
+    "scenarioIds": [
+      "recovery-protected-scope-absent",
+      "recovery-tenant-mismatch",
+      "recovery-group-mismatch",
+      "recovery-event-profile-version-tampered",
+      "n-minus-one-targeted-rollback-unimplemented",
+      "legacy-recovery-current-execute-unavailable"
+    ]
+  },
+  "acceptance": {
+    "generatedFiveLanguageNMinusOne": "PENDING_INTEGRATION",
+    "physicalDevices": "NOT RUN",
+    "clientCryptoImplementation": "PENDING_IMPLEMENTATION",
+    "productionOpenMlsAdmission": "NOT ESTABLISHED"
+  }
+}

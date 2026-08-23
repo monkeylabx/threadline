@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "classification": "synthetic-protocol-behavior-no-secrets",
+  "owner": "contracts/T015",
+  "reviewers": ["Contracts", "Security"],
+  "provenance": {
+    "kind": "hand-authored-deterministic-contract-scenarios",
+    "issue": 29,
+    "generator": "none"
+  },
+  "allowedData": [
+    "synthetic identifiers",
+    "short fixed opaque byte patterns",
+    "stable protocol enum names"
+  ],
+  "forbiddenData": [
+    "real message or Prompt plaintext",
+    "real credentials, tokens, keys, or signatures",
+    "production tenant identifiers or telemetry"
+  ],
+  "cleanup": "Versioned repository fixture; replace only through Contracts review and digest update.",
+  "expectedBehavior": "Fail closed before commit; emit a Durable ACK only after the atomic durability boundary.",
+  "nMinusOne": "Unknown-field byte preservation delegates to the T014 five-language bidirectional N-1 Golden Frame evidence.",
+  "source": {
+    "file": "scenarios.json",
+    "sha256": "e1d4d1b9cb5451f6a54eea745c67cae6cdf7a64a34bf54aaa16647e077c3b423"
+  },
+  "contracts": [
+    "threadline/identity/v1/identity.proto",
+    "threadline/identity/v1/identity_service.proto",
+    "threadline/channel/v1/channel.proto",
+    "threadline/channel/v1/channel_service.proto",
+    "threadline/message/v1/envelope.proto",
+    "threadline/message/v1/message_service.proto",
+    "threadline/sync/v1/sync.proto",
+    "threadline/sync/v1/sync_service.proto"
+  ],
+  "requiredCases": [
+    "durable-ack-after-atomic-commit",
+    "no-ack-before-durable-commit",
+    "idempotent-retry-returns-original-commit",
+    "idempotency-key-body-conflict",
+    "unauthorized-device-rejected",
+    "cross-tenant-envelope-rejected",
+    "cross-group-envelope-rejected",
+    "stale-epoch-envelope-rejected",
+    "rekey-required-keeps-application-event-pending",
+    "malformed-signature-metadata-rejected-without-opening-body",
+    "resume-applies-only-contiguous-events",
+    "resume-stops-before-gap",
+    "gap-repair-is-contiguous-and-bounded",
+    "invalid-ahead-cursor-resumes-from-server-position",
+    "past-retention-cursor-requires-explicit-unrecoverable-repair",
+    "matching-signed-checkpoint-allows-cursor-advance",
+    "checkpoint-chain-mismatch-fails-closed",
+    "unknown-envelope-extension-is-preserved"
+  ],
+  "goldenReference": {
+    "file": "proto/golden/v1/channel-event-envelope.golden.hex",
+    "decodedSha256": "d965e48a03c4bf266241d8610812bf945a431f657c77c17fc7cf8b17610aee8c",
+    "unknownFieldNumber": 50000
+  },
+  "acceptance": {
+    "durableAckOnlyAfterAtomicCommit": true,
+    "idempotentRetryReturnsOriginalCommit": true,
+    "cursorNeverAdvancesAcrossGap": true,
+    "gapRepairIsBounded": true,
+    "checkpointMismatchFailsClosed": true,
+    "tenantAndGroupMismatchFailClosed": true,
+    "rekeyRequiredFailsClosed": true,
+    "signatureMetadataValidationDoesNotOpenPlaintext": true,
+    "unknownExtensionsRemainByteExact": true,
+    "physicalDevices": "NOT RUN"
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "canaryFieldNumber": 50000,
+  "classification": "synthetic-protocol-compatibility-no-secrets",
+  "acceptanceBoundary": {
+    "issue": 28,
+    "issueMayClose": true,
+    "status": "passed",
+    "satisfiedHere": [
+      "schema-independent-field-50000-canary-encoding",
+      "fixture-digest-validation",
+      "representative-channel-event-envelope-frame",
+      "representative-recovery-envelope-frame",
+      "rust-dynamic-message-persistence-seam",
+      "five-language-generated-envelope-unknown-field-roundtrip",
+      "bidirectional-n-minus-one-compatibility",
+      "formal-plan-reconciled-with-merged-templates",
+      "protected-runner-formal-codegen-evidence"
+    ],
+    "notSatisfiedHere": [],
+    "candidateFollowups": [],
+    "splitRequiresExplicitApprovalFrom": ["Contracts", "Product"]
+  },
+  "formalCodegenEvidence": {
+    "status": "passed",
+    "targetSha": "6d4183410793e9946c86ec6c55397a31bc018da4",
+    "prepareRunId": "32569817612",
+    "prepareWorkflowSha": "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+    "verifyRunId": "32570070634",
+    "verifyWorkflowSha": "1f1e53244328ed3001cb0ec83f10071e3ae3dff9",
+    "runnerImageVersion": "20260728.0273.1",
+    "runnerImagesInventorySha": "8d3ea005fa2d87f3cbc9255c27fdfed9e901a043",
+    "manifestSha256": "36f0052f7594c0b8e03fd87b832481053de23dd9f143837b19da7f018b068678",
+    "mode": "verify-only",
+    "physicalDevices": "NOT RUN"
+  },
+  "compatibilityEvidence": {
+    "status": "passed",
+    "nMinusOneCommit": "b6c797c45d90fbb8b0465f7d7407ee1536e322e3",
+    "protocol": "current-write-n-minus-one-read-mutate-write-current-read-and-reverse",
+    "frames": [
+      "threadline.message.v1.ChannelEventEnvelope",
+      "threadline.crypto.v1.RecoveryEnvelope"
+    ],
+    "canaryFieldNumber": 50000,
+    "requiredAdapters": ["go", "typescript", "rust", "swift", "kotlin"],
+    "verifiedAdapters": ["go", "typescript", "rust", "swift", "kotlin"],
+    "verificationCommand": "node proto/tools/verify-generated-envelope-compat.mjs --languages=go,typescript,rust,swift,kotlin",
+    "requiredEnvironment": [
+      "THREADLINE_GO",
+      "THREADLINE_PROTOC_GEN_GO",
+      "THREADLINE_CARGO",
+      "THREADLINE_JAVA_HOME",
+      "THREADLINE_PROTOC",
+      "THREADLINE_KOTLIN_JARS",
+      "THREADLINE_SWIFT",
+      "THREADLINE_SWIFT_SDK",
+      "THREADLINE_SWIFT_PROTOBUF_ARCHIVE"
+    ]
+  },
+  "canaries": [
+    {
+      "contract": "ciphertext-envelope/v1",
+      "file": "ciphertext-envelope.canary.hex",
+      "payloadUtf8": "threadline-ciphertext-golden-v1",
+      "sha256": "5a08185d598e3a3bf24acd17e97400275a027af2799d40bcedacf7e6ca6c62ea"
+    },
+    {
+      "contract": "crypto-envelope/v1",
+      "file": "crypto-envelope.canary.hex",
+      "payloadUtf8": "threadline-crypto-golden-v1",
+      "sha256": "d1ef5c38238e345005af3b85b0e3e965aa8326966f42294c9be7699aa97f86c6"
+    }
+  ],
+  "frames": [
+    {
+      "contract": "threadline.message.v1.ChannelEventEnvelope",
+      "schemaFile": "threadline/message/v1/envelope.proto",
+      "sourceJson": "channel-event-envelope.golden.json",
+      "sourceSha256": "a113c598136d65e66a0768eed8f83dd4ddc66a72eb564a6f7cc18f42b9c2a63d",
+      "file": "channel-event-envelope.golden.hex",
+      "sha256": "d965e48a03c4bf266241d8610812bf945a431f657c77c17fc7cf8b17610aee8c",
+      "canary": "ciphertext-envelope/v1",
+      "requiredKnownFields": [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 20, 22, 23, 24]
+    },
+    {
+      "contract": "threadline.crypto.v1.RecoveryEnvelope",
+      "schemaFile": "threadline/crypto/v1/recovery.proto",
+      "sourceJson": "recovery-envelope.golden.json",
+      "sourceSha256": "a674f8be6d3f108be4a667964c997e54e4ba1c4bd4f23580a79416292b76be98",
+      "file": "recovery-envelope.golden.hex",
+      "sha256": "bdfbda9cbf6634bcee1a1d7653abecfcfc7cbe3dac2c57620ccfc8ee927a515d",
+      "canary": "crypto-envelope/v1",
+      "requiredKnownFields": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    }
+  ]
+}

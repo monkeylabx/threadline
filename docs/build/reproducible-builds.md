@@ -20,6 +20,22 @@ rustup show
 
 Install Go 1.26.5 from the official archive or through the CI setup action. Set `GOTOOLCHAIN=local` in CI so the Go command cannot silently download a different toolchain. Rustup reads `rust-toolchain.toml` and installs Rust 1.97.1 with rustfmt and clippy.
 
+Database code generation uses sqlc 1.31.1 and `github.com/jackc/pgx/v5`
+5.10.0. Download sqlc only from the release asset named in
+`toolchains.json`, verify the recorded SHA-256 before extraction, and run it
+with `node scripts/toolchain.mjs doctor --scope=database`. Do not substitute a
+Homebrew, Snap, Docker, or `go install ...@latest` binary as release evidence.
+P03-01A owns generated-query determinism and migration round trips; this
+toolchain baseline does not create or alter a database.
+
+The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
+features disabled. `client-core` tests enable its bundled plain-SQLite backend,
+which supplies SQLite 3.53.2 and satisfies the repository's SQLite 3.51.3
+minimum. This test backend is not encryption evidence and must not be used as a
+production database-open path. P05-01B owns selection and validation of the
+keyed SQLCipher/SEE-compatible production backend, including DB/WAL/SHM
+encryption and wrong-key rejection on every release platform.
+
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
 Android dependency locking runs in strict mode. When an Android dependency changes intentionally, regenerate `apps/android/gradle.lockfile` with `./gradlew :apps:android:assembleDebug :apps:android:testDebugUnitTest :apps:android:lintDebug --write-locks --no-daemon`, review the complete lock diff, and commit it with the manifest change. Normal CI commands must never use `--write-locks`.
@@ -29,6 +45,7 @@ Android dependency locking runs in strict mode. When an Android dependency chang
 | Target | Exact verification | Build and test |
 | --- | --- | --- |
 | Workspace / Linux services | `node scripts/toolchain.mjs doctor --scope=workspace` | TypeScript package scripts; `cargo test --workspace --exclude threadline-desktop-host --locked`; `go test ./...` and `go build ./...` in `services/` |
+| PostgreSQL code generation | `node scripts/toolchain.mjs doctor --scope=database` | `sqlc generate` from the reviewed `db/sqlc.yaml`; a second generation must produce no diff |
 | macOS Desktop | `node scripts/toolchain.mjs doctor --scope=desktop,apple` | `pnpm --filter @threadline/desktop build:native` |
 | Windows Desktop | `node scripts/toolchain.mjs doctor --scope=desktop` | `pnpm --filter @threadline/desktop build:native` in an MSVC runner |
 | Linux Desktop | same desktop doctor after installing Tauri WebView prerequisites | `pnpm --filter @threadline/desktop build:native` |

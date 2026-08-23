@@ -11,6 +11,12 @@ import "threadline/type/v1/common.proto";
 // Membership changes here are application-level facts. Their cryptographic
 // effect is completed separately by an accepted MLS Commit: this service orders
 // the change and authorizes it, and never handles group secrets.
+//
+// Every conversation, Space, Actor and Workspace Binding identifier is resolved
+// inside the tenant from the authenticated Device-bound session. Mixed-tenant
+// identifiers fail with ERROR_CODE_TENANT_MISMATCH before existence or
+// membership data is disclosed. Every read is re-authorized against current
+// Membership and ACL state; possession of an identifier is never authority.
 service ChannelService {
   rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse);
 
@@ -52,6 +58,8 @@ service ChannelService {
 }
 
 message CreateChannelRequest {
+  // The Space must belong to the caller's authenticated tenant and the caller
+  // must be authorized to create Channels there.
   string space_id = 1;
 
   string name = 2;
@@ -125,6 +133,8 @@ message ArchiveChannelResponse {
 message AddMembersRequest {
   string channel_id = 1;
 
+  // Every Actor must be an active Member of the authenticated tenant. The
+  // entire command fails atomically if any Actor belongs elsewhere.
   repeated threadline.type.v1.ActorRef actors = 2;
 
   ChannelMemberRole role = 3;
@@ -174,6 +184,8 @@ message SetAgentPolicyResponse {
 }
 
 message CreateDirectMessageRequest {
+  // The caller and every participant must be active in the authenticated
+  // tenant. The caller is included by Core even when omitted here.
   repeated threadline.type.v1.ActorRef participants = 1;
 
   string crypto_profile = 2;

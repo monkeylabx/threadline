@@ -1,4 +1,6 @@
-//! Dependency-free client-core workspace skeleton.
+//! Shared client-core contracts and durable local state.
+
+pub mod storage;
 
 /// Version of the empty host contract exposed by the M0 skeleton.
 pub const HOST_CONTRACT_VERSION: u32 = 1;
