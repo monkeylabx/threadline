@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   pins,
+  postgresCIImage,
   resolveProbeInvocation,
   validateDatabasePins,
   validateWorkflowPins,
@@ -25,6 +26,11 @@ const databaseSources = {
 
 test("the checked-in workflow has no toolchain pin drift", () => {
   assert.deepEqual(validateWorkflowPins(workflow), []);
+});
+
+test("a drifted PostgreSQL CI image fails verification", () => {
+  const drifted = workflow.replace(postgresCIImage, "postgres:16.4-alpine");
+  assert.match(validateWorkflowPins(drifted).join("\n"), /CI PostgreSQL image/);
 });
 
 test("database generator, driver, and schema pins are internally consistent", () => {
