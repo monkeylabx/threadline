@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AddDirectMessageParticipant(ctx context.Context, arg AddDirectMessageParticipantParams) (DomainDirectMessageParticipant, error)
+	AppendAuditEventAndAdvanceHead(ctx context.Context, arg AppendAuditEventAndAdvanceHeadParams) (AppendAuditEventAndAdvanceHeadRow, error)
 	ArchiveActiveChannel(ctx context.Context, arg ArchiveActiveChannelParams) (ArchiveActiveChannelRow, error)
 	CreateActiveChannelMembership(ctx context.Context, arg CreateActiveChannelMembershipParams) (DomainChannelMembership, error)
 	CreateChannel(ctx context.Context, arg CreateChannelParams) (DomainChannel, error)
@@ -21,8 +22,11 @@ type Querier interface {
 	CreateSpace(ctx context.Context, arg CreateSpaceParams) (DomainSpace, error)
 	DatabaseReady(ctx context.Context) (int64, error)
 	EndActiveChannelMembership(ctx context.Context, arg EndActiveChannelMembershipParams) (DomainChannelMembership, error)
+	EnsureAuditTenantHead(ctx context.Context, tenantID string) error
 	FinalizeDirectMessageParticipants(ctx context.Context, arg FinalizeDirectMessageParticipantsParams) (DomainDirectMessage, error)
 	GetActiveChannelMembership(ctx context.Context, arg GetActiveChannelMembershipParams) (DomainChannelMembership, error)
+	GetAuditEvent(ctx context.Context, arg GetAuditEventParams) (DomainAuditEvent, error)
+	GetAuditTenantHead(ctx context.Context, tenantID string) (DomainAuditTenantHead, error)
 	GetAuthorizationTransactionIsolation(ctx context.Context) (string, error)
 	GetChannel(ctx context.Context, arg GetChannelParams) (DomainChannel, error)
 	GetCurrentResourceACLSnapshot(ctx context.Context, arg GetCurrentResourceACLSnapshotParams) (GetCurrentResourceACLSnapshotRow, error)
@@ -36,6 +40,7 @@ type Querier interface {
 	ListDirectMessageParticipants(ctx context.Context, arg ListDirectMessageParticipantsParams) ([]DomainDirectMessageParticipant, error)
 	ListResourceACLEntries(ctx context.Context, arg ListResourceACLEntriesParams) ([]ListResourceACLEntriesRow, error)
 	LockActiveAuthorizationChannelMembership(ctx context.Context, arg LockActiveAuthorizationChannelMembershipParams) (LockActiveAuthorizationChannelMembershipRow, error)
+	LockAuditAppendSlot(ctx context.Context, tenantID string) (LockAuditAppendSlotRow, error)
 	LockAuthorizationChannel(ctx context.Context, arg LockAuthorizationChannelParams) (LockAuthorizationChannelRow, error)
 	LockAuthorizationMember(ctx context.Context, arg LockAuthorizationMemberParams) (LockAuthorizationMemberRow, error)
 	LockAuthorizationOrganization(ctx context.Context, tenantID string) (LockAuthorizationOrganizationRow, error)
@@ -43,6 +48,7 @@ type Querier interface {
 	LockChannelForACLReplacement(ctx context.Context, arg LockChannelForACLReplacementParams) (string, error)
 	LockCurrentAuthorizationACL(ctx context.Context, arg LockCurrentAuthorizationACLParams) (int64, error)
 	LockSpaceForACLReplacement(ctx context.Context, arg LockSpaceForACLReplacementParams) (string, error)
+	ObserveAuditEventIdempotency(ctx context.Context, arg ObserveAuditEventIdempotencyParams) (ObserveAuditEventIdempotencyRow, error)
 	ObserveExactDomainEventAndInitialDestination(ctx context.Context, arg ObserveExactDomainEventAndInitialDestinationParams) (ObserveExactDomainEventAndInitialDestinationRow, error)
 	SealResourceACLSnapshot(ctx context.Context, arg SealResourceACLSnapshotParams) (int64, error)
 	SetCurrentResourceACL(ctx context.Context, arg SetCurrentResourceACLParams) error

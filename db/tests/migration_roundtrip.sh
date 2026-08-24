@@ -21,8 +21,11 @@ OUTBOX_UP="$DB_DIR/migrations/000008_transactional_outbox.up.sql"
 OUTBOX_DOWN="$DB_DIR/migrations/000008_transactional_outbox.down.sql"
 OUTBOX_WORKER_OPS_UP="$DB_DIR/migrations/000009_transactional_outbox_worker_ops.up.sql"
 OUTBOX_WORKER_OPS_DOWN="$DB_DIR/migrations/000009_transactional_outbox_worker_ops.down.sql"
+AUDIT_EVENT_UP="$DB_DIR/migrations/000010_audit_event.up.sql"
+AUDIT_EVENT_DOWN="$DB_DIR/migrations/000010_audit_event.down.sql"
 OUTBOX_CORE_QUERY="$DB_DIR/queries/core/transactional_outbox.sql"
 OUTBOX_WORKER_QUERY="$DB_DIR/queries/worker/transactional_outbox.sql"
+AUDIT_EVENT_CORE_QUERY="$DB_DIR/queries/core/audit_event.sql"
 CORE_DBGEN_DIR="$DB_DIR/../services/core/internal/dbgen"
 WORKER_DBGEN_DIR="$DB_DIR/../services/worker/internal/dbgen"
 
@@ -56,8 +59,11 @@ verify_static_contract() {
   test -f "$OUTBOX_DOWN" || postgres_test_fail "missing 000008 down migration"
   test -f "$OUTBOX_WORKER_OPS_UP" || postgres_test_fail "missing 000009 up migration"
   test -f "$OUTBOX_WORKER_OPS_DOWN" || postgres_test_fail "missing 000009 down migration"
+  test -f "$AUDIT_EVENT_UP" || postgres_test_fail "missing 000010 up migration"
+  test -f "$AUDIT_EVENT_DOWN" || postgres_test_fail "missing 000010 down migration"
   test -f "$OUTBOX_CORE_QUERY" || postgres_test_fail "missing 000008 Core query surface"
   test -f "$OUTBOX_WORKER_QUERY" || postgres_test_fail "missing 000009 Worker query surface"
+  test -f "$AUDIT_EVENT_CORE_QUERY" || postgres_test_fail "missing 000010 Core query surface"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -132,6 +138,19 @@ verify_static_contract() {
   if grep -REiq 'claim_token_digest|ClaimTokenDigest' "$WORKER_DBGEN_DIR"; then
     postgres_test_fail "generated Worker surface exposes claim-token digest storage"
   fi
+  grep -Eq '^CREATE TABLE domain\.audit_events \($' "$AUDIT_EVENT_UP" || postgres_test_fail "000010 up must create domain.audit_events"
+  grep -Eq '^CREATE TABLE domain\.audit_tenant_heads \($' "$AUDIT_EVENT_UP" || postgres_test_fail "000010 up must create domain.audit_tenant_heads"
+  grep -Eq '^CREATE TRIGGER audit_events_append_guard$' "$AUDIT_EVENT_UP" || postgres_test_fail "000010 must guard database-owned append slots"
+  grep -Eq '^CREATE TRIGGER audit_events_immutable_guard$' "$AUDIT_EVENT_UP" || postgres_test_fail "000010 must make Audit Events immutable"
+  grep -Eq '^CREATE CONSTRAINT TRIGGER audit_events_covered_by_head_at_commit$' "$AUDIT_EVENT_UP" || postgres_test_fail "000010 must defer final Tenant-head coverage"
+  grep -Eq '^DROP TABLE domain\.audit_tenant_heads;$' "$AUDIT_EVENT_DOWN" || postgres_test_fail "000010 down must drop Tenant heads exactly"
+  grep -Eq '^DROP TABLE domain\.audit_events;$' "$AUDIT_EVENT_DOWN" || postgres_test_fail "000010 down must drop Audit Events exactly"
+  if grep -Eiq '(payload|metadata|details|diagnostic|message_text|file_path|workspace_path)[[:space:]]' "$AUDIT_EVENT_UP"; then
+    postgres_test_fail "000010 contains a forbidden arbitrary-data escape hatch"
+  fi
+  if grep -Eiq 'UPDATE[[:space:]]+domain\.audit_events|DELETE[[:space:]]+FROM[[:space:]]+domain\.audit_events' "$AUDIT_EVENT_CORE_QUERY"; then
+    postgres_test_fail "000010 Core query surface exposes generic Audit mutation"
+  fi
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -159,9 +178,11 @@ apply_up_migrations() {
   psql_test --file="$RESOURCE_ACL_UP"
   psql_test --file="$OUTBOX_UP"
   psql_test --file="$OUTBOX_WORKER_OPS_UP"
+  psql_test --file="$AUDIT_EVENT_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$AUDIT_EVENT_DOWN"
   psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
   psql_test --file="$OUTBOX_DOWN"
   psql_test --file="$RESOURCE_ACL_DOWN"
@@ -203,6 +224,13 @@ test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000007 down changed 
 psql_test --file="$RESOURCE_ACL_UP"
 psql_test --file="$OUTBOX_UP"
 psql_test --file="$OUTBOX_WORKER_OPS_UP"
+psql_test --file="$AUDIT_EVENT_DOWN"
+roundtrip_tenant_count=$(
+  psql_test --tuples-only --no-align \
+    --command="SELECT count(*) FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
+)
+test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000010 down changed data owned by a prior migration"
+psql_test --file="$AUDIT_EVENT_UP"
 psql_test --command="DELETE FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
 
 apply_down_migrations
@@ -213,6 +241,7 @@ apply_up_migrations
 "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$AUDIT_EVENT_DOWN"
 psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
 psql_test --file="$OUTBOX_DOWN"
 psql_test --file="$RESOURCE_ACL_DOWN"

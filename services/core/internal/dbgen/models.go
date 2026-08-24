@@ -8,6 +8,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DomainAuditEvent struct {
+	TenantID           string
+	AuditEventID       string
+	ContractVersion    int16
+	TenantSequence     int64
+	RecordedAt         pgtype.Timestamptz
+	PrincipalActorType int16
+	PrincipalActorID   string
+	Action             string
+	Outcome            string
+	Reason             string
+	TargetType         string
+	TargetID           string
+	TargetVersion      *int64
+	PolicyVersion      string
+	RequestID          string
+	ApprovalID         *string
+	RecoveryCaseID     *string
+	EvidenceDigest     []byte
+	PreviousEventHash  []byte
+	EventHash          []byte
+}
+
+type DomainAuditTenantHead struct {
+	TenantID         string
+	LastSequence     int64
+	LastAuditEventID *string
+	LastEventHash    []byte
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type DomainChannel struct {
 	TenantID    string
 	ChannelID   string
