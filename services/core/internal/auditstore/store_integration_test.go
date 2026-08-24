@@ -3,6 +3,7 @@ package auditstore
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -115,6 +116,11 @@ func TestAuditStorePostgresSerializesConcurrentExactRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = secondConnection.Close(context.Background()) })
+	observerConnection, err := pgx.ConnectConfig(ctx, database.Config().Copy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = observerConnection.Close(context.Background()) })
 	tx1, err := database.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -130,12 +136,26 @@ func TestAuditStorePostgresSerializesConcurrentExactRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := make(chan concurrentAppendResult, 1)
+	appendCtx, cancelAppend := context.WithCancel(ctx)
+	defer cancelAppend()
+	blockedPID := secondConnection.PgConn().PID()
 	go func() {
-		got, appendErr := appendEvent(ctx, tx2, testCandidate())
+		got, appendErr := appendEvent(appendCtx, tx2, testCandidate())
 		result <- concurrentAppendResult{event: got, err: appendErr}
 	}()
-	waitForAuditStoreLock(t, ctx, tx1, secondConnection.PgConn().PID(), result)
+	completed, waitErr := waitForAuditStoreLock(ctx, observerConnection, blockedPID, result)
+	if waitErr != nil {
+		_ = tx1.Rollback(ctx)
+		cancelAppend()
+		if !completed {
+			<-result
+		}
+		_ = tx2.Rollback(ctx)
+		t.Fatal(waitErr)
+	}
 	if err := tx1.Commit(ctx); err != nil {
+		cancelAppend()
+		<-result
 		_ = tx2.Rollback(ctx)
 		t.Fatal(err)
 	}
@@ -147,6 +167,8 @@ func TestAuditStorePostgresSerializesConcurrentExactRetry(t *testing.T) {
 			t.Fatalf("concurrent retry = (%#v, %v), want existing Event", got.event, got.err)
 		}
 	case <-time.After(3 * time.Second):
+		cancelAppend()
+		<-result
 		_ = tx2.Rollback(ctx)
 		t.Fatal("concurrent retry did not resume after head commit")
 	}
@@ -236,32 +258,30 @@ func appendAndCommit(t *testing.T, ctx context.Context, database *pgx.Conn, inpu
 }
 
 func waitForAuditStoreLock(
-	t *testing.T,
 	ctx context.Context,
-	tx pgx.Tx,
+	observer *pgx.Conn,
 	blockedPID uint32,
 	result <-chan concurrentAppendResult,
-) {
-	t.Helper()
+) (bool, error) {
 	deadline := time.Now().Add(3 * time.Second)
 	for {
 		select {
 		case got := <-result:
-			t.Fatalf("second append returned before the first transaction completed: %v", got.err)
+			return true, fmt.Errorf("second append returned before the first transaction completed: %v", got.err)
 		default:
 		}
 		var waiting bool
-		if err := tx.QueryRow(ctx, `
-			SELECT state = 'active' AND wait_event_type = 'Lock'
+		if err := observer.QueryRow(ctx, `
+			SELECT COALESCE(state = 'active' AND wait_event_type = 'Lock', false)
 			FROM pg_stat_activity WHERE pid = $1
 		`, blockedPID).Scan(&waiting); err != nil {
-			t.Fatal(err)
+			return false, fmt.Errorf("observe second backend lock wait: %w", err)
 		}
 		if waiting {
-			return
+			return false, nil
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("second backend never entered a PostgreSQL lock wait")
+			return false, fmt.Errorf("second backend never entered a PostgreSQL lock wait")
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
