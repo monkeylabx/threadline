@@ -112,7 +112,7 @@ adapter, P05-01, and M0/G0 remain `NOT RUN` or out of scope.
 
 Android uses the committed Gradle Wrapper, Temurin 17.0.19+10, `compileSdk = 37` with SDK package `platforms;android-37.0`, Build Tools 36.0.0, and NDK 28.2.13676358. Apple builds use `/Applications/Xcode_26.6.app/Contents/Developer`, Xcode build 17F113, and its bundled Swift 6.3; do not mix a swift.org toolchain into Apple builds.
 
-Android dependency locking runs in strict mode. When an Android dependency changes intentionally, regenerate `apps/android/gradle.lockfile` with `./gradlew :apps:android:assembleDebug :apps:android:testDebugUnitTest :apps:android:lintDebug --write-locks --no-daemon`, review the complete lock diff, and commit it with the manifest change. Normal CI commands must never use `--write-locks`.
+Android dependency locking runs in strict mode. When an Android dependency changes intentionally, regenerate `apps/android/gradle.lockfile` with `./apps/android/gradlew -p apps/android assembleDebug testDebugUnitTest lintDebug --write-locks --no-daemon`, review the complete lock diff, and commit it with the manifest change. Normal CI commands must never use `--write-locks`.
 
 ## Commands by target
 
@@ -124,7 +124,7 @@ Android dependency locking runs in strict mode. When an Android dependency chang
 | Windows Desktop | `node scripts/toolchain.mjs doctor --scope=desktop` | `pnpm --filter @threadline/desktop build:native` in an MSVC runner |
 | Linux Desktop | same desktop doctor after installing Tauri WebView prerequisites | `pnpm --filter @threadline/desktop build:native` |
 | iOS | `node scripts/toolchain.mjs doctor --scope=apple` | `swift test --package-path apps/ios`; unsigned iOS Simulator `xcodebuild` command from `.github/workflows/build.yml` |
-| Android | `node scripts/toolchain.mjs doctor --scope=android` | `./gradlew :apps:android:assembleDebug :apps:android:testDebugUnitTest :apps:android:lintDebug --no-daemon` |
+| Android | `node scripts/toolchain.mjs doctor --scope=android` | `./apps/android/gradlew -p apps/android assembleDebug testDebugUnitTest lintDebug --no-daemon` |
 
 The Desktop web page and icon are build-only placeholders. They establish a real Tauri host but do not define product design, navigation, IPC commands, permissions, or business behavior.
 

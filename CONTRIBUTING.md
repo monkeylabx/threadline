@@ -27,6 +27,10 @@ npm run toolchain:verify
 
 `make doctor|build|test|lint|verify` is an equivalent convenience entry on systems with Make. The root Node script invokes each language tool without a shell so the command semantics remain portable.
 
+The repository root is the shared workspace interface. Multi-module manifests stay there (`package.json`, `pnpm-workspace.yaml`, and the Cargo workspace), while a single module owns its build implementation: Android keeps its Gradle project and Wrapper under `apps/android/`, Go keeps its module under `services/`, and protocol generation configuration lives under `proto/`. Use the root commands above instead of depending on those internal paths from unrelated modules.
+
+`AGENTS.md` is shared repository guidance. Personal Agent installations and caches (`.agents/`, `.codex/`, `.codex-version`, and `skills-lock.json`) are local workstation state and are ignored.
+
 T009 freezes every toolchain in `toolchains.json` and its native version file. Run `npm run toolchain:verify` after changing any version, lockfile, Gradle Wrapper, platform runner, or GitHub Action. Upgrades must update all repeated pins and checksums in one Integration-owned change; never replace a pin with `latest`, a moving major tag, `^`, or `~`.
 
 Platform setup and unsigned build commands are documented in `docs/build/reproducible-builds.md`. Research sources and compatibility reasoning live in `docs/build/toolchain-research.md`.

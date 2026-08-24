@@ -47,7 +47,7 @@ assertCleanBootstrapEnvironment();
 
 const toolchain = JSON.parse(readFileSync(join(protoRoot, "toolchain.lock.json"), "utf8"));
 const workspaceToolchain = JSON.parse(readFileSync(join(repositoryRoot, "toolchains.json"), "utf8"));
-const generationPlan = JSON.parse(readFileSync(join(repositoryRoot, "buf.gen.yaml"), "utf8"));
+const generationPlan = JSON.parse(readFileSync(join(protoRoot, "buf.gen.yaml"), "utf8"));
 const generatorTools = [
   "protoc-gen-go",
   "protoc-gen-connect-go",

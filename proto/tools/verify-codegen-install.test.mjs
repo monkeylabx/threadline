@@ -32,7 +32,7 @@ async function fixture() {
   mkdirSync(join(root, "proto", "tools"), { recursive: true });
   cpSync(new URL("./verify-codegen.mjs", import.meta.url), join(root, "proto", "tools", "verify-codegen.mjs"));
   cpSync(new URL("../toolchain.lock.json", import.meta.url), join(root, "proto", "toolchain.lock.json"));
-  cpSync(new URL("../../buf.gen.yaml", import.meta.url), join(root, "buf.gen.yaml"));
+  cpSync(new URL("../buf.gen.yaml", import.meta.url), join(root, "proto", "buf.gen.yaml"));
   cpSync(new URL("../../toolchains.json", import.meta.url), join(root, "toolchains.json"));
   const fakeGit = join(root, "fake-git.mjs");
   writeFileSync(fakeGit, "// A clean git-status double intentionally writes no output.\n", "utf8");
