@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -261,6 +262,11 @@ func TestAuditEventHeadLockSerializesConcurrentAppendIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = secondConnection.Close(context.Background()) })
+	observerConnection, err := pgx.ConnectConfig(ctx, database.Config().Copy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = observerConnection.Close(context.Background()) })
 	tx1, err := database.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -280,49 +286,67 @@ func TestAuditEventHeadLockSerializesConcurrentAppendIntegration(t *testing.T) {
 		err  error
 	}
 	result := make(chan slotResult, 1)
+	lockCtx, cancelLock := context.WithCancel(ctx)
+	defer cancelLock()
+	blockedPID := secondConnection.PgConn().PID()
 	go func() {
-		slot, lockErr := New(tx2).LockAuditAppendSlot(ctx, "tenant-audit-concurrent-synthetic")
+		slot, lockErr := New(tx2).LockAuditAppendSlot(lockCtx, "tenant-audit-concurrent-synthetic")
 		result <- slotResult{slot: slot, err: lockErr}
 	}()
 	deadline := time.Now().Add(3 * time.Second)
+	var waitErr error
+	secondCompleted := false
 	for {
 		select {
 		case got := <-result:
-			_ = tx1.Rollback(ctx)
-			_ = tx2.Rollback(ctx)
-			t.Fatalf("second head lock returned before first transaction completed: %v", got.err)
+			secondCompleted = true
+			waitErr = fmt.Errorf("second head lock returned before first transaction completed: %v", got.err)
 		default:
 		}
+		if waitErr != nil {
+			break
+		}
 		var waiting bool
-		err = tx1.QueryRow(ctx, `
+		err = observerConnection.QueryRow(ctx, `
 			SELECT COALESCE(state = 'active' AND wait_event_type = 'Lock', false)
 			FROM pg_stat_activity
 			WHERE pid = $1
-		`, secondConnection.PgConn().PID()).Scan(&waiting)
+		`, blockedPID).Scan(&waiting)
 		if err != nil {
-			_ = tx1.Rollback(ctx)
-			_ = tx2.Rollback(ctx)
-			t.Fatal(err)
+			waitErr = fmt.Errorf("observe second backend lock wait: %w", err)
+			break
 		}
 		if waiting {
 			break
 		}
 		if time.Now().After(deadline) {
-			_ = tx1.Rollback(ctx)
-			_ = tx2.Rollback(ctx)
-			t.Fatal("second backend never entered a PostgreSQL lock wait")
+			waitErr = fmt.Errorf("second backend never entered a PostgreSQL lock wait")
+			break
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+	if waitErr != nil {
+		_ = tx1.Rollback(ctx)
+		cancelLock()
+		if !secondCompleted {
+			<-result
+		}
+		_ = tx2.Rollback(ctx)
+		t.Fatal(waitErr)
 	}
 	params := paramsForSlot(slot1, auditCandidate{
 		tenantID: "tenant-audit-concurrent-synthetic", eventID: "audit-concurrent-1", hashByte: 20,
 	})
 	if _, err := New(tx1).AppendAuditEventAndAdvanceHead(ctx, params); err != nil {
 		_ = tx1.Rollback(ctx)
+		cancelLock()
+		<-result
 		_ = tx2.Rollback(ctx)
 		t.Fatal(err)
 	}
 	if err := tx1.Commit(ctx); err != nil {
+		cancelLock()
+		<-result
 		_ = tx2.Rollback(ctx)
 		t.Fatal(err)
 	}
@@ -333,6 +357,8 @@ func TestAuditEventHeadLockSerializesConcurrentAppendIntegration(t *testing.T) {
 			t.Fatalf("serialized slot = (%#v, %v), want sequence 2", got.slot, got.err)
 		}
 	case <-time.After(3 * time.Second):
+		cancelLock()
+		<-result
 		_ = tx2.Rollback(ctx)
 		t.Fatal("second head lock did not resume after commit")
 	}
