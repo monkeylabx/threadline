@@ -260,6 +260,8 @@ const authorizationContractTestPath = join(protoRoot, "tools", "verify-authoriza
 assert(statSync(authorizationContractTestPath).isFile(), "P03-05B authorization behavior verifier must exist");
 const capabilityGrantContractTestPath = join(protoRoot, "tools", "verify-capability-grant-contracts.mjs");
 assert(statSync(capabilityGrantContractTestPath).isFile(), "P03-06B Capability Grant signature verifier must exist");
+const auditRetentionContractTestPath = join(protoRoot, "tools", "verify-audit-retention-contracts.mjs");
+assert(statSync(auditRetentionContractTestPath).isFile(), "P03-07A Audit/Retention metadata verifier must exist");
 const cryptoContractTestPath = join(protoRoot, "tools", "verify-crypto-contracts.mjs");
 assert(statSync(cryptoContractTestPath).isFile(), "T019 crypto/recovery behavior verifier must exist");
 const cryptoContractManifest = JSON.parse(read(join(repositoryRoot, "test", "fixtures", "proto", "crypto", "manifest.json")));
@@ -305,6 +307,8 @@ const authorizationContractTests = spawnSync(process.execPath, [authorizationCon
 if (authorizationContractTests.status !== 0) errors.push(`${authorizationContractTests.stdout ?? ""}${authorizationContractTests.stderr ?? ""}`.trim());
 const capabilityGrantContractTests = spawnSync(process.execPath, [capabilityGrantContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (capabilityGrantContractTests.status !== 0) errors.push(`${capabilityGrantContractTests.stdout ?? ""}${capabilityGrantContractTests.stderr ?? ""}`.trim());
+const auditRetentionContractTests = spawnSync(process.execPath, [auditRetentionContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (auditRetentionContractTests.status !== 0) errors.push(`${auditRetentionContractTests.stdout ?? ""}${auditRetentionContractTests.stderr ?? ""}`.trim());
 const cryptoContractTests = spawnSync(process.execPath, [cryptoContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (cryptoContractTests.status !== 0) errors.push(`${cryptoContractTests.stdout ?? ""}${cryptoContractTests.stderr ?? ""}`.trim());
 const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
@@ -325,6 +329,7 @@ console.log("Threadline contract structure and representative Golden Frames are 
 console.log("Threadline T015 message/sync behavior fixtures are valid.");
 console.log("Threadline P03-05B authorization behavior fixtures are valid.");
 console.log("Threadline P03-06B Capability Grant signature fixtures are valid.");
+console.log("Threadline P03-07A Audit/Retention metadata fixtures are valid.");
 console.log("Threadline T019 crypto/recovery behavior fixtures are valid.");
 console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");
