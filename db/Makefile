@@ -4,7 +4,7 @@ SQLC_VERSION := 1.31.1
 CORE_GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
 WORKER_GENERATED_DIR := $(CURDIR)/../services/worker/internal/dbgen
 
-.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test
+.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test audit-event-go-test
 
 check-sqlc:
 	@actual="$$($(SQLC) version)"; test "$$actual" = "v$(SQLC_VERSION)" || { echo "sqlc v$(SQLC_VERSION) required; found $$actual" >&2; exit 1; }
@@ -30,6 +30,11 @@ transactional-outbox-worker-go-test:
 	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
 	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly -race \
 		./worker/internal/outboxdb -run '^TestAdapterPostgres' -count=1
+
+audit-event-go-test:
+	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
+	@cd "$(CURDIR)/../services" && GOTOOLCHAIN=local "$(GO)" test -mod=readonly -race \
+		./core/internal/dbgen -run '^TestAuditEvent' -count=1
 
 organization-test:
 	@sh "$(CURDIR)/tests/organization_persistence.sh"

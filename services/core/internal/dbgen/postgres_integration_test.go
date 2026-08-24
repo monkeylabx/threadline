@@ -110,7 +110,7 @@ func applyPostgresTestMigrations(
 
 func knownPostgresTestSuite(suite string) bool {
 	switch suite {
-	case "organization", "member", "space", "channel_dm", "channel_membership":
+	case "organization", "member", "space", "channel_dm", "channel_membership", "audit_event":
 		return true
 	default:
 		return false
