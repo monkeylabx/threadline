@@ -1,6 +1,7 @@
 # Secret scan gate
 
-Status: P00-06A baseline
+Status: P00-06A activation validation; branch protection is enabled after this
+documentation-only pull request records a green trusted `Secret Scan` check.
 
 Every pull request runs the free, open-source Gitleaks CLI over the exact
 base-to-head commit range. The `pull_request_target` workflow executes only the
