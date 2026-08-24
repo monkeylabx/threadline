@@ -20,11 +20,11 @@ apps/desktop/src-tauri/gen/
 # Local Agent configuration and caches are workstation state, not product or
 # build inputs. Keep the shared AGENTS.md instructions, but never commit a
 # personal Codex installation, version marker, or downloaded skill catalog.
-.agents/
-.codex/
-.codex-version
-skills-lock.json
-.claude/settings.local.json
+/.agents/
+/.codex/
+/.codex-version
+/skills-lock.json
+/.claude/settings.local.json
 
 # Generated protocol SDKs. Reproduced by `make proto-generate`; never edited by
 # hand, so committing them would only create merge conflicts nobody can resolve.

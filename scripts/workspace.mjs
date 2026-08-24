@@ -243,6 +243,23 @@ function verifyStructure() {
     for (const path of missing) console.error(`[structure] missing: ${path}`);
     return false;
   }
+  const forbiddenAtRoot = [
+    ".nvmrc",
+    "buf.gen.yaml",
+    "buf.yaml",
+    "build.gradle.kts",
+    "go.work",
+    "gradle",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "settings.gradle.kts",
+  ];
+  const unexpected = forbiddenAtRoot.filter((path) => existsSync(join(root, path)));
+  if (unexpected.length > 0) {
+    for (const path of unexpected) console.error(`[structure] forbidden at repository root: ${path}`);
+    return false;
+  }
   if (!verifyPins()) return false;
   if (!textLint()) return false;
   console.log(`workspace structure ok (${required.length} required surfaces)`);

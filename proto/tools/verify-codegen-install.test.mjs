@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -54,6 +54,21 @@ async function testExclusiveLock() {
   }
 }
 
+async function testFormalBufConfigIsExplicit() {
+  const context = await fixture();
+  try {
+    assert.deepEqual(context.formalBufArguments("build", ["-o", "descriptor.binpb"]), [
+      "build",
+      "--config",
+      join(realpathSync(context.root), "proto", "buf.formal.yaml"),
+      "-o",
+      "descriptor.binpb",
+    ]);
+  } finally {
+    rmSync(context.root, { recursive: true, force: true });
+  }
+}
+
 async function testRenameFailureRollback() {
   const context = await fixture();
   try {
@@ -91,6 +106,7 @@ async function testSymlinkEscapeRejected() {
 }
 
 await testExclusiveLock();
+await testFormalBufConfigIsExplicit();
 await testRenameFailureRollback();
 await testSymlinkEscapeRejected();
 console.log("Threadline codegen repository lock, rollback, and symlink tests passed.");
