@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ValidateAndNarrow validates an untrusted request against trusted authority
@@ -113,7 +114,8 @@ func validIdentifiers(values []string) bool {
 }
 
 func validIdentifier(value string) bool {
-	if value == "" || strings.TrimSpace(value) != value || strings.ContainsAny(value, "*?") {
+	if !utf8.ValidString(value) || value == "" || strings.TrimSpace(value) != value ||
+		strings.ContainsAny(value, "*?") {
 		return false
 	}
 	for _, character := range value {
