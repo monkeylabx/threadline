@@ -194,11 +194,20 @@ apply_down_migrations() {
   psql_test --file="$FOUNDATION_DOWN"
 }
 
+dump_domain_schema() {
+  if "$PG_DUMP" --help | grep -Fq -- '--restrict-key'; then
+    "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges \
+      --restrict-key=threadlinemigrationroundtrip "$test_db"
+    return
+  fi
+  "$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db"
+}
+
 schema_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FROM pg_namespace WHERE nspname = 'domain'")
 test "$schema_count" = "0" || postgres_test_fail "disposable database is not clean"
 
 apply_up_migrations
-"$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/first.sql"
+dump_domain_schema >"$temp_dir/first.sql"
 
 psql_test --command="
   INSERT INTO domain.organizations (tenant_id, display_name, state, policy_version)
@@ -238,7 +247,7 @@ schema_count=$(psql_test --tuples-only --no-align --command="SELECT count(*) FRO
 test "$schema_count" = "0" || postgres_test_fail "down migration did not remove schema domain"
 
 apply_up_migrations
-"$PG_DUMP" --schema-only --schema=domain --no-owner --no-privileges "$test_db" >"$temp_dir/second.sql"
+dump_domain_schema >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
 psql_test --file="$AUDIT_EVENT_DOWN"
