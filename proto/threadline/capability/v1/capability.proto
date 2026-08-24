@@ -92,6 +92,16 @@ enum GrantState {
   GRANT_STATE_REVOKED = 3;
 }
 
+// CapabilityGrantSignatureProfile fixes both the signing algorithm and the
+// language-neutral transcript encoding. Unknown profiles fail closed.
+enum CapabilityGrantSignatureProfile {
+  CAPABILITY_GRANT_SIGNATURE_PROFILE_UNSPECIFIED = 0;
+
+  // Ed25519 over the RFC 8785 JSON Canonicalization Scheme transcript defined
+  // by docs/architecture/capability-grant-signature-contract.md.
+  CAPABILITY_GRANT_SIGNATURE_PROFILE_ED25519_JCS_V1 = 1;
+}
+
 // CapabilityGrant is a short-lived authorization for one Actor to act on
 // defined resources for one Task.
 //
@@ -130,18 +140,40 @@ message CapabilityGrant {
 
   google.protobuf.Timestamp revoked_at = 12;
 
-  // Single-use value binding this Grant to one issuance, so a captured Grant
-  // cannot be replayed after revocation.
+  // Unique value binding this Grant to one issuance. It prevents transcript
+  // substitution but is not a replay cache: use-time Core state recheck is what
+  // rejects a captured Grant after revocation.
   bytes nonce = 13;
 
   // Policy version that authorized issuance, retained so a decision stays
   // explainable after policy changes.
   string policy_version = 14;
 
-  // Control plane signature over the canonical encoding of fields 1-14.
-  // connectord and locald verify this locally before honoring the Grant, so a
-  // compromised agentd cannot mint authority for itself.
+  // Control plane Ed25519 signature over the immutable v1 signed projection.
+  // The projection includes fields 1-8, 10-11, 13-14 and 16-19; it excludes
+  // mutable lifecycle fields 9 and 12 and these signature bytes. See
+  // docs/architecture/capability-grant-signature-contract.md. connectord and
+  // locald verify the signature locally before honoring the Grant, so a
+  // compromised agentd cannot mint authority for itself. Signature validity is
+  // not revocation evidence: every protected use still rechecks Core state.
   bytes signature = 15;
+
+  // Device selected as the Execution Owner for this Run. Before any use, the
+  // verifier compares this signed claim with an independently authenticated
+  // current Device identity. Signing a caller-supplied Device ID alone does not
+  // establish Device identity or prevent replay.
+  string execution_device_id = 16;
+
+  CapabilityGrantSignatureProfile signature_profile = 17;
+
+  // Tenant-scoped identifier of the control-plane verification key. The key
+  // identifier is signed and selects a trusted key-ring entry; it never carries
+  // private key material or authorizes an unknown key.
+  string signing_key_id = 18;
+
+  // Exact signed-projection schema version. v1 requires 1. This is independent
+  // of the protobuf package version so transcript evolution remains explicit.
+  uint32 signed_projection_version = 19;
 }
 
 // WorkspaceLease grants one Run exclusive write access to a workspace.

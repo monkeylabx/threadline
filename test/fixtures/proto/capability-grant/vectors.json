@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "valid": {
+    "id": "device-bound-ed25519-jcs-v1",
+    "grant": {
+      "capabilityGrantId": "grant-fixture-01",
+      "tenantId": "tenant-fixture-01",
+      "taskId": "task-fixture-01",
+      "runId": "run-fixture-01",
+      "grantee": {
+        "actorId": "agent-fixture-01",
+        "actorType": 2
+      },
+      "initiator": {
+        "actorId": "human-fixture-01",
+        "actorType": 1
+      },
+      "capabilities": [1, 5, 7, 9],
+      "resourceScope": {
+        "channelIds": ["channel-fixture-01"],
+        "dmIds": [],
+        "eventIds": ["event-fixture-01"],
+        "threadIds": [],
+        "fileIds": ["file-fixture-01"],
+        "workspaceBindingIds": ["workspace-fixture-01"],
+        "workspacePathPrefixes": ["docs", "src"],
+        "toolIds": ["tool-fixture-01"]
+      },
+      "state": "GRANT_STATE_ACTIVE",
+      "issuedAt": "2026-08-24T06:00:00.000000000Z",
+      "expiresAt": "2026-08-24T06:05:00.000000000Z",
+      "revokedAt": null,
+      "nonceHex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "policyVersion": "policy-fixture-01",
+      "signatureHex": "3dd1ba128da6e393c64d67e8cee85fc2acd96c8d04d283053b7973e03d5353d1e328154221580216f1ba6cdd6adc3f3217f8d78e300d896ff403866027cebd0e",
+      "executionDeviceId": "device-fixture-01",
+      "signatureProfile": "CAPABILITY_GRANT_SIGNATURE_PROFILE_ED25519_JCS_V1",
+      "signingKeyId": "capability-grant-fixture-key-01",
+      "signedProjectionVersion": 1
+    },
+    "publicKeyRawHex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+    "expectedTranscriptSha256": "bfabac0002de12fdd7ca562639c88411dd725f8f4e04fcfd47852c2e556b7a06",
+    "expectedAudience": {
+      "tenantId": "tenant-fixture-01",
+      "taskId": "task-fixture-01",
+      "runId": "run-fixture-01",
+      "grantee": {
+        "actorId": "agent-fixture-01",
+        "actorType": 2
+      },
+      "executionDeviceId": "device-fixture-01"
+    },
+    "requiresOnlineLifecycleRecheck": true
+  },
+  "rejectedMutations": [
+    { "id": "grant-id", "path": "capabilityGrantId", "value": "grant-fixture-02" },
+    { "id": "tenant", "path": "tenantId", "value": "tenant-fixture-02" },
+    { "id": "task", "path": "taskId", "value": "task-fixture-02" },
+    { "id": "run", "path": "runId", "value": "run-fixture-02" },
+    { "id": "grantee", "path": "grantee.actorId", "value": "agent-fixture-02" },
+    { "id": "grantee-type", "path": "grantee.actorType", "value": 3 },
+    { "id": "initiator", "path": "initiator.actorId", "value": "human-fixture-02" },
+    { "id": "initiator-type", "path": "initiator.actorType", "value": 2 },
+    { "id": "capability", "path": "capabilities.0", "value": 2 },
+    { "id": "scope", "path": "resourceScope.channelIds.0", "value": "channel-fixture-02" },
+    { "id": "issued-at", "path": "issuedAt", "value": "2026-08-24T06:00:01.000000000Z" },
+    { "id": "expiry", "path": "expiresAt", "value": "2026-08-24T06:04:59.000000000Z" },
+    { "id": "nonce", "path": "nonceHex", "value": "212122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f" },
+    { "id": "policy", "path": "policyVersion", "value": "policy-fixture-02" },
+    { "id": "device", "path": "executionDeviceId", "value": "device-fixture-02" },
+    { "id": "profile", "path": "signatureProfile", "value": "CAPABILITY_GRANT_SIGNATURE_PROFILE_UNSPECIFIED" },
+    { "id": "unknown-profile", "path": "signatureProfile", "value": 99 },
+    { "id": "key-id", "path": "signingKeyId", "value": "capability-grant-fixture-key-02" },
+    { "id": "projection-version", "path": "signedProjectionVersion", "value": 2 },
+    { "id": "signature", "path": "signatureHex", "value": "3cd1ba128da6e393c64d67e8cee85fc2acd96c8d04d283053b7973e03d5353d1e328154221580216f1ba6cdd6adc3f3217f8d78e300d896ff403866027cebd0e" },
+    { "id": "missing-device", "path": "executionDeviceId", "value": "" },
+    { "id": "unsorted-capabilities", "path": "capabilities", "value": [5, 1, 7, 9] },
+    { "id": "duplicate-capabilities", "path": "capabilities", "value": [1, 1, 5, 7, 9] },
+    { "id": "unsorted-scope", "path": "resourceScope.workspacePathPrefixes", "value": ["src", "docs"] },
+    { "id": "duplicate-scope", "path": "resourceScope.workspacePathPrefixes", "value": ["docs", "docs", "src"] },
+    { "id": "malformed-timestamp", "path": "expiresAt", "value": "2026-08-24T06:05:00Z" },
+    { "id": "malformed-key-id", "path": "signingKeyId", "value": "*" },
+    { "id": "malformed-unicode", "path": "tenantId", "value": "\ud800" }
+  ],
+  "rejectedContextMutations": [
+    { "id": "expected-tenant", "path": "tenantId", "value": "tenant-fixture-02" },
+    { "id": "expected-task", "path": "taskId", "value": "task-fixture-02" },
+    { "id": "expected-run", "path": "runId", "value": "run-fixture-02" },
+    { "id": "expected-grantee", "path": "grantee.actorId", "value": "agent-fixture-02" },
+    { "id": "expected-grantee-type", "path": "grantee.actorType", "value": 3 },
+    { "id": "expected-device", "path": "executionDeviceId", "value": "device-fixture-02" },
+    { "id": "trusted-key-missing", "path": "trustedPublicKeys.capability-grant-fixture-key-01", "value": null }
+  ],
+  "unsignedLifecycleMutations": [
+    { "id": "state", "path": "state", "value": "GRANT_STATE_REVOKED" },
+    { "id": "revoked-at", "path": "revokedAt", "value": "2026-08-24T06:02:00.000000000Z" }
+  ]
+}
