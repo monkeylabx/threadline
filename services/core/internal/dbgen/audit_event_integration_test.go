@@ -295,7 +295,7 @@ func TestAuditEventHeadLockSerializesConcurrentAppendIntegration(t *testing.T) {
 		}
 		var waiting bool
 		err = tx1.QueryRow(ctx, `
-			SELECT state = 'active' AND wait_event_type = 'Lock'
+			SELECT COALESCE(state = 'active' AND wait_event_type = 'Lock', false)
 			FROM pg_stat_activity
 			WHERE pid = $1
 		`, secondConnection.PgConn().PID()).Scan(&waiting)

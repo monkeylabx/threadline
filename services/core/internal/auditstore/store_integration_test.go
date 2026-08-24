@@ -252,7 +252,7 @@ func waitForAuditStoreLock(
 		}
 		var waiting bool
 		if err := tx.QueryRow(ctx, `
-			SELECT state = 'active' AND wait_event_type = 'Lock'
+			SELECT COALESCE(state = 'active' AND wait_event_type = 'Lock', false)
 			FROM pg_stat_activity WHERE pid = $1
 		`, blockedPID).Scan(&waiting); err != nil {
 			t.Fatal(err)
