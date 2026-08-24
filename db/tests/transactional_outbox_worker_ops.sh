@@ -536,8 +536,8 @@ psql_test --command="
   WITH expired AS (
     UPDATE domain.outbox_delivery_attempts
     SET outcome = 'lease_expired',
-        finished_at = clock_timestamp(),
-        evidence_not_before = clock_timestamp()
+        finished_at = statement_timestamp(),
+        evidence_not_before = statement_timestamp()
           + effective_retention_days::bigint * 86400 * interval '1 second'
     WHERE event_id = 'event-expired-synthetic'
       AND outcome = 'active'
@@ -730,8 +730,8 @@ psql_test --command="
   WITH expired AS (
     UPDATE domain.outbox_delivery_attempts
     SET outcome = 'lease_expired',
-        finished_at = clock_timestamp(),
-        evidence_not_before = clock_timestamp()
+        finished_at = statement_timestamp(),
+        evidence_not_before = statement_timestamp()
           + effective_retention_days::bigint * 86400 * interval '1 second'
     WHERE event_id = 'event-renew-cap-synthetic'
       AND outcome = 'active'
