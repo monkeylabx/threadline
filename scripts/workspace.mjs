@@ -9,6 +9,7 @@ import { doctor as toolchainDoctor, verifyPins } from "./toolchain.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const action = process.argv[2] ?? "doctor";
 const swiftScratch = join(tmpdir(), "threadline-swift-skeleton");
+const androidRoot = join(root, "apps", "android");
 const gradleCommand = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
 
 const desktopSource = "apps/desktop/src/main.ts";
@@ -86,18 +87,13 @@ function textLint() {
     "Makefile",
     ".java-version",
     ".node-version",
-    ".nvmrc",
     ".xcode-version",
-    "build.gradle.kts",
-    "go.work",
-    "gradlew",
-    "gradlew.bat",
-    "gradle.properties",
+    "apps/android/gradlew",
+    "apps/android/gradlew.bat",
     "package.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
     "rust-toolchain.toml",
-    "settings.gradle.kts",
     "toolchains.json",
   ];
 
@@ -109,7 +105,6 @@ function textLint() {
       else if (
         extensions.has(entry.name.slice(entry.name.lastIndexOf("."))) ||
         entry.name === "Makefile" ||
-        entry.name === "go.work" ||
         entry.name === "gradle.properties"
       ) {
         files.push(path);
@@ -123,7 +118,6 @@ function textLint() {
     "crates",
     "deploy",
     "docs/build",
-    "gradle",
     "packages",
     "proto",
     "scripts",
@@ -158,7 +152,7 @@ function build() {
       "--scratch-path",
       swiftScratch,
     ]),
-    run("android", gradleCommand, [":apps:android:assembleDebug", "--no-daemon"]),
+    run("android", gradleCommand, ["assembleDebug", "--no-daemon"], { cwd: androidRoot }),
   ].every(Boolean);
 }
 
@@ -177,7 +171,7 @@ function test() {
       "--scratch-path",
       swiftScratch,
     ]),
-    run("android", gradleCommand, [":apps:android:testDebugUnitTest", "--no-daemon"]),
+    run("android", gradleCommand, ["testDebugUnitTest", "--no-daemon"], { cwd: androidRoot }),
   ].every(Boolean);
 }
 
@@ -193,7 +187,7 @@ function lint() {
       env: { GOTOOLCHAIN: "local" },
     }),
     run("swift", "swift", ["package", "--package-path", "apps/ios", "dump-package"]),
-    run("android", gradleCommand, [":apps:android:lintDebug", "--no-daemon"]),
+    run("android", gradleCommand, ["lintDebug", "--no-daemon"], { cwd: androidRoot }),
   ].every(Boolean);
 }
 
@@ -204,14 +198,15 @@ function verifyStructure() {
     "toolchains.json",
     "rust-toolchain.toml",
     "pnpm-lock.yaml",
-    "gradlew",
-    "gradle/wrapper/gradle-wrapper.jar",
-    "gradle/wrapper/gradle-wrapper.properties",
+    "apps/android/gradlew",
+    "apps/android/gradlew.bat",
+    "apps/android/gradle/wrapper/gradle-wrapper.jar",
+    "apps/android/gradle/wrapper/gradle-wrapper.properties",
+    "apps/android/settings.gradle.kts",
+    "apps/android/gradle.properties",
     "apps/android/gradle.lockfile",
-    "go.work",
     "package.json",
     "pnpm-workspace.yaml",
-    "settings.gradle.kts",
     "apps/desktop/package.json",
     "apps/desktop/src-tauri/Cargo.toml",
     "apps/desktop/src-tauri/tauri.conf.json",
@@ -246,6 +241,23 @@ function verifyStructure() {
   const missing = required.filter((path) => !existsSync(join(root, path)));
   if (missing.length > 0) {
     for (const path of missing) console.error(`[structure] missing: ${path}`);
+    return false;
+  }
+  const forbiddenAtRoot = [
+    ".nvmrc",
+    "buf.gen.yaml",
+    "buf.yaml",
+    "build.gradle.kts",
+    "go.work",
+    "gradle",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "settings.gradle.kts",
+  ];
+  const unexpected = forbiddenAtRoot.filter((path) => existsSync(join(root, path)));
+  if (unexpected.length > 0) {
+    for (const path of unexpected) console.error(`[structure] forbidden at repository root: ${path}`);
     return false;
   }
   if (!verifyPins()) return false;

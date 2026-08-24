@@ -12,6 +12,8 @@ avdmanager="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/avdmanager"
 emulator="${ANDROID_SDK_ROOT}/emulator/emulator"
 adb="${ANDROID_SDK_ROOT}/platform-tools/adb"
 export ANDROID_AVD_HOME="${avd_home}"
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+android_root="${repository_root}/apps/android"
 
 mkdir -p "${ANDROID_AVD_HOME}"
 
@@ -90,7 +92,7 @@ fi
 "${adb}" shell settings put global transition_animation_scale 0
 "${adb}" shell settings put global animator_duration_scale 0
 
-./gradlew :apps:android:connectedDebugAndroidTest --no-daemon
+"${android_root}/gradlew" -p "${android_root}" connectedDebugAndroidTest --no-daemon
 
 {
   echo "### T010-A Android Emulator"

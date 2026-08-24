@@ -99,7 +99,7 @@ THREADLINE_FFI_LIBRARY_DIR=<target/debug> \
   swift test --package-path apps/ios
 
 THREADLINE_FFI_LIBRARY_DIR=<target/debug> \
-  ./gradlew :apps:android:testDebugUnitTest :apps:android:lintDebug --no-daemon
+  ./apps/android/gradlew -p apps/android testDebugUnitTest lintDebug --no-daemon
 
 # CI-only on the pinned Xcode/Android images
 bash scripts/ci/run-ios-simulator-ffi.sh

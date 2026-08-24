@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 const protoRoot = join(repositoryRoot, "proto");
+const formalBufConfig = join(protoRoot, "buf.formal.yaml");
 
 // This is a fail-closed misuse check, not a bootstrap trust root: NODE_OPTIONS or
 // a compromised launcher can run code before this module executes. Formal runs
@@ -47,7 +48,7 @@ assertCleanBootstrapEnvironment();
 
 const toolchain = JSON.parse(readFileSync(join(protoRoot, "toolchain.lock.json"), "utf8"));
 const workspaceToolchain = JSON.parse(readFileSync(join(repositoryRoot, "toolchains.json"), "utf8"));
-const generationPlan = JSON.parse(readFileSync(join(repositoryRoot, "buf.gen.yaml"), "utf8"));
+const generationPlan = JSON.parse(readFileSync(join(protoRoot, "buf.gen.yaml"), "utf8"));
 const generatorTools = [
   "protoc-gen-go",
   "protoc-gen-connect-go",
@@ -96,6 +97,10 @@ function run(command, args, options = {}) {
 
 function runInvocation(invocation, args, options = {}) {
   return run(invocation[0], [...invocation.slice(1), ...args], options);
+}
+
+export function formalBufArguments(command, args = []) {
+  return [command, "--config", formalBufConfig, ...args];
 }
 
 function hashFile(algorithm, path) {
@@ -943,10 +948,10 @@ function main() {
   const kotlinArtifacts = verifyKotlinArtifacts(tools, join(temporaryRoot, "verified-snapshot"), codegenEnvironment);
 
   const generatedRoot = join(temporaryRoot, "generated");
-  run(tools.buf, ["lint"], { env: codegenEnvironment });
-  run(tools.buf, ["build", "-o", join(temporaryRoot, "descriptor.binpb")], { env: codegenEnvironment });
+  run(tools.buf, formalBufArguments("lint"), { env: codegenEnvironment });
+  run(tools.buf, formalBufArguments("build", ["-o", join(temporaryRoot, "descriptor.binpb")]), { env: codegenEnvironment });
   const generationTemplate = JSON.stringify(verifiedGenerationTemplate(tools, invocations));
-  run(tools.buf, ["generate", "--template", generationTemplate, "-o", generatedRoot], { env: codegenEnvironment });
+  run(tools.buf, formalBufArguments("generate", ["--template", generationTemplate, "-o", generatedRoot]), { env: codegenEnvironment });
 
   const formal = mode !== "protocol-smoke";
   verifyGeneratedOutput(generatedRoot, formal);

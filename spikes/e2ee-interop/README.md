@@ -35,7 +35,7 @@ cargo test --manifest-path spikes/e2ee-interop/rust/Cargo.toml --locked --releas
   -- --ignored --nocapture
 swift run --package-path spikes/e2ee-interop/swift T011SwiftHarness \
   test/crypto/e2ee-interop-v1.vector
-./gradlew -p spikes/e2ee-interop/kotlin run \
+./apps/android/gradlew -p spikes/e2ee-interop/kotlin run \
   --args="$PWD/test/crypto/e2ee-interop-v1.vector"
 node spikes/e2ee-interop/generate-sbom.mjs
 ```

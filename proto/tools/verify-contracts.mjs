@@ -26,12 +26,15 @@ function filesBelow(directory, suffix) {
   });
 }
 
-const bufYaml = read(join(repositoryRoot, "buf.yaml"));
-const generationYaml = read(join(repositoryRoot, "buf.gen.yaml"));
+const bufYaml = read(join(protoRoot, "buf.formal.yaml"));
+const generationYaml = read(join(protoRoot, "buf.gen.yaml"));
 const generationPlan = JSON.parse(generationYaml);
 const combinedConfig = `${bufYaml}\n${generationYaml}`;
 assert(!/buf\.build|\bremote:|\bdeps:|\bmodule:/u.test(combinedConfig), "Buf configuration must not use the public BSR");
-assert(/breaking:\s*\n\s+use:\s*\n\s+- FILE/u.test(bufYaml), "buf.yaml must enforce FILE breaking rules");
+assert(
+  /breaking:\s*\n\s+use:\s*\n\s+- FILE/u.test(bufYaml),
+  "buf.formal.yaml must enforce FILE breaking rules",
+);
 assert(/disallow_comment_ignores:\s*true/u.test(bufYaml), "Buf lint comment ignores must remain disabled");
 
 const toolchain = JSON.parse(read(join(protoRoot, "toolchain.lock.json")));

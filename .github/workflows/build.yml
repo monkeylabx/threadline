@@ -281,13 +281,14 @@ jobs:
       - name: Build host FFI facade for Kotlin tests
         run: cargo build --package threadline-client-ffi --locked
       - name: Build and test Android skeleton
+        working-directory: apps/android
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: >-
           ./gradlew
-          :apps:android:assembleDebug
-          :apps:android:testDebugUnitTest
-          :apps:android:lintDebug
+          assembleDebug
+          testDebugUnitTest
+          lintDebug
           --no-daemon
       - name: Allow the Android Emulator to use KVM
         run: |

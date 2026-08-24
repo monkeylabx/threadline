@@ -100,7 +100,7 @@ OpenMLS `0.8.1` 是带 verified signature 的正式 release，且包含 0.8.0 �
 cargo test --manifest-path spikes/e2ee-interop/rust/Cargo.toml --locked
 swiftc -frontend -parse \
   spikes/e2ee-interop/swift/Sources/T011SwiftHarness/main.swift
-./gradlew -p spikes/e2ee-interop/kotlin run \
+./apps/android/gradlew -p spikes/e2ee-interop/kotlin run \
   --args="$PWD/test/crypto/e2ee-interop-v1.vector"
 cargo audit --file spikes/e2ee-interop/rust/Cargo.lock
 node spikes/e2ee-interop/generate-sbom.mjs

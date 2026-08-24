@@ -196,15 +196,10 @@ export function validateDatabasePins(databasePins, sources) {
   }
   const requiredPgx = `github.com/jackc/pgx/v5 v${databasePins.pgx}`;
   const moduleDirectives = parseGoDependencyDirectives(sources.goModule);
-  const workspaceDirectives = parseGoDependencyDirectives(sources.goWork);
   if (!moduleDirectives.directRequires.includes(requiredPgx)) {
     errors.push(`services pgx dependency: missing direct require ${requiredPgx}`);
   }
-  assertEqual(errors, "go.work use set", workspaceDirectives.uses.join(","), "./services");
-  for (const [sourceName, directives] of [
-    ["services/go.mod", moduleDirectives],
-    ["go.work", workspaceDirectives],
-  ]) {
+  for (const [sourceName, directives] of [["services/go.mod", moduleDirectives]]) {
     const quotedPath = [...directives.replacements, ...directives.excludes].some(([modulePath]) =>
       ['"', "'", "`"].some((quote) => modulePath?.startsWith(quote)),
     );
@@ -265,29 +260,24 @@ export function verifyPins() {
   const rootPackage = readJson("package.json");
   const desktopPackage = readJson("apps/desktop/package.json");
   const rust = read("rust-toolchain.toml");
-  const goWork = read("go.work");
   const goModule = read("services/go.mod");
   const tauriCargo = read("apps/desktop/src-tauri/Cargo.toml");
   const cargoLock = read("Cargo.lock");
   const pnpmLock = read("pnpm-lock.yaml");
-  const gradleRoot = read("build.gradle.kts");
   const android = read("apps/android/build.gradle.kts");
   const gradleLock = read("apps/android/gradle.lockfile");
-  const wrapper = read("gradle/wrapper/gradle-wrapper.properties");
+  const wrapper = read("apps/android/gradle/wrapper/gradle-wrapper.properties");
   const workflow = read(".github/workflows/build.yml");
   const serviceCatalog = read("docs/architecture/service-catalog.md");
   const reproducibleBuilds = read("docs/build/reproducible-builds.md");
 
   assertEqual(errors, ".node-version", read(".node-version").trim(), pins.node);
-  assertEqual(errors, ".nvmrc", read(".nvmrc").trim(), pins.node);
   assertEqual(errors, "engines.node", rootPackage.engines.node, pins.node);
   assertEqual(errors, "engines.pnpm", rootPackage.engines.pnpm, pins.pnpm);
   assertEqual(errors, "packageManager", rootPackage.packageManager, `pnpm@${pins.pnpm}`);
   assertIncludes(errors, "rust channel", rust, `channel = "${pins.rust}"`);
-  for (const goFile of [["go.work", goWork], ["services/go.mod", goModule]]) {
-    assertIncludes(errors, `${goFile[0]} language`, goFile[1], `go ${pins.goLanguage}`);
-    assertIncludes(errors, `${goFile[0]} toolchain`, goFile[1], `toolchain go${pins.goToolchain}`);
-  }
+  assertIncludes(errors, "services/go.mod language", goModule, `go ${pins.goLanguage}`);
+  assertIncludes(errors, "services/go.mod toolchain", goModule, `toolchain go${pins.goToolchain}`);
   assertEqual(errors, "Tauri CLI", desktopPackage.devDependencies["@tauri-apps/cli"], pins.tauri.cli);
   assertEqual(errors, "Tauri API", desktopPackage.dependencies["@tauri-apps/api"], pins.tauri.api);
   assertIncludes(errors, "Tauri locked build", desktopPackage.scripts["build:native"], "--locked");
@@ -311,11 +301,11 @@ export function verifyPins() {
     `/Applications/Xcode_${pins.apple.xcode}.app/Contents/Developer`,
   );
   assertEqual(errors, ".java-version", read(".java-version").trim(), pins.android.java.split("+")[0]);
-  assertIncludes(errors, "AGP", gradleRoot, `version "${pins.android.agp}"`);
+  assertIncludes(errors, "AGP", android, `version "${pins.android.agp}"`);
   assertIncludes(errors, "compileSdk", android, `compileSdk = ${pins.android.compileSdk}`);
   assertIncludes(errors, "buildTools", android, `buildToolsVersion = "${pins.android.buildTools}"`);
   assertIncludes(errors, "NDK", android, `ndkVersion = "${pins.android.ndk}"`);
-  assertIncludes(errors, "Gradle strict dependency lock", gradleRoot, "LockMode.STRICT");
+  assertIncludes(errors, "Gradle strict dependency lock", android, "LockMode.STRICT");
   assertIncludes(errors, "Gradle dependency lock", gradleLock, "junit:junit:4.13.2");
   assertIncludes(
     errors,
@@ -334,7 +324,6 @@ export function verifyPins() {
   errors.push(
     ...validateDatabasePins(pins.database, {
       goModule,
-      goWork,
       serviceCatalog,
       reproducibleBuilds,
     }),
@@ -348,7 +337,9 @@ export function verifyPins() {
     `distributionSha256Sum=${pins.checksums.gradleDistributionSha256}`,
   );
 
-  const wrapperJar = readFileSync(join(root, "gradle/wrapper/gradle-wrapper.jar"));
+  const wrapperJar = readFileSync(
+    join(root, "apps", "android", "gradle", "wrapper", "gradle-wrapper.jar"),
+  );
   assertEqual(
     errors,
     "Gradle wrapper JAR checksum",
@@ -431,7 +422,10 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
       : process.platform === "win32"
         ? "sdkmanager.bat"
         : "sdkmanager";
-    valid = probe("Gradle", gradle, ["--version", "--no-daemon"], [`Gradle ${pins.android.gradle}`]) && valid;
+    valid =
+      probe("Gradle", gradle, ["--version", "--no-daemon"], [`Gradle ${pins.android.gradle}`], {
+        cwd: join(root, "apps", "android"),
+      }) && valid;
     valid =
       probe("Android SDK", sdkmanager, ["--list_installed"], [
         pins.android.sdkPlatformPackage,
