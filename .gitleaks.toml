@@ -1,0 +1,10 @@
+title = "Threadline secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "threadline-synthetic-test-credential"
+description = "Deterministic credential shape reserved for isolated scanner tests"
+regex = '''TL_TEST_SECRET_[A-Z0-9]{32}'''
+keywords = ["TL_TEST_SECRET_"]

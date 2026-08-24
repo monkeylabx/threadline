@@ -81,6 +81,11 @@ function textLint() {
   ]);
   const ignored = new Set([".git", ".gradle", ".build", "build", "gen", "target"]);
   const files = [
+    ".gitleaks.toml",
+    "scripts/security/fetch-pr-head.sh",
+    "scripts/security/install-gitleaks.sh",
+    "scripts/security/scan-secrets.sh",
+    "scripts/security/secret-scan.test.sh",
     "Cargo.toml",
     "Cargo.lock",
     "CONTRIBUTING.md",
@@ -193,6 +198,8 @@ function lint() {
 
 function verifyStructure() {
   const required = [
+    ".gitleaks.toml",
+    ".github/workflows/secret-scan.yml",
     "Cargo.toml",
     "Cargo.lock",
     "toolchains.json",
@@ -237,6 +244,11 @@ function verifyStructure() {
     ".github/workflows/build.yml",
     "docs/build/reproducible-builds.md",
     "docs/build/toolchain-research.md",
+    "docs/build/security-scans.md",
+    "scripts/security/fetch-pr-head.sh",
+    "scripts/security/install-gitleaks.sh",
+    "scripts/security/scan-secrets.sh",
+    "scripts/security/secret-scan.test.sh",
   ];
   const missing = required.filter((path) => !existsSync(join(root, path)));
   if (missing.length > 0) {
