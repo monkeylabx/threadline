@@ -8,6 +8,8 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
 const sqlcReleaseVersion = "1.31.1";
+export const postgresCIImage =
+  "postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c";
 const sqlcReleaseArchives = Object.freeze({
   "darwin-amd64": Object.freeze({
     file: "sqlc_1.31.1_darwin_amd64.tar.gz",
@@ -67,6 +69,13 @@ function assertEveryCapturedValue(errors, label, text, pattern, expected) {
 
 export function validateWorkflowPins(workflow, expectedPins = pins) {
   const errors = [];
+  assertEveryCapturedValue(
+    errors,
+    "CI PostgreSQL image",
+    workflow,
+    /^\s*image:\s*(postgres:[^\s#]+)/gm,
+    postgresCIImage,
+  );
   const corepackValues = assertEveryCapturedValue(
     errors,
     "CI Corepack",
