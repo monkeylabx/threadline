@@ -849,6 +849,20 @@ Retry 创建新的 Run Attempt。
 
 ## 16. 待确定的产品决策
 
+### Artifact-first 协作呈现（#183，决策原型）
+
+这是产品呈现层的临时比较，不改变现有 Task、Run、Artifact 或 Approval 的领域和协议定义。原型入口为
+`?screen=task-result&prototype=artifact&variant=A|B|C`，默认任务交付页不受影响。
+
+| 用户需要 | 原型必须显式呈现 | 三种比较方向 |
+| --- | --- | --- |
+| 知道交付物从哪里来 | 来源 Task、频道和受限消息语境 | A 把来源放在工作台侧栏；B 放在 Artifact 关联链；C 是流程第一步。 |
+| 审查一个可交付结果，而非聊天回复 | 文件/Patch 预览、验证证据和人工决定 | A 是并排审查；B 是 Artifact 档案；C 是交付接力节点。 |
+| 清楚审查后的 Agent 行为 | 明确的“要求修订”与下一次 Run | A 是下一步卡片；B 是关联链末端；C 是流程第四步。 |
+| 在窄屏完成判断 | 任务来源、Artifact、决定与下一次修订同屏可达 | 移动内部渲染器提供对应的 Artifact 面板和变体切换。 |
+
+尚未选择正式方向；需要先在这三种结构中确定一个，之后才把胜出方案收敛到默认原型。仍待回答的问题：Artifact 的 owner/ACL 是否独立于 Task、审查决定的不可变记录粒度、一次修订与多 Artifact 的版本关系，以及移动端是否允许一次点击直接接受。
+
 1. 经过审查的 Group E2EE 协议、实现库和企业恢复封装。
 2. Task 对应一个长 Run，还是多个短且不可变的 Run。
 3. Local Connector 的 Device Certificate、企业 Enrollment 和远程操作确认模型。

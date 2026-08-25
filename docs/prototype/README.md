@@ -29,6 +29,16 @@
 
 创建任务弹窗使用 `?screen=channel&modal=task`。
 
+## Artifact 协作决策原型（#183）
+
+这是一次明确的 throwaway 产品决策比较，不改变默认 `task-result` 页面，也不引入协议、权限或已冻结计划的改动。
+
+- `?screen=task-result&prototype=artifact&variant=A`：审查工作台；把来源任务、Patch 和决定放在同一处。
+- `?screen=task-result&prototype=artifact&variant=B`：Artifact 档案；将任务、验证、审查和修订作为 Artifact 的关联链。
+- `?screen=task-result&prototype=artifact&variant=C`：交付接力；以任务 → Artifact → 人工决定 → 下一次 Agent 修订的流程呈现。
+
+底部切换器或左右方向键可切换方案；窄视口会进入内部移动渲染器，保留相同参数并提供可审查的 Artifact 面板。默认路由与正常任务交付页保持不变。
+
 ## 已实现交互
 
 - 全局导航和页面深链接。

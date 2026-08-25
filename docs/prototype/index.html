@@ -23,10 +23,14 @@
           admin: "profile",
         };
         const view = params.get("view") || mobileRoutes[params.get("screen")] || "messages";
-        window.location.replace(`./mobile/index.html?view=${view}`);
+        const forwarded = new URLSearchParams({ view });
+        ["prototype", "variant"].forEach((key) => {
+          if (params.has(key)) forwarded.set(key, params.get(key));
+        });
+        window.location.replace(`./mobile/index.html?${forwarded}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=2" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -345,6 +349,22 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
             </div>
             <aside class="result-aside"><span class="context-label">Agent 总结</span><p>移除了装饰性卡片和过大的标题；空状态现在与任务列表保持同一信息密度，并补充了无障碍标签。</p><span class="context-label">验证</span><div class="check-list"><span>✓ TypeScript</span><span>✓ 单元测试 24 项</span><span>✓ 1440 / 1024 / 430 截图</span><span>✓ 无文字溢出</span></div><span class="context-label">来源</span><button class="source-link" data-route="channel"><span># 客户端体验</span><p>这个页面的布局简直没法看呀……</p></button><span class="context-label">产物</span><button class="artifact-link"><i class="file-icon diff">DIFF</i><div><strong>empty-state-v2.patch</strong><span>12 KB · SHA256 已验证</span></div></button></aside>
           </div>
+          <!-- Throwaway decision prototype for #183: compare three Artifact-first collaboration models before selecting one. -->
+          <section class="artifact-prototype" id="artifact-prototype" aria-label="Artifact 协作原型" hidden>
+            <div class="artifact-variant is-active" data-artifact-variant="A">
+              <header class="artifact-prototype-head"><div><span class="eyebrow">Artifact review · Variant A</span><h2>把审查放在交付物旁边</h2><p>任务定义、可审查产物和下一次 Agent 修订共用一个工作台。</p></div><span class="artifact-stage">等待审查</span></header>
+              <div class="artifact-workbench"><section class="artifact-source"><span class="context-label">来源任务</span><strong>DES-088 · 桌面端空状态视觉修复</strong><p># 客户端体验 · 2 条被选消息 · Nova / Run 02</p><button class="source-link" data-route="channel"><span>打开任务语境</span><p>“这个页面的布局简直没法看呀……”</p></button></section><section class="artifact-preview"><div class="artifact-preview-head"><span class="context-label">交付物</span><strong>empty-state-v2.patch</strong><small>3 个文件 · 24/24 验证通过</small></div><pre class="code-diff"><span class="context">  export function EmptyState() {</span><span class="removed">-   return &lt;div className=&quot;empty-card&quot;&gt;暂无任务&lt;/div&gt;;</span><span class="added">+   return &lt;section className=&quot;empty-state&quot;&gt;...</span><span class="added">+     &lt;h2&gt;这里还没有任务&lt;/h2&gt;</span><span class="added">+   return &lt;/section&gt;;</span></pre></section><aside class="artifact-review"><span class="context-label">人工审查</span><strong>接受这个 Artifact？</strong><p>接受会创建 PR；要求修改会生成可追踪的下一次 Run。</p><button class="primary-button artifact-accept">接受并创建 PR</button><button class="secondary-button artifact-revise">要求 Agent 修订</button><div class="next-revision"><span>下一步</span><strong>Nova 将创建 Run 03</strong><small>仅携带本次审查意见与此 Patch</small></div></aside></div>
+            </div>
+            <div class="artifact-variant" data-artifact-variant="B">
+              <header class="artifact-prototype-head"><div><span class="eyebrow">Artifact dossier · Variant B</span><h2>让 Artifact 成为协作的中心对象</h2><p>任务、验证和审查都作为交付物的可追溯关联，而不是聊天回复。</p></div><span class="artifact-stage">Patch v2</span></header>
+              <div class="artifact-dossier"><section class="artifact-paper"><div class="artifact-paper-meta"><span class="file-icon diff">DIFF</span><div><strong>empty-state-v2.patch</strong><small>Nova · Run 02 · SHA256 已验证</small></div><em>3 files</em></div><div class="artifact-paper-proof"><span>验证证据</span><strong>24/24</strong><small>TypeScript · unit · 1440/1024/430</small></div><pre class="code-diff"><span class="context">components/EmptyState.tsx</span><span class="removed">- empty-card / oversized heading</span><span class="added">+ quiet empty-state / aria-labelledby</span><span class="added">+ preserves list information density</span></pre></section><section class="artifact-relations"><span class="context-label">关联链</span><ol><li><span>来源任务</span><strong>DES-088 · # 客户端体验</strong><small>2 条消息定义问题</small></li><li class="is-current"><span>当前 Artifact</span><strong>empty-state-v2.patch</strong><small>可审查的交付物</small></li><li><span>人工决定</span><strong>等待你的接受或修改意见</strong><small>决定会被记录在 Artifact 上</small></li><li><span>下一次修订</span><strong>Nova / Run 03</strong><small>只带审查意见，不重放聊天</small></li></ol></section><aside class="artifact-decision"><span class="context-label">审查决定</span><p>这个版本是否足以进入 PR？</p><button class="primary-button artifact-accept">接受 Artifact</button><button class="secondary-button artifact-revise">附上修改意见</button></aside></div>
+            </div>
+            <div class="artifact-variant" data-artifact-variant="C">
+              <header class="artifact-prototype-head"><div><span class="eyebrow">Handoff timeline · Variant C</span><h2>把交付看作一条可推进的协作链</h2><p>任务不是终点；Artifact 是人工决定和下一次 Agent 行动之间的明确接力物。</p></div><span class="artifact-stage">第 3 / 4 步</span></header>
+              <div class="artifact-handoff"><ol class="handoff-rail"><li class="is-done"><span>01</span><div><small>任务</small><strong>DES-088</strong><p># 客户端体验的两条消息已被引用。</p></div></li><li class="is-done"><span>02</span><div><small>Artifact</small><strong>empty-state-v2.patch</strong><p>3 个文件与验证证据已固定。</p></div></li><li class="is-current"><span>03</span><div><small>人工审查</small><strong>你的决定</strong><p>接受进入 PR，或指出下一次修订。</p><button class="primary-button artifact-accept">接受并创建 PR</button><button class="secondary-button artifact-revise">要求修订</button></div></li><li><span>04</span><div><small>下一次 Agent 行动</small><strong>Nova · Run 03</strong><p>仅带本次决定及必要 Artifact 上下文。</p></div></li></ol><aside class="handoff-preview"><span class="context-label">正在审查</span><strong>empty-state-v2.patch</strong><pre class="code-diff"><span class="removed">- empty-card</span><span class="added">+ empty-state</span><span class="added">+ accessible heading</span></pre><div class="handoff-proof"><span>验证</span><strong>24/24 通过</strong></div></aside></div>
+            </div>
+            <nav class="artifact-prototype-switcher" aria-label="切换 Artifact 原型方案"><button type="button" data-artifact-direction="previous" aria-label="上一个方案">←</button><span><b data-artifact-variant-label>A</b> / 3 · <em data-artifact-variant-name>审查工作台</em></span><button type="button" data-artifact-direction="next" aria-label="下一个方案">→</button></nav>
+          </section>
         </section>
 
         <section class="screen screen-runtime" data-screen="runtime">
@@ -377,6 +397,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=2"></script>
+    <script src="./app.js?v=3"></script>
   </body>
 </html>

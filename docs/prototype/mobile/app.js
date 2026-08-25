@@ -3,6 +3,9 @@ const rootViews = new Set(["messages", "search", "activity", "profile"]);
 const validViews = new Set([...rootViews, "channel", "task", "approval"]);
 const isMobile = () => window.matchMedia("(max-width: 820px)").matches;
 const requestedView = new URLSearchParams(window.location.search).get("view");
+const prototypeParams = new URLSearchParams(window.location.search);
+const artifactPrototypeEnabled = prototypeParams.get("prototype") === "artifact";
+const artifactPrototypeVariants = ["A", "B", "C"];
 const initialView = requestedView === "home" ? "messages" : requestedView || (isMobile() ? "messages" : "channel");
 const viewLabels = {
   messages: "消息",
@@ -44,6 +47,7 @@ function renderView(view, { moveFocus = false, restoreFrom = null } = {}) {
   const mobileHomeActive = rootViewActive && isMobile();
   root.dataset.mobileView = nextView;
   root.dataset.view = workbenchView;
+  renderMobileArtifactPrototype(nextView);
 
   const workbench = document.querySelector(".workbench");
   const mobileHome = document.querySelector(".mobile-home");
@@ -331,6 +335,48 @@ document.querySelector("#approve-action").addEventListener("click", (event) => {
   event.currentTarget.classList.add("is-approved");
   event.currentTarget.disabled = true;
   document.querySelector(".sheet-kicker.amber").innerHTML = "<i></i>已授权 · 10 分钟后失效";
+});
+
+// Throwaway decision prototype for #183. The regular task sheet remains unchanged without ?prototype=artifact.
+function mobileArtifactVariant() {
+  const variant = new URLSearchParams(window.location.search).get("variant");
+  return artifactPrototypeVariants.includes(variant) ? variant : "A";
+}
+
+function renderMobileArtifactPrototype(view) {
+  if (!artifactPrototypeEnabled || view !== "task") return;
+  const variant = mobileArtifactVariant();
+  const panel = document.querySelector("#task-panel-artifacts");
+  root.dataset.artifactPrototype = "true";
+  panel.innerHTML = `
+    <div class="mobile-artifact-prototype" data-variant="${variant}">
+      <div class="section-label"><span>Artifact 协作 · ${variant}</span><i>审查中</i></div>
+      <section class="mobile-artifact-source"><span>来源任务</span><strong>DES-088 · 桌面端空状态视觉修复</strong><small># 客户端体验 · 2 条指定消息 · Nova / Run 02</small></section>
+      <section class="mobile-artifact-preview"><div><span>交付物</span><strong>empty-state-v2.patch</strong></div><pre><code><b>-</b> empty-card<br><b>+</b> empty-state<br><b>+</b> accessible heading</code></pre><small>3 个文件 · 24/24 验证通过</small></section>
+      <section class="mobile-artifact-review"><span>人工审查</span><strong>${variant === "A" ? "在工作台中决定" : variant === "B" ? "决定记录在 Artifact 上" : "推进下一次协作接力"}</strong><button class="blue-button" data-mobile-artifact-action="accept">接受并创建 PR</button><button class="plain-button" data-mobile-artifact-action="revise">要求 Nova 修订</button></section>
+      <section class="mobile-artifact-next"><span>下一次 Agent 修订</span><strong>Nova 将创建 Run 03</strong><small>只携带审查意见与此 Patch。</small></section>
+      <nav class="mobile-artifact-switcher" aria-label="切换 Artifact 原型方案"><button data-mobile-artifact-direction="previous" aria-label="上一个方案">←</button><span>${variant} / 3</span><button data-mobile-artifact-direction="next" aria-label="下一个方案">→</button></nav>
+    </div>`;
+  const artifactTab = document.querySelector("#task-tab-artifacts");
+  if (artifactTab.getAttribute("aria-selected") !== "true") artifactTab.click();
+}
+
+document.querySelector("#task-panel-artifacts").addEventListener("click", (event) => {
+  const target = event.target.closest("button");
+  if (!target) return;
+  if (target.dataset.mobileArtifactAction) {
+    target.textContent = target.dataset.mobileArtifactAction === "accept" ? "✓ 已接受 · PR #418" : "✓ 已请求 Nova 修订";
+    target.disabled = true;
+    return;
+  }
+  if (!target.dataset.mobileArtifactDirection) return;
+  const current = mobileArtifactVariant();
+  const offset = target.dataset.mobileArtifactDirection === "next" ? 1 : -1;
+  const next = artifactPrototypeVariants[(artifactPrototypeVariants.indexOf(current) + offset + artifactPrototypeVariants.length) % artifactPrototypeVariants.length];
+  const url = new URL(window.location.href);
+  url.searchParams.set("variant", next);
+  window.history.replaceState({ view: "task", previous: null }, "", url);
+  renderMobileArtifactPrototype("task");
 });
 
 const normalizedInitialView = normalizeView(initialView);

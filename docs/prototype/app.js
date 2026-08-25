@@ -30,6 +30,7 @@ function switchRoute(route, { moveFocus = false } = {}) {
   document.querySelectorAll(".sidebar-item").forEach((item) => {
     item.classList.toggle("is-selected", route === "channel" && item.dataset.channel === "产品研发");
   });
+  renderArtifactPrototype(route);
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("screen", route);
   window.history.replaceState({}, "", nextUrl);
@@ -183,6 +184,75 @@ document.querySelector("#accept-result").addEventListener("click", (event) => {
   event.currentTarget.disabled = true;
   event.currentTarget.style.background = "#74817b";
   document.querySelector(".screen-task-result .eyebrow").textContent = "DES-088 · 已交付";
+});
+
+// Throwaway decision prototype for #183: keeps the normal delivery route intact unless explicitly requested.
+const artifactVariantNames = { A: "审查工作台", B: "Artifact 档案", C: "交付接力" };
+const artifactVariantKeys = Object.keys(artifactVariantNames);
+
+function requestedArtifactVariant() {
+  const requested = new URLSearchParams(window.location.search).get("variant");
+  return artifactVariantKeys.includes(requested) ? requested : "A";
+}
+
+function artifactPrototypeRequested() {
+  return new URLSearchParams(window.location.search).get("prototype") === "artifact";
+}
+
+function renderArtifactPrototype(route) {
+  const prototype = document.querySelector("#artifact-prototype");
+  const standardResult = document.querySelector(".screen-task-result .result-layout");
+  if (!prototype || !standardResult) return;
+  const active = route === "task-result" && artifactPrototypeRequested();
+  prototype.hidden = !active;
+  standardResult.hidden = active;
+  if (!active) return;
+
+  const variant = requestedArtifactVariant();
+  prototype.dataset.variant = variant;
+  prototype.querySelectorAll("[data-artifact-variant]").forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.artifactVariant === variant);
+  });
+  prototype.querySelector("[data-artifact-variant-label]").textContent = variant;
+  prototype.querySelector("[data-artifact-variant-name]").textContent = artifactVariantNames[variant];
+}
+
+function changeArtifactVariant(direction) {
+  const current = requestedArtifactVariant();
+  const offset = direction === "next" ? 1 : -1;
+  const next = artifactVariantKeys[(artifactVariantKeys.indexOf(current) + offset + artifactVariantKeys.length) % artifactVariantKeys.length];
+  const url = new URL(window.location.href);
+  url.searchParams.set("screen", "task-result");
+  url.searchParams.set("prototype", "artifact");
+  url.searchParams.set("variant", next);
+  window.history.replaceState({}, "", url);
+  renderArtifactPrototype("task-result");
+}
+
+document.querySelectorAll("[data-artifact-direction]").forEach((button) => {
+  button.addEventListener("click", () => changeArtifactVariant(button.dataset.artifactDirection));
+});
+
+document.querySelectorAll(".artifact-accept").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.currentTarget.textContent = "✓ 已接受 · PR #418";
+    event.currentTarget.disabled = true;
+  });
+});
+
+document.querySelectorAll(".artifact-revise").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.currentTarget.textContent = "✓ 已请求 Nova 修订";
+    event.currentTarget.disabled = true;
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!["ArrowLeft", "ArrowRight"].includes(event.key) || !artifactPrototypeRequested()) return;
+  if (document.activeElement?.matches("input, textarea, select, [contenteditable='true']")) return;
+  if (!document.querySelector(".screen-task-result").classList.contains("is-visible")) return;
+  event.preventDefault();
+  changeArtifactVariant(event.key === "ArrowRight" ? "next" : "previous");
 });
 
 document.querySelector("#simulate-offline").addEventListener("click", (event) => {
