@@ -1,0 +1,66 @@
+name: Windows cipher memory security experiment
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/windows-cipher-memory-experiment.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-cipher-memory-experiment-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
+
+jobs:
+  isolate-trigger:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Remove only the reviewed optional pragma in this checkout
+        shell: pwsh
+        run: |
+          $path = "crates/client-core/src/storage/database.rs"
+          $content = [System.IO.File]::ReadAllText($path)
+          $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
+          $needle = @(
+            '        connection'
+            '            .pragma_update(None, "cipher_memory_security", "ON")'
+            '            .map_err(|_| StorageError::EncryptionUnavailable)?;'
+          ) -join $newline
+          $matches = [regex]::Matches($content, [regex]::Escape($needle))
+          if ($matches.Count -ne 1) {
+            throw "Expected exactly one reviewed cipher_memory_security block; found $($matches.Count)"
+          }
+          $updated = $content.Replace($needle + $newline, "")
+          if ($updated.Contains('cipher_memory_security')) {
+            throw "cipher_memory_security source shape is outside the reviewed experiment"
+          }
+          [System.IO.File]::WriteAllText(
+            $path,
+            $updated,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+          git diff --check
+          git diff -- $path
+      - name: Build once, repeat, and classify
+        shell: pwsh
+        run: >-
+          ./scripts/ci/capture-windows-sqlcipher-crash.ps1
+          -ArtifactRoot "${{ runner.temp }}/windows-cipher-memory-experiment"
+          -Repetitions 3
+      - name: Upload executable and transcript
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-cipher-memory-experiment-${{ github.sha }}
+          path: ${{ runner.temp }}/windows-cipher-memory-experiment
+          if-no-files-found: error
+          retention-days: 14
+
