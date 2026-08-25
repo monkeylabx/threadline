@@ -103,6 +103,60 @@ jobs:
           path: ${{ runner.temp }}/threadline-native-bridge-crash-resume.txt
           if-no-files-found: warn
           retention-days: 14
+      - name: Validate the pinned NATS Worker fixture
+        run: |
+          python3 deploy/nats/contract_test.py
+          python3 deploy/nats/probe_test.py
+          docker run --rm --pull always \
+            --volume "${GITHUB_WORKSPACE}/deploy/nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+            --entrypoint nats-server \
+            nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+            -t -c /etc/nats/nats-server.conf
+      - name: Start the pinned NATS Worker fixture
+        run: |
+          nats_container="$(docker run --detach --pull never \
+            --publish 127.0.0.1:14222:4222 \
+            --publish 127.0.0.1:18222:8222 \
+            --tmpfs /data:rw,noexec,nosuid,size=64m \
+            --volume "${GITHUB_WORKSPACE}/deploy/nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+            nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+            --config=/etc/nats/nats-server.conf)"
+          test -n "${nats_container}"
+          printf '%s\n' "${nats_container}" > "${RUNNER_TEMP}/threadline-nats-container-id"
+      - name: Require live NATS effective-permission evidence
+        run: |
+          ready=0
+          for _ in $(seq 1 50); do
+            if python3 -c 'import socket; socket.create_connection(("127.0.0.1", 14222), 0.2).close(); socket.create_connection(("127.0.0.1", 18222), 0.2).close()'; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "${ready}" -eq 1
+          worker_user="$(awk '$1 == "NATS_WORKER_USER" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
+          worker_password="$(awk '$1 == "NATS_WORKER_PASSWORD" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
+          test -n "${worker_user}" && test -n "${worker_password}"
+          env \
+            THREADLINE_NATS_WORKER_USER="${worker_user}" \
+            THREADLINE_NATS_WORKER_PASSWORD="${worker_password}" \
+            python3 deploy/nats/probe.py \
+              --port 14222 \
+              --monitor-url http://127.0.0.1:18222
+      - name: Show NATS diagnostics on failure
+        if: failure()
+        run: |
+          if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
+            read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
+            docker logs "${nats_container}" 2>&1 | sed -E 's/User "[^"]*"/User "[redacted]"/g'
+          fi
+      - name: Stop the NATS Worker fixture
+        if: always()
+        run: |
+          if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
+            read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
+            docker rm --force "${nats_container}"
+          fi
       - name: Check Go services
         working-directory: services
         run: |
