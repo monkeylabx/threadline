@@ -9,10 +9,13 @@ OFFLINE_LOCK ?= $(CURDIR)/.threadline-loaded-image-ids
 DOCKER_VERSION ?= 29.6.2
 COMPOSE_VERSION ?= 5.4.0
 PLATFORM ?= linux/$(shell docker version --format '{{.Server.Arch}}' 2>/dev/null)
+NATS_IMAGE := nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9
+NATS_WORKER_USER ?= threadline_worker_dev
+NATS_WORKER_PASSWORD ?= threadline-worker-dev-only
 
 CORE_IMAGES := \
 	postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c \
-	nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+	$(NATS_IMAGE) \
 	redis:7.4.0-alpine@sha256:c35af3bbcef51a62c8bae5a9a563c6f1b60d7ebaea4cb5a3ccbcc157580ae098 \
 	minio/minio:RELEASE.2024-07-16T23-46-41Z@sha256:77ff9f7e12549d269990b167fa21da010fa8b0beb40d6064569b8887e37c456b \
 	otel/opentelemetry-collector-contrib:0.107.0@sha256:b65527791431d76d058b2813748a3f4a8912540d7b23beac2f6b4e02c872f5b7 \
@@ -22,14 +25,16 @@ CORE_IMAGES := \
 SUPPORT_IMAGES := busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
 IMAGES := $(CORE_IMAGES) $(SUPPORT_IMAGES)
 TAG_IMAGES := $(foreach image,$(IMAGES),$(word 1,$(subst @, ,$(image))))
+TAG_NATS_IMAGE := $(word 1,$(subst @, ,$(NATS_IMAGE)))
 
 ARGS = --project-name $(PROJECT) --file $(CURDIR)/compose.yaml $(if $(wildcard $(OFFLINE_LOCK)),--file $(CURDIR)/offline-images.yaml,)
 ARCHIVE_HELPER := $(CURDIR)/../../docs/development/dev-stack-image-archive.sh
 
-.PHONY: check check-images check-tools config destroy down images load-images logs recreate save-images status up verify-lock
+.PHONY: check check-images check-tools config destroy down images load-images logs recreate save-images status up verify-lock verify-nats-config verify-nats-contract verify-nats-worker
 
 check-tools:
 	@command -v docker >/dev/null 2>&1 || { echo "docker is required" >&2; exit 1; }
+	@command -v python3 >/dev/null 2>&1 || { echo "python3 is required" >&2; exit 1; }
 
 check: check-tools
 	@actual="$$(docker version --format '{{.Server.Version}}')"; test "$$actual" = "$(DOCKER_VERSION)" || { echo "Docker Engine $(DOCKER_VERSION) required; found $$actual" >&2; exit 1; }
@@ -52,8 +57,26 @@ check-images: check verify-lock
 		done; \
 	fi
 
-config: check verify-lock
+config: check verify-lock verify-nats-contract
 	@$(COMPOSE) $(ARGS) config --quiet
+
+verify-nats-contract:
+	@python3 "$(CURDIR)/../nats/contract_test.py"
+	@python3 "$(CURDIR)/../nats/probe_test.py"
+
+verify-nats-config: check-images verify-nats-contract
+	@nats_image="$(NATS_IMAGE)"; test ! -f "$(OFFLINE_LOCK)" || nats_image="$(TAG_NATS_IMAGE)"; \
+		docker run --rm --pull never \
+		--volume "$(CURDIR)/../nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+		--entrypoint nats-server "$$nats_image" \
+		-t -c /etc/nats/nats-server.conf
+
+verify-nats-worker: check-tools verify-nats-contract
+	@THREADLINE_NATS_WORKER_USER="$(NATS_WORKER_USER)" \
+		THREADLINE_NATS_WORKER_PASSWORD="$(NATS_WORKER_PASSWORD)" \
+		python3 "$(CURDIR)/../nats/probe.py" \
+		--port "$${THREADLINE_DEV_NATS_PORT:-4222}" \
+		--monitor-url "http://127.0.0.1:$${THREADLINE_DEV_NATS_MONITOR_PORT:-8222}"
 
 images: check verify-lock
 	@rm -f "$(OFFLINE_LOCK)"
@@ -81,8 +104,9 @@ load-images: check
 	@sh "$(ARCHIVE_HELPER)" verify-ids "$(IDS)" $(IMAGES)
 	@cp "$(IDS)" "$(OFFLINE_LOCK)" && chmod 600 "$(OFFLINE_LOCK)"
 
-up: check-images config
+up: check-images config verify-nats-config
 	@$(COMPOSE) $(ARGS) up --detach --wait --pull never
+	@$(MAKE) verify-nats-worker
 
 down: check-tools
 	@$(COMPOSE) $(ARGS) down --remove-orphans
