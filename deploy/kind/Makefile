@@ -11,10 +11,13 @@ KUBECTL_VERSION ?= v1.36.2
 KUBERNETES_VERSION ?= v1.36.1
 PLATFORM ?= linux/$(shell docker version --format '{{.Server.Arch}}' 2>/dev/null)
 NODE_IMAGE ?= kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
+NATS_IMAGE := nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9
+NATS_LOCAL_PORT ?= 14222
+NATS_MONITOR_LOCAL_PORT ?= 18222
 
 CORE_IMAGES := \
 	postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c \
-	nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+	$(NATS_IMAGE) \
 	redis:7.4.0-alpine@sha256:c35af3bbcef51a62c8bae5a9a563c6f1b60d7ebaea4cb5a3ccbcc157580ae098 \
 	minio/minio:RELEASE.2024-07-16T23-46-41Z@sha256:77ff9f7e12549d269990b167fa21da010fa8b0beb40d6064569b8887e37c456b \
 	otel/opentelemetry-collector-contrib:0.107.0@sha256:b65527791431d76d058b2813748a3f4a8912540d7b23beac2f6b4e02c872f5b7 \
@@ -27,14 +30,15 @@ TAG_CORE_IMAGES := $(foreach image,$(CORE_IMAGES),$(word 1,$(subst @, ,$(image))
 TAG_IMAGES := $(foreach image,$(IMAGES),$(word 1,$(subst @, ,$(image))))
 TAG_NODE_IMAGE := $(word 1,$(subst @, ,$(NODE_IMAGE)))
 TAG_PROBE_IMAGE := $(word 1,$(subst @, ,$(PROBE_IMAGE)))
+TAG_NATS_IMAGE := $(word 1,$(subst @, ,$(NATS_IMAGE)))
 ARCHIVE_HELPER := $(CURDIR)/../../docs/development/dev-stack-image-archive.sh
 
 CONTEXT := kind-$(CLUSTER)
 
-.PHONY: check check-images check-tools config destroy down images load-images recreate save-images status up verify-cluster verify-lock verify-network-policy
+.PHONY: check check-images check-tools config destroy down images load-images recreate save-images status up verify-cluster verify-lock verify-nats-config verify-nats-contract verify-nats-worker verify-network-policy
 
 check-tools:
-	@for command in docker kind kubectl; do \
+	@for command in docker kind kubectl python3; do \
 		command -v "$$command" >/dev/null 2>&1 || { echo "$$command is required" >&2; exit 1; }; \
 	done
 
@@ -64,8 +68,19 @@ check-images: check verify-lock
 		done; \
 	fi
 
-config: check verify-lock
+config: check verify-lock verify-nats-contract
 	@kubectl kustomize "$(CURDIR)" >/dev/null
+
+verify-nats-contract:
+	@python3 "$(CURDIR)/../nats/contract_test.py"
+	@python3 "$(CURDIR)/../nats/probe_test.py"
+
+verify-nats-config: check-images verify-nats-contract
+	@nats_image="$(NATS_IMAGE)"; test ! -f "$(OFFLINE_LOCK)" || nats_image="$(TAG_NATS_IMAGE)"; \
+		docker run --rm --pull never \
+		--volume "$(CURDIR)/../nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+		--entrypoint nats-server "$$nats_image" \
+		-t -c /etc/nats/nats-server.conf
 
 images: check verify-lock
 	@rm -f "$(OFFLINE_LOCK)"
@@ -92,7 +107,7 @@ load-images: check
 	@sh "$(ARCHIVE_HELPER)" verify-ids "$(IDS)" $(NODE_IMAGE) $(IMAGES)
 	@cp "$(IDS)" "$(OFFLINE_LOCK)" && chmod 600 "$(OFFLINE_LOCK)"
 
-up: check-images config
+up: check-images config verify-nats-config
 	@kind get clusters | grep -Fxq "$(CLUSTER)" || \
 		{ node_image="$(NODE_IMAGE)"; docker image inspect "$$node_image" >/dev/null 2>&1 || node_image="$(TAG_NODE_IMAGE)"; kind create cluster --name "$(CLUSTER)" --image "$$node_image" --config "$(CURDIR)/cluster.yaml"; }
 	@$(MAKE) verify-cluster
@@ -103,6 +118,7 @@ up: check-images config
 	@kubectl --context "$(CONTEXT)" --namespace threadline-dev rollout status deployment/prometheus --timeout=180s
 	@kubectl --context "$(CONTEXT)" --namespace threadline-dev wait --for=condition=Available deployment --all --timeout=180s
 	@$(MAKE) verify-network-policy
+	@$(MAKE) verify-nats-worker
 
 verify-cluster: check verify-lock
 	@kind get clusters | grep -Fxq "$(CLUSTER)" || { echo "Kind cluster $(CLUSTER) does not exist; run make up" >&2; exit 1; }
@@ -111,6 +127,27 @@ verify-cluster: check verify-lock
 
 verify-network-policy: verify-cluster
 	@sh "$(CURDIR)/verify-network-policy.sh" "$(CONTEXT)" "$(TAG_PROBE_IMAGE)"
+
+verify-nats-worker: verify-cluster verify-nats-contract
+	@worker_user="$$(kubectl --context "$(CONTEXT)" --namespace threadline-dev get secret nats-worker-dev-only-credentials --output=jsonpath='{.data.NATS_USER}' | python3 -c 'import base64, sys; sys.stdout.write(base64.b64decode(sys.stdin.buffer.read()).decode("utf-8"))')"; \
+		worker_password="$$(kubectl --context "$(CONTEXT)" --namespace threadline-dev get secret nats-worker-dev-only-credentials --output=jsonpath='{.data.NATS_PASSWORD}' | python3 -c 'import base64, sys; sys.stdout.write(base64.b64decode(sys.stdin.buffer.read()).decode("utf-8"))')"; \
+		test -n "$$worker_user" && test -n "$$worker_password" || { echo "NATS Worker fixture credential is absent" >&2; exit 1; }; \
+		log="$$(mktemp -t threadline-nats-port-forward.XXXXXX)"; \
+		kubectl --context "$(CONTEXT)" --namespace threadline-dev port-forward \
+			service/nats "$(NATS_LOCAL_PORT):4222" "$(NATS_MONITOR_LOCAL_PORT):8222" >"$$log" 2>&1 & \
+		forward_pid=$$!; \
+		trap 'kill "$$forward_pid" >/dev/null 2>&1 || true; wait "$$forward_pid" >/dev/null 2>&1 || true; rm -f "$$log"' EXIT HUP INT TERM; \
+		ready=0; attempts=0; \
+		while [ "$$attempts" -lt 50 ]; do \
+			if python3 -c 'import socket; socket.create_connection(("127.0.0.1", $(NATS_LOCAL_PORT)), 0.2).close()' >/dev/null 2>&1; then ready=1; break; fi; \
+			attempts=$$((attempts + 1)); sleep 0.1; \
+		done; \
+		test "$$ready" = 1 || { echo "NATS port-forward did not become ready" >&2; exit 1; }; \
+		THREADLINE_NATS_WORKER_USER="$$worker_user" \
+		THREADLINE_NATS_WORKER_PASSWORD="$$worker_password" \
+		python3 "$(CURDIR)/../nats/probe.py" \
+			--port "$(NATS_LOCAL_PORT)" \
+			--monitor-url "http://127.0.0.1:$(NATS_MONITOR_LOCAL_PORT)"
 
 down: check-tools
 	@kubectl --context "$(CONTEXT)" delete -k "$(CURDIR)" --ignore-not-found
