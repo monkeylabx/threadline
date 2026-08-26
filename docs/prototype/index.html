@@ -327,7 +327,7 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         </section>
 
         <section class="screen screen-task-result" data-screen="task-result">
-          <div class="result-layout">
+          <div class="result-layout" data-default-task-result>
             <div class="result-main"><div class="result-header"><div><span class="eyebrow">DES-088 · 已完成</span><h2>桌面端空状态视觉修复</h2><p>Nova 完成于 18 分钟前 · Run 02</p></div><span class="result-check">✓</span></div>
               <div class="delivery-summary"><div><span>交付</span><strong>3 个文件</strong></div><div><span>测试</span><strong class="green-text">24/24 通过</strong></div><div><span>审查</span><strong>等待人工确认</strong></div><div><span>成本</span><strong>¥1.26</strong></div></div>
               <div class="result-tabs"><button class="is-active">变更</button><button>预览</button><button>运行摘要</button></div>
@@ -345,6 +345,86 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
             </div>
             <aside class="result-aside"><span class="context-label">Agent 总结</span><p>移除了装饰性卡片和过大的标题；空状态现在与任务列表保持同一信息密度，并补充了无障碍标签。</p><span class="context-label">验证</span><div class="check-list"><span>✓ TypeScript</span><span>✓ 单元测试 24 项</span><span>✓ 1440 / 1024 / 430 截图</span><span>✓ 无文字溢出</span></div><span class="context-label">来源</span><button class="source-link" data-route="channel"><span># 客户端体验</span><p>这个页面的布局简直没法看呀……</p></button><span class="context-label">产物</span><button class="artifact-link"><i class="file-icon diff">DIFF</i><div><strong>empty-state-v2.patch</strong><span>12 KB · SHA256 已验证</span></div></button></aside>
           </div>
+          <!-- PROTOTYPE #183 — three throwaway answers to: how should Artifact become primary IM content? -->
+          <section class="artifact-prototype artifact-variant-a" data-artifact-variant="A" aria-labelledby="artifact-variant-a-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · Artifact 01 · 版本 3</span><h2 id="artifact-variant-a-title">画布审阅</h2><p>任务、产物与批注围绕同一个可操作预览。</p></div>
+              <div class="artifact-status"><span>待 2 人确认</span><span>Nova · Run 02</span></div>
+            </header>
+            <div class="artifact-canvas-layout">
+              <section class="artifact-canvas" aria-label="新成员引导流程交互预览">
+                <div class="artifact-canvas-toolbar"><span class="artifact-type">交互原型</span><strong>新成员引导 · Runtime 连接</strong><span>1,440 px</span></div>
+                <div class="artifact-browser">
+                  <div class="artifact-browser-bar"><span></span><span></span><span></span><div>threadline.local/onboarding</div></div>
+                  <div class="artifact-browser-body">
+                    <aside><b>TL</b><i></i><i></i><i></i></aside>
+                    <main>
+                      <div class="artifact-browser-nav"><span>工作区</span><strong>连接你的 Runtime</strong><em>步骤 2 / 3</em></div>
+                      <section class="artifact-browser-hero"><div class="artifact-runtime-mark">M</div><div><small>本地设备</small><h3>Mac Studio 已发现</h3><p>只在你确认后授予这个工作区访问权限。</p></div><button>继续连接</button></section>
+                      <div class="artifact-browser-steps"><span class="is-done">1<span>登录组织</span></span><span class="is-current">2<span>连接设备</span></span><span>3<span>选择工作区</span></span></div>
+                    </main>
+                  </div>
+                </div>
+                <footer class="artifact-canvas-footer"><span>来源：# 客户端体验 · 3 条指定消息</span><button class="text-button">在频道定位</button></footer>
+              </section>
+              <aside class="artifact-review-rail" aria-label="当前版本批注">
+                <div class="artifact-review-head"><div><span class="context-label">审阅 · 版本 3</span><strong>2 个待确认点</strong></div><button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button></div>
+                <article class="artifact-comment is-active"><span class="comment-pin">1</span><div><header><strong>孟青</strong><time>刚刚</time></header><p>解释文字应该先说清楚不会上传本地路径。</p><button>回复</button></div></article>
+                <article class="artifact-comment"><span class="comment-pin">2</span><div><header><strong>周一鸣</strong><time>8 分钟前</time></header><p>“继续连接”前补一个权限范围预览。</p><button>回复</button></div></article>
+                <div class="artifact-revision-ask"><span class="context-label">下一步</span><p>把 2 条意见交给 Nova，在当前 Artifact 上创建版本 4。</p><button class="primary-button">交给 Agent 修订</button></div>
+              </aside>
+            </div>
+            <footer class="artifact-prototype-actions"><button class="secondary-button">退回当前版本</button><button class="primary-button">确认版本 3</button></footer>
+          </section>
+
+          <section class="artifact-prototype artifact-variant-b" data-artifact-variant="B" aria-labelledby="artifact-variant-b-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · Artifact 01</span><h2 id="artifact-variant-b-title">版本舞台</h2><p>先对比真实成果，再决定采用哪一次 Agent 修订。</p></div>
+              <div class="artifact-status"><span>当前：版本 3</span><span>3 次修订</span></div>
+            </header>
+            <div class="artifact-stage-layout">
+              <section class="artifact-stage" aria-label="版本 3 的交互原型预览">
+                <div class="artifact-stage-label"><span class="artifact-type">交互原型</span><strong>版本 3 · Nova · 12:26</strong><span class="status status-running">待审阅</span></div>
+                <div class="artifact-stage-preview">
+                  <div class="stage-sidebar"><b>TL</b><span>消息</span><span class="is-active">连接设备</span><span>工作区</span></div>
+                  <div class="stage-main"><div class="stage-topline"><span>开始使用</span><em>02 / 03</em></div><div class="stage-card"><div class="artifact-runtime-mark">M</div><span class="status status-running">设备在线</span><h3>连接 Mac Studio</h3><p>Threadline 会在此设备上运行 Agent；任何文件访问均需你逐次授权。</p><button>查看权限范围</button><button class="stage-primary">连接并继续</button></div><div class="stage-progress"><i></i><i class="is-active"></i><i></i></div></div>
+                </div>
+              </section>
+              <section class="artifact-version-strip" aria-label="Artifact 版本历史">
+                <div class="artifact-version-head"><div><span class="context-label">版本轨迹</span><strong>同一个 Artifact，不产生新的聊天附件</strong></div><button class="text-button">查看完整历史</button></div>
+                <div class="artifact-version-list"><button><span>v1</span><div><strong>初稿</strong><small>Nova · 11:42</small></div><em>未审阅</em></button><button><span>v2</span><div><strong>补充权限提醒</strong><small>Nova · 12:08</small></div><em>孟青评论</em></button><button class="is-selected"><span>v3</span><div><strong>明确本地边界</strong><small>Nova · 12:26</small></div><em>当前</em></button></div>
+              </section>
+              <aside class="artifact-decision-sheet">
+                <span class="context-label">本次决定</span><h3>版本 3 是否可进入发布任务？</h3><p>接受后，DES-088 将把当前 Artifact 作为可复用交付物，而不是把 Agent 总结写回频道。</p><div class="artifact-decision-facts"><span><b>来源</b># 客户端体验</span><span><b>审阅者</b>林嘉、孟青</span><span><b>下一动作</b>创建发布任务</span></div><button class="secondary-button">要求 Nova 再修订</button><button class="primary-button">接受版本 3</button>
+              </aside>
+            </div>
+          </section>
+
+          <section class="artifact-prototype artifact-variant-c" data-artifact-variant="C" aria-labelledby="artifact-variant-c-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · 由讨论生成的交付</span><h2 id="artifact-variant-c-title">交付三栏</h2><p>把“从哪来、交付什么、接下来由谁决定”并列，而不是串成消息流。</p></div>
+              <div class="artifact-status"><span>Agent：Nova</span><span>Artifact 01 / 01</span></div>
+            </header>
+            <div class="artifact-flow-layout">
+              <section class="artifact-provenance-lane" aria-label="任务来源与约束">
+                <span class="context-label">任务上下文</span><h3>DES-088</h3><p>移动端 Runtime 连接引导</p><div class="artifact-source-quote"><small># 客户端体验 · 孟青</small><p>第一次打开时，用户不应把本地 Runtime 当成云端服务。</p></div><div class="artifact-source-quote"><small>约束</small><p>不暴露本机目录；所有访问权限必须在执行前解释。</p></div><div class="artifact-provenance-meta"><span><b>Run</b>02 · 已完成</span><span><b>输入</b>3 条消息</span><span><b>权限</b>无文件读取</span></div><button class="text-button">打开完整 Task</button>
+              </section>
+              <section class="artifact-board" aria-label="当前 Artifact">
+                <div class="artifact-board-head"><div><span class="artifact-type">交互原型</span><strong>Runtime 连接引导</strong></div><button class="secondary-button">全屏预览</button></div>
+                <div class="artifact-board-preview"><div class="board-device"><div class="board-device-head"><span>09:41</span><b>Threadline</b><span>•••</span></div><div class="board-device-content"><small>开始使用</small><h3>连接你的工作设备</h3><p>Agent 只会在这台设备和你授权的目录中工作。</p><div class="board-device-row"><span class="artifact-runtime-mark">M</span><div><strong>Mac Studio</strong><small>已验证 · 本地</small></div><i>›</i></div><button>查看授权范围</button><em>继续</em></div></div></div>
+                <div class="artifact-board-footer"><span>版本 3 · 由 Nova 在 Run 02 生成</span><button class="text-button">查看差异</button></div>
+              </section>
+              <aside class="artifact-next-lane" aria-label="审阅与下一步">
+                <span class="context-label">团队决定</span><div class="artifact-vote"><span class="avatar avatar-small avatar-user">林</span><div><strong>林嘉</strong><small>等待确认</small></div><button>查看</button></div><div class="artifact-vote"><span class="avatar avatar-small avatar-meng">孟</span><div><strong>孟青</strong><small>要求补充说明</small></div><button>定位</button></div><div class="artifact-next-callout"><span>修订请求</span><p>补上“不会上传本地路径”的解释，然后新建版本 4。</p><button class="primary-button">发送给 Nova</button></div><button class="secondary-button artifact-accept">接受当前版本</button>
+              </aside>
+            </div>
+          </section>
+
+          <nav class="artifact-prototype-switcher" id="artifact-prototype-switcher" aria-label="Artifact 原型版本" hidden>
+            <button type="button" data-artifact-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="artifact-prototype-label">A · 画布审阅</span>
+            <button type="button" data-artifact-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
         </section>
 
         <section class="screen screen-runtime" data-screen="runtime">

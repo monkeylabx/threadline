@@ -111,6 +111,30 @@ Organization
 | Approval | Runtime 执行受保护动作前的人类决策 |
 | Artifact | Patch、文档、报告、图片或构建结果等运行产物 |
 
+### 5.1.1 产品决策草案：Artifact 是 IM 核心对象
+
+> 本节记录 [#183](https://github.com/monkeylabx/threadline/issues/183) 的产品决策草案；它用于原型评审，
+> 不改变当前冻结的协议、信任边界或交付计划。
+
+Threadline 的差异不应只是把一个 Robot 接入既有消息流。Human、Agent、Task、Run 和 Artifact 都是
+IM 的一等协作对象：消息用于提出、澄清和决定工作；Artifact 是 Agent 和团队共同查看、修订、审查与
+接受的交付对象，而不是一条长文本回复、附件或外部链接。
+
+这个方向需要证明的不是“Agent 能生成文件”，而是团队能否在不离开共享上下文的情况下完成一次交付审阅。
+
+| 核心需求 | 用户结果 | UI 表达 | 原型验收 |
+| --- | --- | --- | --- |
+| Artifact 有独立身份，关联来源 Task 和 Run | 成员知道这份结果从何而来、由谁生成 | 固定展示 Task、Run、Agent 和版本 | 在交付页首屏可见，不靠翻聊天记录寻找 |
+| Artifact 是主要内容，而非 Agent 文本 | 成员先看实际成果，再决定是否接受 | 使用类型化、可操作的预览画布 | 预览占交付页主要视觉面积；摘要不替代预览 |
+| 审阅意见附着在同一个 Artifact 版本 | 讨论不会散落成多条“请再改一次”消息 | 批注、决定和版本状态与预览同屏 | 能看到待确认点及其对应版本 |
+| Agent 对同一 Artifact 继续修订 | 后续修改形成版本，而不是新的孤立回复或附件 | 明确的“交给 Agent 修订”动作和版本轨迹 | 下一次修订目标与当前版本的关系可见 |
+| Artifact 的接受是团队决策 | 成员能清楚确认谁接受了什么 | 接受、退回、发布操作绑定 Artifact 版本 | 不能只接受一段 Agent 总结；必须针对当前版本操作 |
+
+原型问题：**Task Delivery 页面应如何把 Artifact 放到交付体验中心，而又不让 Channel 变成重型仪表盘？**
+三个候选结构位于
+[`docs/prototype/index.html?screen=task-result&prototype=artifact&variant=A`](./prototype/index.html?screen=task-result&prototype=artifact&variant=A)，
+并可切换为 `B`、`C`；它们是可丢弃的设计探索，不是产品实现。
+
 ### 5.2 必须保持的关系
 
 ```text

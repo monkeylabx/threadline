@@ -199,6 +199,62 @@ document.querySelector("#simulate-gap").addEventListener("click", (event) => {
   document.querySelector(".sync-status strong").textContent = "同步缺口已自动修复";
 });
 
+// PROTOTYPE #183 — three disposable task-delivery layouts, enabled only by URL.
 const initialParams = new URLSearchParams(window.location.search);
-switchRoute(initialParams.get("screen") || "channel");
+const artifactPrototypeEnabled = initialParams.get("prototype") === "artifact";
+const artifactVariantNames = {
+  A: "A · 画布审阅",
+  B: "B · 版本舞台",
+  C: "C · 交付三栏",
+};
+const artifactVariantKeys = Object.keys(artifactVariantNames);
+const artifactSwitcher = document.querySelector("#artifact-prototype-switcher");
+const artifactSwitcherLabel = document.querySelector("#artifact-prototype-label");
+
+function setArtifactVariant(requestedVariant, { updateUrl = true } = {}) {
+  if (!artifactPrototypeEnabled) return;
+  const variant = artifactVariantNames[requestedVariant] ? requestedVariant : "A";
+  document.querySelectorAll("[data-artifact-variant]").forEach((element) => {
+    const selected = element.dataset.artifactVariant === variant;
+    element.hidden = !selected;
+    element.setAttribute("aria-hidden", String(!selected));
+  });
+  artifactSwitcherLabel.textContent = artifactVariantNames[variant];
+  if (updateUrl) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("prototype", "artifact");
+    nextUrl.searchParams.set("variant", variant);
+    nextUrl.searchParams.set("screen", "task-result");
+    window.history.replaceState({}, "", nextUrl);
+  }
+}
+
+if (artifactPrototypeEnabled) {
+  document.body.classList.add("is-artifact-prototype");
+  artifactSwitcher.hidden = false;
+  artifactSwitcher.querySelectorAll("[data-artifact-cycle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const current = new URLSearchParams(window.location.search).get("variant") || "A";
+      const currentIndex = artifactVariantKeys.indexOf(current);
+      const step = button.dataset.artifactCycle === "previous" ? -1 : 1;
+      const nextIndex = (currentIndex + step + artifactVariantKeys.length) % artifactVariantKeys.length;
+      setArtifactVariant(artifactVariantKeys[nextIndex]);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    const active = document.activeElement;
+    const isEditing = active instanceof HTMLElement
+      && (active.matches("input, textarea, [contenteditable='true']"));
+    if (isEditing || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    const current = new URLSearchParams(window.location.search).get("variant") || "A";
+    const currentIndex = artifactVariantKeys.indexOf(current);
+    const step = event.key === "ArrowLeft" ? -1 : 1;
+    const nextIndex = (currentIndex + step + artifactVariantKeys.length) % artifactVariantKeys.length;
+    setArtifactVariant(artifactVariantKeys[nextIndex]);
+  });
+}
+
+switchRoute(initialParams.get("screen") || (artifactPrototypeEnabled ? "task-result" : "channel"));
+if (artifactPrototypeEnabled) setArtifactVariant(initialParams.get("variant"), { updateUrl: true });
 if (initialParams.get("modal") === "task") setModal(true);
