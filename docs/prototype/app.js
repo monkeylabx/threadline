@@ -549,12 +549,28 @@ if (imAgentPrototypeEnabled) {
     composer.focus();
   };
   document.querySelector("[data-new-agent-work]")?.addEventListener("click", createAgentWork);
-  document.querySelector("[data-unified-nav-toggle]")?.addEventListener("click", (event) => {
-    const stage = event.currentTarget.closest(".overlay-stage");
-    const collapsed = stage.classList.toggle("is-nav-collapsed");
-    event.currentTarget.setAttribute("aria-expanded", String(!collapsed));
-    event.currentTarget.setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
-    event.currentTarget.title = collapsed ? "展开侧栏" : "收起侧栏";
+  const unifiedNavToggle = document.querySelector("[data-unified-nav-toggle]");
+  const unifiedNavStage = unifiedNavToggle?.closest(".overlay-stage");
+  const setUnifiedNavCollapsed = (collapsed) => {
+    unifiedNavStage.classList.toggle("is-nav-collapsed", collapsed);
+    unifiedNavToggle.setAttribute("aria-expanded", String(!collapsed));
+    unifiedNavToggle.setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
+    unifiedNavToggle.title = collapsed ? "展开侧栏" : "收起侧栏";
+  };
+  unifiedNavToggle?.addEventListener("click", (event) => {
+    setUnifiedNavCollapsed(!unifiedNavStage.classList.contains("is-nav-collapsed"));
+    if (event.detail) event.currentTarget.blur();
+  });
+  document.querySelectorAll("[data-collapsed-nav-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setUnifiedNavCollapsed(false);
+      const targetSelectors = {
+        attention: "[data-attention-inbox]",
+        communication: ".communication-section",
+        work: ".agent-history-list",
+      };
+      document.querySelector(`.im-agent-variant-a ${targetSelectors[button.dataset.collapsedNavTarget]}`)?.scrollIntoView({ block: "nearest" });
+    });
   });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
