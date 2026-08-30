@@ -394,6 +394,79 @@ if (privatePublishPrototypeEnabled) {
   });
 }
 
+// PROTOTYPE #183 V4 — three disposable communication layers for Agent focus work.
+const imAgentPrototypeEnabled = initialParams.get("prototype") === "im-agent-fusion";
+const imAgentVariantNames = {
+  A: "A · 消息浮层",
+  B: "B · 通信边缘轨",
+  C: "C · 固定频道",
+};
+const imAgentVariantKeys = Object.keys(imAgentVariantNames);
+const imAgentSwitcher = document.querySelector("#im-agent-switcher");
+const imAgentSwitcherLabel = document.querySelector("#im-agent-label");
+
+function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
+  if (!imAgentPrototypeEnabled) return;
+  const variant = imAgentVariantNames[requestedVariant] ? requestedVariant : "A";
+  document.querySelectorAll("[data-im-agent-variant]").forEach((element) => {
+    const selected = element.dataset.imAgentVariant === variant;
+    element.hidden = !selected;
+    element.setAttribute("aria-hidden", String(!selected));
+  });
+  document.querySelectorAll("[data-im-drawer]").forEach((drawer) => { drawer.hidden = true; });
+  imAgentSwitcherLabel.textContent = imAgentVariantNames[variant];
+  if (updateUrl) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("screen", "channel");
+    nextUrl.searchParams.set("prototype", "im-agent-fusion");
+    nextUrl.searchParams.set("variant", variant);
+    window.history.replaceState({}, "", nextUrl);
+  }
+}
+
+if (imAgentPrototypeEnabled) {
+  document.body.classList.add("is-im-agent-prototype");
+  imAgentSwitcher.hidden = false;
+  imAgentSwitcher.querySelectorAll("[data-im-agent-cycle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const current = new URLSearchParams(window.location.search).get("variant") || "A";
+      const currentIndex = imAgentVariantKeys.indexOf(current);
+      const step = button.dataset.imAgentCycle === "previous" ? -1 : 1;
+      const nextIndex = (currentIndex + step + imAgentVariantKeys.length) % imAgentVariantKeys.length;
+      setImAgentVariant(imAgentVariantKeys[nextIndex]);
+    });
+  });
+  document.querySelectorAll("[data-im-drawer-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const drawer = document.querySelector("[data-im-drawer]");
+      if (drawer) drawer.hidden = false;
+    });
+  });
+  document.querySelectorAll("[data-im-drawer-close]").forEach((button) => {
+    button.addEventListener("click", () => { button.closest("[data-im-drawer]").hidden = true; });
+  });
+  document.querySelector("[data-im-quick-send]")?.addEventListener("click", () => {
+    const input = document.querySelector("[data-im-quick-input]");
+    const message = input?.value.trim();
+    if (!message) return;
+    const sent = document.createElement("article");
+    sent.innerHTML = `<span class="avatar avatar-small avatar-user">林</span><div><b>你 <time>刚刚</time></b><p></p></div>`;
+    sent.querySelector("p").textContent = message;
+    document.querySelector(".drawer-message-list")?.append(sent);
+    input.value = "";
+  });
+  document.addEventListener("keydown", (event) => {
+    const active = document.activeElement;
+    const isEditing = active instanceof HTMLElement && active.matches("input, textarea, [contenteditable='true']");
+    if (isEditing || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    const current = new URLSearchParams(window.location.search).get("variant") || "A";
+    const currentIndex = imAgentVariantKeys.indexOf(current);
+    const step = event.key === "ArrowLeft" ? -1 : 1;
+    setImAgentVariant(imAgentVariantKeys[(currentIndex + step + imAgentVariantKeys.length) % imAgentVariantKeys.length]);
+  });
+}
+
 switchRoute(initialParams.get("screen") || (artifactPrototypeEnabled ? "task-result" : "channel"));
 if (artifactPrototypeEnabled) setArtifactVariant(initialParams.get("variant"), { updateUrl: true });
 if (privatePublishPrototypeEnabled) {
@@ -401,6 +474,12 @@ if (privatePublishPrototypeEnabled) {
   setPrivatePublishState("draft");
   document.querySelector("#view-title").textContent = "我的 AI 工作台";
   document.querySelector("#view-subtitle").textContent = "私人对话、工作资料与成果 · 仅你可见";
+  document.querySelector(".channel-hash").textContent = "";
+}
+if (imAgentPrototypeEnabled) {
+  setImAgentVariant(initialParams.get("variant"), { updateUrl: true });
+  document.querySelector("#view-title").textContent = "Agent 工作";
+  document.querySelector("#view-subtitle").textContent = "专注工作中 · IM 保持可达";
   document.querySelector(".channel-hash").textContent = "";
 }
 if (initialParams.get("modal") === "task") setModal(true);

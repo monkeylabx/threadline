@@ -142,6 +142,12 @@ V3 原型问题：**如何同时保留作为个人主工作界面的 AI 工作�
 [`prototype=artifact`](./prototype/index.html?screen=task-result&prototype=artifact&variant=A) 方案只验证交付页审阅，
 保留为上一轮可丢弃探索；两组都不是产品实现。
 
+V4 原型进一步验证：**当 Agent Runtime 占据主要注意力时，IM 如何保持可达而不持续挤占工作画面？**
+候选方案位于
+[`prototype=im-agent-fusion`](./prototype/index.html?screen=channel&prototype=im-agent-fusion&variant=A)：`A` 使用覆盖式消息浮层，
+`B` 使用窄通信边缘轨，`C` 允许用户在确有持续协作需要时固定一个 Channel。三个方案都保持 IM 与 Runtime
+为不同表面，并只通过引用上下文、快速回复和显式共享连接。
+
 ### 5.2 必须保持的关系
 
 ```text

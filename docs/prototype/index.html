@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=3" />
+    <link rel="stylesheet" href="./styles.css?v=4" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -345,6 +345,78 @@
             <span id="private-publish-label">A · 双域工作台</span>
             <button data-private-publish-cycle="next" aria-label="下一个方案">→</button>
           </nav>
+
+          <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
+          <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="im-agent-a-title" hidden>
+            <div class="im-agent-stage overlay-stage">
+              <header class="focus-app-header">
+                <div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-a-title">重做桌面端入职引导</h2></div>
+                <div class="focus-header-actions"><button class="context-pill">#产品研发 · 3 条上下文</button><button class="message-entry" data-im-drawer-open><svg><use href="#i-message"></use></svg>消息 <b>3</b></button></div>
+              </header>
+              <main class="focus-agent-main">
+                <div class="focus-agent-thread">
+                  <div class="focus-day">今天 10:42 · 仅你可见</div>
+                  <article class="focus-turn user"><div><b>你</b><p>根据频道里的讨论，重做桌面端入职引导。让新成员直接进入真实工作，不要做功能说明书。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>我会把第一步聚焦到“进入正在发生的工作”。已读取你明确引用的 3 条频道消息，其他频道内容不会进入本次工作。</p><button class="focus-inline-result"><span>入职引导页 · 草稿 v1</span><small>已更新 3 处</small><i>打开预览 →</i></button></div></article>
+                  <article class="focus-turn user"><div><b>你</b><p>把第二步改成邀请一位同事共同编辑。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已经修改。当前版本仍是私人草稿，准备好后可以共享到 #产品研发。</p></div></article>
+                </div>
+                <div class="focus-agent-composer"><div><span>#产品研发 · 3</span><span>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+              </main>
+              <aside class="message-capsule"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>第一屏能不能再直接一点？</p></div><button data-im-drawer-open>查看</button></aside>
+              <aside class="communication-drawer" data-im-drawer hidden>
+                <header><div><strong>消息</strong><small>不离开当前 Agent 工作</small></div><button class="icon-button" data-im-drawer-close aria-label="关闭消息"><svg><use href="#i-close"></use></svg></button></header>
+                <nav><button class="is-active">提及与私聊 <b>3</b></button><button>频道动态</button></nav>
+                <div class="drawer-message-list">
+                  <article class="is-current"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青 <time>刚刚</time></b><p>第一屏能不能再直接一点？新同学应该马上知道从哪里开始。</p><button>引用到当前工作</button></div></article>
+                  <article><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣 <time>4 分钟</time></b><p>我把昨天的测试录屏发到 #客户端体验 了。</p></div></article>
+                </div>
+                <div class="drawer-quick-reply"><span>回复孟青</span><textarea rows="2" placeholder="快速回复，不离开当前工作" data-im-quick-input></textarea><button data-im-quick-send>发送</button></div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="im-agent-prototype im-agent-variant-b" data-im-agent-variant="B" aria-labelledby="im-agent-b-title" hidden>
+            <div class="im-agent-stage edge-stage">
+              <header class="focus-app-header"><div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-b-title">通信边缘轨</h2></div><button class="context-pill">上下文 3</button></header>
+              <main class="edge-agent-work">
+                <div class="edge-agent-copy"><span>入职引导页 · 私人草稿</span><h3>让新成员从真实协作开始</h3><p>Nova 正在根据你的反馈调整第二步。右侧边缘轨只显示需要你注意的人，不展示频道信息流。</p></div>
+                <div class="edge-result-preview"><small>WELCOME TO THREADLINE</small><strong>先进入正在发生的工作</strong><p>找到项目、邀请同事，然后完成第一次协作。</p><button>继续修改</button></div>
+                <div class="edge-composer"><textarea rows="2" placeholder="继续工作…"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </main>
+              <aside class="communication-edge">
+                <button class="edge-home"><svg><use href="#i-message"></use></svg><b>3</b></button>
+                <button class="edge-person is-current"><span class="avatar avatar-small avatar-meng">孟</span><i></i></button>
+                <button class="edge-person"><span class="avatar avatar-small avatar-zhou">周</span></button>
+                <span class="edge-divider"></span>
+                <button class="edge-channel">#<b>1</b></button>
+              </aside>
+              <aside class="edge-peek"><small>孟青 · 刚刚</small><p>第一屏能不能再直接一点？</p><div><button>稍后</button><button>快速回复</button></div></aside>
+            </div>
+          </section>
+
+          <section class="im-agent-prototype im-agent-variant-c" data-im-agent-variant="C" aria-labelledby="im-agent-c-title" hidden>
+            <div class="im-agent-stage pinned-stage">
+              <main class="pinned-agent-work">
+                <header class="focus-app-header"><div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-c-title">重做桌面端入职引导</h2></div><button class="context-pill">🔒 仅自己可见</button></header>
+                <div class="pinned-focus-body"><span>当前成果</span><h3>先进入正在发生的工作</h3><p>从一个真实项目开始理解 Threadline，而不是浏览一套功能说明。</p><div class="pinned-progress"><i></i><i></i><i></i></div><button class="primary-button">打开成果预览</button></div>
+                <div class="pinned-composer"><textarea rows="2" placeholder="继续和 Nova 工作…"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </main>
+              <aside class="pinned-channel">
+                <header><div><span>已固定频道</span><strong># 产品研发</strong></div><button class="icon-button" title="取消固定"><svg><use href="#i-close"></use></svg></button></header>
+                <div class="pinned-channel-note">只有当当前工作需要持续协作时，频道才固定在旁边。</div>
+                <article><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青 <time>10:51</time></b><p>第一屏能不能再直接一点？</p><button>引用到 Agent 工作</button></div></article>
+                <article><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣 <time>10:53</time></b><p>第二步最好让他马上找到一个协作者。</p></div></article>
+                <div class="pinned-channel-composer"><textarea rows="2" placeholder="回复 #产品研发"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </aside>
+            </div>
+          </section>
+
+          <nav class="im-agent-switcher" id="im-agent-switcher" aria-label="Agent 工作中的 IM 融合方案" hidden>
+            <button data-im-agent-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="im-agent-label">A · 消息浮层</span>
+            <button data-im-agent-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
         </section>
 
         <section class="screen screen-tasks" data-screen="tasks">
@@ -606,6 +678,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=3"></script>
+    <script src="./app.js?v=4"></script>
   </body>
 </html>
