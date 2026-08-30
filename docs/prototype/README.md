@@ -19,7 +19,7 @@
 | `search` | 全局检索 |
 | `tasks` | Agent 任务执行现场 |
 | `approvals` | 风险审批 |
-| `task-result` | 任务交付与 Diff |
+| `task-result` | Artifact 接力、详细审查与下一次 Agent 修订 |
 | `files` | 文件与产物 |
 | `agents` | Agent 目录与权限 |
 | `runtime` | Runtime 设备与健康 |
@@ -36,6 +36,7 @@
 - 发送频道消息。
 - 审批一次性 Capability Grant。
 - 接受 Agent 交付并创建 PR。
+- 在 Artifact 交付链中审查完整 Diff、验证证据，并接受或要求下一次 Agent 修订。
 - 模拟 Runtime 离线和同步序列缺口修复。
 - Agent Participation Mode、搜索分类和管理导航状态切换。
 - 桌面与移动端响应式布局。
