@@ -479,29 +479,18 @@ if (imAgentPrototypeEnabled) {
     unifiedSearch.blur();
   });
   const communicationCreateMenu = document.querySelector("[data-communication-create-menu]");
-  const attentionPopover = document.querySelector("[data-attention-popover]");
-  const quickCommunication = document.querySelector("[data-quick-communication]");
-  const attentionInbox = document.querySelector("[data-attention-inbox]");
-  const setQuickPopover = (target) => {
-    const showCommunication = target === "communication" && communicationCreateMenu.hidden;
-    const showAttention = target === "attention" && attentionPopover.hidden;
-    communicationCreateMenu.hidden = !showCommunication;
-    attentionPopover.hidden = !showAttention;
-    quickCommunication?.classList.toggle("is-open", showCommunication);
-    attentionInbox?.classList.toggle("is-open", showAttention);
-    attentionInbox?.setAttribute("aria-expanded", String(showAttention));
-  };
-  document.querySelector("[data-new-communication]")?.addEventListener("click", () => setQuickPopover("communication"));
-  quickCommunication?.addEventListener("click", () => setQuickPopover("communication"));
+  document.querySelector("[data-new-communication]")?.addEventListener("click", () => {
+    communicationCreateMenu.hidden = !communicationCreateMenu.hidden;
+  });
   document.querySelector("[data-new-conversation]")?.addEventListener("click", () => {
-    setQuickPopover();
+    communicationCreateMenu.hidden = true;
     unifiedSearch.value = "";
     unifiedSearch.placeholder = "输入姓名，搜索组织成员…";
     filterUnifiedNavigation();
     unifiedSearch.focus();
   });
   document.querySelector("[data-new-channel]")?.addEventListener("click", () => {
-    const section = document.querySelector(".im-agent-variant-a .communication-section");
+    const section = communicationCreateMenu.closest(".unified-nav-section");
     let draft = section.querySelector("[data-channel-draft]");
     if (!draft) {
       draft = document.createElement("button");
@@ -511,10 +500,15 @@ if (imAgentPrototypeEnabled) {
       const firstConversation = section.querySelector(".unified-channel, .unified-dm");
       section.insertBefore(draft, firstConversation);
     }
-    setQuickPopover();
+    communicationCreateMenu.hidden = true;
     draft.focus();
   });
-  attentionInbox?.addEventListener("click", () => setQuickPopover("attention"));
+  document.querySelector("[data-attention-inbox]")?.addEventListener("click", (event) => {
+    const expanded = event.currentTarget.classList.toggle("is-expanded");
+    event.currentTarget.querySelector("small").textContent = expanded
+      ? "待批准 1 · Agent 交付待确认 1"
+      : "1 个审批 · 1 个 Agent 结果";
+  });
   const focusAgentThread = document.querySelector(".im-agent-variant-a .focus-agent-thread");
   const defaultFocusThreadMarkup = focusAgentThread?.innerHTML || "";
   const historyPreviews = {
@@ -544,7 +538,6 @@ if (imAgentPrototypeEnabled) {
     });
   });
   const createAgentWork = () => {
-    setQuickPopover();
     document.querySelectorAll("[data-agent-history-item]").forEach((item) => item.classList.remove("is-current"));
     document.querySelector("[data-agent-work-title]").textContent = "未命名工作";
     document.querySelector("[data-work-parent]").textContent = "未关联频道";
@@ -556,13 +549,12 @@ if (imAgentPrototypeEnabled) {
     composer.focus();
   };
   document.querySelector("[data-new-agent-work]")?.addEventListener("click", createAgentWork);
-  document.querySelector("[data-quick-agent-work]")?.addEventListener("click", createAgentWork);
   document.querySelector("[data-unified-nav-toggle]")?.addEventListener("click", (event) => {
     const stage = event.currentTarget.closest(".overlay-stage");
     const collapsed = stage.classList.toggle("is-nav-collapsed");
     event.currentTarget.setAttribute("aria-expanded", String(!collapsed));
-    event.currentTarget.textContent = collapsed ? "›" : "‹";
-    event.currentTarget.title = collapsed ? "展开对话导航" : "收起对话导航";
+    event.currentTarget.setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
+    event.currentTarget.title = collapsed ? "展开侧栏" : "收起侧栏";
   });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;

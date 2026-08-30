@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=11" />
+    <link rel="stylesheet" href="./styles.css?v=12" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -46,6 +46,7 @@
       <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+      <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16M6 9h.01M6 13h.01"></path></symbol>
     </svg>
 
     <main class="app-shell" id="app-shell">
@@ -353,21 +354,15 @@
             <div class="im-agent-stage overlay-stage">
               <aside class="agent-history-rail unified-conversation-nav" aria-label="Threadline 对话导航">
                 <header class="unified-org-header"><span class="unified-org-mark">北</span><div><strong>北辰科技</strong><small>产品与工程</small></div><button title="切换组织" aria-label="切换组织">⌄</button></header>
-                <label class="unified-search"><svg><use href="#i-search"></use></svg><input data-unified-search type="search" placeholder="搜索频道、工作或成员" aria-label="搜索频道、私人工作或组织成员" /><kbd>⌘K</kbd></label>
-                <div class="sidebar-quick-actions" aria-label="快捷操作">
-                  <button data-quick-communication title="发消息"><svg><use href="#i-message"></use></svg><span>发消息</span></button>
-                  <button data-quick-agent-work title="新建私人工作"><svg><use href="#i-bot"></use></svg><span>新工作</span><i></i></button>
-                  <button data-attention-inbox aria-expanded="false" title="查看待处理"><svg><use href="#i-checks"></use></svg><span>待处理</span><b>2</b></button>
+                <div class="unified-sidebar-tools">
+                  <label class="unified-search"><svg><use href="#i-search"></use></svg><input data-unified-search type="search" placeholder="搜索频道、工作或成员" aria-label="搜索频道、私人工作或组织成员" /><kbd>⌘K</kbd></label>
+                  <button class="sidebar-panel-toggle" data-unified-nav-toggle aria-expanded="true" title="收起侧栏" aria-label="收起侧栏"><svg><use href="#i-sidebar"></use></svg></button>
                 </div>
-                <div class="communication-create-menu quick-action-popover" data-communication-create-menu hidden><button data-new-channel><b>#</b><span>新建频道</span></button><button data-new-conversation><svg><use href="#i-users"></use></svg><span>发起私聊</span></button></div>
-                <section class="attention-popover quick-action-popover" data-attention-popover hidden aria-label="待处理事项">
-                  <header><strong>待处理</strong><small>不包含频道提及</small></header>
-                  <button><span>!</span><div><b>批准本地文件删除</b><small>Atlas · ENG-248</small></div><i>审批</i></button>
-                  <button><span>✓</span><div><b>确认入职引导页成果</b><small>Nova · 刚刚完成</small></div><i>结果</i></button>
-                </section>
+                <button class="attention-inbox" data-attention-inbox><span>!</span><div><strong>需要处理</strong><small>1 个审批 · 1 个 Agent 结果</small></div><b>2</b></button>
                 <div class="unified-nav-scroll">
                   <section class="unified-nav-section communication-section">
                     <div class="unified-section-title"><span>沟通</span><button data-new-communication title="新建频道或私聊" aria-label="新建频道或发起私聊"><svg><use href="#i-plus"></use></svg></button></div>
+                    <div class="communication-create-menu" data-communication-create-menu hidden><button data-new-channel><b>#</b><span>新建频道</span></button><button data-new-conversation><svg><use href="#i-users"></use></svg><span>发起私聊</span></button></div>
                     <button class="unified-channel"><b>#</b><span>产品研发</span><i class="has-mention">@1</i></button>
                     <button class="unified-dm"><span class="avatar avatar-tiny avatar-meng">孟</span><b>孟青</b><i></i></button>
                     <button class="unified-channel"><b>#</b><span>客户端体验</span><i class="has-unread">4</i></button>
@@ -387,7 +382,7 @@
               </aside>
               <section class="agent-focus-content">
               <header class="focus-app-header">
-                <div class="unified-work-heading"><button class="nav-collapse" data-unified-nav-toggle aria-expanded="true" title="收起对话导航">‹</button><div><div class="work-breadcrumb"><button data-work-parent># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="im-agent-a-title" data-agent-work-title>重做桌面端入职引导</h2></div></div>
+                <div class="unified-work-heading"><div><div class="work-breadcrumb"><button data-work-parent># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="im-agent-a-title" data-agent-work-title>重做桌面端入职引导</h2></div></div>
                 <div class="focus-header-actions"><button class="directory-picker" data-directory-picker><svg><use href="#i-folder"></use></svg><span data-directory-label>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div>
                 <div class="directory-menu" data-directory-menu hidden>
                   <span>本地工作目录</span>
@@ -715,6 +710,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=11"></script>
+    <script src="./app.js?v=12"></script>
   </body>
 </html>
