@@ -413,7 +413,6 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
     element.hidden = !selected;
     element.setAttribute("aria-hidden", String(!selected));
   });
-  document.querySelectorAll("[data-im-drawer]").forEach((drawer) => { drawer.hidden = true; });
   document.querySelectorAll("[data-directory-menu]").forEach((menu) => { menu.hidden = true; });
   imAgentSwitcherLabel.textContent = imAgentVariantNames[variant];
   if (updateUrl) {
@@ -436,25 +435,6 @@ if (imAgentPrototypeEnabled) {
       const nextIndex = (currentIndex + step + imAgentVariantKeys.length) % imAgentVariantKeys.length;
       setImAgentVariant(imAgentVariantKeys[nextIndex]);
     });
-  });
-  document.querySelectorAll("[data-im-drawer-open]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const drawer = document.querySelector("[data-im-drawer]");
-      if (drawer) drawer.hidden = false;
-    });
-  });
-  document.querySelectorAll("[data-im-drawer-close]").forEach((button) => {
-    button.addEventListener("click", () => { button.closest("[data-im-drawer]").hidden = true; });
-  });
-  document.querySelector("[data-im-quick-send]")?.addEventListener("click", () => {
-    const input = document.querySelector("[data-im-quick-input]");
-    const message = input?.value.trim();
-    if (!message) return;
-    const sent = document.createElement("article");
-    sent.innerHTML = `<span class="avatar avatar-small avatar-user">林</span><div><b>你 <time>刚刚</time></b><p></p></div>`;
-    sent.querySelector("p").textContent = message;
-    document.querySelector(".drawer-message-list")?.append(sent);
-    input.value = "";
   });
   const directoryPicker = document.querySelector("[data-directory-picker]");
   const directoryMenu = document.querySelector("[data-directory-menu]");
@@ -497,6 +477,17 @@ if (imAgentPrototypeEnabled) {
       paragraphs[0].textContent = request;
       paragraphs[1].textContent = response;
     });
+  });
+  document.querySelector("[data-new-agent-work]")?.addEventListener("click", () => {
+    document.querySelectorAll("[data-agent-history-item]").forEach((item) => item.classList.remove("is-current"));
+    document.querySelector("[data-agent-work-title]").textContent = "未命名工作";
+    document.querySelector("[data-work-parent]").textContent = "未关联频道";
+    document.querySelector("[data-work-context]").textContent = "未关联频道";
+    document.querySelector("[data-work-artifact]").textContent = "新工作";
+    focusAgentThread.innerHTML = `<div class="focus-day">新工作 · 仅你可见</div><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>这是一个新的私人工作。告诉我你想完成什么；需要团队上下文时，再明确引用频道消息。</p></div></article>`;
+    const composer = document.querySelector(".im-agent-variant-a .focus-agent-composer textarea");
+    composer.value = "";
+    composer.focus();
   });
   document.querySelector("[data-unified-nav-toggle]")?.addEventListener("click", (event) => {
     const stage = event.currentTarget.closest(".overlay-stage");

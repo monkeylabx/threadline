@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -352,11 +352,12 @@
               <aside class="agent-history-rail unified-conversation-nav" aria-label="Threadline 对话导航">
                 <header><div><strong>北辰科技</strong><small>产品与工程</small></div><button title="新建对话"><svg><use href="#i-plus"></use></svg></button></header>
                 <button class="unified-search"><svg><use href="#i-search"></use></svg><span>搜索对话与工作</span><kbd>⌘K</kbd></button>
+                <button class="new-agent-work" data-new-agent-work><span>＋</span>新建工作</button>
                 <div class="unified-nav-scroll">
                   <section class="unified-nav-section">
                     <span>频道</span>
                     <div class="channel-branch-group">
-                      <button class="unified-channel is-parent"><b>#</b><span>产品研发</span><i>18</i></button>
+                      <button class="unified-channel is-parent"><b>#</b><span>产品研发</span><i class="has-mention">@1</i></button>
                       <button class="private-branch is-current" data-agent-history-item data-history-title="重做桌面端入职引导" data-history-channel="# 产品研发"><b>↳</b><span><strong>重做桌面端入职引导</strong><small>🔒 私人工作 · Nova</small></span></button>
                     </div>
                     <button class="unified-channel"><b>#</b><span>客户端体验</span><i class="has-unread">4</i></button>
@@ -380,7 +381,7 @@
               <section class="agent-focus-content">
               <header class="focus-app-header">
                 <div class="unified-work-heading"><button class="nav-collapse" data-unified-nav-toggle aria-expanded="true" title="收起对话导航">‹</button><div><div class="work-breadcrumb"><button data-work-parent># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="im-agent-a-title" data-agent-work-title>重做桌面端入职引导</h2></div></div>
-                <div class="focus-header-actions"><button class="directory-picker" data-directory-picker><svg><use href="#i-folder"></use></svg><span data-directory-label>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button><button class="message-entry" data-im-drawer-open><svg><use href="#i-message"></use></svg>消息 <b>3</b></button></div>
+                <div class="focus-header-actions"><button class="directory-picker" data-directory-picker><svg><use href="#i-folder"></use></svg><span data-directory-label>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div>
                 <div class="directory-menu" data-directory-menu hidden>
                   <span>本地工作目录</span>
                   <button class="is-current" data-directory-option="~/Projects/threadline"><svg><use href="#i-folder"></use></svg><div><b>threadline</b><small>~/Projects/threadline</small></div><i>✓</i></button>
@@ -397,19 +398,11 @@
                   <article class="focus-turn user"><div><b>你</b><p>把第二步改成邀请一位同事共同编辑。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
                   <article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已经修改。当前版本仍是私人草稿，准备好后可以共享到 #产品研发。</p></div></article>
                 </div>
-                <div class="focus-agent-composer"><div><span data-work-context>#产品研发 · 3</span><span data-work-artifact>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                <div class="focus-composer-dock">
+                  <div class="focus-agent-composer"><div><span data-work-context>#产品研发 · 3</span><span data-work-artifact>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                </div>
               </main>
               </section>
-              <aside class="message-capsule"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>第一屏能不能再直接一点？</p></div><button data-im-drawer-open>查看</button></aside>
-              <aside class="communication-drawer" data-im-drawer hidden>
-                <header><div><strong>消息</strong><small>不离开当前 Agent 工作</small></div><button class="icon-button" data-im-drawer-close aria-label="关闭消息"><svg><use href="#i-close"></use></svg></button></header>
-                <nav><button class="is-active">提及与私聊 <b>3</b></button><button>频道动态</button></nav>
-                <div class="drawer-message-list">
-                  <article class="is-current"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青 <time>刚刚</time></b><p>第一屏能不能再直接一点？新同学应该马上知道从哪里开始。</p><button>引用到当前工作</button></div></article>
-                  <article><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣 <time>4 分钟</time></b><p>我把昨天的测试录屏发到 #客户端体验 了。</p></div></article>
-                </div>
-                <div class="drawer-quick-reply"><span>回复孟青</span><textarea rows="2" placeholder="快速回复，不离开当前工作" data-im-quick-input></textarea><button data-im-quick-send>发送</button></div>
-              </aside>
             </div>
           </section>
 
@@ -715,6 +708,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=6"></script>
+    <script src="./app.js?v=7"></script>
   </body>
 </html>
