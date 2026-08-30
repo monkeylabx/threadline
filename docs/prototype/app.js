@@ -397,7 +397,7 @@ if (privatePublishPrototypeEnabled) {
 // PROTOTYPE #183 V4 — three disposable communication layers for Agent focus work.
 const imAgentPrototypeEnabled = initialParams.get("prototype") === "im-agent-fusion";
 const imAgentVariantNames = {
-  A: "A · 消息浮层",
+  A: "A · 统一对话",
   B: "B · 通信边缘轨",
   C: "C · 固定频道",
 };
@@ -482,7 +482,11 @@ if (imAgentPrototypeEnabled) {
     item.addEventListener("click", () => {
       document.querySelectorAll("[data-agent-history-item]").forEach((entry) => entry.classList.toggle("is-current", entry === item));
       const title = item.dataset.historyTitle;
+      const parentChannel = item.dataset.historyChannel;
       document.querySelector("[data-agent-work-title]").textContent = title;
+      document.querySelector("[data-work-parent]").textContent = parentChannel;
+      document.querySelector("[data-work-context]").textContent = parentChannel === "未关联频道" ? parentChannel : `${parentChannel} · 已引用`;
+      document.querySelector("[data-work-artifact]").textContent = title === "重做桌面端入职引导" ? "入职引导页 v1" : `${title} · 草稿`;
       if (title === "重做桌面端入职引导") {
         focusAgentThread.innerHTML = defaultFocusThreadMarkup;
         return;
@@ -493,6 +497,13 @@ if (imAgentPrototypeEnabled) {
       paragraphs[0].textContent = request;
       paragraphs[1].textContent = response;
     });
+  });
+  document.querySelector("[data-unified-nav-toggle]")?.addEventListener("click", (event) => {
+    const stage = event.currentTarget.closest(".overlay-stage");
+    const collapsed = stage.classList.toggle("is-nav-collapsed");
+    event.currentTarget.setAttribute("aria-expanded", String(!collapsed));
+    event.currentTarget.textContent = collapsed ? "›" : "‹";
+    event.currentTarget.title = collapsed ? "展开对话导航" : "收起对话导航";
   });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
