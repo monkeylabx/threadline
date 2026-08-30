@@ -433,14 +433,6 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
 if (imAgentPrototypeEnabled) {
   document.body.classList.add("is-im-agent-prototype");
   imAgentSwitcher.hidden = false;
-  document.querySelectorAll("[data-org-rail-toggle]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const collapsed = document.body.classList.toggle("is-org-rail-collapsed");
-      document.querySelectorAll("[data-org-rail-toggle]").forEach((toggle) => {
-        toggle.setAttribute("aria-expanded", String(!collapsed));
-      });
-    });
-  });
   imAgentSwitcher.querySelectorAll("[data-im-agent-cycle]").forEach((button) => {
     button.addEventListener("click", () => {
       const current = new URLSearchParams(window.location.search).get("variant") || "A";
@@ -486,7 +478,12 @@ if (imAgentPrototypeEnabled) {
     filterUnifiedNavigation();
     unifiedSearch.blur();
   });
+  const communicationCreateMenu = document.querySelector("[data-communication-create-menu]");
+  document.querySelector("[data-new-communication]")?.addEventListener("click", () => {
+    communicationCreateMenu.hidden = !communicationCreateMenu.hidden;
+  });
   document.querySelector("[data-new-conversation]")?.addEventListener("click", () => {
+    communicationCreateMenu.hidden = true;
     unifiedSearch.value = "";
     unifiedSearch.placeholder = "输入姓名，搜索组织成员…";
     filterUnifiedNavigation();
@@ -500,9 +497,17 @@ if (imAgentPrototypeEnabled) {
       draft.className = "unified-channel is-draft";
       draft.dataset.channelDraft = "";
       draft.innerHTML = "<b>#</b><span>未命名频道</span><i>新</i>";
-      section.querySelector(".channel-branch-group").before(draft);
+      const firstConversation = section.querySelector(".unified-channel, .unified-dm");
+      section.insertBefore(draft, firstConversation);
     }
+    communicationCreateMenu.hidden = true;
     draft.focus();
+  });
+  document.querySelector("[data-attention-inbox]")?.addEventListener("click", (event) => {
+    const expanded = event.currentTarget.classList.toggle("is-expanded");
+    event.currentTarget.querySelector("small").textContent = expanded
+      ? "待批准 1 · Agent 交付待确认 1"
+      : "1 个审批 · 1 个 Agent 结果";
   });
   const focusAgentThread = document.querySelector(".im-agent-variant-a .focus-agent-thread");
   const defaultFocusThreadMarkup = focusAgentThread?.innerHTML || "";
