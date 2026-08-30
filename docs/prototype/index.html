@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=10" />
+    <link rel="stylesheet" href="./styles.css?v=11" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -354,11 +354,20 @@
               <aside class="agent-history-rail unified-conversation-nav" aria-label="Threadline 对话导航">
                 <header class="unified-org-header"><span class="unified-org-mark">北</span><div><strong>北辰科技</strong><small>产品与工程</small></div><button title="切换组织" aria-label="切换组织">⌄</button></header>
                 <label class="unified-search"><svg><use href="#i-search"></use></svg><input data-unified-search type="search" placeholder="搜索频道、工作或成员" aria-label="搜索频道、私人工作或组织成员" /><kbd>⌘K</kbd></label>
-                <button class="attention-inbox" data-attention-inbox><span>!</span><div><strong>需要处理</strong><small>1 个审批 · 1 个 Agent 结果</small></div><b>2</b></button>
+                <div class="sidebar-quick-actions" aria-label="快捷操作">
+                  <button data-quick-communication title="发消息"><svg><use href="#i-message"></use></svg><span>发消息</span></button>
+                  <button data-quick-agent-work title="新建私人工作"><svg><use href="#i-bot"></use></svg><span>新工作</span><i></i></button>
+                  <button data-attention-inbox aria-expanded="false" title="查看待处理"><svg><use href="#i-checks"></use></svg><span>待处理</span><b>2</b></button>
+                </div>
+                <div class="communication-create-menu quick-action-popover" data-communication-create-menu hidden><button data-new-channel><b>#</b><span>新建频道</span></button><button data-new-conversation><svg><use href="#i-users"></use></svg><span>发起私聊</span></button></div>
+                <section class="attention-popover quick-action-popover" data-attention-popover hidden aria-label="待处理事项">
+                  <header><strong>待处理</strong><small>不包含频道提及</small></header>
+                  <button><span>!</span><div><b>批准本地文件删除</b><small>Atlas · ENG-248</small></div><i>审批</i></button>
+                  <button><span>✓</span><div><b>确认入职引导页成果</b><small>Nova · 刚刚完成</small></div><i>结果</i></button>
+                </section>
                 <div class="unified-nav-scroll">
                   <section class="unified-nav-section communication-section">
                     <div class="unified-section-title"><span>沟通</span><button data-new-communication title="新建频道或私聊" aria-label="新建频道或发起私聊"><svg><use href="#i-plus"></use></svg></button></div>
-                    <div class="communication-create-menu" data-communication-create-menu hidden><button data-new-channel><b>#</b><span>新建频道</span></button><button data-new-conversation><svg><use href="#i-users"></use></svg><span>发起私聊</span></button></div>
                     <button class="unified-channel"><b>#</b><span>产品研发</span><i class="has-mention">@1</i></button>
                     <button class="unified-dm"><span class="avatar avatar-tiny avatar-meng">孟</span><b>孟青</b><i></i></button>
                     <button class="unified-channel"><b>#</b><span>客户端体验</span><i class="has-unread">4</i></button>
@@ -706,6 +715,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=10"></script>
+    <script src="./app.js?v=11"></script>
   </body>
 </html>
