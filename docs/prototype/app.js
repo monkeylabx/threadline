@@ -150,7 +150,13 @@ document.querySelector("#composer-input").addEventListener("keydown", (event) =>
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
-    switchRoute("search");
+    const unifiedSearch = document.querySelector("[data-unified-search]");
+    if (document.body.classList.contains("is-im-agent-prototype") && unifiedSearch) {
+      unifiedSearch.focus();
+      unifiedSearch.select();
+    } else {
+      switchRoute("search");
+    }
   }
 });
 
@@ -427,6 +433,14 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
 if (imAgentPrototypeEnabled) {
   document.body.classList.add("is-im-agent-prototype");
   imAgentSwitcher.hidden = false;
+  document.querySelectorAll("[data-org-rail-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const collapsed = document.body.classList.toggle("is-org-rail-collapsed");
+      document.querySelectorAll("[data-org-rail-toggle]").forEach((toggle) => {
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+      });
+    });
+  });
   imAgentSwitcher.querySelectorAll("[data-im-agent-cycle]").forEach((button) => {
     button.addEventListener("click", () => {
       const current = new URLSearchParams(window.location.search).get("variant") || "A";
@@ -449,6 +463,46 @@ if (imAgentPrototypeEnabled) {
       });
       directoryMenu.hidden = true;
     });
+  });
+  const unifiedSearch = document.querySelector("[data-unified-search]");
+  const searchableNavItems = [...document.querySelectorAll(
+    ".im-agent-variant-a .unified-channel, .im-agent-variant-a [data-agent-history-item], .im-agent-variant-a .unified-dm",
+  )];
+  const filterUnifiedNavigation = () => {
+    const query = unifiedSearch.value.trim().toLocaleLowerCase("zh-CN");
+    searchableNavItems.forEach((item) => {
+      item.hidden = Boolean(query) && !item.textContent.toLocaleLowerCase("zh-CN").includes(query);
+    });
+    document.querySelectorAll(".im-agent-variant-a .unified-nav-section").forEach((section) => {
+      const sectionItems = searchableNavItems.filter((item) => section.contains(item));
+      section.classList.toggle("is-search-empty", Boolean(query) && sectionItems.every((item) => item.hidden));
+    });
+  };
+  unifiedSearch?.addEventListener("input", filterUnifiedNavigation);
+  unifiedSearch?.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    unifiedSearch.value = "";
+    unifiedSearch.placeholder = "搜索频道、工作或成员";
+    filterUnifiedNavigation();
+    unifiedSearch.blur();
+  });
+  document.querySelector("[data-new-conversation]")?.addEventListener("click", () => {
+    unifiedSearch.value = "";
+    unifiedSearch.placeholder = "输入姓名，搜索组织成员…";
+    filterUnifiedNavigation();
+    unifiedSearch.focus();
+  });
+  document.querySelector("[data-new-channel]")?.addEventListener("click", (event) => {
+    const section = event.currentTarget.closest(".unified-nav-section");
+    let draft = section.querySelector("[data-channel-draft]");
+    if (!draft) {
+      draft = document.createElement("button");
+      draft.className = "unified-channel is-draft";
+      draft.dataset.channelDraft = "";
+      draft.innerHTML = "<b>#</b><span>未命名频道</span><i>新</i>";
+      section.querySelector(".channel-branch-group").before(draft);
+    }
+    draft.focus();
   });
   const focusAgentThread = document.querySelector(".im-agent-variant-a .focus-agent-thread");
   const defaultFocusThreadMarkup = focusAgentThread?.innerHTML || "";
