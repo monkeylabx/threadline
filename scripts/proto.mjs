@@ -76,9 +76,9 @@ function hasPlugin(name) {
   return probe.error?.code !== "ENOENT";
 }
 
-function run(label, args) {
+function run(label, args, cwd = protoDir) {
   console.log(`\n[${label}] buf ${args.join(" ")}`);
-  const result = spawnSync(buf, args, { cwd: protoDir, stdio: "inherit", env });
+  const result = spawnSync(buf, args, { cwd, stdio: "inherit", env });
   if (result.status !== 0) {
     console.error(`[${label}] failed: exit ${result.status}`);
     return false;
@@ -93,6 +93,7 @@ function check() {
   if (!requireBuf()) return false;
   return [
     run("build", ["build"]),
+    run("formal-build", ["build", "--config", join(protoDir, "buf.formal.yaml")], root),
     run("lint", ["lint"]),
     run("format", ["format", "--diff", "--exit-code"]),
   ].every(Boolean);

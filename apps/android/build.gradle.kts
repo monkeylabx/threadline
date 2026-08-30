@@ -1,5 +1,12 @@
+import org.gradle.api.artifacts.dsl.LockMode
+
 plugins {
-    id("com.android.library")
+    id("com.android.library") version "9.3.1"
+}
+
+dependencyLocking {
+    lockAllConfigurations()
+    lockMode.set(LockMode.STRICT)
 }
 
 android {

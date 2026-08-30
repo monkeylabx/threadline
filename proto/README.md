@@ -85,6 +85,7 @@ final review and required PR checks pass.
 | `threadline.identity.v1` | Organization, Space, Member, Agent, Device, enrollment, and Session |
 | `threadline.crypto.v1` | Crypto Profile, Device Credential, KeyPackage, Group, Epoch, History, and Recovery |
 | `threadline.channel.v1` | Channel, DM, Thread, membership, workspace binding, and Agent policy |
+| `threadline.authorization.v1` | Standing Space/Channel actions, typed resources, Resource ACL, and versioned decisions |
 | `threadline.message.v1` | Ciphertext envelope and encrypted payload schema |
 | `threadline.sync.v1` | Sync/read cursors, gap repair, and signed checkpoints |
 | `threadline.realtime.v1` | WSS frames, ACK, delivery, presence, and backpressure |

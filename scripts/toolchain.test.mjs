@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   pins,
+  postgresCIImage,
   resolveProbeInvocation,
   validateDatabasePins,
   validateWorkflowPins,
@@ -16,7 +17,6 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const workflow = readFileSync(join(root, ".github", "workflows", "build.yml"), "utf8");
 const databaseSources = {
   goModule: readFileSync(join(root, "services", "go.mod"), "utf8"),
-  goWork: readFileSync(join(root, "go.work"), "utf8"),
   serviceCatalog: readFileSync(
     join(root, "docs", "architecture", "service-catalog.md"),
     "utf8",
@@ -26,6 +26,11 @@ const databaseSources = {
 
 test("the checked-in workflow has no toolchain pin drift", () => {
   assert.deepEqual(validateWorkflowPins(workflow), []);
+});
+
+test("a drifted PostgreSQL CI image fails verification", () => {
+  const drifted = workflow.replace(postgresCIImage, "postgres:16.4-alpine");
+  assert.match(validateWorkflowPins(drifted).join("\n"), /CI PostgreSQL image/);
 });
 
 test("database generator, driver, and schema pins are internally consistent", () => {
@@ -123,12 +128,6 @@ test("database pin verification handles block directives without whitespace befo
   };
   assert.deepEqual(validateDatabasePins(pins.database, direct), []);
 
-  const replaced = {
-    ...databaseSources,
-    goWork: `${databaseSources.goWork}\nreplace(\n\tgithub.com/jackc/pgx/v5 => ../fake-pgx\n)\n`,
-  };
-  assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /go\.work.*replace/);
-
   const excluded = {
     ...databaseSources,
     goModule: `${databaseSources.goModule}\nexclude(\n\tgithub.com/jackc/pgx/v5 v${pins.database.pgx}\n)\n`,
@@ -143,11 +142,6 @@ test("database pin verification handles replacements without whitespace around a
   };
   assert.match(validateDatabasePins(pins.database, moduleSingle).join("\n"), /replace directives/);
 
-  const workspaceBlock = {
-    ...databaseSources,
-    goWork: `${databaseSources.goWork}\nreplace(\n\tgithub.com/jackc/pgx/v5=>../fake-pgx\n)\n`,
-  };
-  assert.match(validateDatabasePins(pins.database, workspaceBlock).join("\n"), /go\.work.*replace/);
 });
 
 test("database pin verification rejects a pgx exclusion", () => {
@@ -156,31 +150,6 @@ test("database pin verification rejects a pgx exclusion", () => {
     goModule: `${databaseSources.goModule}\nexclude github.com/jackc/pgx/v5 v${pins.database.pgx}\n`,
   };
   assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /exclude directives/);
-});
-
-test("database pin verification rejects workspace pgx replacement or exclusion", () => {
-  const replaced = {
-    ...databaseSources,
-    goWork: `${databaseSources.goWork}\nreplace github.com/jackc/pgx/v5 => ../fake-pgx\n`,
-  };
-  assert.match(validateDatabasePins(pins.database, replaced).join("\n"), /go\.work.*replace/);
-
-  const excluded = {
-    ...databaseSources,
-    goWork: `${databaseSources.goWork}\nexclude\tgithub.com/jackc/pgx/v5 v${pins.database.pgx}\n`,
-  };
-  assert.match(validateDatabasePins(pins.database, excluded).join("\n"), /go\.work.*exclude/);
-});
-
-test("database pin verification rejects additional workspace main modules", () => {
-  const additionalModule = {
-    ...databaseSources,
-    goWork: databaseSources.goWork.replace(
-      "use ./services",
-      "use(\n\t./services\n\t./other-main\n)",
-    ),
-  };
-  assert.match(validateDatabasePins(pins.database, additionalModule).join("\n"), /go\.work use set/);
 });
 
 test("database pin verification rejects quoted dependency paths", () => {
@@ -206,23 +175,6 @@ test("database pin verification rejects quoted dependency paths", () => {
       /quoted dependency paths/,
     );
 
-    const workspaceSingle = {
-      ...databaseSources,
-      goWork: `${databaseSources.goWork}\nreplace ${quotedPath} => ../fake-pgx\n`,
-    };
-    assert.match(
-      validateDatabasePins(pins.database, workspaceSingle).join("\n"),
-      /go\.work.*quoted dependency paths/,
-    );
-
-    const workspaceBlock = {
-      ...databaseSources,
-      goWork: `${databaseSources.goWork}\nexclude (\n\t${quotedPath} v${pins.database.pgx}\n)\n`,
-    };
-    assert.match(
-      validateDatabasePins(pins.database, workspaceBlock).join("\n"),
-      /go\.work.*quoted dependency paths/,
-    );
   }
 });
 

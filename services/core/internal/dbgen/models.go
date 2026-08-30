@@ -8,6 +8,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type DomainAuditEvent struct {
+	TenantID           string
+	AuditEventID       string
+	ContractVersion    int16
+	TenantSequence     int64
+	RecordedAt         pgtype.Timestamptz
+	PrincipalActorType int16
+	PrincipalActorID   string
+	Action             string
+	Outcome            string
+	Reason             string
+	TargetType         string
+	TargetID           string
+	TargetVersion      *int64
+	PolicyVersion      string
+	RequestID          string
+	ApprovalID         *string
+	RecoveryCaseID     *string
+	EvidenceDigest     []byte
+	PreviousEventHash  []byte
+	EventHash          []byte
+}
+
+type DomainAuditTenantHead struct {
+	TenantID         string
+	LastSequence     int64
+	LastAuditEventID *string
+	LastEventHash    []byte
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type DomainChannel struct {
+	TenantID    string
+	ChannelID   string
+	SpaceID     string
+	Name        string
+	Visibility  int16
+	State       int16
+	E2eeGroupID string
+	CreatedAt   pgtype.Timestamptz
+}
+
+type DomainChannelMembership struct {
+	IntervalID int64
+	TenantID   string
+	ChannelID  string
+	ActorType  int16
+	ActorID    string
+	Role       int16
+	JoinedAt   pgtype.Timestamptz
+	LeftAt     pgtype.Timestamptz
+}
+
+type DomainDirectMessage struct {
+	TenantID           string
+	DmID               string
+	E2eeGroupID        string
+	ParticipantsSealed bool
+	CreatedAt          pgtype.Timestamptz
+}
+
+type DomainDirectMessageParticipant struct {
+	TenantID  string
+	DmID      string
+	ActorType int16
+	ActorID   string
+}
+
 type DomainMember struct {
 	TenantID    string
 	ActorType   int16
@@ -24,6 +92,18 @@ type DomainOrganization struct {
 	DisplayName   string
 	State         int16
 	PolicyVersion string
+	CreatedAt     pgtype.Timestamptz
+}
+
+type DomainResourceAclSnapshot struct {
+	AclVersion    int64
+	TenantID      string
+	ResourceKind  int16
+	ResourceID    string
+	SpaceID       *string
+	ChannelID     *string
+	DefaultEffect int16
+	EntriesSealed bool
 	CreatedAt     pgtype.Timestamptz
 }
 

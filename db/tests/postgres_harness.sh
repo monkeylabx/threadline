@@ -50,7 +50,7 @@ postgres_test_cleanup() {
 postgres_test_start() {
   POSTGRES_TEST_SUITE=$1
   case "$POSTGRES_TEST_SUITE" in
-    organization | member | space | migration) ;;
+    organization | member | space | channel_dm | channel_membership | resource_acl | authorization_current | transactional_outbox | transactional_outbox_worker_ops | migration) ;;
     *) printf '%s\n' "refusing unexpected PostgreSQL test suite" >&2; exit 1 ;;
   esac
 
@@ -95,6 +95,25 @@ expect_sql_failure() {
   if psql_test --command="$statement" >"$temp_dir/failure.out" 2>"$temp_dir/failure.err"; then
     postgres_test_fail "$label unexpectedly succeeded"
   fi
+}
+
+expect_sql_failure_matching() {
+  label=$1
+  statement=$2
+  pattern=$3
+  expect_sql_failure "$label" "$statement"
+  if ! grep -Eiq "$pattern" "$temp_dir/failure.err"; then
+    postgres_test_fail "$label failed for an unexpected reason"
+  fi
+}
+
+expect_sql_lock_timeout() {
+  label=$1
+  statement=$2
+  expect_sql_failure_matching "$label" "
+    SET lock_timeout = '250ms';
+    $statement
+  " 'lock timeout'
 }
 
 postgres_test_finish() {

@@ -32,16 +32,13 @@ services:
     image: nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9
     pull_policy: never
     command:
-      - --jetstream
-      - --store_dir=/data
-      - --http_port=8222
-      - --user=threadline_nats_dev
-      - --pass=threadline-nats-dev-only
+      - --config=/etc/nats/nats-server.conf
     ports:
       - "127.0.0.1:${THREADLINE_DEV_NATS_PORT:-4222}:4222"
       - "127.0.0.1:${THREADLINE_DEV_NATS_MONITOR_PORT:-8222}:8222"
     networks: [nats]
     volumes:
+      - ../nats/nats-server.conf:/etc/nats/nats-server.conf:ro
       - nats-data:/data
     healthcheck:
       <<: *healthcheck

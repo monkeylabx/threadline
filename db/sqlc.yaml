@@ -7,6 +7,12 @@ sql:
       - migrations/000002_organization.up.sql
       - migrations/000003_member.up.sql
       - migrations/000004_space.up.sql
+      - migrations/000005_channel_dm.up.sql
+      - migrations/000006_channel_membership.up.sql
+      - migrations/000007_resource_acl.up.sql
+      - migrations/000008_transactional_outbox.up.sql
+      - migrations/000009_transactional_outbox_worker_ops.up.sql
+      - migrations/000010_audit_event.up.sql
     queries:
       - queries/core
     gen:
@@ -17,3 +23,27 @@ sql:
         emit_empty_slices: true
         emit_interface: true
         emit_pointers_for_null_types: true
+        omit_unused_structs: true
+  - engine: postgresql
+    schema:
+      - migrations/000001_core_foundation.up.sql
+      - migrations/000002_organization.up.sql
+      - migrations/000003_member.up.sql
+      - migrations/000004_space.up.sql
+      - migrations/000005_channel_dm.up.sql
+      - migrations/000006_channel_membership.up.sql
+      - migrations/000007_resource_acl.up.sql
+      - migrations/000008_transactional_outbox.up.sql
+      - migrations/000009_transactional_outbox_worker_ops.up.sql
+      - migrations/000010_audit_event.up.sql
+    queries:
+      - queries/worker
+    gen:
+      go:
+        package: dbgen
+        out: ../services/worker/internal/dbgen
+        sql_package: pgx/v5
+        emit_empty_slices: true
+        emit_interface: true
+        emit_pointers_for_null_types: true
+        omit_unused_structs: true

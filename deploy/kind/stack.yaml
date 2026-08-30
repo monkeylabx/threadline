@@ -65,6 +65,40 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: allow-worker-to-nats
+  namespace: threadline-dev
+spec:
+  podSelector:
+    matchLabels:
+      threadline.io/nats-principal: worker
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app: nats}
+      ports:
+        - {protocol: TCP, port: 4222}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nats-from-worker
+  namespace: threadline-dev
+spec:
+  podSelector:
+    matchLabels: {app: nats}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              threadline.io/nats-principal: worker
+      ports:
+        - {protocol: TCP, port: 4222}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: allow-otel-metrics-from-prometheus
   namespace: threadline-dev
 spec:
@@ -137,14 +171,14 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nats-dev-only-credentials
+  name: nats-worker-dev-only-credentials
   namespace: threadline-dev
   annotations:
     threadline.io/credential-class: fixed-local-development-only
 type: Opaque
 stringData:
-  NATS_PASSWORD: threadline-nats-dev-only
-  NATS_USER: threadline_nats_dev
+  NATS_PASSWORD: threadline-worker-dev-only
+  NATS_USER: threadline_worker_dev
 ---
 apiVersion: v1
 kind: Secret
@@ -168,6 +202,55 @@ type: Opaque
 stringData:
   MINIO_ROOT_PASSWORD: threadline-minio-dev-only
   MINIO_ROOT_USER: threadline_minio_dev
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-server-config
+  namespace: threadline-dev
+data:
+  nats-server.conf: |
+    {
+      "server_name": "threadline-dev",
+      "port": 4222,
+      "http_port": 8222,
+      "jetstream": {
+        "store_dir": "/data"
+      },
+      "system_account": "SYS",
+      "accounts": {
+        "SYS": {},
+        "THREADLINE_WORKER": {
+          "jetstream": true,
+          "users": [
+            {
+              "user": "threadline_worker_dev",
+              "password": "$2a$10$hD04xdHVkpLP0pG8zVunIuaxMsUI1pZkVgcVMWFkiUyTOxVtKUAGy",
+              "permissions": {
+                "publish": {
+                  "allow": [
+                    "threadline.domain.events.v1",
+                    "$SYS.REQ.USER.INFO"
+                  ],
+                  "deny": [
+                    "_INBOX.threadline.worker.>"
+                  ]
+                },
+                "subscribe": {
+                  "allow": [
+                    "_INBOX.threadline.worker.>"
+                  ],
+                  "deny": [
+                    "$SYS.REQ.USER.INFO",
+                    "$SYS.REQ.USER.*.INFO"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -419,17 +502,7 @@ spec:
         - name: nats
           image: nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9
           imagePullPolicy: Never
-          command: [sh, -c]
-          args:
-            - exec nats-server --jetstream --store_dir=/data --http_port=8222
-              --user="$NATS_USER" --pass="$NATS_PASSWORD"
-          env:
-            - name: NATS_PASSWORD
-              valueFrom:
-                secretKeyRef: {name: nats-dev-only-credentials, key: NATS_PASSWORD}
-            - name: NATS_USER
-              valueFrom:
-                secretKeyRef: {name: nats-dev-only-credentials, key: NATS_USER}
+          args: [--config=/etc/nats/nats-server.conf]
           ports:
             - {name: nats, containerPort: 4222}
             - {name: monitor, containerPort: 8222}
@@ -440,8 +513,15 @@ spec:
             <<: *nats-probe
             initialDelaySeconds: 10
           volumeMounts:
+            - name: config
+              mountPath: /etc/nats/nats-server.conf
+              subPath: nats-server.conf
+              readOnly: true
             - {name: data, mountPath: /data}
       volumes:
+        - name: config
+          configMap:
+            name: nats-server-config
         - name: data
           emptyDir: {}
 ---

@@ -103,12 +103,122 @@ jobs:
           path: ${{ runner.temp }}/threadline-native-bridge-crash-resume.txt
           if-no-files-found: warn
           retention-days: 14
+      - name: Validate the pinned NATS Worker fixture
+        run: |
+          python3 deploy/nats/contract_test.py
+          python3 deploy/nats/probe_test.py
+          docker run --rm --pull always \
+            --volume "${GITHUB_WORKSPACE}/deploy/nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+            --entrypoint nats-server \
+            nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+            -t -c /etc/nats/nats-server.conf
+      - name: Start the pinned NATS Worker fixture
+        run: |
+          nats_container="$(docker run --detach --pull never \
+            --publish 127.0.0.1:14222:4222 \
+            --publish 127.0.0.1:18222:8222 \
+            --tmpfs /data:rw,noexec,nosuid,size=64m \
+            --volume "${GITHUB_WORKSPACE}/deploy/nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
+            nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
+            --config=/etc/nats/nats-server.conf)"
+          test -n "${nats_container}"
+          printf '%s\n' "${nats_container}" > "${RUNNER_TEMP}/threadline-nats-container-id"
+      - name: Require live NATS effective-permission evidence
+        run: |
+          ready=0
+          for _ in $(seq 1 50); do
+            if python3 -c 'import socket; socket.create_connection(("127.0.0.1", 14222), 0.2).close(); socket.create_connection(("127.0.0.1", 18222), 0.2).close()'; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "${ready}" -eq 1
+          worker_user="$(awk '$1 == "NATS_WORKER_USER" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
+          worker_password="$(awk '$1 == "NATS_WORKER_PASSWORD" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
+          test -n "${worker_user}" && test -n "${worker_password}"
+          env \
+            THREADLINE_NATS_WORKER_USER="${worker_user}" \
+            THREADLINE_NATS_WORKER_PASSWORD="${worker_password}" \
+            python3 deploy/nats/probe.py \
+              --port 14222 \
+              --monitor-url http://127.0.0.1:18222
+      - name: Show NATS diagnostics on failure
+        if: failure()
+        run: |
+          if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
+            read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
+            docker logs "${nats_container}" 2>&1 | sed -E 's/User "[^"]*"/User "[redacted]"/g'
+          fi
+      - name: Stop the NATS Worker fixture
+        if: always()
+        run: |
+          if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
+            read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
+            docker rm --force "${nats_container}"
+          fi
       - name: Check Go services
         working-directory: services
         run: |
           test -z "$(gofmt -l .)"
           go test ./...
           go build ./...
+
+  postgresql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: threadline_postgres_dev
+          POSTGRES_PASSWORD: threadline_postgres_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username=threadline_postgres_dev --dbname=postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: threadline_postgres_dev
+      PGPASSWORD: threadline_postgres_dev
+      PGDATABASE: postgres
+      THREADLINE_TEST_POSTGRES_DSN: postgres://threadline_postgres_dev:threadline_postgres_dev@127.0.0.1:5432/postgres?sslmode=disable
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Install PostgreSQL 16 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-16
+      - name: Verify mandatory PostgreSQL test environment
+        run: |
+          test -n "${THREADLINE_TEST_POSTGRES_DSN}"
+          test "$(psql --no-psqlrc --tuples-only --no-align --command='SHOW server_version')" = "16.4"
+      - name: Test migrations and database contracts
+        run: |
+          make -C db migration-test
+          make -C db organization-test
+          make -C db member-test
+          make -C db space-test
+          make -C db channel-dm-test
+          make -C db channel-membership-test
+          make -C db resource-acl-test
+          make -C db authorization-current-test
+          make -C db transactional-outbox-test
+          make -C db transactional-outbox-worker-ops-test
+      - name: Test all PostgreSQL-backed Go stores
+        working-directory: services
+        run: go test -mod=readonly -race ./... -count=1
 
   desktop:
     name: desktop-${{ matrix.name }}
@@ -281,13 +391,14 @@ jobs:
       - name: Build host FFI facade for Kotlin tests
         run: cargo build --package threadline-client-ffi --locked
       - name: Build and test Android skeleton
+        working-directory: apps/android
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: >-
           ./gradlew
-          :apps:android:assembleDebug
-          :apps:android:testDebugUnitTest
-          :apps:android:lintDebug
+          assembleDebug
+          testDebugUnitTest
+          lintDebug
           --no-daemon
       - name: Allow the Android Emulator to use KVM
         run: |

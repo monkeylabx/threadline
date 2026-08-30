@@ -17,6 +17,16 @@ The schema bootstrap has already landed on `main`. T014 no longer has an empty
 baseline exception: it must build and lint the current module and run the fixed
 breaking command against the merged protocol baseline.
 
+P03-05B adds a deterministic standing-authorization check:
+
+```bash
+node proto/tools/verify-authorization-contracts.mjs
+```
+
+It freezes the complete Organization Role × Channel Role × Action matrix,
+tenant/membership/ACL precedence, and version binding. The fixture contains no
+credentials or content and does not claim E2EE or physical-device authority.
+
 Representative synthetic frames now bind the concrete `ChannelEventEnvelope`
 and `RecoveryEnvelope` schemas to known values, hashes, and the exact field
 `50000` canary bytes. The descriptor-backed Rust persistence seam and the

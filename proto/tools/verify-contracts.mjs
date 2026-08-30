@@ -26,12 +26,15 @@ function filesBelow(directory, suffix) {
   });
 }
 
-const bufYaml = read(join(repositoryRoot, "buf.yaml"));
-const generationYaml = read(join(repositoryRoot, "buf.gen.yaml"));
+const bufYaml = read(join(protoRoot, "buf.formal.yaml"));
+const generationYaml = read(join(protoRoot, "buf.gen.yaml"));
 const generationPlan = JSON.parse(generationYaml);
 const combinedConfig = `${bufYaml}\n${generationYaml}`;
 assert(!/buf\.build|\bremote:|\bdeps:|\bmodule:/u.test(combinedConfig), "Buf configuration must not use the public BSR");
-assert(/breaking:\s*\n\s+use:\s*\n\s+- FILE/u.test(bufYaml), "buf.yaml must enforce FILE breaking rules");
+assert(
+  /breaking:\s*\n\s+use:\s*\n\s+- FILE/u.test(bufYaml),
+  "buf.formal.yaml must enforce FILE breaking rules",
+);
 assert(/disallow_comment_ignores:\s*true/u.test(bufYaml), "Buf lint comment ignores must remain disabled");
 
 const toolchain = JSON.parse(read(join(protoRoot, "toolchain.lock.json")));
@@ -253,6 +256,12 @@ const goldenTestPath = join(protoRoot, "tools", "verify-golden-frames.mjs");
 assert(statSync(goldenTestPath).isFile(), "representative Golden Frame verifier must exist");
 const messageSyncTestPath = join(protoRoot, "tools", "verify-message-sync-contracts.mjs");
 assert(statSync(messageSyncTestPath).isFile(), "T015 message/sync behavior verifier must exist");
+const authorizationContractTestPath = join(protoRoot, "tools", "verify-authorization-contracts.mjs");
+assert(statSync(authorizationContractTestPath).isFile(), "P03-05B authorization behavior verifier must exist");
+const capabilityGrantContractTestPath = join(protoRoot, "tools", "verify-capability-grant-contracts.mjs");
+assert(statSync(capabilityGrantContractTestPath).isFile(), "P03-06B Capability Grant signature verifier must exist");
+const auditRetentionContractTestPath = join(protoRoot, "tools", "verify-audit-retention-contracts.mjs");
+assert(statSync(auditRetentionContractTestPath).isFile(), "P03-07A Audit/Retention metadata verifier must exist");
 const cryptoContractTestPath = join(protoRoot, "tools", "verify-crypto-contracts.mjs");
 assert(statSync(cryptoContractTestPath).isFile(), "T019 crypto/recovery behavior verifier must exist");
 const cryptoContractManifest = JSON.parse(read(join(repositoryRoot, "test", "fixtures", "proto", "crypto", "manifest.json")));
@@ -294,6 +303,12 @@ const goldenTests = spawnSync(process.execPath, [goldenTestPath], { cwd: reposit
 if (goldenTests.status !== 0) errors.push(`${goldenTests.stdout ?? ""}${goldenTests.stderr ?? ""}`.trim());
 const messageSyncTests = spawnSync(process.execPath, [messageSyncTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (messageSyncTests.status !== 0) errors.push(`${messageSyncTests.stdout ?? ""}${messageSyncTests.stderr ?? ""}`.trim());
+const authorizationContractTests = spawnSync(process.execPath, [authorizationContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (authorizationContractTests.status !== 0) errors.push(`${authorizationContractTests.stdout ?? ""}${authorizationContractTests.stderr ?? ""}`.trim());
+const capabilityGrantContractTests = spawnSync(process.execPath, [capabilityGrantContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (capabilityGrantContractTests.status !== 0) errors.push(`${capabilityGrantContractTests.stdout ?? ""}${capabilityGrantContractTests.stderr ?? ""}`.trim());
+const auditRetentionContractTests = spawnSync(process.execPath, [auditRetentionContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (auditRetentionContractTests.status !== 0) errors.push(`${auditRetentionContractTests.stdout ?? ""}${auditRetentionContractTests.stderr ?? ""}`.trim());
 const cryptoContractTests = spawnSync(process.execPath, [cryptoContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (cryptoContractTests.status !== 0) errors.push(`${cryptoContractTests.stdout ?? ""}${cryptoContractTests.stderr ?? ""}`.trim());
 const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
@@ -312,6 +327,9 @@ if (installTests.status !== 0) {
 
 console.log("Threadline contract structure and representative Golden Frames are valid.");
 console.log("Threadline T015 message/sync behavior fixtures are valid.");
+console.log("Threadline P03-05B authorization behavior fixtures are valid.");
+console.log("Threadline P03-06B Capability Grant signature fixtures are valid.");
+console.log("Threadline P03-07A Audit/Retention metadata fixtures are valid.");
 console.log("Threadline T019 crypto/recovery behavior fixtures are valid.");
 console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");

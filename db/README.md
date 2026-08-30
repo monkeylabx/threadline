@@ -4,8 +4,13 @@ This directory owns the PostgreSQL migration and sqlc inputs for
 `threadline-core`. Migration `000001` creates the physical schema namespace
 `domain`. Migration `000002` adds the root Organization/Tenant boundary, and
 migration `000003` adds Member directory/RBAC metadata. Migration `000004` adds
-Space directory/policy-inheritance metadata. It does not define Channel,
-Message, Session, Device, key, recovery, or Outbox tables.
+Space directory/policy-inheritance metadata. Migration `000005` adds Channel
+directory/lifecycle metadata plus Direct Message identity and immutable
+participant rows. Migration `000006` adds the application-level Channel
+Membership lifecycle. Migration `000007` adds immutable, versioned Resource ACL
+snapshots and an atomic current head for Space and Channel resources. Migration
+`000008` adds the Transactional Outbox persistence foundation. This directory
+does not yet define Message, Session, Device, key, or recovery tables.
 
 ## Migration rules
 
@@ -23,11 +28,12 @@ Message, Session, Device, key, recovery, or Outbox tables.
 
 All live shell tests source `tests/postgres_harness.sh` for the PostgreSQL 16.4
 version gate, pinned tool resolution, disposable-database lifecycle, cleanup
-guards, and secret-safe diagnostics. The Organization, Member, and Space typed
-Go tests likewise share `postgres_integration_test.go` for the operator-supplied
-DSN gate, maintenance/test connection lifecycle, migration loading, version
-check, and guarded database deletion. Aggregate test files contain only their
-domain fixtures and assertions.
+guards, and secret-safe diagnostics. The Organization, Member, Space,
+Channel/DM, and Channel Membership typed Go tests likewise share
+`postgres_integration_test.go` for the operator-supplied DSN gate,
+maintenance/test connection lifecycle, migration loading, version check, and
+guarded database deletion. Aggregate test files contain only their domain
+fixtures and assertions.
 
 Run the static contract without a database:
 
@@ -171,12 +177,299 @@ directly and verifies complete round-trip, exact-key misses, constraints,
 same-ID cross-Tenant isolation, and immutable identity/creation time. Ordinary
 Go tests skip this live test when the environment variable is absent.
 
+## Channel and Direct Message persistence
+
+`domain.channels` stores minimal `threadline.channel.v1.Channel` directory and
+lifecycle metadata beneath a tenant-scoped Space. Its immutable identity is
+`(tenant_id, channel_id)`. Name is normalized nonempty C2 directory data;
+visibility uses published values `1` public and `2` private, while lifecycle
+state uses `1` active, `2` archived and `3` pending deletion. The opaque
+`e2ee_group_id` binding and server-assigned `created_at` are immutable through
+the generated API. Encrypted topic, RetentionPolicy and ChannelAgentPolicy are
+deliberately outside this slice.
+
+`domain.direct_messages` stores tenant-scoped DM identity, opaque E2EE Group
+binding and creation time. `domain.direct_message_participants` normalizes the
+immutable Actor set with tenant-scoped foreign keys to both the DM and Member.
+DM creation is one transaction: create the unsealed parent, append the intended
+participants, then call `FinalizeDirectMessageParticipants`. A deferred
+database constraint rejects commit while the parent remains unsealed. Database
+triggers reject participant append after finalization, every participant update
+or delete, any attempt to reopen a sealed set, and every change to the
+tenant-scoped `(tenant_id, dm_id)` identity. Identity immutability also ensures
+the deferred sealing check cannot be bypassed by moving an unsealed row to a new
+key before commit. The triggers intentionally impose no minimum participant
+count because that domain rule is not present in the proto contract. The append
+trigger locks the parent DM row, so participant insertion and finalization
+serialize on that row and a concurrent insert cannot cross the sealed
+transition. The composite participant-to-DM and participant-to-Member foreign
+keys remain authoritative after that lifecycle check. Generated queries expose
+participant creation and deterministic reads only; there is no participant
+update or delete operation. Production
+create-or-get concurrency behavior remains a later RPC transaction concern.
+
+Visibility, state, participant rows and E2EE Group identifiers are routing
+facts, not authorization or proof of key possession. P03-02 must derive Tenant
+scope from the authenticated Session, P03-05 owns effective Membership/RBAC/ACL
+decisions, and the Crypto owner admits actual E2EE Group state.
+
+Run the synthetic constraints, exact-Tenant isolation, immutable-field and
+failed-DM-transaction cases against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db channel-dm-test
+```
+
+The generated Channel/DM API has a separately gated Go integration test. It
+creates and drops only a guarded `threadline_channel_dm_go_test_*` database and
+invokes every generated Channel/DM operation directly:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-dm-go-test
+```
+
+Fixtures contain only synthetic C2 directory/routing metadata. They contain no
+message or topic plaintext, prompt, credential, token, Device or MLS key,
+Epoch/History/Recovery material, or production identifier.
+
+## Channel Membership persistence
+
+`domain.channel_memberships` records application-level Channel membership as
+immutable historical intervals. Each interval has a server-assigned internal
+identity and `joined_at`; leaving assigns `left_at` once, while rejoining
+creates a distinct interval. Tenant-scoped composite foreign keys bind every
+interval to an existing Channel and Member. Role uses the published values
+`1–4` and is immutable within an interval. A partial unique index permits at
+most one active interval for an Actor in a Channel, including under concurrent
+creates.
+
+Creation requires the matching tenant Member to be ACTIVE at the insert's
+linearization point. The insert trigger takes `FOR SHARE` on that Member row,
+which conflicts with the Member state update lock, so a concurrent deactivate
+and join cannot both pass from an obsolete state. If the join linearizes first,
+later deactivation does not rewrite the audit interval; callers must still
+evaluate current Member state when authorizing an action. Database guards also
+reject interval identity, Actor, Channel, Tenant, Role, or join-time mutation,
+reopening or changing a departure, and deletion.
+
+These records are auditable storage facts, not effective authorization and not
+cryptographic group membership. P03-05 must intersect current Member state and
+Role, active Channel Membership, resource ACL, and any Capability Grant for
+each decision. Crypto owns actual E2EE group admission. Exact Tenant query
+arguments are storage scope, not caller authority; P03-02 must derive Tenant
+and Actor from the authenticated Session.
+
+Run the synthetic lifecycle, inactive-Member, tenant-isolation, immutable-row,
+failed-transaction, and PostgreSQL constraint cases with:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db channel-membership-test
+```
+
+The separately gated Go integration test invokes every generated Channel
+Membership operation against its own guarded PostgreSQL 16.4 database. It also
+proves that two simultaneous creates for one active key produce exactly one
+interval:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-membership-go-test
+```
+
+Fixtures contain only synthetic directory and membership metadata. They contain
+no messages, credentials, tokens, key material, production identifiers, or
+authorization decisions.
+
+## Resource ACL persistence
+
+`domain.resource_acl_snapshots` stores one complete, server-versioned Resource
+ACL for an exact tenant-scoped Space or Channel. `resource_kind` and the typed
+Space/Channel columns form a database-enforced one-of binding. Default and
+entry effects use the published `1` ALLOW and `2` DENY values; Actor type uses
+the existing `1` Human, `2` Agent, and `3` Service values; Actions use the 11
+frozen Protobuf numbers. Actor entries also reference the exact Tenant Member.
+
+Snapshot construction is transactional: create an unsealed snapshot, append
+the complete entry set, seal it, then atomically insert or replace the matching
+row in `domain.resource_acl_heads`. A deferred constraint rejects commit of an
+unsealed snapshot. Lifecycle triggers reject snapshot or entry mutation,
+deletion, and entry append after sealing. Exact duplicate entries are rejected,
+while an ALLOW and DENY for the same Actor and Action may coexist so the Core
+authorizer can apply matching-DENY precedence. Old versions remain immutable
+evidence after the current head moves.
+
+The ACL store locks the exact Space or Channel row with `FOR NO KEY UPDATE`
+before replacement. This serializes even the first two replacements for one
+resource while allowing different resources to proceed independently. A
+missing current head is a typed not-found result; neither SQL nor the Go module
+synthesizes an ALLOW or persists an Authorization Decision.
+
+Run the live schema constraints, one-of and Tenant isolation, complete
+Space/Channel snapshots, all Actions and Actor types, sealing, immutability,
+rollback, and old-version preservation checks against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db resource-acl-test
+```
+
+The separately gated Go integration test crosses the two-operation ACL store
+interface with a caller-owned transaction and a disposable guarded database:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db resource-acl-go-test
+```
+
+Fixtures contain only synthetic Tenant, Resource, and Actor identifiers plus
+authorization vocabulary. They contain no request Principal, Authorization
+Decision, message or file content, Prompt, credential, token, Device, E2EE
+Group key, history authority, or production data.
+
+## Current authorization fact locks
+
+`db/queries/core/authorization_facts.sql` exposes only focused row-mapping
+queries for the trusted current-fact resolver. The caller-owned transaction
+must use PostgreSQL `read committed` and acquire locks in this deterministic
+order: exact Organization `FOR SHARE`, authenticated Member `FOR SHARE`, exact
+Space or Channel parent `FOR UPDATE`, then an existing active Channel
+Membership `FOR SHARE`, followed by the exact current Resource ACL head `FOR
+SHARE`. The Resource parent lock conflicts with ACL replacement and protects
+the absence of a current Channel Membership or current ACL head from a
+concurrent first insertion. The explicit ACL-head lock keeps an existing
+version stable through the subsequent complete ACL load. A missing active
+Membership query never reads a departed interval.
+
+The resolver retains these locks until its caller commits or rolls back after
+the protected mutation. Exact Tenant and resource predicates keep unrelated
+keys independent; the queries return database rows only and never persist or
+synthesize an Authorization Decision.
+
+Run the PostgreSQL 16.4 exact-row, departed-history exclusion, writer-blocking,
+and unrelated-key concurrency checks:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db authorization-current-test
+```
+
+Run the trusted resolver's caller-owned transaction integration tests with an
+operator-supplied maintenance DSN:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db authorization-current-go-test
+```
+
+## Protected Channel archive command
+
+The dormant `channelcommand` archive implementation binds the authenticated
+Principal to the fixed `channel.archive` action and exact tenant-scoped
+Channel. It first evaluates current authorization facts, then runs the
+dedicated `ArchiveActiveChannel` query in the same caller-owned PostgreSQL
+`read committed` transaction. The query accepts neither a Tenant from the
+request, a caller-selected Action, a target state, nor a Channel name; it only
+changes an ACTIVE Channel to ARCHIVED. Denials and database failures never fall
+through to the mutation.
+
+Run the rollback/commit, exact-Tenant, denial, isolation, writer-first, and
+retained-lock integration tests against PostgreSQL 16.4:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db channel-archive-go-test
+```
+
+The command function remains unexported and is not registered as a production
+RPC. A future task must add visible Approval and durable Audit enforcement
+before exporting or otherwise making this high-impact mutation reachable.
+
+## Transactional Outbox persistence
+
+Migration `000008` adds immutable tenant-scoped Domain Events, permanent
+destination Outbox Entries, and append-only delivery Attempts. Core can insert
+one Event and its registry-owned `domain-events` Entry atomically inside a
+caller-owned PostgreSQL `read committed` transaction. The wrapper neither
+begins nor commits that transaction, and it remains private until a later task
+registers an exact Event-Type descriptor. An exact retry observes immutable
+Event facts and the singleton destination; conflicting facts fail closed.
+
+The schema stores only 32-byte claim-token digests and never raw tokens.
+Migration `000009` adds the reviewed Worker authority functions for deterministic
+batch claim, lease renewal, publish acknowledgement, and publish failure. It
+requires PostgreSQL 16.4 with `pgcrypto` already provisioned; the migration does
+not create or drop that shared extension. Claim creates 32 random bytes inside
+the database transaction, stores only the domain-separated digest, and returns
+the raw bytes once. The private Worker adapter immediately converts those bytes
+to canonical 43-character unpadded base64url, clears the generated row buffer,
+and collapses malformed, stale, and mismatched authority to `claim-denied`.
+
+The ordinary generated Core and Worker query surfaces cannot select stored
+claim-token digests or perform generic Event, Entry, or Attempt mutation. The
+Worker surface calls only the four reviewed database functions. Replay and
+purge remain later work.
+
+Run the static migration checks without a database:
+
+```text
+make -C db migration-static
+```
+
+Run the complete synthetic constraint and `up -> down -> up` matrix against
+PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db transactional-outbox-test
+```
+
+Run the caller-owned transaction integration test with an operator-supplied
+maintenance DSN:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db transactional-outbox-go-test
+```
+
+Run the Worker operation, concurrency, fencing, Golden-vector, retry-ceiling,
+and `000009` ownership matrix against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db transactional-outbox-worker-ops-test
+```
+
+Run the private Worker adapter and token unit tests:
+
+```text
+go test -race ./services/worker/internal/dbgen ./services/worker/internal/outboxdb
+```
+
+The adapter also has a separately gated PostgreSQL 16.4 integration test. It
+creates and drops only a guarded `threadline_worker_outbox_go_test_*` database,
+applies migrations `000001` through `000009`, and exercises concurrent claims,
+renewal, acknowledgement, and retry scheduling through the adapter:
+
+```text
+THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
+  make -C db transactional-outbox-worker-go-test
+```
+
+All fixtures are synthetic and contain no production identifiers, credentials,
+raw claim tokens, message plaintext, keys, prompts, or user data.
+
 ## Query generation
 
 The reviewed generator is sqlc 1.31.1 from `toolchains.json`. Generated Go uses
-`pgx/v5` and is written only to `services/core/internal/dbgen/`. Query inputs
-remain schema-qualified and Tenant-scoped; generated files are never hand
-edited.
+`pgx/v5` and is written to the workload-owned
+`services/core/internal/dbgen/` and `services/worker/internal/dbgen/` packages.
+Query inputs remain schema-qualified and Tenant-scoped; generated files are
+never hand edited. Token-bearing Worker values add non-generated redaction
+methods so formatting and JSON diagnostics cannot render raw tokens, payloads,
+or candidate digests.
 
 ```text
 node scripts/toolchain.mjs doctor --scope=database

@@ -4,7 +4,7 @@ Code generation is deliberately local and deterministic. The merged templates
 under `proto/buf.gen.*.yaml` contain no `remote:` entries, and
 `proto/buf.yaml` contains no public BSR module name or dependency.
 
-The root `buf.gen.yaml` is the machine-readable union of the five developer
+`proto/buf.gen.yaml` is the machine-readable union of the five developer
 templates. It preserves their managed Go/Java package options, exact output
 directories, Connect plugins, and the all-files strategy required by
 `protoc-gen-prost-crate`. Both structural verification and the formal verifier

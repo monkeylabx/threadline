@@ -15,7 +15,7 @@ Threadline 应冻结下列生产构建基线。版本号必须精确匹配，不
 | Node.js | `24.19.0` LTS | `.node-version`、根 `package.json#engines.node` | Node 24 是生产 LTS；Node 26 仍是 Current，不作为基线 |
 | pnpm | `11.20.0` | 根 `package.json#packageManager` | pnpm 11 支持 Node 24；锁文件只由该精确版本生成 |
 | Rust | `1.97.1` | `rust-toolchain.toml` | 包含该发行版配套的 Cargo，并显式安装 `rustfmt`、`clippy` 和所需 targets |
-| Go | `1.26.5` | `go.work`、`services/go.mod` 的 `toolchain go1.26.5` | `go 1.26.0` 表达语言/模块语义，`toolchain` 表达补丁版本 |
+| Go | `1.26.5` | `services/go.mod` 的 `toolchain go1.26.5` | `go 1.26.0` 表达语言/模块语义，`toolchain` 表达补丁版本 |
 | Tauri core | `tauri = =2.11.5` | `apps/desktop/src-tauri/Cargo.toml` | Rust crate 与 JS API 保持同一 `2.11` minor |
 | Tauri build | `tauri-build = =2.6.3` | `apps/desktop/src-tauri/Cargo.toml` | Cargo 中必须带 `=`；普通 `2.6.3` 仍允许 caret 漂移 |
 | Tauri CLI | `@tauri-apps/cli = 2.11.4` | `apps/desktop/package.json` | 只采用 Node CLI，不再并行安装 Cargo CLI |
@@ -166,7 +166,7 @@ rustc -Vv
 cargo -V
 go version
 java -version
-./gradlew --version
+./apps/android/gradlew -p apps/android --version
 swift --version
 xcodebuild -version
 xcrun --sdk iphoneos --show-sdk-version
@@ -179,7 +179,7 @@ Android job 还应校验安装清单中存在 API 37 的精确 SDK 包 `platform
 - Node：`.node-version` 与 `package.json#engines.node` 必须相等。
 - pnpm：`packageManager` 与生成 `pnpm-lock.yaml` 的版本必须相等。
 - Rust：只读 `rust-toolchain.toml`，不再从 workflow 复制另一个可漂移版本。
-- Go：`go.work` 与各 `go.mod` 的 `toolchain` 必须一致。
+- Go：当前只有 `services/go.mod` 一个 Go module；增加第二个 Go module 前不引入根 `go.work`。
 - Tauri：检查 Cargo/JS minor 规则和所有精确版本；插件检查 npm/crate patch 相等。
 - Gradle：wrapper URL、distribution checksum、wrapper JAR checksum、AGP 和 JDK 构成一组验证。
 - Apple：workflow Xcode path、build number 和 doctor expectation 构成一组验证。
