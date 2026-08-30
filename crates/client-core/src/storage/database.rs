@@ -85,9 +85,7 @@ impl EncryptedDatabase {
         .map_err(|_| StorageError::Database)?;
 
         apply_key(&connection, &key)?;
-        connection
-            .pragma_update(None, "cipher_memory_security", "ON")
-            .map_err(|_| StorageError::EncryptionUnavailable)?;
+        enable_enhanced_memory_security(&connection)?;
         verify_community_cipher(&connection)?;
         verify_key(&connection)?;
         connection
@@ -104,6 +102,28 @@ impl EncryptedDatabase {
 
         Ok(Self { connection })
     }
+}
+
+fn enable_enhanced_memory_security(connection: &Connection) -> Result<(), StorageError> {
+    #[cfg(target_os = "windows")]
+    {
+        // This SQLCipher setting is process-wide and cannot be disabled after
+        // it is enabled. Avoid re-running its Windows allocator setup for each
+        // connection while retaining the enhanced memory-security policy.
+        static MEMORY_SECURITY: OnceLock<Result<(), ()>> = OnceLock::new();
+        return MEMORY_SECURITY
+            .get_or_init(|| {
+                connection
+                    .pragma_update(None, "cipher_memory_security", "ON")
+                    .map_err(|_| ())
+            })
+            .map_err(|()| StorageError::EncryptionUnavailable);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    connection
+        .pragma_update(None, "cipher_memory_security", "ON")
+        .map_err(|_| StorageError::EncryptionUnavailable)
 }
 
 #[cfg(target_os = "windows")]
