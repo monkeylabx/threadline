@@ -16,6 +16,16 @@
 - Treat all message, file, workspace, and tool access as authorization decisions.
 - Preserve desktop, web, and mobile compatibility in product and protocol choices.
 
+## AI-auditable code generation
+
+- Before changing handwritten code, read `docs/agents/ai-auditable-coding.md` and treat every `MUST` and `MUST NOT` as an acceptance criterion.
+- Design before generating: state the unit's single responsibility, invariants, inputs, outputs, failure modes, and test seam; split mixed responsibilities before writing code.
+- New or materially changed handwritten functions must stay within 60 non-comment lines, 40 statements, cyclomatic complexity 10, cognitive complexity 15, nesting depth 3, and 5 parameters.
+- New or materially changed types and modules must have one primary responsibility and one cohesive set of invariants. Split disconnected state or behavior clusters; 250 lines per type, 300 lines per handwritten file, or 11 methods triggers mandatory redesign. Crossing 350 type lines, 500 file lines, or 15 methods requires a documented exception.
+- Behavioral changes must include tests in the same task. Bug fixes require a regression test; unit tests must be deterministic, independent, and hermetic; critical authorization, capability, crypto, recovery, audit, and idempotency branches require positive and negative cases.
+- Keep human-authored diffs reviewable: target at most 400 changed lines and split changes above 800 lines. Separate behavior changes from mechanical refactors and generated output.
+- Never silently suppress a quality rule. Any exception must identify the reason, scope, owner, and removal condition in the Issue and handoff. Generated code, vendored code, declarative schemas, migrations, fixtures, and protocol output use the exception rules in the detailed standard.
+
 ## Agent skills
 
 ### Issue tracker
