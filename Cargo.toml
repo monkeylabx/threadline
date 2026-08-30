@@ -18,6 +18,12 @@ publish = false
 [workspace.dependencies]
 getrandom = { version = "=0.3.4" }
 rusqlite = { version = "=0.40.2", default-features = false }
+zeroize = { version = "=1.8.2", default-features = false, features = ["alloc"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"
+
+[patch.crates-io]
+# Temporary audited source override until libsqlite3-sys publishes a release
+# containing SQLCipher 4.18.0. See third_party/libsqlite3-sys/UPSTREAM.md.
+libsqlite3-sys = { path = "third_party/libsqlite3-sys" }

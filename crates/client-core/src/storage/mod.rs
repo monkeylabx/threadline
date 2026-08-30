@@ -1,16 +1,20 @@
-//! Encrypted-SQLite-ready schema and storage primitives.
+//! Owning, encrypted local database for opaque client state.
 //!
-//! This module never opens a database. The host supplies an already-opened,
-//! correctly keyed connection from the later security adapter.
+//! Hosts supply a fixed-size [`DatabaseKey`] and a file path. This module owns
+//! SQLCipher connection ordering, cipher verification, durability settings,
+//! schema validation, migration, and all database access after a successful
+//! [`EncryptedDatabase::open`].
 
 use std::fmt;
 
 use rusqlite::{Connection, TransactionBehavior};
 
+mod database;
 mod records;
 
+pub use database::{DatabaseKey, EncryptedDatabase};
 pub use records::{
-    CommittedEvent, ConversationKind, ConversationRef, CursorUpdate, PendingOutboxEvent, Storage,
+    CommittedEvent, ConversationKind, ConversationRef, CursorUpdate, PendingOutboxEvent,
     StoredCursor,
 };
 
@@ -22,21 +26,16 @@ const MIGRATION_0001_SHA256: [u8; 32] = [
 ];
 
 /// ASCII `TLIN`, used to reject unrelated SQLite files.
-pub const APPLICATION_ID: i64 = 1_414_285_646;
-pub const LATEST_SCHEMA_VERSION: i64 = 1;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct MigrationOutcome {
-    pub from_version: i64,
-    pub to_version: i64,
-    pub applied_migrations: usize,
-}
+pub(crate) const APPLICATION_ID: i64 = 1_414_285_646;
+pub(crate) const LATEST_SCHEMA_VERSION: i64 = 1;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StorageError {
     Database,
     Conflict,
+    EncryptionUnavailable,
     ForeignDatabase,
+    InvalidKey,
     InvalidInput,
     NewerSchema,
     MigrationLedgerInvalid,
@@ -47,7 +46,9 @@ impl StorageError {
         match self {
             Self::Database => "storage_database_error",
             Self::Conflict => "storage_conflict",
+            Self::EncryptionUnavailable => "storage_encryption_unavailable",
             Self::ForeignDatabase => "storage_foreign_database",
+            Self::InvalidKey => "storage_invalid_key",
             Self::InvalidInput => "storage_invalid_input",
             Self::NewerSchema => "storage_newer_schema",
             Self::MigrationLedgerInvalid => "storage_migration_ledger_invalid",
@@ -63,7 +64,7 @@ impl fmt::Display for StorageError {
 
 impl std::error::Error for StorageError {}
 
-pub fn migrate(connection: &mut Connection) -> Result<MigrationOutcome, StorageError> {
+fn migrate(connection: &mut Connection) -> Result<(), StorageError> {
     let application_id = application_id(connection)?;
     let user_version = user_version(connection)?;
 
@@ -75,11 +76,7 @@ pub fn migrate(connection: &mut Connection) -> Result<MigrationOutcome, StorageE
     }
     if user_version == LATEST_SCHEMA_VERSION {
         verify_current_schema(connection)?;
-        return Ok(MigrationOutcome {
-            from_version: user_version,
-            to_version: user_version,
-            applied_migrations: 0,
-        });
+        return Ok(());
     }
     if user_version != 0 || has_user_objects(connection)? {
         return Err(StorageError::ForeignDatabase);
@@ -104,12 +101,7 @@ pub fn migrate(connection: &mut Connection) -> Result<MigrationOutcome, StorageE
         .pragma_update(None, "user_version", LATEST_SCHEMA_VERSION)
         .map_err(|_| StorageError::Database)?;
     transaction.commit().map_err(|_| StorageError::Database)?;
-
-    Ok(MigrationOutcome {
-        from_version: user_version,
-        to_version: LATEST_SCHEMA_VERSION,
-        applied_migrations: 1,
-    })
+    verify_current_schema(connection)
 }
 
 fn application_id(connection: &Connection) -> Result<i64, StorageError> {
@@ -154,5 +146,75 @@ fn verify_current_schema(connection: &Connection) -> Result<(), StorageError> {
         return Err(StorageError::MigrationLedgerInvalid);
     }
 
+    let mut expected_schema = MIGRATION_0001_SQL
+        .split(';')
+        .map(str::trim)
+        .filter(|statement| !statement.is_empty())
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    expected_schema.sort();
+
+    let mut statement = connection
+        .prepare(
+            "SELECT sql FROM sqlite_schema
+             WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL
+             ORDER BY sql",
+        )
+        .map_err(|_| StorageError::MigrationLedgerInvalid)?;
+    let actual_schema = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|_| StorageError::MigrationLedgerInvalid)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| StorageError::MigrationLedgerInvalid)?;
+    if actual_schema != expected_schema {
+        return Err(StorageError::MigrationLedgerInvalid);
+    }
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+
+    use rusqlite::{
+        hooks::{AuthAction, AuthContext, Authorization},
+        Connection,
+    };
+
+    use super::{has_user_objects, migrate, user_version, StorageError};
+
+    #[test]
+    fn migration_failure_rolls_back_every_schema_change() {
+        let mut connection = Connection::open_in_memory().expect("open failure fixture");
+        let first_table_was_created = Arc::new(AtomicBool::new(false));
+        let observed_first_table = Arc::clone(&first_table_was_created);
+        connection
+            .authorizer(Some(move |context: AuthContext<'_>| match context.action {
+                AuthAction::CreateTable {
+                    table_name: "threadline_schema_migrations",
+                } => {
+                    observed_first_table.store(true, Ordering::SeqCst);
+                    Authorization::Allow
+                }
+                AuthAction::CreateTable {
+                    table_name: "opaque_events",
+                } => Authorization::Deny,
+                _ => Authorization::Allow,
+            }))
+            .expect("install deterministic migration failure");
+
+        let error = migrate(&mut connection).expect_err("migration must fail closed");
+        connection
+            .authorizer(None::<fn(AuthContext<'_>) -> Authorization>)
+            .expect("remove migration failure injection");
+
+        assert_eq!(error, StorageError::Database);
+        assert!(first_table_was_created.load(Ordering::SeqCst));
+        assert_eq!(user_version(&connection), Ok(0));
+        assert_eq!(has_user_objects(&connection), Ok(false));
+    }
 }
