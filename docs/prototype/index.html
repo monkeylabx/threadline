@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=4" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -349,9 +349,31 @@
           <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
           <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="im-agent-a-title" hidden>
             <div class="im-agent-stage overlay-stage">
+              <aside class="agent-history-rail" aria-label="Agent 工作历史">
+                <header><strong>个人工作</strong><button title="新建 Agent 工作"><svg><use href="#i-plus"></use></svg></button></header>
+                <button class="new-agent-work"><span>＋</span>新建工作</button>
+                <div class="agent-history-list">
+                  <span>今天</span>
+                  <button class="is-current" data-agent-history-item data-history-title="重做桌面端入职引导"><b>重做桌面端入职引导</b><small>10:42 · Nova</small></button>
+                  <button data-agent-history-item data-history-title="整理 Q3 客户反馈"><b>整理 Q3 客户反馈</b><small>09:16 · 2 个成果</small></button>
+                  <button data-agent-history-item data-history-title="检查离线同步方案"><b>检查离线同步方案</b><small>昨天 · Atlas</small></button>
+                  <span>本周</span>
+                  <button data-agent-history-item data-history-title="准备产品评审材料"><b>准备产品评审材料</b><small>周一 · Nova</small></button>
+                  <button data-agent-history-item data-history-title="分析移动端崩溃日志"><b>分析移动端崩溃日志</b><small>8月27日 · Atlas</small></button>
+                </div>
+                <footer><span><i></i>本地 Runtime 在线</span><small>历史保存在当前设备</small></footer>
+              </aside>
+              <section class="agent-focus-content">
               <header class="focus-app-header">
-                <div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-a-title">重做桌面端入职引导</h2></div>
+                <div class="focus-title-block"><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-a-title" data-agent-work-title>重做桌面端入职引导</h2><button class="directory-picker" data-directory-picker><svg><use href="#i-folder"></use></svg><span data-directory-label>~/Projects/threadline</span><b>⌄</b></button></div>
                 <div class="focus-header-actions"><button class="context-pill">#产品研发 · 3 条上下文</button><button class="message-entry" data-im-drawer-open><svg><use href="#i-message"></use></svg>消息 <b>3</b></button></div>
+                <div class="directory-menu" data-directory-menu hidden>
+                  <span>本地工作目录</span>
+                  <button class="is-current" data-directory-option="~/Projects/threadline"><svg><use href="#i-folder"></use></svg><div><b>threadline</b><small>~/Projects/threadline</small></div><i>✓</i></button>
+                  <button data-directory-option="~/Work/client-app"><svg><use href="#i-folder"></use></svg><div><b>client-app</b><small>~/Work/client-app</small></div><i></i></button>
+                  <button data-directory-option="~/Documents/product-notes"><svg><use href="#i-folder"></use></svg><div><b>product-notes</b><small>~/Documents/product-notes</small></div><i></i></button>
+                  <button class="choose-directory"><span>＋</span>选择其他本地目录…</button>
+                </div>
               </header>
               <main class="focus-agent-main">
                 <div class="focus-agent-thread">
@@ -363,6 +385,7 @@
                 </div>
                 <div class="focus-agent-composer"><div><span>#产品研发 · 3</span><span>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
               </main>
+              </section>
               <aside class="message-capsule"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>第一屏能不能再直接一点？</p></div><button data-im-drawer-open>查看</button></aside>
               <aside class="communication-drawer" data-im-drawer hidden>
                 <header><div><strong>消息</strong><small>不离开当前 Agent 工作</small></div><button class="icon-button" data-im-drawer-close aria-label="关闭消息"><svg><use href="#i-close"></use></svg></button></header>
@@ -678,6 +701,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=4"></script>
+    <script src="./app.js?v=5"></script>
   </body>
 </html>

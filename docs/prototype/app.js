@@ -414,6 +414,7 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
     element.setAttribute("aria-hidden", String(!selected));
   });
   document.querySelectorAll("[data-im-drawer]").forEach((drawer) => { drawer.hidden = true; });
+  document.querySelectorAll("[data-directory-menu]").forEach((menu) => { menu.hidden = true; });
   imAgentSwitcherLabel.textContent = imAgentVariantNames[variant];
   if (updateUrl) {
     const nextUrl = new URL(window.location.href);
@@ -454,6 +455,44 @@ if (imAgentPrototypeEnabled) {
     sent.querySelector("p").textContent = message;
     document.querySelector(".drawer-message-list")?.append(sent);
     input.value = "";
+  });
+  const directoryPicker = document.querySelector("[data-directory-picker]");
+  const directoryMenu = document.querySelector("[data-directory-menu]");
+  directoryPicker?.addEventListener("click", () => { directoryMenu.hidden = !directoryMenu.hidden; });
+  document.querySelectorAll("[data-directory-option]").forEach((option) => {
+    option.addEventListener("click", () => {
+      document.querySelector("[data-directory-label]").textContent = option.dataset.directoryOption;
+      document.querySelectorAll("[data-directory-option]").forEach((item) => {
+        const selected = item === option;
+        item.classList.toggle("is-current", selected);
+        item.querySelector("i").textContent = selected ? "✓" : "";
+      });
+      directoryMenu.hidden = true;
+    });
+  });
+  const focusAgentThread = document.querySelector(".im-agent-variant-a .focus-agent-thread");
+  const defaultFocusThreadMarkup = focusAgentThread?.innerHTML || "";
+  const historyPreviews = {
+    "整理 Q3 客户反馈": ["把本季度的客户反馈按使用场景重新整理。", "已归并为上手、协作和权限三个主题，并保留了每条反馈的来源。"],
+    "检查离线同步方案": ["检查离线恢复有没有覆盖新状态的风险。", "发现旧进程恢复时需要 fencing token；我已经把相关文件和测试列出来。"],
+    "准备产品评审材料": ["把本周的产品决定整理成评审材料。", "已生成一页结论和三项待决定问题，当前仍是私人草稿。"],
+    "分析移动端崩溃日志": ["分析昨天移动端启动崩溃的日志。", "主要问题集中在本地数据库恢复阶段，我标记了两个可复现路径。"],
+  };
+  document.querySelectorAll("[data-agent-history-item]").forEach((item) => {
+    item.addEventListener("click", () => {
+      document.querySelectorAll("[data-agent-history-item]").forEach((entry) => entry.classList.toggle("is-current", entry === item));
+      const title = item.dataset.historyTitle;
+      document.querySelector("[data-agent-work-title]").textContent = title;
+      if (title === "重做桌面端入职引导") {
+        focusAgentThread.innerHTML = defaultFocusThreadMarkup;
+        return;
+      }
+      const [request, response] = historyPreviews[title];
+      focusAgentThread.innerHTML = `<div class="focus-day">历史工作 · 仅你可见</div><article class="focus-turn user"><div><b>你</b><p></p></div><span class="avatar avatar-small avatar-user">林</span></article><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p></p></div></article>`;
+      const paragraphs = focusAgentThread.querySelectorAll("p");
+      paragraphs[0].textContent = request;
+      paragraphs[1].textContent = response;
+    });
   });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
