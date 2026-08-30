@@ -156,6 +156,15 @@ verify_static_contract() {
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
     fi
   done
+  if grep -Eiq 'CREATE[[:space:]]+((UNIQUE[[:space:]]+)?INDEX([[:space:]]+CONCURRENTLY)?|SCHEMA|TABLE|TYPE|FUNCTION|TRIGGER)[[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS' "$DB_DIR"/migrations/*.sql; then
+    postgres_test_fail "versioned migrations must fail on an unexpected existing object"
+  fi
+  if grep -Eiq 'DROP[[:space:]]+(SCHEMA|TABLE|TYPE|FUNCTION|TRIGGER|INDEX)[[:space:]]+IF[[:space:]]+EXISTS' "$DB_DIR"/migrations/*.sql; then
+    postgres_test_fail "versioned migrations must fail on an unexpectedly missing object"
+  fi
+  if grep -Eq '^(BEGIN|COMMIT);$' "$DB_DIR"/migrations/*.up.sql; then
+    postgres_test_fail "up migration transactions are owned by Atlas"
+  fi
 }
 
 verify_static_contract

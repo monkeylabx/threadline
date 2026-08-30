@@ -1,5 +1,1 @@
-BEGIN;
-
 CREATE SCHEMA domain;
-
-COMMIT;

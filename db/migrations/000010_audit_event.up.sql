@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE FUNCTION domain.audit_identifier_is_canonical(identifier text)
 RETURNS boolean
 LANGUAGE sql
@@ -310,5 +308,3 @@ AFTER INSERT ON domain.audit_events
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION domain.require_audit_event_covered_by_head();
-
-COMMIT;

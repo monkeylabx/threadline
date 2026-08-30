@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.domain_events (
   tenant_id text NOT NULL,
   event_id text NOT NULL,
@@ -673,5 +671,3 @@ AFTER INSERT OR UPDATE OR DELETE ON domain.outbox_delivery_attempts
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW
 EXECUTE FUNCTION domain.enforce_outbox_current_attempt_consistency();
-
-COMMIT;

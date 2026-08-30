@@ -1,16 +1,43 @@
 SQLC ?= sqlc
 GO ?= go
+ATLAS ?= atlas
 SQLC_VERSION := 1.31.1
+ATLAS_VERSION := 1.3.0
 CORE_GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
 WORKER_GENERATED_DIR := $(CURDIR)/../services/worker/internal/dbgen
 
-.PHONY: check check-sqlc generate generate-check migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test audit-event-go-test
+.PHONY: check check-atlas check-sqlc generate generate-check migration-apply migration-integrity migration-ledger-test migration-merge-policy migration-merge-policy-test migration-status migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test audit-event-go-test
+
+check-atlas:
+	@actual="$$($(ATLAS) version 2>/dev/null | sed -n '1s/^atlas community version v//p')"; test "$$actual" = "$(ATLAS_VERSION)" || { echo "Atlas Community $(ATLAS_VERSION) required; found $${actual:-missing}" >&2; exit 1; }
 
 check-sqlc:
 	@actual="$$($(SQLC) version)"; test "$$actual" = "v$(SQLC_VERSION)" || { echo "sqlc v$(SQLC_VERSION) required; found $$actual" >&2; exit 1; }
 
 migration-static:
 	@sh "$(CURDIR)/tests/migration_roundtrip.sh" --static
+	@sh "$(CURDIR)/tests/migration_merge_policy.sh"
+	@sh "$(CURDIR)/tests/migration_merge_policy_test.sh"
+
+migration-merge-policy:
+	@sh "$(CURDIR)/tests/migration_merge_policy.sh"
+
+migration-merge-policy-test:
+	@sh "$(CURDIR)/tests/migration_merge_policy_test.sh"
+
+migration-integrity: check-atlas
+	@sh "$(CURDIR)/tests/atlas_migration.sh" --static
+
+migration-ledger-test: check-atlas
+	@sh "$(CURDIR)/tests/atlas_migration.sh"
+
+migration-apply: check-atlas
+	@test -n "$$THREADLINE_MIGRATION_URL" || { echo "THREADLINE_MIGRATION_URL is required" >&2; exit 1; }
+	@cd "$(CURDIR)" && "$(ATLAS)" migrate apply --config "file://$(CURDIR)/atlas.hcl" --env threadline
+
+migration-status: check-atlas
+	@test -n "$$THREADLINE_MIGRATION_URL" || { echo "THREADLINE_MIGRATION_URL is required" >&2; exit 1; }
+	@cd "$(CURDIR)" && "$(ATLAS)" migrate status --config "file://$(CURDIR)/atlas.hcl" --env threadline
 
 migration-test:
 	@sh "$(CURDIR)/tests/migration_roundtrip.sh"
@@ -113,4 +140,4 @@ generate-check: generate
 	@git -C "$(CURDIR)/.." diff --exit-code -- \
 		services/core/internal/dbgen services/worker/internal/dbgen
 
-check: migration-static generate-check
+check: migration-static migration-integrity generate-check

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.resource_acl_snapshots (
   acl_version bigint GENERATED ALWAYS AS IDENTITY,
   tenant_id text NOT NULL,
@@ -219,5 +217,3 @@ CREATE TRIGGER resource_acl_heads_lifecycle_guard
 BEFORE INSERT OR UPDATE OR DELETE ON domain.resource_acl_heads
 FOR EACH ROW
 EXECUTE FUNCTION domain.enforce_resource_acl_head_lifecycle();
-
-COMMIT;

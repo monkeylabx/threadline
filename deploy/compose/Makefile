@@ -23,6 +23,7 @@ CORE_IMAGES := \
 	jaegertracing/jaeger:2.20.0@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
 
 SUPPORT_IMAGES := busybox:1.36.1@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+SUPPORT_IMAGES += arigaio/atlas:1.3.0-community@sha256:57f5560604d8a9595eb2bbd91177a2455e33143842c5691e6cde2fa2c6f1a226
 IMAGES := $(CORE_IMAGES) $(SUPPORT_IMAGES)
 TAG_IMAGES := $(foreach image,$(IMAGES),$(word 1,$(subst @, ,$(image))))
 TAG_NATS_IMAGE := $(word 1,$(subst @, ,$(NATS_IMAGE)))
