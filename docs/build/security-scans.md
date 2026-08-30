@@ -76,3 +76,10 @@ that identifies the exact non-secret shape. Document the reason in the pull
 request. Blanket directory, extension, entropy, default-rule, or test-tree
 disables are forbidden. Never commit a complete credential as a scanner
 fixture.
+
+The audited `libsqlite3-sys` source override has one such global allowlist for
+four exact SQLite API identifier shapes that the default `generic-api-key` rule
+misclassifies. The exception applies only when both the generated-code shape
+and its exact `third_party/libsqlite3-sys` amalgamation path match. The scanner
+test proves those identifiers pass without disabling generic credential
+detection elsewhere.

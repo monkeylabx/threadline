@@ -8,3 +8,15 @@ id = "threadline-synthetic-test-credential"
 description = "Deterministic credential shape reserved for isolated scanner tests"
 regex = '''TL_TEST_SECRET_[A-Z0-9]{32}'''
 keywords = ["TL_TEST_SECRET_"]
+
+[[allowlists]]
+description = "Audited SQLite amalgamation API identifiers misclassified as generic API keys"
+condition = "AND"
+regexTarget = "line"
+paths = [
+  '''^third_party/libsqlite3-sys/(?:sqlcipher|sqlite3)/(?:sqlite3\.c|sqlite3ext\.h)$''',
+]
+regexes = [
+  '''sqlite3_api->(?:column_bytes16|soft_heap_limit64|hard_heap_limit64)''',
+  '''iKey==FTS5_AVERAGES_ROWID''',
+]
