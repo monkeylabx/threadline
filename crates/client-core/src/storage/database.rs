@@ -14,7 +14,7 @@ use super::{migrate, StorageError};
 
 const DATABASE_KEY_BYTES: usize = 32;
 #[cfg(target_os = "windows")]
-const DATABASE_OPEN_STACK_BYTES: usize = 64 * 1024 * 1024;
+const DATABASE_OPEN_STACK_BYTES: usize = 8 * 1024 * 1024;
 const EXPECTED_CIPHER_VERSION: &str = "4.14.0 community";
 
 /// A host-supplied SQLCipher key.
@@ -57,10 +57,10 @@ impl EncryptedDatabase {
         {
             let _open_guard = windows_database_open_guard();
 
-            // Hosted Windows runs overflow smaller test-thread stacks during
-            // this complete secure construction path while SQLCipher's
-            // enhanced memory security is active. P05-02 will replace this
-            // short-lived worker with the longer-lived StoreActor boundary.
+            // Three hosted Windows runs overflowed the default test-thread
+            // stack during this complete secure construction path. P05-02
+            // will replace this short-lived worker with the longer-lived
+            // StoreActor boundary.
             let result = std::thread::Builder::new()
                 .name("threadline-database-open".to_owned())
                 .stack_size(DATABASE_OPEN_STACK_BYTES)
@@ -128,7 +128,7 @@ fn enable_enhanced_memory_security(connection: &Connection) -> Result<(), Storag
 
 #[cfg(target_os = "windows")]
 fn windows_database_open_guard() -> MutexGuard<'static, ()> {
-    // Limit concurrent short-lived workers and their stack reservations.
+    // Limit concurrent short-lived workers and their 8 MiB stack reservations.
     // This guard is only a scheduling token, so a poisoned lock is recoverable.
     static DATABASE_OPEN: OnceLock<Mutex<()>> = OnceLock::new();
     DATABASE_OPEN
