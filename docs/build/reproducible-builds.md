@@ -32,11 +32,15 @@ The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
 features disabled. P05-01B-1 selects its
 `bundled-sqlcipher-vendored-openssl` feature as the source-built encryption
 candidate in the ordinary `client-core` dependency graph. The resulting lock
-graph contains `libsqlite3-sys` 0.38.2 with bundled SQLCipher 4.14.0 Community
-Edition and a vendored OpenSSL source build. `rusqlite` and `libsqlite3-sys` are
-MIT licensed, the bundled SQLCipher source carries its BSD-style license, and
-OpenSSL is Apache-2.0 licensed. These are free/open-source components: no
-commercial SQLCipher artifact, account, download, or service is required.
+graph contains `libsqlite3-sys` 0.38.2 with bundled SQLCipher 4.18.0 Community
+Edition and a vendored OpenSSL source build. Until `libsqlite3-sys` publishes a
+release containing SQLCipher 4.18.0, the root Cargo patch uses the audited
+source override in `third_party/libsqlite3-sys`; its `UPSTREAM.md` records the
+official tag archive and generated-amalgamation hashes. `rusqlite` and
+`libsqlite3-sys` are MIT licensed, the bundled SQLCipher source carries its
+BSD-style license, and OpenSSL is Apache-2.0 licensed. These are
+free/open-source components: no commercial SQLCipher artifact, account,
+download, or service is required.
 
 The workspace pin keeps `rusqlite` default features disabled, while the ordinary
 `client-core` dependency explicitly enables only the source-built SQLCipher
@@ -61,7 +65,7 @@ forbidden because it bypasses the selected source backend. The executable
 | Locked input | Source | License used for distribution |
 | --- | --- | --- |
 | `rusqlite` 0.40.2 | `crates.io` archive from [`rusqlite/rusqlite`](https://github.com/rusqlite/rusqlite) | MIT |
-| `libsqlite3-sys` 0.38.2, including SQLCipher 4.14.0 Community amalgamation | `crates.io` archive from [`rusqlite/rusqlite`](https://github.com/rusqlite/rusqlite); embedded source from [`sqlcipher/sqlcipher`](https://github.com/sqlcipher/sqlcipher) | MIT wrapper; bundled SQLCipher BSD-style license |
+| `libsqlite3-sys` 0.38.2 source override, including SQLCipher 4.18.0 Community amalgamation | Wrapper from the exact `crates.io` 0.38.2 archive; amalgamation generated from the official [`sqlcipher/sqlcipher` v4.18.0 tag](https://github.com/sqlcipher/sqlcipher/tree/v4.18.0), with hashes in `third_party/libsqlite3-sys/UPSTREAM.md` | MIT wrapper; bundled SQLCipher BSD-style license |
 | `openssl-sys` 0.9.117 | `crates.io` archive from [`rust-openssl/rust-openssl`](https://github.com/rust-openssl/rust-openssl) | MIT |
 | `openssl-src` 300.6.1+3.6.3, including OpenSSL 3.6.3 | `crates.io` archive from [`alexcrichton/openssl-src-rs`](https://github.com/alexcrichton/openssl-src-rs); embedded source from [`openssl/openssl`](https://github.com/openssl/openssl) | MIT/Apache-2.0 wrapper; OpenSSL Apache-2.0 |
 | `getrandom` 0.3.4 (test key/canary generation only) | `crates.io` archive from [`rust-random/getrandom`](https://github.com/rust-random/getrandom) | MIT OR Apache-2.0 |
@@ -92,6 +96,14 @@ migration ledger, foreign/newer schema rejection, checksum drift, and
 live-schema tampering. Public diagnostics omit keys, canaries, complete database
 paths, and reusable secrets. `DatabaseKey` cannot be cloned or formatted; its
 owned bytes and the temporary SQLCipher key command use `zeroize` on drop.
+
+SQLCipher 4.18.0 is the minimum accepted Community core. It avoids allocating
+memory while writing Windows logs, fixing the recursive allocation failure that
+could crash Windows when `cipher_memory_security=ON`. Threadline therefore uses
+the same direct database-open path and keeps enhanced memory security enabled
+on every desktop platform; there is no Windows-only security exception or
+oversized worker-stack workaround. The focused live-WAL/wrong-key tests are the
+regression evidence for this upstream failure mode.
 
 The P05-01B-1 candidate evidence was run locally on `aarch64-apple-darwin`
 (Darwin 25.4.0) with Rust 1.97.1, Apple clang 21.0.0, Perl 5.34.1, and GNU Make
