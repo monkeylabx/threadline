@@ -72,39 +72,24 @@ exit 0
 '@ | Set-Content -LiteralPath (Join-Path $artifactRoot "reproduce.ps1") -Encoding utf8
 
 $env:PATH = "$binDirectory;$env:PATH"
-$testNames = @(
-    & $capturedExecutable --color never --list |
-        ForEach-Object {
-            if ($_ -match '^(.+): test$') {
-                $Matches[1]
-            }
-        }
-)
-if ($testNames.Count -eq 0) {
-    throw "The SQLCipher test executable did not list any tests"
-}
-
 $results = @()
-foreach ($testName in $testNames) {
-    for ($attempt = 1; $attempt -le $Repetitions; $attempt++) {
-        "=== $testName run $attempt of $Repetitions ===" | Tee-Object -FilePath $runLog -Append
-        $output = & $capturedExecutable $testName --exact --nocapture --test-threads=1 2>&1
-        $exitCode = $LASTEXITCODE
-        $output | Out-File -LiteralPath $runLog -Encoding utf8 -Append
-        "exit_code=$exitCode" | Tee-Object -FilePath $runLog -Append
-        $classification = if ($exitCode -eq $stackOverflowExit) {
-            "STATUS_STACK_OVERFLOW"
-        } elseif ($exitCode -eq 0) {
-            "PASS"
-        } else {
-            "OTHER_FAILURE"
-        }
-        $results += [pscustomobject]@{
-            test = $testName
-            attempt = $attempt
-            exit_code = $exitCode
-            classification = $classification
-        }
+for ($attempt = 1; $attempt -le $Repetitions; $attempt++) {
+    "=== run $attempt of $Repetitions ===" | Tee-Object -FilePath $runLog -Append
+    $output = & $capturedExecutable --nocapture 2>&1
+    $exitCode = $LASTEXITCODE
+    $output | Out-File -LiteralPath $runLog -Encoding utf8 -Append
+    "exit_code=$exitCode" | Tee-Object -FilePath $runLog -Append
+    $classification = if ($exitCode -eq $stackOverflowExit) {
+        "STATUS_STACK_OVERFLOW"
+    } elseif ($exitCode -eq 0) {
+        "PASS"
+    } else {
+        "OTHER_FAILURE"
+    }
+    $results += [pscustomobject]@{
+        attempt = $attempt
+        exit_code = $exitCode
+        classification = $classification
     }
 }
 
@@ -118,36 +103,30 @@ $manifest = [pscustomobject]@{
     command = "cargo test -p threadline-client-core --test sqlcipher_backend --locked --no-run"
     executable = "bin/$($sourceExecutable.Name)"
     sha256 = $hash
-    repetitions_per_test = $Repetitions
+    repetitions = $Repetitions
     expected_exit_code = $stackOverflowExit
     results = $results
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $artifactRoot "manifest.json") -Encoding utf8
 
-$resultSummary = ($results | ForEach-Object { "$($_.test)=$($_.classification)" }) -join ", "
 $summary = @(
     "## Windows SQLCipher diagnostic"
     ""
     "- Executable: ``$($sourceExecutable.Name)``"
     "- SHA-256: ``$hash``"
-    "- Tests: ``$(($testNames -join ', '))``"
-    "- Results: ``$resultSummary``"
+    "- Exit codes: ``$(($results.exit_code -join ', '))``"
+    "- Classifications: ``$(($results.classification -join ', '))``"
 ) -join [Environment]::NewLine
 $summary | Out-File -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
 
-$stackOverflowTests = @(
-    $results |
-        Where-Object { $_.classification -eq "STATUS_STACK_OVERFLOW" } |
-        Select-Object -ExpandProperty test -Unique
-)
-$otherFailures = @($results | Where-Object { $_.classification -eq "OTHER_FAILURE" })
-if ($stackOverflowTests.Count -gt 0) {
-    Write-Error "Reproduced STATUS_STACK_OVERFLOW in: $($stackOverflowTests -join ', ')"
-    exit 1
-}
-if ($otherFailures.Count -eq 0) {
-    Write-Host "Every test passed $Repetitions times from the same executable."
+$classifications = @($results.classification | Select-Object -Unique)
+if ($classifications.Count -eq 1 -and $classifications[0] -eq "PASS") {
+    Write-Host "All $Repetitions runs passed from the same executable."
     exit 0
+}
+if ($classifications.Count -eq 1 -and $classifications[0] -eq "STATUS_STACK_OVERFLOW") {
+    Write-Error "Reproduced STATUS_STACK_OVERFLOW $Repetitions times from the same executable."
+    exit 1
 }
 Write-Error "The result was not a deterministic pass or stack overflow: $(($results | ConvertTo-Json -Compress))"
 exit 2
