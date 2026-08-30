@@ -116,24 +116,31 @@ Organization
 > 本节记录 [#183](https://github.com/monkeylabx/threadline/issues/183) 的产品决策草案；它用于原型评审，
 > 不改变当前冻结的协议、信任边界或交付计划。
 
-Threadline 的差异不应只是把一个 Robot 接入既有消息流。Human、Agent、Task、Run 和 Artifact 都是
-IM 的一等协作对象：消息用于提出、澄清和决定工作；Artifact 是 Agent 和团队共同查看、修订、审查与
-接受的交付对象，而不是一条长文本回复、附件或外部链接。
+Threadline 的差异不应只是把一个 Robot 接入既有消息流。人际 Channel 继续以 Human 之间的沟通与决定
+为主；成员可以把需求带到自己的私人 AI 制作空间，在不公开 Prompt、试错和未发布草稿的前提下完成
+Artifact，再由成员显式发布到目标 Channel。Artifact 是团队查看、修订、审查、接受和继续流转的交付
+对象，而不是一条 Agent 回复、附件或外部链接。
 
-这个方向需要证明的不是“Agent 能生成文件”，而是团队能否在不离开共享上下文的情况下完成一次交付审阅。
+这个方向需要证明的不是“Agent 能生成文件”，而是个人制作和公共协作能否在同一个 IM 内保持清楚边界，
+并通过同一个版本化 Artifact 形成连续交付。
 
 | 核心需求 | 用户结果 | UI 表达 | 原型验收 |
 | --- | --- | --- | --- |
-| Artifact 有独立身份，关联来源 Task 和 Run | 成员知道这份结果从何而来、由谁生成 | 固定展示 Task、Run、Agent 和版本 | 在交付页首屏可见，不靠翻聊天记录寻找 |
-| Artifact 是主要内容，而非 Agent 文本 | 成员先看实际成果，再决定是否接受 | 使用类型化、可操作的预览画布 | 预览占交付页主要视觉面积；摘要不替代预览 |
+| 人际 Channel 不成为 Agent Chat | 团队继续正常聊天，不被制作过程淹没 | Channel 默认只显示 Human 消息和已发布交付 | 不出现连续 Agent Prompt/回复流 |
+| 个人制作默认私密 | 成员可以自由试错，不必向团队展示 AI 操作 | 独立“我的制作”空间和持续可见的私人标记 | 发布前目标 Channel 看不到 Prompt、草稿和工具过程 |
+| 发布是显式边界 | 作者决定什么内容何时进入哪个 Channel | 发布动作选择 Artifact、版本、交付说明和目标 Channel | 不能自动复制完整 Agent Session |
+| Artifact 有独立身份和版本 | 成员知道当前审阅的是哪一版交付 | 展示发布者、稳定 Artifact、版本和状态 | 不靠翻聊天记录或比较附件名寻找最新版 |
+| Artifact 是主要内容，而非 Agent 文本 | 成员先看实际成果，再决定是否接受 | 使用类型化、可操作的预览画布 | 频道中的 Artifact 可直接预览和操作 |
 | 审阅意见附着在同一个 Artifact 版本 | 讨论不会散落成多条“请再改一次”消息 | 批注、决定和版本状态与预览同屏 | 能看到待确认点及其对应版本 |
-| Agent 对同一 Artifact 继续修订 | 后续修改形成版本，而不是新的孤立回复或附件 | 明确的“交给 Agent 修订”动作和版本轨迹 | 下一次修订目标与当前版本的关系可见 |
+| 修改请求返回私人制作空间 | 作者继续私下制作，团队只看到公开状态 | “请求修改”关联原制作链并生成后续版本 | v2 仍属于同一 Artifact，且不暴露私人修订过程 |
 | Artifact 的接受是团队决策 | 成员能清楚确认谁接受了什么 | 接受、退回、发布操作绑定 Artifact 版本 | 不能只接受一段 Agent 总结；必须针对当前版本操作 |
 
-原型问题：**Task Delivery 页面应如何把 Artifact 放到交付体验中心，而又不让 Channel 变成重型仪表盘？**
-三个候选结构位于
-[`docs/prototype/index.html?screen=task-result&prototype=artifact&variant=A`](./prototype/index.html?screen=task-result&prototype=artifact&variant=A)，
-并可切换为 `B`、`C`；它们是可丢弃的设计探索，不是产品实现。
+V2 原型问题：**如何同时保留私人 AI 制作空间和公共人际 Channel，并让 Artifact 在两者之间显式发布、
+退回修订和再次流转？**三个候选结构位于
+[`docs/prototype/index.html?screen=channel&prototype=private-publish&variant=B`](./prototype/index.html?screen=channel&prototype=private-publish&variant=B)，
+并可切换为 `A`、`C`。原来的
+[`prototype=artifact`](./prototype/index.html?screen=task-result&prototype=artifact&variant=A) 方案只验证交付页审阅，
+保留为上一轮可丢弃探索；两组都不是产品实现。
 
 ### 5.2 必须保持的关系
 

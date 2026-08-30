@@ -255,6 +255,121 @@ if (artifactPrototypeEnabled) {
   });
 }
 
+// PROTOTYPE #183 V2 — three disposable layouts for private making → public delivery.
+const privatePublishPrototypeEnabled = initialParams.get("prototype") === "private-publish";
+const privatePublishVariantNames = {
+  A: "A · 双域工作台",
+  B: "B · 独立制作间",
+  C: "C · 流转轨道",
+};
+const privatePublishVariantKeys = Object.keys(privatePublishVariantNames);
+const privatePublishSwitcher = document.querySelector("#private-publish-switcher");
+const privatePublishSwitcherLabel = document.querySelector("#private-publish-label");
+let privatePublishState = "draft";
+
+function setPrivatePublishVariant(requestedVariant, { updateUrl = true } = {}) {
+  if (!privatePublishPrototypeEnabled) return;
+  const variant = privatePublishVariantNames[requestedVariant] ? requestedVariant : "B";
+  document.querySelectorAll("[data-private-publish-variant]").forEach((element) => {
+    const selected = element.dataset.privatePublishVariant === variant;
+    element.hidden = !selected;
+    element.setAttribute("aria-hidden", String(!selected));
+  });
+  privatePublishSwitcherLabel.textContent = privatePublishVariantNames[variant];
+  if (updateUrl) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("prototype", "private-publish");
+    nextUrl.searchParams.set("variant", variant);
+    nextUrl.searchParams.set("screen", "channel");
+    window.history.replaceState({}, "", nextUrl);
+  }
+}
+
+function setPrivatePublishState(nextState) {
+  const supportedStates = ["draft", "published", "revision", "v2", "forwarded"];
+  privatePublishState = supportedStates.includes(nextState) ? nextState : "draft";
+  const visibleState = privatePublishState === "forwarded" ? "v2" : privatePublishState;
+  const stateLabels = {
+    draft: "私人草稿",
+    published: "v1 已发布",
+    revision: "私人修订中",
+    v2: "v2 已发布",
+    forwarded: "已接受并流转",
+  };
+  const publicDecisions = {
+    draft: "尚未发布",
+    published: "等待团队审阅",
+    revision: "修改请求已发送 · 公开状态：修改中",
+    v2: "v2 等待团队审阅",
+    forwarded: "已接受 · 已流转到 #发布协调",
+  };
+
+  document.querySelectorAll("[data-private-publish-state-label]").forEach((element) => {
+    element.textContent = stateLabels[privatePublishState];
+  });
+  document.querySelectorAll("[data-artifact-version]").forEach((element) => {
+    element.textContent = ["v2", "forwarded"].includes(privatePublishState) ? "v2" : "v1";
+  });
+  document.querySelectorAll("[data-public-decision]").forEach((element) => {
+    element.textContent = publicDecisions[privatePublishState];
+  });
+  document.querySelectorAll(".private-publish-prototype [class*='when-']").forEach((element) => {
+    element.hidden = !element.classList.contains(`when-${visibleState}`);
+  });
+
+  const stateOrder = { published: 1, revision: 2, v2: 3, forwarded: 3 };
+  document.querySelectorAll("[data-flow-history]").forEach((element) => {
+    const itemOrder = stateOrder[element.dataset.flowHistory] || 0;
+    element.classList.toggle("is-current", itemOrder <= (stateOrder[privatePublishState] || 0));
+  });
+}
+
+if (privatePublishPrototypeEnabled) {
+  document.body.classList.add("is-private-publish-prototype");
+  privatePublishSwitcher.hidden = false;
+  privatePublishSwitcher.querySelectorAll("[data-private-publish-cycle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const current = new URLSearchParams(window.location.search).get("variant") || "B";
+      const currentIndex = privatePublishVariantKeys.indexOf(current);
+      const step = button.dataset.privatePublishCycle === "previous" ? -1 : 1;
+      const nextIndex = (currentIndex + step + privatePublishVariantKeys.length) % privatePublishVariantKeys.length;
+      setPrivatePublishVariant(privatePublishVariantKeys[nextIndex]);
+    });
+  });
+  document.querySelectorAll("[data-private-publish-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.privatePublishAction;
+      const nextState = {
+        publish: "published",
+        "request-revision": "revision",
+        "publish-v2": "v2",
+        forward: "forwarded",
+        reset: "draft",
+      }[action];
+      if (nextState) setPrivatePublishState(nextState);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    const active = document.activeElement;
+    const isEditing = active instanceof HTMLElement
+      && active.matches("input, textarea, [contenteditable='true']");
+    if (isEditing || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    const current = new URLSearchParams(window.location.search).get("variant") || "B";
+    const currentIndex = privatePublishVariantKeys.indexOf(current);
+    const step = event.key === "ArrowLeft" ? -1 : 1;
+    const nextIndex = (currentIndex + step + privatePublishVariantKeys.length) % privatePublishVariantKeys.length;
+    setPrivatePublishVariant(privatePublishVariantKeys[nextIndex]);
+  });
+}
+
 switchRoute(initialParams.get("screen") || (artifactPrototypeEnabled ? "task-result" : "channel"));
 if (artifactPrototypeEnabled) setArtifactVariant(initialParams.get("variant"), { updateUrl: true });
+if (privatePublishPrototypeEnabled) {
+  setPrivatePublishVariant(initialParams.get("variant"), { updateUrl: true });
+  setPrivatePublishState("draft");
+  document.querySelector("#view-title").textContent = "个人制作 ↔ #产品研发";
+  document.querySelector("#view-subtitle").textContent = "私人制作与公共交付 · 交互原型";
+  document.querySelector(".channel-hash").textContent = "";
+}
 if (initialParams.get("modal") === "task") setModal(true);

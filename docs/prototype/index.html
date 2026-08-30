@@ -87,6 +87,11 @@
             <button class="sidebar-item"><span class="avatar avatar-small avatar-zhou">周</span><span>周一鸣</span><i class="online"></i></button>
             <button class="sidebar-item"><span class="avatar avatar-small avatar-agent">A</span><span>Atlas · 工程 Agent</span><i class="agent-label">AI</i></button>
           </section>
+          <section class="sidebar-section private-publish-nav" aria-label="我的制作">
+            <div class="section-title"><span>我的制作</span><span class="private-mark">仅自己</span></div>
+            <button class="sidebar-item is-private-selected"><span class="item-symbol">◐</span><span>入职引导页</span><strong>草稿</strong></button>
+            <button class="sidebar-item"><span class="item-symbol">◐</span><span>Q3 复盘摘要</span></button>
+          </section>
           <section class="sidebar-section">
             <div class="section-title"><span>动态</span><span class="count-badge">5</span></div>
             <button class="sidebar-item" data-route="inbox"><span class="item-symbol">@</span><span>提及、回复与 Agent 结果</span><strong>5</strong></button>
@@ -110,8 +115,8 @@
         </header>
 
         <section class="screen screen-channel is-visible" data-screen="channel">
-          <h2 style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道消息</h2>
-          <div class="conversation-pane">
+          <h2 data-default-channel style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道消息</h2>
+          <div class="conversation-pane" data-default-channel>
             <div class="timeline" id="timeline">
               <div class="date-divider"><span>今天</span></div>
               <article class="message-row">
@@ -171,7 +176,7 @@
               </div>
             </div>
           </div>
-          <aside class="context-panel">
+          <aside class="context-panel" data-default-channel>
             <div class="context-heading"><strong>频道上下文</strong><button class="icon-button" title="关闭"><svg><use href="#i-close"></use></svg></button></div>
             <section class="context-block">
               <div class="context-label">活跃任务 <span>1</span></div>
@@ -196,6 +201,91 @@
               <div class="member-line"><span class="avatar avatar-small avatar-sage">S</span><div><strong>Sage</strong><small>决策记录 · 按需</small></div><span class="quiet">休眠</span></div>
             </section>
           </aside>
+
+          <!-- PROTOTYPE #183 V2 — three disposable layouts for private AI making → public IM delivery. -->
+          <section class="private-publish-prototype private-publish-variant-a" data-private-publish-variant="A" aria-labelledby="private-publish-a-title" hidden>
+            <header class="private-publish-header">
+              <div><span class="eyebrow">V2 · 私人制作与公共交付</span><h2 id="private-publish-a-title">双域工作台</h2><p>私人制作与人际频道同时在场；发布是两者之间唯一的显式边界。</p></div>
+              <div class="private-publish-state"><span class="private-dot"></span><b data-private-publish-state-label>私人草稿</b><small>AI 对话未公开</small></div>
+            </header>
+            <div class="private-publish-dual">
+              <section class="private-making-zone" aria-label="私人 AI 制作空间">
+                <div class="zone-heading"><div><span class="zone-kicker private">仅自己可见</span><strong>我的制作 · 入职引导页</strong></div><span class="lock-label">🔒 私人</span></div>
+                <blockquote class="making-brief"><small>来自 #产品研发 · 孟青</small><p>新成员第一次打开桌面端时，需要快速理解频道、文件和任务分别在哪里。</p></blockquote>
+                <div class="making-chat">
+                  <div><span class="avatar avatar-small avatar-user">林</span><p><b>我</b>先做成一个能直接点的引导页，不要解释型长文。</p></div>
+                  <div><span class="avatar avatar-small avatar-nova">N</span><p><b>Nova</b>已把入口收敛成三个动作，并生成当前画布。这里的对话不会随发布进入频道。</p></div>
+                </div>
+                <div class="making-canvas">
+                  <div class="making-browser-bar"><i></i><i></i><i></i><span>onboarding-v1.local</span></div>
+                  <div class="making-canvas-body"><small>WELCOME TO THREADLINE</small><h3>从一次真实协作开始</h3><p>加入频道、找到资料、把讨论变成可交付的工作。</p><div class="making-step-row"><span><b>1</b>进入频道</span><span><b>2</b>查看共享资料</span><span><b>3</b>开始制作</span></div></div>
+                </div>
+                <footer class="making-footer"><span>草稿 v1 · 自动保存在本机</span><button class="primary-button when-draft" data-private-publish-action="publish">发布到 #产品研发</button><button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>发布修订版 v2</button><button class="secondary-button when-published" data-private-publish-action="reset" hidden>继续私人制作</button></footer>
+              </section>
+              <section class="public-channel-zone" aria-label="公共人际频道">
+                <div class="zone-heading"><div><span class="zone-kicker public">团队公开</span><strong># 产品研发</strong></div><span class="member-count">18 位成员</span></div>
+                <div class="public-message"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>引导页今天能给大家看一版吗？重点确认新成员能不能直接上手。</p></div></div>
+                <div class="public-message"><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣</b><p>可以先看真实页面，制作过程不用同步。</p></div></div>
+                <div class="public-empty when-draft"><span>等待林嘉发布</span><p>私人 AI 对话和未发布草稿不会出现在这里。</p></div>
+                <article class="published-artifact when-published when-revision when-v2" hidden>
+                  <header><div><small>林嘉发布了 Artifact</small><strong>桌面端入职引导页</strong></div><span data-artifact-version>v1</span></header>
+                  <div class="published-preview"><small>WELCOME TO THREADLINE</small><b>从一次真实协作开始</b><span>交互式页面 · 可直接预览</span></div>
+                  <footer><span data-public-decision>等待团队审阅</span><div><button class="text-button" data-private-publish-action="request-revision">请求修改</button><button class="primary-button" data-private-publish-action="forward">接受并流转</button></div></footer>
+                </article>
+                <div class="revision-note when-revision" hidden><span class="avatar avatar-small avatar-meng">孟</span><p><b>孟青请求修改</b>把“查看共享资料”改为“找到项目文件”，其他部分可以保留。</p></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="private-publish-prototype private-publish-variant-b" data-private-publish-variant="B" aria-labelledby="private-publish-b-title" hidden>
+            <header class="private-publish-header compact">
+              <div><span class="eyebrow">V2 · 推荐方向</span><h2 id="private-publish-b-title">独立制作间</h2><p>IM 是主界面；“我的制作”是个人空间，公共频道只接收正式版本。</p></div>
+              <div class="space-boundary"><span class="is-current">我的制作</span><i>发布</i><span># 产品研发</span></div>
+            </header>
+            <div class="private-publish-focus">
+              <aside class="focus-flow">
+                <span class="context-label">交付链</span>
+                <div class="focus-step is-active"><i>1</i><div><b>私人制作</b><small>只有林嘉可见</small></div></div>
+                <div class="focus-step"><i>2</i><div><b>发布版本</b><small>选择交付内容</small></div></div>
+                <div class="focus-step"><i>3</i><div><b>频道决定</b><small>审阅、退回、流转</small></div></div>
+                <div class="focus-privacy"><b>不会发布</b><span>Prompt</span><span>失败草稿</span><span>工具调用</span></div>
+              </aside>
+              <main class="focus-making">
+                <div class="focus-making-head"><div><small>🔒 我的制作 · 本机</small><h3>入职引导页</h3></div><div><span data-private-publish-state-label>私人草稿</span><button class="primary-button when-draft" data-private-publish-action="publish">发布 v1</button><button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>提交 v2</button></div></div>
+                <div class="focus-workbench">
+                  <section class="focus-ai-chat"><span class="context-label">AI 制作</span><div class="focus-chat-bubble me">把新成员最先需要的三个动作做成引导。</div><div class="focus-chat-bubble ai">已生成页面。你可以继续私下修改，团队不会看到这里。</div><div class="focus-prompt">继续告诉 Nova 要修改什么…</div></section>
+                  <section class="focus-artifact"><div class="making-browser-bar"><i></i><i></i><i></i><span>私密预览 · v1</span></div><div class="focus-artifact-page"><em>01 / 03</em><small>WELCOME TO THREADLINE</small><h3>先进入正在发生的工作</h3><p>频道承载人与人的沟通；制作间负责把想法变成结果。</p><button>进入 #产品研发</button></div></section>
+                </div>
+              </main>
+              <aside class="focus-public">
+                <div><span class="zone-kicker public">团队公开</span><strong># 产品研发</strong></div>
+                <p>孟青：今天给大家看一版真实页面。</p>
+                <div class="public-empty when-draft"><span>尚未发布</span><p>频道里没有 Nova 的消息，也看不到林嘉的制作过程。</p></div>
+                <article class="focus-delivery when-published when-revision when-v2" hidden><small>林嘉 · 刚刚</small><strong>桌面端入职引导页 <b data-artifact-version>v1</b></strong><div>可交互预览</div><p data-public-decision>等待团队审阅</p><button data-private-publish-action="request-revision">请求修改</button><button data-private-publish-action="forward">接受并流转</button></article>
+                <div class="revision-note when-revision" hidden><p><b>修改请求已回到私人制作间</b>公开频道只显示“修改中”。</p></div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="private-publish-prototype private-publish-variant-c" data-private-publish-variant="C" aria-labelledby="private-publish-c-title" hidden>
+            <header class="private-publish-header">
+              <div><span class="eyebrow">V2 · 交付流</span><h2 id="private-publish-c-title">制作与流转轨道</h2><p>把个人制作、发布边界和公共消费摆成一条可检查的流转线。</p></div>
+              <button class="secondary-button" data-private-publish-action="reset">重置演示</button>
+            </header>
+            <div class="private-publish-track">
+              <section class="track-public-source"><span class="zone-kicker public">公共 · #产品研发</span><h3>需求来自人际沟通</h3><div class="public-message"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>需要一版新成员能直接操作的引导页。</p></div></div><button class="secondary-button">带到我的制作</button></section>
+              <section class="track-private"><span class="zone-kicker private">私人 · 我的制作</span><h3>林嘉与 Nova 制作</h3><div class="track-private-canvas"><small>本机草稿</small><strong>从一次真实协作开始</strong><span>频道 · 文件 · 制作</span></div><p>Prompt、失败版本和工具过程留在这里。</p><button class="primary-button when-draft" data-private-publish-action="publish">发布 Artifact v1</button><button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>发布 Artifact v2</button></section>
+              <div class="track-transfer"><span>显式发布</span><i>→</i><small>只携带 Artifact、版本和交付说明</small></div>
+              <section class="track-public-delivery"><span class="zone-kicker public">公共 · #产品研发</span><h3>团队接收交付</h3><div class="public-empty when-draft"><span>等待交付</span><p>这里不会自动同步私人制作。</p></div><article class="track-artifact when-published when-revision when-v2" hidden><small>ART-014 · <b data-artifact-version>v1</b></small><strong>桌面端入职引导页</strong><div>LIVE PREVIEW</div><p data-public-decision>等待团队审阅</p><footer><button data-private-publish-action="request-revision">退回修改</button><button data-private-publish-action="forward">流转 #发布协调</button></footer></article></section>
+              <footer class="track-history"><span>公开交付历史</span><ol><li class="is-current">创建私人草稿</li><li data-flow-history="published">发布 v1</li><li data-flow-history="revision">请求修改</li><li data-flow-history="v2">发布 v2</li></ol></footer>
+            </div>
+          </section>
+
+          <nav class="private-publish-switcher" id="private-publish-switcher" aria-label="私人制作与公共交付原型版本" hidden>
+            <button data-private-publish-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="private-publish-label">A · 双域工作台</span>
+            <button data-private-publish-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
         </section>
 
         <section class="screen screen-tasks" data-screen="tasks">
