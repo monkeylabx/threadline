@@ -150,8 +150,12 @@ document.querySelector("#composer-input").addEventListener("keydown", (event) =>
 document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
+    const v14Search = document.querySelector("[data-v14-search]");
     const unifiedSearch = document.querySelector("[data-unified-search]");
-    if (document.body.classList.contains("is-im-agent-prototype") && unifiedSearch) {
+    if (document.body.classList.contains("is-im-agent-prototype") && v14Search) {
+      v14Search.focus();
+      v14Search.select();
+    } else if (document.body.classList.contains("is-im-agent-prototype") && unifiedSearch) {
       unifiedSearch.focus();
       unifiedSearch.select();
     } else {
@@ -571,6 +575,50 @@ if (imAgentPrototypeEnabled) {
       };
       document.querySelector(`.im-agent-variant-a ${targetSelectors[button.dataset.collapsedNavTarget]}`)?.scrollIntoView({ block: "nearest" });
     });
+  });
+  const v14Shell = document.querySelector("[data-v14-shell]");
+  const v14Search = document.querySelector("[data-v14-search]");
+  const v14SearchResults = document.querySelector("[data-v14-search-results]");
+  const setV14App = (app) => {
+    v14Shell.dataset.v14App = app;
+    document.querySelectorAll("[data-v14-app-button]").forEach((button) => button.classList.toggle("is-current", button.dataset.v14AppButton === app));
+    document.querySelectorAll("[data-v14-context]").forEach((panel) => { panel.hidden = panel.dataset.v14Context !== app; });
+    document.querySelectorAll("[data-v14-content]").forEach((panel) => { panel.hidden = panel.dataset.v14Content !== app; });
+    v14SearchResults.hidden = true;
+  };
+  document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
+    button.addEventListener("click", () => setV14App(button.dataset.v14AppButton));
+  });
+  const filterV14Search = () => {
+    const query = v14Search.value.trim().toLocaleLowerCase("zh-CN");
+    document.querySelectorAll("[data-v14-search-item]").forEach((item) => {
+      item.hidden = Boolean(query) && !item.textContent.toLocaleLowerCase("zh-CN").includes(query);
+    });
+  };
+  v14Search?.addEventListener("focus", () => { v14SearchResults.hidden = false; });
+  v14Search?.addEventListener("input", () => {
+    filterV14Search();
+    v14SearchResults.hidden = false;
+  });
+  v14Search?.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    v14Search.value = "";
+    filterV14Search();
+    v14SearchResults.hidden = true;
+    v14Search.blur();
+  });
+  document.querySelectorAll("[data-v14-search-item]").forEach((item) => {
+    item.addEventListener("click", () => {
+      setV14App(item.dataset.resultApp);
+      v14Search.value = item.querySelector("b").textContent;
+    });
+  });
+  document.querySelector("[data-v14-new-work]")?.addEventListener("click", () => {
+    setV14App("work");
+    document.querySelector("#v14-work-title").textContent = "未命名工作";
+    const textarea = document.querySelector(".v14-work-content .focus-agent-composer textarea");
+    textarea.value = "";
+    textarea.focus();
   });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;

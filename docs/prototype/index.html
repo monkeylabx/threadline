@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=13" />
+    <link rel="stylesheet" href="./styles.css?v=14" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -350,8 +350,69 @@
           </nav>
 
           <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
-          <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="im-agent-a-title" hidden>
-            <div class="im-agent-stage overlay-stage">
+          <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
+            <div class="im-agent-stage slack-shell-v14" data-v14-shell data-v14-app="work">
+              <aside class="v14-org-rail" aria-label="企业">
+                <button class="is-current" title="北辰科技"><span>北</span><i></i></button>
+                <button title="切换企业"><span>星</span></button>
+                <button class="v14-add-org" title="加入企业">＋</button>
+                <footer><i title="服务在线"></i><button class="avatar avatar-user" title="林嘉">林</button></footer>
+              </aside>
+              <header class="v14-global-topbar">
+                <div class="v14-window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+                <div class="v14-history-buttons"><button title="后退">‹</button><button title="前进">›</button></div>
+                <div class="v14-global-search-wrap">
+                  <label class="v14-global-search"><svg><use href="#i-search"></use></svg><input data-v14-search type="search" placeholder="搜索消息、频道、工作或成员" aria-label="全局搜索" /><kbd>⌘ K</kbd></label>
+                  <div class="v14-search-results" data-v14-search-results hidden>
+                    <span>快速前往</span>
+                    <button data-v14-search-item data-result-app="messages"><svg><use href="#i-message"></use></svg><div><b># 产品研发</b><small>频道 · 1 条提及</small></div></button>
+                    <button data-v14-search-item data-result-app="work"><svg><use href="#i-bot"></use></svg><div><b>重做桌面端入职引导</b><small>私人工作 · 今天</small></div></button>
+                    <button data-v14-search-item data-result-app="attention"><svg><use href="#i-checks"></use></svg><div><b>批准本地文件删除</b><small>需要处理 · ENG-248</small></div></button>
+                    <button data-v14-search-item data-result-app="messages"><svg><use href="#i-users"></use></svg><div><b>孟青</b><small>组织成员</small></div></button>
+                  </div>
+                </div>
+                <button class="v14-runtime-status"><i></i><span>Runtime 在线</span></button>
+              </header>
+              <nav class="v14-app-rail" aria-label="应用">
+                <button data-v14-app-button="messages"><span><svg><use href="#i-message"></use></svg><b>@1</b></span><small>消息</small></button>
+                <button class="is-current" data-v14-app-button="work"><span><svg><use href="#i-bot"></use></svg><i></i></span><small>工作</small></button>
+                <button data-v14-app-button="attention"><span><svg><use href="#i-checks"></use></svg><b>2</b></span><small>处理</small></button>
+                <footer><button title="更多"><svg><use href="#i-more"></use></svg></button></footer>
+              </nav>
+              <aside class="v14-context-sidebar" aria-label="当前应用导航">
+                <section data-v14-context="messages" hidden>
+                  <header><div><strong>消息</strong><small>北辰科技</small></div><button title="新建频道或私聊"><svg><use href="#i-plus"></use></svg></button></header>
+                  <div class="v14-context-list"><span>频道</span><button class="is-current"><b>#</b><div>产品研发</div><i>@1</i></button><button><b>#</b><div>客户端体验</div><i>4</i></button><button><b>#</b><div>安全与合规</div></button><button><b>#</b><div>发布协调</div></button><span>私聊</span><button><em class="avatar avatar-tiny avatar-meng">孟</em><div>孟青</div><i class="online"></i></button><button><em class="avatar avatar-tiny avatar-zhou">周</em><div>周一鸣</div></button></div>
+                </section>
+                <section data-v14-context="work">
+                  <header><div><strong>私人工作</strong><small>仅保存在你的设备</small></div><button data-v14-new-work title="新建私人工作"><svg><use href="#i-plus"></use></svg></button></header>
+                  <div class="v14-context-list v14-work-list"><span>最近</span><button class="is-current"><svg><use href="#i-bot"></use></svg><div><b>重做桌面端入职引导</b><small>引用 #产品研发</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>整理 Q3 客户反馈</b><small>今天 09:16 · 未关联频道</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>检查离线同步方案</b><small>昨天 · #客户端体验</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>准备产品评审材料</b><small>周一 · Nova</small></div></button></div>
+                  <footer><i></i><span>本地 Runtime 在线</span></footer>
+                </section>
+                <section data-v14-context="attention" hidden>
+                  <header><div><strong>需要处理</strong><small>2 项待确认</small></div></header>
+                  <div class="v14-context-list v14-attention-list"><span>今天</span><button class="is-current"><b>!</b><div><strong>批准本地文件删除</strong><small>Atlas · ENG-248</small></div><i>审批</i></button><button><b>✓</b><div><strong>入职引导页已完成</strong><small>Nova · 等待确认成果</small></div><i>结果</i></button></div>
+                </section>
+              </aside>
+              <section class="v14-content-area">
+                <section class="v14-content-view v14-message-content" data-v14-content="messages" hidden>
+                  <header><div><b>#</b><span><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></span></div><button><svg><use href="#i-users"></use></svg></button></header>
+                  <main><div class="focus-day">今天</div><article><span class="avatar avatar-meng">孟</span><div><b>孟青 <time>10:18</time></b><p>桌面端离线恢复还有一个问题：旧同步进程可能覆盖新状态。</p></div></article><article><span class="avatar avatar-zhou">周</span><div><b>周一鸣 <time>10:21</time></b><p>建议把 Run Lease 和消息同步分开，Runtime 使用 fencing token。</p></div></article><article class="is-agent"><span class="avatar avatar-agent">A</span><div><b>Atlas · Agent <time>10:22</time></b><p>我可以根据上方两条消息建立一个任务，不读取频道其他历史。</p><button>开始执行</button></div></article></main>
+                  <div class="v14-message-composer"><textarea rows="2" placeholder="发消息到 #产品研发"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>消息</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                </section>
+                <section class="v14-content-view v14-work-content" data-v14-content="work">
+                  <header><div><div class="work-breadcrumb"><button># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="v14-work-title">重做桌面端入职引导</h2></div><div><button class="directory-picker"><svg><use href="#i-folder"></use></svg><span>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div></header>
+                  <main><div class="focus-day">今天 10:42 · 仅你可见</div><article class="focus-turn user"><div><b>你</b><p>根据频道里的讨论，重做桌面端入职引导。让新成员直接进入真实工作。</p></div><span class="avatar avatar-small avatar-user">林</span></article><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已读取你明确引用的 3 条频道消息，其他频道内容不会进入本次工作。</p><button class="focus-inline-result"><span>入职引导页 · 草稿 v1</span><small>已更新 3 处</small><i>打开预览 →</i></button></div></article><article class="focus-turn user"><div><b>你</b><p>把第二步改成邀请一位同事共同编辑。</p></div><span class="avatar avatar-small avatar-user">林</span></article><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已经修改。当前版本仍是私人草稿，准备好后可以共享到 #产品研发。</p></div></article></main>
+                  <div class="focus-composer-dock"><div class="focus-agent-composer"><div><span>#产品研发 · 3</span><span>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div></div>
+                </section>
+                <section class="v14-content-view v14-attention-content" data-v14-content="attention" hidden>
+                  <header><div><strong>批准本地文件删除</strong><small>Atlas · ENG-248 · 2 分钟前</small></div></header>
+                  <main><span class="v14-risk-mark">!</span><h2>Agent 请求删除 3 个本地缓存文件</h2><p>该操作只影响你授权的 <code>~/Projects/threadline</code> 工作目录，频道成员不会看到私人工作内容。</p><div><span>能力</span><b>workspace.file.delete</b><span>范围</span><b>3 个缓存文件</b><span>发起者</span><b>Atlas</b></div><footer><button>拒绝</button><button class="primary-button">批准一次</button></footer></main>
+                </section>
+              </section>
+            </div>
+
+            <div class="im-agent-stage overlay-stage" hidden>
               <aside class="agent-history-rail unified-conversation-nav" aria-label="Threadline 对话导航">
                 <header class="unified-org-header"><span class="unified-org-mark">北</span><div><strong>北辰科技</strong><small>产品与工程</small></div><button title="切换组织" aria-label="切换组织">⌄</button></header>
                 <div class="unified-sidebar-tools">
@@ -715,6 +776,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=13"></script>
+    <script src="./app.js?v=14"></script>
   </body>
 </html>
