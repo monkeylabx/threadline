@@ -127,7 +127,7 @@ Artifact，再由成员显式发布到目标 Channel。Artifact 是团队查看�
 | 核心需求 | 用户结果 | UI 表达 | 原型验收 |
 | --- | --- | --- | --- |
 | 人际 Channel 不成为 Agent Chat | 团队继续正常聊天，不被制作过程淹没 | Channel 默认只显示 Human 消息和已发布交付 | 不出现连续 Agent Prompt/回复流 |
-| 个人制作默认私密 | 成员可以自由试错，不必向团队展示 AI 操作 | 独立“我的制作”空间和持续可见的私人标记 | 发布前目标 Channel 看不到 Prompt、草稿和工具过程 |
+| 个人制作默认私密 | 成员可以自由试错，不必向团队展示 AI 操作 | 独立“我的制作”空间，以持续对话、固定输入框、工作上下文和可编辑成果画布构成个人 AI 主工作台 | 发布前目标 Channel 看不到 Prompt、草稿和工具过程；成员能在工作台继续输入和修改 |
 | 发布是显式边界 | 作者决定什么内容何时进入哪个 Channel | 发布动作选择 Artifact、版本、交付说明和目标 Channel | 不能自动复制完整 Agent Session |
 | Artifact 有独立身份和版本 | 成员知道当前审阅的是哪一版交付 | 展示发布者、稳定 Artifact、版本和状态 | 不靠翻聊天记录或比较附件名寻找最新版 |
 | Artifact 是主要内容，而非 Agent 文本 | 成员先看实际成果，再决定是否接受 | 使用类型化、可操作的预览画布 | 频道中的 Artifact 可直接预览和操作 |
@@ -135,7 +135,7 @@ Artifact，再由成员显式发布到目标 Channel。Artifact 是团队查看�
 | 修改请求返回私人制作空间 | 作者继续私下制作，团队只看到公开状态 | “请求修改”关联原制作链并生成后续版本 | v2 仍属于同一 Artifact，且不暴露私人修订过程 |
 | Artifact 的接受是团队决策 | 成员能清楚确认谁接受了什么 | 接受、退回、发布操作绑定 Artifact 版本 | 不能只接受一段 Agent 总结；必须针对当前版本操作 |
 
-V2 原型问题：**如何同时保留私人 AI 制作空间和公共人际 Channel，并让 Artifact 在两者之间显式发布、
+V3 原型问题：**如何同时保留作为个人主工作界面的 AI 工作台和公共人际 Channel，并让 Artifact 在两者之间显式发布、
 退回修订和再次流转？**三个候选结构位于
 [`docs/prototype/index.html?screen=channel&prototype=private-publish&variant=B`](./prototype/index.html?screen=channel&prototype=private-publish&variant=B)，
 并可切换为 `A`、`C`。原来的

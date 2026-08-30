@@ -259,7 +259,7 @@ if (artifactPrototypeEnabled) {
 const privatePublishPrototypeEnabled = initialParams.get("prototype") === "private-publish";
 const privatePublishVariantNames = {
   A: "A · 双域工作台",
-  B: "B · 独立制作间",
+  B: "B · AI 主工作台",
   C: "C · 流转轨道",
 };
 const privatePublishVariantKeys = Object.keys(privatePublishVariantNames);
@@ -349,6 +349,37 @@ if (privatePublishPrototypeEnabled) {
       if (nextState) setPrivatePublishState(nextState);
     });
   });
+  const privateAiInput = document.querySelector("[data-ai-composer]");
+  const privateAiSend = document.querySelector("[data-ai-send]");
+  const privateAiThread = document.querySelector("#private-ai-thread");
+  const privateAiActivity = document.querySelector("[data-ai-activity]");
+  const sendPrivateAiMessage = () => {
+    const message = privateAiInput?.value.trim();
+    if (!message || !privateAiThread) return;
+    const userTurn = document.createElement("article");
+    userTurn.className = "ai-turn is-user";
+    userTurn.innerHTML = `<div class="ai-turn-body"><strong>你</strong><p></p></div><span class="avatar avatar-small avatar-user">林</span>`;
+    userTurn.querySelector("p").textContent = message;
+    const agentTurn = document.createElement("article");
+    agentTurn.className = "ai-turn is-agent";
+    agentTurn.innerHTML = `<span class="avatar avatar-small avatar-nova">N</span><div class="ai-turn-body"><strong>Nova</strong><p>收到。我会继续在私人草稿中处理，不会自动发布到频道。</p></div>`;
+    privateAiThread.append(userTurn, agentTurn);
+    privateAiInput.value = "";
+    privateAiActivity.textContent = "已更新私人草稿";
+    privateAiThread.scrollTop = privateAiThread.scrollHeight;
+  };
+  privateAiSend?.addEventListener("click", sendPrivateAiMessage);
+  privateAiInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendPrivateAiMessage();
+    }
+  });
+  document.querySelector("[data-ai-context-toggle]")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    const added = button.classList.toggle("is-added");
+    button.innerHTML = added ? "<span>✓</span>已作为工作上下文" : "<span>＋</span>加入工作上下文";
+  });
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
     const isEditing = active instanceof HTMLElement
@@ -368,8 +399,8 @@ if (artifactPrototypeEnabled) setArtifactVariant(initialParams.get("variant"), {
 if (privatePublishPrototypeEnabled) {
   setPrivatePublishVariant(initialParams.get("variant"), { updateUrl: true });
   setPrivatePublishState("draft");
-  document.querySelector("#view-title").textContent = "个人制作 ↔ #产品研发";
-  document.querySelector("#view-subtitle").textContent = "私人制作与公共交付 · 交互原型";
+  document.querySelector("#view-title").textContent = "我的 AI 工作台";
+  document.querySelector("#view-subtitle").textContent = "私人对话、工作资料与成果 · 仅你可见";
   document.querySelector(".channel-hash").textContent = "";
 }
 if (initialParams.get("modal") === "task") setModal(true);
