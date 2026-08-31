@@ -578,6 +578,7 @@ if (imAgentPrototypeEnabled) {
   });
   const v14Shell = document.querySelector("[data-v14-shell]");
   const v14ContextToggle = document.querySelector("[data-v14-context-toggle]");
+  const v14ContextReveal = document.querySelector("[data-v14-context-reveal]");
   const v14OrgToggle = document.querySelector("[data-v14-org-toggle]");
   const v14OrgReveal = document.querySelector("[data-v14-org-reveal]");
   const v14Search = document.querySelector("[data-v14-search]");
@@ -600,6 +601,11 @@ if (imAgentPrototypeEnabled) {
 
   v14ContextToggle?.addEventListener("click", (event) => {
     setV14ContextCollapsed(!v14Shell?.classList.contains("is-context-collapsed"));
+    if (event.detail) event.currentTarget.blur();
+  });
+
+  v14ContextReveal?.addEventListener("click", (event) => {
+    setV14ContextCollapsed(false);
     if (event.detail) event.currentTarget.blur();
   });
 

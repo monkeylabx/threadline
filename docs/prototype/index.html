@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=15" />
+    <link rel="stylesheet" href="./styles.css?v=16" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -353,14 +353,15 @@
           <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
             <div class="im-agent-stage slack-shell-v14" data-v14-shell data-v14-app="work">
               <aside class="v14-org-rail" aria-label="企业">
+                <button class="v14-org-collapse" data-v14-org-toggle aria-expanded="true" title="收起企业列表" aria-label="收起企业列表"><svg><use href="#i-sidebar"></use></svg></button>
                 <button class="is-current" title="北辰科技"><span>北</span><i></i></button>
                 <button title="切换企业"><span>星</span></button>
                 <button class="v14-add-org" title="加入企业">＋</button>
-                <footer><button class="v14-org-collapse" data-v14-org-toggle aria-expanded="true" title="收起企业列表" aria-label="收起企业列表"><svg><use href="#i-sidebar"></use></svg></button><i title="服务在线"></i><button class="avatar avatar-user" title="林嘉">林</button></footer>
+                <footer><i title="服务在线"></i><button class="avatar avatar-user" title="林嘉">林</button></footer>
               </aside>
               <header class="v14-global-topbar">
                 <div class="v14-window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-                <div class="v14-history-buttons"><button class="v14-context-toggle" data-v14-context-toggle aria-expanded="true" title="收起列表" aria-label="收起列表"><svg><use href="#i-sidebar"></use></svg></button><button title="后退">‹</button><button title="前进">›</button></div>
+                <div class="v14-history-buttons"><button title="后退">‹</button><button title="前进">›</button></div>
                 <div class="v14-global-search-wrap">
                   <label class="v14-global-search"><svg><use href="#i-search"></use></svg><input data-v14-search type="search" placeholder="搜索消息、频道、工作或成员" aria-label="全局搜索" /><kbd>⌘ K</kbd></label>
                   <div class="v14-search-results" data-v14-search-results hidden>
@@ -375,6 +376,7 @@
               </header>
               <nav class="v14-app-rail" aria-label="应用">
                 <button class="v14-collapsed-org" data-v14-org-reveal title="展开企业列表" aria-label="展开企业列表"><span>北</span></button>
+                <button class="v16-collapsed-context" data-v14-context-reveal title="展开频道或工作列表" aria-label="展开频道或工作列表"><span><svg><use href="#i-sidebar"></use></svg></span><small>列表</small></button>
                 <button data-v14-app-button="messages"><span><svg><use href="#i-message"></use></svg><b>@1</b></span><small>消息</small></button>
                 <button class="is-current" data-v14-app-button="work"><span><svg><use href="#i-bot"></use></svg><i></i></span><small>工作</small></button>
                 <button data-v14-app-button="attention"><span><svg><use href="#i-checks"></use></svg><b>2</b></span><small>处理</small></button>
@@ -394,6 +396,7 @@
                   <header><div><strong>需要处理</strong><small>2 项待确认</small></div></header>
                   <div class="v14-context-list v14-attention-list"><span>今天</span><button class="is-current"><b>!</b><div><strong>批准本地文件删除</strong><small>Atlas · ENG-248</small></div><i>审批</i></button><button><b>✓</b><div><strong>入职引导页已完成</strong><small>Nova · 等待确认成果</small></div><i>结果</i></button></div>
                 </section>
+                <button class="v16-context-edge-toggle" data-v14-context-toggle aria-expanded="true" title="收起频道或工作列表" aria-label="收起频道或工作列表"><span aria-hidden="true">‹</span></button>
               </aside>
               <section class="v14-content-area">
                 <section class="v14-content-view v14-message-content" data-v14-content="messages" hidden>
@@ -777,6 +780,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=15"></script>
+    <script src="./app.js?v=16"></script>
   </body>
 </html>

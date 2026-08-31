@@ -1192,6 +1192,19 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-org-collapsed .v14-collapsed-org > span { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 7px; background: white; }
 .slack-shell-v14.is-org-collapsed.is-context-collapsed { grid-template-columns: 0 58px 0 minmax(0,1fr); }
 
+/* V16 — Slack-informed hierarchy: workspace control at the rail top, context control on its edge. */
+.v14-org-rail > .v14-org-collapse { width: 34px; height: 20px; min-height: 20px; margin-bottom: 1px; border-radius: 4px; color: #78867f; }
+.v14-org-rail > .v14-org-collapse:hover { background: rgba(255,255,255,.72); }
+.v14-org-rail > .v14-org-collapse svg { width: 12px; height: 12px; }
+.v14-context-sidebar { position: relative; }
+.v16-context-edge-toggle { position: absolute; z-index: 4; top: 15px; right: -8px; width: 16px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #7c8983; font-size: 15px; opacity: .55; transition: opacity .12s ease, color .12s ease; }
+.v14-context-sidebar:hover .v16-context-edge-toggle, .v16-context-edge-toggle:focus-visible { opacity: 1; }
+.v16-context-edge-toggle:hover { color: var(--green-strong); }
+.v16-collapsed-context { display: none !important; }
+.slack-shell-v14.is-context-collapsed .v16-collapsed-context { display: grid !important; min-height: 44px; margin-bottom: 3px; color: var(--green-strong); }
+.slack-shell-v14.is-context-collapsed .v14-global-topbar { grid-template-columns: 58px minmax(260px,1fr); }
+.slack-shell-v14.is-context-collapsed .v16-collapsed-context svg { transform: rotate(180deg); }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
