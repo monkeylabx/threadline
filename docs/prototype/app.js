@@ -577,6 +577,9 @@ if (imAgentPrototypeEnabled) {
     });
   });
   const v14Shell = document.querySelector("[data-v14-shell]");
+  const v14ContextToggle = document.querySelector("[data-v14-context-toggle]");
+  const v14OrgToggle = document.querySelector("[data-v14-org-toggle]");
+  const v14OrgReveal = document.querySelector("[data-v14-org-reveal]");
   const v14Search = document.querySelector("[data-v14-search]");
   const v14SearchResults = document.querySelector("[data-v14-search-results]");
   const setV14App = (app) => {
@@ -586,6 +589,37 @@ if (imAgentPrototypeEnabled) {
     document.querySelectorAll("[data-v14-content]").forEach((panel) => { panel.hidden = panel.dataset.v14Content !== app; });
     v14SearchResults.hidden = true;
   };
+
+  const setV14ContextCollapsed = (collapsed) => {
+    if (!v14Shell || !v14ContextToggle) return;
+    v14Shell.classList.toggle("is-context-collapsed", collapsed);
+    v14ContextToggle.setAttribute("aria-expanded", String(!collapsed));
+    v14ContextToggle.setAttribute("aria-label", collapsed ? "展开列表" : "收起列表");
+    v14ContextToggle.title = collapsed ? "展开列表" : "收起列表";
+  };
+
+  v14ContextToggle?.addEventListener("click", (event) => {
+    setV14ContextCollapsed(!v14Shell?.classList.contains("is-context-collapsed"));
+    if (event.detail) event.currentTarget.blur();
+  });
+
+  const setV14OrgCollapsed = (collapsed) => {
+    if (!v14Shell || !v14OrgToggle) return;
+    v14Shell.classList.toggle("is-org-collapsed", collapsed);
+    v14OrgToggle.setAttribute("aria-expanded", String(!collapsed));
+    v14OrgToggle.setAttribute("aria-label", collapsed ? "展开企业列表" : "收起企业列表");
+    v14OrgToggle.title = collapsed ? "展开企业列表" : "收起企业列表";
+  };
+
+  v14OrgToggle?.addEventListener("click", (event) => {
+    setV14OrgCollapsed(true);
+    if (event.detail) event.currentTarget.blur();
+  });
+
+  v14OrgReveal?.addEventListener("click", (event) => {
+    setV14OrgCollapsed(false);
+    if (event.detail) event.currentTarget.blur();
+  });
   document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
     button.addEventListener("click", () => setV14App(button.dataset.v14AppButton));
   });
