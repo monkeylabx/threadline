@@ -581,6 +581,8 @@ if (imAgentPrototypeEnabled) {
   const v14ContextReveal = document.querySelector("[data-v14-context-reveal]");
   const v14OrgToggle = document.querySelector("[data-v14-org-toggle]");
   const v14OrgReveal = document.querySelector("[data-v14-org-reveal]");
+  const v17OrgMenuToggle = document.querySelector("[data-v17-org-menu-toggle]");
+  const v17OrgMenu = document.querySelector("[data-v17-org-menu]");
   const v14Search = document.querySelector("[data-v14-search]");
   const v14SearchResults = document.querySelector("[data-v14-search-results]");
   const setV14App = (app) => {
@@ -613,8 +615,14 @@ if (imAgentPrototypeEnabled) {
     if (!v14Shell || !v14OrgToggle) return;
     v14Shell.classList.toggle("is-org-collapsed", collapsed);
     v14OrgToggle.setAttribute("aria-expanded", String(!collapsed));
-    v14OrgToggle.setAttribute("aria-label", collapsed ? "展开企业列表" : "收起企业列表");
-    v14OrgToggle.title = collapsed ? "展开企业列表" : "收起企业列表";
+    v14OrgToggle.setAttribute("aria-label", collapsed ? "展开企业信息" : "收起企业信息");
+    v14OrgToggle.title = collapsed ? "展开企业信息" : "收起企业信息";
+    if (v14OrgReveal) {
+      v14OrgReveal.setAttribute("aria-label", collapsed ? "展开企业信息" : "当前企业：北辰科技");
+      v14OrgReveal.title = collapsed ? "展开企业信息" : "当前企业：北辰科技";
+    }
+    if (v17OrgMenu) v17OrgMenu.hidden = true;
+    v17OrgMenuToggle?.setAttribute("aria-expanded", "false");
   };
 
   v14OrgToggle?.addEventListener("click", (event) => {
@@ -623,8 +631,13 @@ if (imAgentPrototypeEnabled) {
   });
 
   v14OrgReveal?.addEventListener("click", (event) => {
-    setV14OrgCollapsed(false);
+    if (v14Shell?.classList.contains("is-org-collapsed")) setV14OrgCollapsed(false);
     if (event.detail) event.currentTarget.blur();
+  });
+  v17OrgMenuToggle?.addEventListener("click", (event) => {
+    if (!v17OrgMenu) return;
+    v17OrgMenu.hidden = !v17OrgMenu.hidden;
+    event.currentTarget.setAttribute("aria-expanded", String(!v17OrgMenu.hidden));
   });
   document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
     button.addEventListener("click", () => setV14App(button.dataset.v14AppButton));

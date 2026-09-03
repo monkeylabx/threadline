@@ -1205,6 +1205,39 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-context-collapsed .v14-global-topbar { grid-template-columns: 58px minmax(260px,1fr); }
 .slack-shell-v14.is-context-collapsed .v16-collapsed-context svg { transform: rotate(180deg); }
 
+/* V17 — enterprise identity joins the global bar; the permanent enterprise rail is removed. */
+.slack-shell-v14 { grid-template-columns: 58px 228px minmax(0,1fr); }
+.v17-global-topbar { grid-column: 1 / 4; grid-template-columns: 199px 56px minmax(260px,1fr); }
+.v17-global-topbar .v14-history-buttons { grid-column: 2; }
+.v17-global-topbar .v14-global-search-wrap { grid-column: 3; }
+.v14-app-rail { grid-column: 1; }
+.v14-context-sidebar { grid-column: 2; }
+.v14-content-area { grid-column: 3; }
+.v14-collapsed-org { display: none !important; }
+.v17-org-control { position: relative; grid-column: 1; min-width: 0; display: flex; align-items: center; gap: 5px; }
+.v17-org-control > button { height: 30px; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; color: #53615b; }
+.v17-org-logo { flex: 0 0 30px; border-radius: 7px !important; background: #dcebe5 !important; color: var(--green-strong) !important; font-size: 10px; font-weight: 800; }
+.v17-org-name { min-width: 0; gap: 5px; padding: 0 3px !important; }
+.v17-org-name strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 9px; }
+.v17-org-name span { color: var(--subtle); font-size: 8px; }
+.v17-org-fold { width: 25px; margin-left: 1px; border-radius: 5px !important; color: #7a8781 !important; }
+.v17-org-fold:hover, .v17-org-name:hover { background: white !important; }
+.v17-org-fold svg { width: 12px; height: 12px; }
+.v17-org-menu { position: absolute; z-index: 12; top: 37px; left: 0; width: 190px; padding: 7px; border: 1px solid var(--line-strong); border-radius: 8px; background: white; box-shadow: 0 14px 34px rgba(23,43,35,.18); }
+.v17-org-menu > span { display: block; padding: 3px 6px 6px; color: var(--subtle); font-size: 7px; font-weight: 700; }
+.v17-org-menu > button { width: 100%; min-height: 34px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 5px; background: transparent; text-align: left; }
+.v17-org-menu > button:hover, .v17-org-menu > button.is-current { background: #eef4f1; }
+.v17-org-menu b { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 6px; background: #dcebe5; color: var(--green-strong); font-size: 8px; }
+.v17-org-menu strong { font-size: 8px; }
+.v17-org-menu i { color: var(--green-strong); font-size: 8px; font-style: normal; }
+.slack-shell-v14.is-context-collapsed { grid-template-columns: 58px 0 minmax(0,1fr); }
+.slack-shell-v14.is-context-collapsed .v17-global-topbar { grid-template-columns: 199px 56px minmax(260px,1fr); }
+.slack-shell-v14.is-org-collapsed, .slack-shell-v14.is-org-collapsed.is-context-collapsed { grid-template-columns: 58px 228px minmax(0,1fr); }
+.slack-shell-v14.is-org-collapsed.is-context-collapsed { grid-template-columns: 58px 0 minmax(0,1fr); }
+.slack-shell-v14.is-org-collapsed .v17-global-topbar { grid-template-columns: 48px 207px minmax(260px,1fr); }
+.slack-shell-v14.is-org-collapsed .v17-org-name, .slack-shell-v14.is-org-collapsed .v17-org-fold { display: none; }
+.slack-shell-v14.is-org-collapsed .v17-org-logo { cursor: pointer; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }

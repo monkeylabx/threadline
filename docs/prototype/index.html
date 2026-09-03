@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=16" />
+    <link rel="stylesheet" href="./styles.css?v=17" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -352,14 +352,13 @@
           <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
           <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
             <div class="im-agent-stage slack-shell-v14" data-v14-shell data-v14-app="work">
-              <aside class="v14-org-rail" aria-label="企业">
-                <button class="v14-org-collapse" data-v14-org-toggle aria-expanded="true" title="收起企业列表" aria-label="收起企业列表"><svg><use href="#i-sidebar"></use></svg></button>
-                <button class="is-current" title="北辰科技"><span>北</span><i></i></button>
-                <button title="切换企业"><span>星</span></button>
-                <button class="v14-add-org" title="加入企业">＋</button>
-                <footer><i title="服务在线"></i><button class="avatar avatar-user" title="林嘉">林</button></footer>
-              </aside>
-              <header class="v14-global-topbar">
+              <header class="v14-global-topbar v17-global-topbar">
+                <div class="v17-org-control">
+                  <button class="v17-org-logo" data-v14-org-reveal title="当前企业：北辰科技" aria-label="当前企业：北辰科技"><span>北</span></button>
+                  <button class="v17-org-name" data-v17-org-menu-toggle aria-expanded="false" title="切换企业"><strong>北辰科技</strong><span>⌄</span></button>
+                  <button class="v17-org-fold" data-v14-org-toggle aria-expanded="true" title="收起企业信息" aria-label="收起企业信息"><svg><use href="#i-sidebar"></use></svg></button>
+                  <div class="v17-org-menu" data-v17-org-menu hidden><span>切换企业</span><button class="is-current"><b>北</b><strong>北辰科技</strong><i>✓</i></button><button><b>星</b><strong>星河实验室</strong></button><button><b>＋</b><strong>加入企业</strong></button></div>
+                </div>
                 <div class="v14-window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
                 <div class="v14-history-buttons"><button title="后退">‹</button><button title="前进">›</button></div>
                 <div class="v14-global-search-wrap">
@@ -375,7 +374,6 @@
                 <button class="v14-runtime-status"><i></i><span>Runtime 在线</span></button>
               </header>
               <nav class="v14-app-rail" aria-label="应用">
-                <button class="v14-collapsed-org" data-v14-org-reveal title="展开企业列表" aria-label="展开企业列表"><span>北</span></button>
                 <button class="v16-collapsed-context" data-v14-context-reveal title="展开频道或工作列表" aria-label="展开频道或工作列表"><span><svg><use href="#i-sidebar"></use></svg></span><small>列表</small></button>
                 <button data-v14-app-button="messages"><span><svg><use href="#i-message"></use></svg><b>@1</b></span><small>消息</small></button>
                 <button class="is-current" data-v14-app-button="work"><span><svg><use href="#i-bot"></use></svg><i></i></span><small>工作</small></button>
@@ -780,6 +778,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=16"></script>
+    <script src="./app.js?v=17"></script>
   </body>
 </html>
