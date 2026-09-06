@@ -669,7 +669,11 @@ if (imAgentPrototypeEnabled) {
   });
 
   const navPane = { element: document.querySelector("[data-v23-resizer]"), preferred: 104, initial: 104, min: 88, max: 160, css: "--v23-nav-width" };
-  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 228, initial: 228, min: 180, max: 360, css: "--v22-context-width" };
+  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 228, initial: 228, min: 112, max: 360, css: "--v22-context-width" };
+  document.querySelectorAll(".v14-context-list > button").forEach(row => {
+    if (!row.title) row.title = [...row.querySelectorAll("div > b, div > strong, div > small, div:not(:has(*)), i")].map(part => part.textContent.trim()).join(" · ");
+    if (!row.hasAttribute("aria-label")) row.setAttribute("aria-label", row.title);
+  });
   const paneMax = pane => Math.max(pane.min, Math.min(pane.max, v14Shell.clientWidth - 320 - (pane === navPane ? contextPane.min : v14Shell.classList.contains("is-app-compact") ? 48 : navPane.width || 104)));
   const applyPaneWidths = () => {
     if (!v14Shell.clientWidth) return;

@@ -122,3 +122,11 @@ make verify — PASS (51 required surfaces)
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。浏览器确认三项图标框均26px，状态标记均8px、top/right均-2px；展开和折叠规则一致，第二栏仍为228px且显示1、4两个数字徽标。未截图。
 - Security/data: 无权限变化；通知状态仍为静态示例，完整语义保留在入口无障碍名称和提示中。
 - Risks/Next: 未接入真实未读状态；等待用户评估，无技术阻塞。
+
+## V29 follow-up
+
+- Identity: #183，codex/183-ui-v11；Base `861da28`，Head 为本提交。
+- Outcome: 第二栏下限180→112px，默认228px不变；容器查询按栏宽收紧留白、隐藏辅助说明，处理类型移到下一行；保留数量、新建入口及选中项，截断名称提供全文提示。顶部工具区设置220px下限，避免搜索重叠。
+- Surfaces: docs/prototype HTML/CSS/JS、产品需求；无协议、迁移、依赖或权限变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过；实际拖拽228→112，三种列表无横向溢出；折叠第一栏后第二栏仍112且待处理数量可见；End达到当前视口动态上限338，双击恢复228，Home恢复112。拉宽后辅助说明恢复；顶部工具与搜索相隔10px。未截图。
+- Risks/Next: 原型未完成原生跨平台验证；112px下名称会明显截断，供用户评估最小宽度。无阻塞。

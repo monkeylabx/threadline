@@ -1362,6 +1362,30 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14 .v19-rail-enterprise,
 .slack-shell-v14 .v18-personal { align-self: flex-start; }
 
+/* V29 — context density follows the pane itself, not the window width. */
+.slack-shell-v14 .v14-context-sidebar { container: context-pane / inline-size; }
+.v14-context-sidebar > section > header strong,
+.v14-context-sidebar > section > footer span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v14-context-sidebar > section > header button,
+.v14-context-sidebar > section > footer i { flex-shrink: 0; }
+.slack-shell-v14:not(.is-app-compact) .v17-global-topbar,
+.slack-shell-v14.is-app-compact .v17-global-topbar { grid-template-columns: max(220px, calc(var(--v22-app-width) + var(--v22-context-width) - 21px)) minmax(0,1fr) 92px; }
+@container context-pane (max-width: 179px) {
+  .v14-context-sidebar > section > header { padding-inline: 7px; gap: 4px; }
+  .v14-context-list { padding-inline: 4px; }
+  .v14-context-list > span { padding-inline: 4px; }
+  .v14-context-list > button { padding-inline: 4px; gap: 4px; grid-template-columns: 19px minmax(0,1fr); }
+  .v14-context-list > button:has(.nav-signal) { grid-template-columns: 19px minmax(0,1fr) 18px; }
+  .v14-attention-list > button > i { grid-column: 2; justify-self: start; }
+  .v14-context-sidebar > section > footer { padding-inline: 7px; }
+}
+@container context-pane (max-width: 139px) {
+  .v14-context-sidebar > section:not([data-v14-context="attention"]) > header small,
+  .v14-work-list button small,
+  .v14-attention-list button small { display: none; }
+  .v14-work-list > button { min-height: 35px; }
+}
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
