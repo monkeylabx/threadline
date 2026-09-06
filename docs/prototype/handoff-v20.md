@@ -43,3 +43,14 @@ make verify — PASS (51 required surfaces)
 - Issues unblocked: 无新增。
 - Blocking condition: 无。
 - Recommended next task: 用户确认第一栏紧凑状态。
+
+## V21 follow-up
+
+- Identity: #183，同一原型工作流及分支；Base `383bf23`，Head 为此增补所在提交。
+- Outcome: 展开态改为 144px 横排图标文字导航，收起为 48px；企业名称随之隐藏。第二栏始终 228px。
+- Changed surfaces: HTML、CSS、PRD；无协议、迁移或依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 均通过。
+- Browser: 展开三栏 `144 / 228 / 390`，收起 `48 / 228 / 486`；主内容增宽 96px，频道列表保持可见。
+- Security/data: 无变化。
+- Risks: V20 仅缩短 10px，不足以表达有意义的折叠；原生窗口接入仍未完成。
+- Next: 用户确认展开／收起两态；无阻塞。

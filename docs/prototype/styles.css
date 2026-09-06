@@ -1298,6 +1298,18 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-app-compact .v14-app-rail > button > small { display: none; }
 .slack-shell-v14.is-app-compact .v18-list-toggle svg { transform: rotate(180deg); }
 
+/* V21 — a genuine text navigation expands to 144px; icon-only mode saves 96px. */
+.slack-shell-v14:not(.is-app-compact) { grid-template-columns: 144px 228px minmax(0,1fr); }
+.slack-shell-v14:not(.is-app-compact) .v17-global-topbar { grid-template-columns: 351px minmax(0,1fr) 92px; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail { align-items: stretch; padding-right: 8px; padding-left: 8px; gap: 9px; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { width: 100%; min-height: 38px; display: flex; justify-content: flex-start; gap: 12px; padding: 0 9px; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > small { font-size: 11px; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise > .v18-enterprise { width: 100%; justify-content: flex-start; gap: 9px; }
+.v19-rail-enterprise .v18-enterprise-logo { flex-shrink: 0; }
+.slack-shell-v14.is-app-compact .v19-rail-enterprise strong { display: none; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 136px; }
+.slack-shell-v14:not(.is-app-compact) .v18-personal { align-self: flex-start; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
