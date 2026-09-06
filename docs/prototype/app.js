@@ -577,7 +577,7 @@ if (imAgentPrototypeEnabled) {
     });
   });
   const v14Shell = document.querySelector("[data-v14-shell]");
-  const v14ContextToggle = document.querySelector("[data-v14-context-toggle]");
+  const v20NavToggle = document.querySelector("[data-v20-nav-toggle]");
   const v17OrgMenuToggle = document.querySelector("[data-v17-org-menu-toggle]");
   const v17OrgMenu = document.querySelector("[data-v17-org-menu]");
   const v18ProfileToggle = document.querySelector("[data-v18-profile-toggle]");
@@ -623,7 +623,12 @@ if (imAgentPrototypeEnabled) {
       v19VisitIndex = v19Visits.length - 1;
     }
     v14Shell.dataset.v14App = app;
-    document.querySelectorAll("[data-v14-app-button]").forEach((button) => button.classList.toggle("is-current", button.dataset.v14AppButton === app));
+    document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
+      const current = button.dataset.v14AppButton === app;
+      button.classList.toggle("is-current", current);
+      if (current) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
     document.querySelectorAll("[data-v14-context]").forEach((panel) => { panel.hidden = panel.dataset.v14Context !== app; });
     document.querySelectorAll("[data-v14-content]").forEach((panel) => { panel.hidden = panel.dataset.v14Content !== app; });
     v14SearchResults.hidden = true;
@@ -645,17 +650,16 @@ if (imAgentPrototypeEnabled) {
     v19HistoryToggle.setAttribute("aria-expanded", String(open));
   });
 
-  const setV14ContextCollapsed = (collapsed) => {
-    if (!v14Shell || !v14ContextToggle) return;
-    v14Shell.classList.toggle("is-context-collapsed", collapsed);
+  const setV20NavCompact = (compact) => {
+    v14Shell.classList.toggle("is-app-compact", compact);
     closeV18Menus();
-    v14ContextToggle.setAttribute("aria-expanded", String(!collapsed));
-    v14ContextToggle.setAttribute("aria-label", collapsed ? "展开列表" : "收起列表");
-    v14ContextToggle.title = collapsed ? "展开列表" : "收起列表";
+    v20NavToggle.setAttribute("aria-expanded", String(!compact));
+    v20NavToggle.setAttribute("aria-label", compact ? "展开导航文字" : "收起导航文字");
+    v20NavToggle.title = compact ? "展开导航文字" : "收起导航文字";
   };
 
-  v14ContextToggle?.addEventListener("click", (event) => {
-    setV14ContextCollapsed(!v14Shell?.classList.contains("is-context-collapsed"));
+  v20NavToggle.addEventListener("click", (event) => {
+    setV20NavCompact(!v14Shell.classList.contains("is-app-compact"));
     if (event.detail) event.currentTarget.blur();
   });
 

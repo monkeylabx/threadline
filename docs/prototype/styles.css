@@ -1290,6 +1290,14 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v19-history-menu button { display: block; width: 100%; padding: 8px; border-radius: 5px; background: transparent; text-align: left; font-size: 11px; color: var(--ink); }
 .v19-history-menu button:hover, .v19-history-menu button[aria-current="page"] { background: #eef4f1; }
 
+/* V20 — compact only the app rail; keep the contextual list and selection visible. */
+.slack-shell-v14.is-app-compact { grid-template-columns: 48px 228px minmax(0,1fr); }
+.slack-shell-v14.is-app-compact .v17-global-topbar { grid-template-columns: 255px minmax(0,1fr) 92px; }
+.slack-shell-v14.is-app-compact .v14-app-rail { gap: 9px; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button { width: 38px; min-height: 38px; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > small { display: none; }
+.slack-shell-v14.is-app-compact .v18-list-toggle svg { transform: rotate(180deg); }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
