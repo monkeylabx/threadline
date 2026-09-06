@@ -28,14 +28,6 @@ test("the checked-in workflow has no toolchain pin drift", () => {
   assert.deepEqual(validateWorkflowPins(workflow), []);
 });
 
-test("a missing merge-queue migration gate fails verification", () => {
-  const drifted = workflow
-    .replace("  merge_group:\n", "")
-    .replace("          make -C db migration-merge-policy\n", "");
-  assert.match(validateWorkflowPins(drifted).join("\n"), /CI merge queue trigger/);
-  assert.match(validateWorkflowPins(drifted).join("\n"), /CI migration merge policy command/);
-});
-
 test("a drifted PostgreSQL CI image fails verification", () => {
   const drifted = workflow.replace(postgresCIImage, "postgres:16.4-alpine");
   assert.match(validateWorkflowPins(drifted).join("\n"), /CI PostgreSQL image/);

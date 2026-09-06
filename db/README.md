@@ -49,13 +49,6 @@ Verify the migration directory without connecting to a database:
 make -C db migration-integrity
 ```
 
-GitHub checks the final PR or merge-queue candidate against its exact base
-commit with `make -C db migration-merge-policy`. Every numeric version must have
-one exactly named up/down pair, merged SQL files are immutable, and every new
-version must be greater than the latest version in that base. A branch-local
-pass is not integration evidence: the required `merge_group` check is the
-authority when multiple migration PRs are queued concurrently.
-
 Apply or inspect pending migrations only with a dedicated DDL credential:
 
 ```text

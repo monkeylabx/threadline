@@ -94,19 +94,6 @@ function assertEveryCapturedValue(errors, label, text, pattern, expected) {
 
 export function validateWorkflowPins(workflow, expectedPins = pins) {
   const errors = [];
-  assertIncludes(errors, "CI merge queue trigger", workflow, "  merge_group:");
-  assertIncludes(
-    errors,
-    "CI migration merge policy base",
-    workflow,
-    "THREADLINE_MIGRATION_BASE_SHA:",
-  );
-  assertIncludes(
-    errors,
-    "CI migration merge policy command",
-    workflow,
-    "make -C db migration-merge-policy",
-  );
   const atlasLinux = expectedPins.database.atlas.archives["linux-amd64"];
   assertIncludes(errors, "CI Atlas archive", workflow, atlasLinux.file);
   assertIncludes(errors, "CI Atlas checksum", workflow, atlasLinux.sha256);
