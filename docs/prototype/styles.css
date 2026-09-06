@@ -1310,6 +1310,19 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 136px; }
 .slack-shell-v14:not(.is-app-compact) .v18-personal { align-self: flex-start; }
 
+/* V22 — independent, user-resizable context column. */
+.slack-shell-v14 { --v22-context-width: 228px; }
+.slack-shell-v14:not(.is-app-compact) { --v22-app-width: 144px; grid-template-columns: var(--v22-app-width) var(--v22-context-width) minmax(0,1fr); }
+.slack-shell-v14.is-app-compact { --v22-app-width: 48px; grid-template-columns: var(--v22-app-width) var(--v22-context-width) minmax(0,1fr); }
+.slack-shell-v14:not(.is-app-compact) .v17-global-topbar,
+.slack-shell-v14.is-app-compact .v17-global-topbar { grid-template-columns: calc(var(--v22-app-width) + var(--v22-context-width) - 21px) minmax(0,1fr) 92px; }
+.v22-sidebar-resizer { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 7; cursor: col-resize; touch-action: none; outline-offset: -2px; }
+.v22-sidebar-resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; }
+.v22-sidebar-resizer:hover::after, .v22-sidebar-resizer:focus-visible::after,
+.slack-shell-v14.is-resizing .v22-sidebar-resizer::after { background: var(--green); }
+.slack-shell-v14.is-resizing { transition: none; cursor: col-resize; user-select: none; }
+.slack-shell-v14.is-resizing * { cursor: col-resize !important; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }

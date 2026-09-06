@@ -650,8 +650,60 @@ if (imAgentPrototypeEnabled) {
     v19HistoryToggle.setAttribute("aria-expanded", String(open));
   });
 
+  const v22Resizer = document.querySelector("[data-v22-resizer]");
+  let v22PreferredWidth = 228;
+  let v22Drag = null;
+  const v22MaxWidth = () => Math.max(180, Math.min(360, v14Shell.clientWidth - (v14Shell.classList.contains("is-app-compact") ? 48 : 144) - 320));
+  const applyV22Width = () => {
+    if (!v14Shell.clientWidth) return;
+    const width = Math.round(Math.max(180, Math.min(v22PreferredWidth, v22MaxWidth())));
+    v14Shell.style.setProperty("--v22-context-width", `${width}px`);
+    v22Resizer.setAttribute("aria-valuenow", String(width));
+    v22Resizer.setAttribute("aria-valuemax", String(v22MaxWidth()));
+    v22Resizer.setAttribute("aria-valuetext", `${width} 像素`);
+  };
+  const setV22Width = (width) => {
+    v22PreferredWidth = Math.max(180, Math.min(width, v22MaxWidth()));
+    applyV22Width();
+  };
+  const stopV22Drag = (cancel = false) => {
+    if (!v22Drag) return;
+    const { pointerId, preferred } = v22Drag;
+    v22Drag = null;
+    if (cancel) { v22PreferredWidth = preferred; applyV22Width(); }
+    v14Shell.classList.remove("is-resizing");
+    if (v22Resizer.hasPointerCapture(pointerId)) v22Resizer.releasePointerCapture(pointerId);
+  };
+  v22Resizer.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || v22Drag) return;
+    event.preventDefault();
+    v22Resizer.focus();
+    v22Drag = { pointerId: event.pointerId, x: event.clientX, width: Number(v22Resizer.getAttribute("aria-valuenow")), preferred: v22PreferredWidth, scale: v14Shell.getBoundingClientRect().width / v14Shell.clientWidth };
+    v22Resizer.setPointerCapture(event.pointerId);
+    v14Shell.classList.add("is-resizing");
+  });
+  v22Resizer.addEventListener("pointermove", event => {
+    if (v22Drag?.pointerId !== event.pointerId) return;
+    setV22Width(v22Drag.width + (event.clientX - v22Drag.x) / v22Drag.scale);
+  });
+  v22Resizer.addEventListener("pointerup", () => stopV22Drag());
+  v22Resizer.addEventListener("pointercancel", () => stopV22Drag(true));
+  v22Resizer.addEventListener("lostpointercapture", () => stopV22Drag());
+  v22Resizer.addEventListener("dblclick", () => setV22Width(228));
+  v22Resizer.addEventListener("keydown", event => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === "Escape") { stopV22Drag(true); return; }
+    const width = Number(v22Resizer.getAttribute("aria-valuenow"));
+    setV22Width(event.key === "Home" ? 180 : event.key === "End" ? v22MaxWidth() : width + (event.key === "ArrowRight" ? 10 : -10));
+  });
+  new ResizeObserver(applyV22Width).observe(v14Shell);
+  applyV22Width();
+
   const setV20NavCompact = (compact) => {
     v14Shell.classList.toggle("is-app-compact", compact);
+    applyV22Width();
     closeV18Menus();
     v20NavToggle.setAttribute("aria-expanded", String(!compact));
     v20NavToggle.setAttribute("aria-label", compact ? "展开导航文字" : "收起导航文字");

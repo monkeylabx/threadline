@@ -54,3 +54,14 @@ make verify — PASS (51 required surfaces)
 - Security/data: 无变化。
 - Risks: V20 仅缩短 10px，不足以表达有意义的折叠；原生窗口接入仍未完成。
 - Next: 用户确认展开／收起两态；无阻塞。
+
+## V22 follow-up
+
+- Identity: #183，同一原型分支；Base `335bf5c`，Head 为此增补所在提交。
+- Outcome: 第二栏右边界可拖拽；默认 228px、最小 180px、最大 360px（受主内容 320px 保留空间约束）；支持键盘、双击复位和拖拽取消。
+- Changed surfaces: HTML、CSS、JS、PRD；无协议、迁移或依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。
+- Browser: 真实拖拽 228→278；Right→288；折叠第一栏并切换消息仍为288；End→360、Home→180、双击→228，全部通过。未截图。
+- Security/data: 宽度仅存内存，无新增数据访问或持久化。
+- Risks: Escape/系统取消处理已实现但未自动化触发验证；窗口极窄时仍依赖现有移动端路由，未完成跨平台原生验证。
+- Next: 用户试用拖拽手感；无阻塞。
