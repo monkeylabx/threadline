@@ -1332,18 +1332,12 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 47px; }
 .slack-shell-v14.is-app-compact .v23-nav-resizer { display: none; }
 
-/* V25 — quiet unread signals; counts belong beside their labels, never over icons. */
-.v25-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 6px; background: #e6ebe8; color: #53615b; font-size: 10px; font-weight: 650; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; }
-.v25-notification-dot { display: block; width: 6px; height: 6px; border-radius: 50%; background: #587e6d; justify-self: center; }
-.v25-compact-only { display: none; }
+/* Shared navigation rows: icon, label, indicator slot. */
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { display: grid; grid-template-columns: 20px minmax(0,1fr) 18px; gap: 4px; padding: 0 2px; justify-items: start; align-items: center; }
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > span { width: 20px; }
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > small { white-space: nowrap; }
 .slack-shell-v14.is-app-compact .v14-app-rail > button { position: relative; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button > .v25-count { display: none; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button > .v25-notification-dot { display: block; position: absolute; top: 4px; right: 2px; width: 5px; height: 5px; }
 .v14-context-list > .v25-unread > div { color: var(--ink); font-weight: 700; }
-.v14-context-list .v25-mention-count { background: #dcebe3; color: #28523e; justify-self: end; }
 
 /* Identity controls share the same visual frame and center in both rail modes. */
 .v14-app-rail .v19-rail-enterprise,
@@ -1355,6 +1349,15 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v14-app-rail .v18-profile-button > i { width: 8px; height: 8px; right: 1px; bottom: 1px; border: 2px solid #f5f7f6; }
 .v14-app-rail .v18-enterprise:hover,
 .v14-app-rail .v18-profile-button:hover { background: #e0e8e3; }
+
+/* V26 — one indicator template and one visual contract, including compact mode. */
+.slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; background: transparent; align-self: center; justify-self: end; grid-column: 3; }
+.nav-signal::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #587e6d; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > .nav-signal { position: absolute; right: -3px; top: 50%; transform: translateY(-50%); }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise,
+.slack-shell-v14:not(.is-app-compact) .v18-personal,
+.slack-shell-v14 .v19-rail-enterprise,
+.slack-shell-v14 .v18-personal { align-self: flex-start; }
 
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }

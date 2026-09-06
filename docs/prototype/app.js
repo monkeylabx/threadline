@@ -577,6 +577,13 @@ if (imAgentPrototypeEnabled) {
     });
   });
   const v14Shell = document.querySelector("[data-v14-shell]");
+  // One indicator component for both navigation layers; meaning stays on its parent row.
+  const navSignalTemplate = document.querySelector("#nav-signal-template");
+  v14Shell.querySelectorAll("[data-nav-signal]").forEach(row => {
+    row.append(navSignalTemplate.content.cloneNode(true));
+    row.title = row.dataset.navSignal;
+    row.setAttribute("aria-label", row.dataset.navSignal);
+  });
   const v20NavToggle = document.querySelector("[data-v20-nav-toggle]");
   const v17OrgMenuToggle = document.querySelector("[data-v17-org-menu-toggle]");
   const v17OrgMenu = document.querySelector("[data-v17-org-menu]");

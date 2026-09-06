@@ -95,3 +95,12 @@ make verify — PASS (51 required surfaces)
 - Security/data: 无变化；读屏名称保留未读、提及及数量语义。
 - Risks: 标记仍为静态示例，未实现真实未读清除；不将本轮样式确认视为此前整栏视觉对齐争议已解决。
 - Next: 用户评估统一样式；无技术阻塞。未截图。
+
+## V26 follow-up
+
+- Identity: #183，同一产品原型分支；Base `167c550`，Head 为此增补所在提交。
+- Outcome: 三项导航与频道未读共用一个 template 渲染器及 `.nav-signal`，统一行尾圆点；数量留在行标题/无障碍名称。移除旧数字徽标、图标顶部点、私聊行尾在线点；企业及个人入口改左对齐。
+- Changed surfaces: HTML/CSS/JS/PRD；无协议/迁移/依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。浏览器5个提示均单实例、同色同6px直径、行内垂直居中；折叠后三项提示的垂直偏移均0，距行右侧中心均6px；两个身份入口左边界相同。
+- Security/data: 在线与未读语义未混淆；在线信息保留在成员行说明中，不凭空添加私聊未读。状态仍为静态示例。
+- Risks/Next: 未实现真实通知清除，待用户评估组件一致性；无阻塞。未截图。
