@@ -1268,6 +1268,28 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v18-personal i.is-dnd { background: #b76553; }
 .v18-menu-note { display: block; margin-top: 8px; color: var(--subtle); font-size: 9px; line-height: 1.5; }
 
+/* V19 — window chrome above; enterprise and personal identity stay on the app rail. */
+.v19-window-tools { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.v19-window-controls { display: flex; align-items: center; gap: 7px; width: 75px; flex-shrink: 0; }
+.v19-window-controls i { width: 10px; height: 10px; border-radius: 50%; background: #fa625b; }
+.v19-window-controls i:nth-child(2) { background: #f5bd4f; }
+.v19-window-controls i:nth-child(3) { background: #35c66a; }
+.v19-window-tools > button { width: 29px; height: 30px; flex-shrink: 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #63746b; }
+.v19-window-tools > button:hover:not(:disabled) { background: #e5ece8; }
+.v19-window-tools > button:disabled { opacity: .3; cursor: default; }
+.v19-window-tools svg { width: 15px; height: 15px; }
+.v19-back { transform: rotate(180deg); }
+.v14-app-rail { position: relative; z-index: 9; }
+.v19-rail-enterprise { flex-shrink: 0; margin: 0 0 10px; }
+.v19-rail-enterprise > .v18-enterprise { width: 38px; height: 38px; padding: 0; justify-content: center; }
+.v19-rail-enterprise .v18-enterprise-logo { width: 34px; height: 34px; font-size: 12px; }
+.v19-rail-enterprise .v17-org-menu { top: 0; left: 47px; }
+.v19-history-menu { position: absolute; z-index: 12; top: 36px; left: 80px; width: 210px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 12px 30px rgba(23,43,35,.15); }
+.v19-history-menu > strong { display: block; margin: 1px 5px 7px; font-size: 11px; }
+.v19-history-menu > small { display: block; padding: 7px 5px 1px; font-size: 9px; color: var(--subtle); }
+.v19-history-menu button { display: block; width: 100%; padding: 8px; border-radius: 5px; background: transparent; text-align: left; font-size: 11px; color: var(--ink); }
+.v19-history-menu button:hover, .v19-history-menu button[aria-current="page"] { background: #eef4f1; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }

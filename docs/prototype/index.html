@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=18" />
+    <link rel="stylesheet" href="./styles.css?v=19" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -353,10 +353,13 @@
           <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
             <div class="im-agent-stage slack-shell-v14" data-v14-shell data-v14-app="work">
               <header class="v14-global-topbar v17-global-topbar">
-                <div class="v17-org-control">
-                  <button class="v18-enterprise" data-v17-org-menu-toggle aria-expanded="false" aria-controls="v18-enterprise-menu" aria-label="北辰科技 · 企业菜单" title="北辰科技 · 企业菜单"><span class="v18-enterprise-logo">北</span><strong>北辰科技</strong><span class="v18-enterprise-chevron" aria-hidden="true">⌄</span></button>
+                <div class="v19-window-tools">
+                  <span class="v19-window-controls" title="原生窗口控制预留区 · 原型示意" aria-label="原生窗口控制预留区，原型示意"><i></i><i></i><i></i></span>
                   <button class="v18-list-toggle" data-v14-context-toggle aria-expanded="true" aria-controls="v18-context-sidebar" title="收起列表" aria-label="收起列表"><svg><use href="#i-sidebar"></use></svg></button>
-                  <div class="v17-org-menu" id="v18-enterprise-menu" data-v17-org-menu hidden><span>当前企业</span><button class="is-current" data-v18-current-org><b>北</b><strong>北辰科技</strong><i>✓</i></button><small class="v18-menu-note">原型仅展示当前企业</small></div>
+                  <button data-v19-back disabled title="后退" aria-label="后退"><svg class="v19-back"><use href="#i-arrow"></use></svg></button>
+                  <button data-v19-forward disabled title="前进" aria-label="前进"><svg><use href="#i-arrow"></use></svg></button>
+                  <button data-v19-history-toggle title="最近访问" aria-label="最近访问" aria-expanded="false" aria-controls="v19-history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></button>
+                  <div class="v19-history-menu" id="v19-history" data-v19-history hidden><strong>最近访问</strong><div data-v19-history-items></div><small>仅记录本次预览访问的栏目</small></div>
                 </div>
                 <div class="v14-global-search-wrap">
                   <label class="v14-global-search"><svg><use href="#i-search"></use></svg><input data-v14-search type="search" placeholder="搜索消息、频道、工作或成员" aria-label="全局搜索" /><kbd>⌘ K</kbd></label>
@@ -371,6 +374,10 @@
                 <button class="v14-runtime-status"><i></i><span>Runtime 在线</span></button>
               </header>
               <nav class="v14-app-rail" aria-label="应用">
+                <div class="v17-org-control v19-rail-enterprise">
+                  <button class="v18-enterprise" data-v17-org-menu-toggle aria-expanded="false" aria-controls="v18-enterprise-menu" aria-label="北辰科技 · 企业菜单" title="北辰科技 · 企业菜单"><span class="v18-enterprise-logo">北</span></button>
+                  <div class="v17-org-menu" id="v18-enterprise-menu" data-v17-org-menu hidden><span>当前企业</span><button class="is-current" data-v18-current-org><b>北</b><strong>北辰科技</strong><i>✓</i></button><small class="v18-menu-note">原型仅展示当前企业</small></div>
+                </div>
                 <button data-v14-app-button="messages"><span><svg><use href="#i-message"></use></svg><b>@1</b></span><small>消息</small></button>
                 <button class="is-current" data-v14-app-button="work"><span><svg><use href="#i-bot"></use></svg><i></i></span><small>工作</small></button>
                 <button data-v14-app-button="attention"><span><svg><use href="#i-checks"></use></svg><b>2</b></span><small>处理</small></button>
@@ -776,6 +783,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=18"></script>
+    <script src="./app.js?v=19"></script>
   </body>
 </html>
