@@ -1350,10 +1350,11 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v14-app-rail .v18-enterprise:hover,
 .v14-app-rail .v18-profile-button:hover { background: #e0e8e3; }
 
-/* V26 — one indicator template and one visual contract, including compact mode. */
-.slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; background: transparent; align-self: center; justify-self: end; grid-column: 3; }
-.nav-signal::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #587e6d; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button > .nav-signal { position: absolute; right: -3px; top: 50%; transform: translateY(-50%); }
+/* V27 — one neutral numeric badge for both navigation layers, never a presence dot. */
+.slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; border-radius: 5px; background: #e7e7e7; color: #555; font-size: 10px; font-weight: 600; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; align-self: center; justify-self: end; grid-column: 3; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button { grid-template-columns: 20px 18px; column-gap: 0; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > span { width: 20px; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > .nav-signal { grid-column: 2; }
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise,
 .slack-shell-v14:not(.is-app-compact) .v18-personal,
 .slack-shell-v14 .v19-rail-enterprise,

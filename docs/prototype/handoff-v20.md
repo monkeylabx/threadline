@@ -104,3 +104,12 @@ make verify — PASS (51 required surfaces)
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。浏览器5个提示均单实例、同色同6px直径、行内垂直居中；折叠后三项提示的垂直偏移均0，距行右侧中心均6px；两个身份入口左边界相同。
 - Security/data: 在线与未读语义未混淆；在线信息保留在成员行说明中，不凭空添加私聊未读。状态仍为静态示例。
 - Risks/Next: 未实现真实通知清除，待用户评估组件一致性；无阻塞。未截图。
+
+## V27 follow-up
+
+- Identity: #183，同一原型分支；Base `6ee446c`，Head 为此增补所在提交。
+- Outcome: 共用组件由绿色点改为中性灰数字，正整数才渲染，超过9显示9+；折叠态图标与数字并排。身份入口左对齐不变。
+- Surfaces: HTML/CSS/JS/PRD；无契约、迁移或依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过；浏览器五个标记均18px、同灰色，折叠后三项图标与标记无重叠。
+- Security/data: 无权限变化；示例数字只用于原型，语义由标题说明。
+- Risks/Next: 真实已读状态尚未接入；等待用户评估显示方案，无技术阻塞。未截图。

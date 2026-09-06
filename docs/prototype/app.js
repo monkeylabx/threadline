@@ -580,7 +580,12 @@ if (imAgentPrototypeEnabled) {
   // One indicator component for both navigation layers; meaning stays on its parent row.
   const navSignalTemplate = document.querySelector("#nav-signal-template");
   v14Shell.querySelectorAll("[data-nav-signal]").forEach(row => {
-    row.append(navSignalTemplate.content.cloneNode(true));
+    const count = Number(row.dataset.navCount);
+    if (Number.isInteger(count) && count > 0) {
+      const signal = navSignalTemplate.content.cloneNode(true);
+      signal.querySelector(".nav-signal").textContent = count > 9 ? "9+" : String(count);
+      row.append(signal);
+    }
     row.title = row.dataset.navSignal;
     row.setAttribute("aria-label", row.dataset.navSignal);
   });
