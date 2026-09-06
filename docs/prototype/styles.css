@@ -1386,6 +1386,14 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
   .v14-work-list > button { min-height: 35px; }
 }
 
+/* V32 — conversation counts stay with the logo, never at the far row edge. */
+.slack-shell-v14 [data-v14-context="messages"] .v14-context-list > button { grid-template-columns: 30px minmax(0,1fr); gap: 6px; min-height: 39px; }
+.context-icon-frame { position: relative; width: 30px; height: 28px; display: flex; align-items: center; }
+.context-icon-frame > b,
+.context-icon-frame > .avatar { display: grid; place-items: center; flex-shrink: 0; width: 23px; height: 23px; margin: 0; border-radius: 7px; }
+.context-icon-frame > b { background: #e3eae6; color: #64766c; font-size: 14px; font-weight: 500; }
+.slack-shell-v14 .context-icon-frame > .nav-signal { position: absolute; top: -4px; right: -2px; width: 14px; height: 13px; font-size: 10px; font-weight: 700; grid-column: auto; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }

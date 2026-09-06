@@ -146,3 +146,11 @@ make verify — PASS (51 required surfaces)
 - Surfaces: HTML/CSS、产品需求；无契约、迁移、依赖或权限变化。
 - Verification: `git diff --check`、`make verify`通过；浏览器两个计数均为rgb(169,81,19)，背景透明。未截图。
 - Risks/Next: 静态原型；无阻塞。
+
+## V32 follow-up
+
+- Identity: #183，codex/183-ui-v11；Base `36782c9`，Head 为本提交。
+- Outcome: 根据用户对计数距离的反馈，会话列表新增共用图标容器；频道为圆角#图标、私聊沿用头像，数字移至图标右上方。保留深橙文字、无底色，移除行尾计数槽。
+- Surfaces: HTML/CSS/JS、产品需求；无契约、迁移、依赖或权限变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过。浏览器确认六个会话图标均23px，两个数字均在图标容器内，行尾数字为0；112px最窄栏下六行无溢出，名称仍有59px空间。未截图。
+- Risks/Next: 静态示例，未凭空给私聊添加未读；待用户评估角标位置，无阻塞。

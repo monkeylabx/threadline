@@ -579,6 +579,13 @@ if (imAgentPrototypeEnabled) {
   const v14Shell = document.querySelector("[data-v14-shell]");
   // One indicator component for both navigation layers; meaning stays on its parent row.
   const navSignalTemplate = document.querySelector("#nav-signal-template");
+  v14Shell.querySelectorAll('[data-v14-context="messages"] .v14-context-list > button').forEach(row => {
+    const frame = document.createElement("span");
+    frame.className = "context-icon-frame";
+    const icon = row.firstElementChild;
+    row.prepend(frame);
+    frame.append(icon);
+  });
   v14Shell.querySelectorAll("[data-nav-signal]").forEach(row => {
     const count = Number(row.dataset.navCount);
     if (Number.isInteger(count) && count > 0) {
@@ -589,7 +596,7 @@ if (imAgentPrototypeEnabled) {
         row.querySelector(".nav-icon-frame").append(signal);
       } else {
         badge.textContent = count > 9 ? "9+" : String(count);
-        row.append(signal);
+        (row.querySelector(".context-icon-frame") || row).append(signal);
       }
     }
     row.title = row.dataset.navSignal;
