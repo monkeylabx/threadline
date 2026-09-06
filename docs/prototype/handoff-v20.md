@@ -130,3 +130,11 @@ make verify — PASS (51 required surfaces)
 - Surfaces: docs/prototype HTML/CSS/JS、产品需求；无协议、迁移、依赖或权限变化。
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过；实际拖拽228→112，三种列表无横向溢出；折叠第一栏后第二栏仍112且待处理数量可见；End达到当前视口动态上限338，双击恢复228，Home恢复112。拉宽后辅助说明恢复；顶部工具与搜索相隔10px。未截图。
 - Risks/Next: 原型未完成原生跨平台验证；112px下名称会明显截断，供用户评估最小宽度。无阻塞。
+
+## V30 follow-up
+
+- Identity: #183，codex/183-ui-v11；Base `18ce235`，Head 为本提交。
+- Outcome: 外层三项通知改为橙色小点，第二栏去掉数字底色。用户提出数字可否叠在频道标识上；本版保持独立行尾数字，避免覆盖频道类型标识，并使频道与私聊的计数位置一致。
+- Surfaces: HTML/CSS、产品需求；无协议、迁移、依赖或权限变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过。浏览器确认三项状态为同色8px橙点、位置不变；两个数字背景透明，频道#保留，计数仍为1和4。未截图。
+- Risks/Next: 仅静态原型样式，等待用户评估计数位置；无阻塞。
