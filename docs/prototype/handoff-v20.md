@@ -76,3 +76,12 @@ make verify — PASS (51 required surfaces)
 - Security/data: 内存偏好，无新增访问或持久化。
 - Risks: 原生窗口集成、极窄桌面视口仍待验证。
 - Next: 用户确认默认比例；无阻塞。
+
+## V24 follow-up
+
+- Identity: #183，同一原型分支；Base `79be77e`，Head 为此增补所在提交。
+- Outcome: 企业与个人头像水平居中；消除个人按钮默认内边距造成的 2px 偏移。
+- Changed surfaces: HTML 缓存版本、CSS、PRD；无协议/迁移/依赖变化。
+- Verification: `git diff --check`、`make verify` 通过；浏览器 DOM 实测两个头像展开态中心均约61.58px、折叠态均约33.66px。
+- Security/data: 无变化。
+- Risks/Next: 原生宿主仍待验证；当前原型无阻塞。

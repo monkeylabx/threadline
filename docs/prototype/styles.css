@@ -1255,7 +1255,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-context-collapsed .v18-enterprise-chevron { display: none; }
 .slack-shell-v14.is-context-collapsed .v18-list-toggle svg { transform: rotate(180deg); }
 .v14-app-rail > .v18-personal { position: relative; z-index: 10; padding-bottom: 3px; }
-.v14-app-rail .v18-profile-button { position: relative; width: 38px; height: 38px; }
+.v14-app-rail .v18-profile-button { position: relative; width: 38px; height: 38px; padding: 0; }
 .v18-profile-button .avatar { width: 30px; height: 30px; font-size: 11px; border-radius: 50%; }
 .v18-profile-button > i { position: absolute; bottom: 3px; right: 2px; width: 9px; height: 9px; border: 2px solid #f5f7f6; border-radius: 50%; background: #36a07c; }
 .v18-profile-menu { position: absolute; bottom: 0; left: 47px; width: 228px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: 0 8px 28px rgba(23,43,35,.16); }
@@ -1308,7 +1308,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v19-rail-enterprise .v18-enterprise-logo { flex-shrink: 0; }
 .slack-shell-v14.is-app-compact .v19-rail-enterprise strong { display: none; }
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 136px; }
-.slack-shell-v14:not(.is-app-compact) .v18-personal { align-self: flex-start; }
+.slack-shell-v14:not(.is-app-compact) .v18-personal { align-self: center; }
 
 /* V22 — independent, user-resizable context column. */
 .slack-shell-v14 { --v22-context-width: 228px; }
@@ -1327,7 +1327,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14 { --v23-nav-width: 104px; }
 .slack-shell-v14:not(.is-app-compact) { --v22-app-width: var(--v23-nav-width); }
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { gap: 8px; padding: 0 5px; }
-.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise { align-self: flex-start; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise { align-self: center; }
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise > .v18-enterprise { width: 38px; justify-content: center; }
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 47px; }
 .slack-shell-v14.is-app-compact .v23-nav-resizer { display: none; }
