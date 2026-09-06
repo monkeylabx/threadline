@@ -154,3 +154,11 @@ make verify — PASS (51 required surfaces)
 - Surfaces: HTML/CSS/JS、产品需求；无契约、迁移、依赖或权限变化。
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过。浏览器确认六个会话图标均23px，两个数字均在图标容器内，行尾数字为0；112px最窄栏下六行无溢出，名称仍有59px空间。未截图。
 - Risks/Next: 静态示例，未凭空给私聊添加未读；待用户评估角标位置，无阻塞。
+
+## V33 follow-up
+
+- Identity: #183，codex/183-ui-v11；Base `96eeccd`，Head 为本提交。
+- Outcome: 数字恢复行尾最右侧，保留深橙色无底色及会话图标；第二栏默认和双击复位宽度228→180px，112px下限不变。
+- Surfaces: HTML/CSS/JS、产品需求；无契约、迁移、依赖或权限变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过；浏览器初始宽180，两个计数距行右边缘均8px，图标角标为0；112px时无行溢出，双击恢复180。未截图。
+- Risks/Next: 静态原型，等待用户评估默认密度；无阻塞。

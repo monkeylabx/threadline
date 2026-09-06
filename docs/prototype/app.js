@@ -596,7 +596,7 @@ if (imAgentPrototypeEnabled) {
         row.querySelector(".nav-icon-frame").append(signal);
       } else {
         badge.textContent = count > 9 ? "9+" : String(count);
-        (row.querySelector(".context-icon-frame") || row).append(signal);
+        row.append(signal);
       }
     }
     row.title = row.dataset.navSignal;
@@ -676,7 +676,7 @@ if (imAgentPrototypeEnabled) {
   });
 
   const navPane = { element: document.querySelector("[data-v23-resizer]"), preferred: 104, initial: 104, min: 88, max: 160, css: "--v23-nav-width" };
-  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 228, initial: 228, min: 112, max: 360, css: "--v22-context-width" };
+  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 180, initial: 180, min: 112, max: 360, css: "--v22-context-width" };
   document.querySelectorAll(".v14-context-list > button").forEach(row => {
     if (!row.title) row.title = [...row.querySelectorAll("div > b, div > strong, div > small, div:not(:has(*)), i")].map(part => part.textContent.trim()).join(" · ");
     if (!row.hasAttribute("aria-label")) row.setAttribute("aria-label", row.title);
