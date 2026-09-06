@@ -1,294 +1,180 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::{fmt::Write as _, fs, path::PathBuf};
 
-use rusqlite::{
-    hooks::{AuthAction, AuthContext, Authorization},
-    Connection,
-};
+use rusqlite::Connection;
 use threadline_client_core::storage::{
-    migrate, CommittedEvent, ConversationRef, CursorUpdate, PendingOutboxEvent, Storage,
-    StorageError, APPLICATION_ID, LATEST_SCHEMA_VERSION,
+    CommittedEvent, ConversationRef, CursorUpdate, DatabaseKey, EncryptedDatabase,
+    PendingOutboxEvent, StorageError, StoredCursor,
 };
+use zeroize::Zeroizing;
+
+const EXPECTED_APPLICATION_ID: i64 = 1_414_285_646;
+const EXPECTED_SCHEMA_VERSION: i64 = 1;
+const MIGRATION_0001_SHA256: [u8; 32] = [
+    0x61, 0x16, 0xaa, 0xca, 0xec, 0x95, 0x84, 0x15, 0xb7, 0x73, 0xbd, 0xd1, 0xe2, 0xf9, 0xe3, 0x4d,
+    0x7d, 0x9f, 0x55, 0xf3, 0x0d, 0xef, 0x8a, 0x5b, 0x8d, 0x9a, 0xce, 0x11, 0xbf, 0x63, 0x37, 0x43,
+];
 
 #[test]
-fn empty_database_migrates_from_zero_to_one() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
+fn create_and_reopen_preserve_application_version_and_ledger_invariants() {
+    let fixture = DatabaseFixture::create();
+    let database = fixture.open();
+    drop(database);
 
-    let outcome = migrate(&mut connection).expect("apply migration 0001");
-
-    assert_eq!(outcome.from_version, 0);
-    assert_eq!(outcome.to_version, 1);
-    assert_eq!(outcome.applied_migrations, 1);
-    assert_eq!(LATEST_SCHEMA_VERSION, 1);
-    assert_eq!(pragma_i64(&connection, "application_id"), APPLICATION_ID);
-    assert_eq!(pragma_i64(&connection, "user_version"), 1);
-
-    let ledger: (i64, i64) = connection
-        .query_row(
-            "SELECT version, length(sha256) FROM threadline_schema_migrations",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .expect("read migration ledger");
-    assert_eq!(ledger, (1, 32));
-}
-
-#[test]
-fn repeated_open_is_idempotent() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    migrate(&mut connection).expect("apply migration 0001");
-
-    let outcome = migrate(&mut connection).expect("verify existing schema");
-
-    assert_eq!(outcome.from_version, 1);
-    assert_eq!(outcome.to_version, 1);
-    assert_eq!(outcome.applied_migrations, 0);
+    let connection = fixture.open_for_fixture_inspection();
+    assert_eq!(
+        pragma_i64(&connection, "application_id"),
+        EXPECTED_APPLICATION_ID
+    );
+    assert_eq!(
+        pragma_i64(&connection, "user_version"),
+        EXPECTED_SCHEMA_VERSION
+    );
     assert_eq!(
         connection
             .query_row(
-                "SELECT count(*) FROM threadline_schema_migrations",
+                "SELECT version, sha256 FROM threadline_schema_migrations",
                 [],
-                |row| row.get::<_, i64>(0),
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?)),
             )
-            .expect("count migration ledger"),
-        1
+            .expect("read migration ledger"),
+        (EXPECTED_SCHEMA_VERSION, MIGRATION_0001_SHA256.to_vec())
     );
+    drop(connection);
+
+    fixture.open();
 }
 
 #[test]
-fn migration_ledger_rejects_unexpected_rows() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    migrate(&mut connection).expect("apply migration 0001");
+fn foreign_database_fails_closed_without_rewriting_it() {
+    let fixture = DatabaseFixture::create();
+    let connection = fixture.open_empty_keyed_fixture();
     connection
-        .execute(
-            "INSERT INTO threadline_schema_migrations (version, sha256) VALUES (2, zeroblob(32))",
-            [],
-        )
-        .expect("inject unexpected ledger row");
+        .execute_batch("CREATE TABLE foreign_data (value TEXT NOT NULL);")
+        .expect("create foreign encrypted schema");
+    drop(connection);
+    let before = fixture.database_family_state();
 
-    assert_eq!(
-        migrate(&mut connection),
-        Err(StorageError::MigrationLedgerInvalid)
-    );
+    let error = rejected_open(&fixture);
+
+    assert_eq!(error, StorageError::ForeignDatabase);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
-fn checksum_drift_fails_closed_without_rewriting_the_ledger() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    migrate(&mut connection).expect("apply migration 0001");
+fn newer_schema_fails_closed_without_changing_version() {
+    let fixture = DatabaseFixture::create();
+    drop(fixture.open());
+    let connection = fixture.open_for_fixture_inspection();
+    connection
+        .pragma_update(None, "user_version", EXPECTED_SCHEMA_VERSION + 1)
+        .expect("inject future schema version");
+    drop(connection);
+    let before = fixture.database_family_state();
+
+    let error = rejected_open(&fixture);
+
+    assert_eq!(error, StorageError::NewerSchema);
+    assert!(fixture.database_family_matches(&before));
+}
+
+#[test]
+fn checksum_drift_fails_closed_without_repairing_the_ledger() {
+    let fixture = DatabaseFixture::create();
+    drop(fixture.open());
     let drifted = [0xA5_u8; 32];
+    let connection = fixture.open_for_fixture_inspection();
     connection
         .execute(
             "UPDATE threadline_schema_migrations SET sha256 = ?1 WHERE version = 1",
             [drifted.as_slice()],
         )
-        .expect("inject synthetic checksum drift");
+        .expect("inject ledger checksum drift");
+    drop(connection);
+    let before = fixture.database_family_state();
 
-    let error = migrate(&mut connection).expect_err("reject checksum drift");
+    let error = rejected_open(&fixture);
 
     assert_eq!(error, StorageError::MigrationLedgerInvalid);
-    let stored: Vec<u8> = connection
-        .query_row(
-            "SELECT sha256 FROM threadline_schema_migrations WHERE version = 1",
-            [],
-            |row| row.get(0),
-        )
-        .expect("read drifted checksum");
-    assert_eq!(stored, drifted);
-    assert_eq!(pragma_i64(&connection, "user_version"), 1);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
-fn newer_schema_fails_closed_without_changing_version() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
+fn live_schema_tampering_fails_closed() {
+    let fixture = DatabaseFixture::create();
+    drop(fixture.open());
+    let connection = fixture.open_for_fixture_inspection();
     connection
-        .pragma_update(None, "application_id", APPLICATION_ID)
-        .expect("set Threadline application id");
-    connection
-        .pragma_update(None, "user_version", 2)
-        .expect("set future version");
+        .execute_batch("ALTER TABLE opaque_events ADD COLUMN injected_value TEXT;")
+        .expect("inject live schema drift");
+    drop(connection);
+    let before = fixture.database_family_state();
 
-    let error = migrate(&mut connection).expect_err("reject future schema");
+    let error = rejected_open(&fixture);
 
-    assert_eq!(error, StorageError::NewerSchema);
-    assert_eq!(pragma_i64(&connection, "user_version"), 2);
-    assert_eq!(user_object_count(&connection), 0);
+    assert_eq!(error, StorageError::MigrationLedgerInvalid);
+    assert!(fixture.database_family_matches(&before));
 }
 
 #[test]
-fn migration_failure_leaves_the_database_at_version_zero() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    let first_table_was_created = Arc::new(AtomicBool::new(false));
-    let observed_first_table = Arc::clone(&first_table_was_created);
-    connection
-        .authorizer(Some(move |context: AuthContext<'_>| match context.action {
-            AuthAction::CreateTable {
-                table_name: "threadline_schema_migrations",
-            } => {
-                observed_first_table.store(true, Ordering::SeqCst);
-                Authorization::Allow
-            }
-            AuthAction::CreateTable {
-                table_name: "opaque_events",
-            } => Authorization::Deny,
-            _ => Authorization::Allow,
-        }))
-        .expect("inject a deterministic mid-migration failure");
-
-    let error = migrate(&mut connection).expect_err("migration must fail");
-    connection
-        .authorizer(None::<fn(AuthContext<'_>) -> Authorization>)
-        .expect("remove failure injection");
-
-    assert_eq!(error, StorageError::Database);
-    assert!(first_table_was_created.load(Ordering::SeqCst));
-    assert_eq!(pragma_i64(&connection, "application_id"), 0);
-    assert_eq!(pragma_i64(&connection, "user_version"), 0);
-    assert_eq!(user_object_count(&connection), 0);
-}
-
-#[test]
-fn schema_contains_only_scoped_opaque_state() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    migrate(&mut connection).expect("apply migration 0001");
-
-    let mut statement = connection
-        .prepare(
-            "SELECT name, sql FROM sqlite_schema
-             WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-             ORDER BY name",
-        )
-        .expect("inspect schema");
-    let tables = statement
-        .query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })
-        .expect("query tables")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("read tables");
-
-    assert_eq!(
-        tables
-            .iter()
-            .map(|(name, _)| name.as_str())
-            .collect::<Vec<_>>(),
-        [
-            "opaque_events",
-            "outbox_events",
-            "sync_cursors",
-            "threadline_schema_migrations",
-        ]
-    );
-    let schema = tables
-        .iter()
-        .map(|(_, sql)| sql.as_str())
-        .collect::<Vec<_>>()
-        .join("\n")
-        .to_ascii_lowercase();
-    for forbidden in [
-        "plaintext",
-        "virtual table",
-        "fts",
-        "private_key",
-        "mls",
-        "epoch",
-        "history",
-        "recovery",
-    ] {
-        assert!(
-            !schema.contains(forbidden),
-            "forbidden schema term: {forbidden}"
-        );
-    }
-    for table in ["opaque_events", "outbox_events", "sync_cursors"] {
-        let columns = table_columns(&connection, table);
-        for required in ["tenant_id", "conversation_kind", "conversation_id"] {
-            assert!(columns.iter().any(|column| column == required));
-        }
-    }
-}
-
-#[test]
-fn committed_event_preserves_the_golden_envelope_byte_for_byte() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    let conversation = ConversationRef::channel("channel-golden").expect("valid conversation");
+fn normal_record_operations_use_the_owning_encrypted_interface() {
+    let fixture = DatabaseFixture::create();
+    let channel = ConversationRef::channel("channel-a").expect("valid channel");
+    let direct_message = ConversationRef::direct_message("dm-a").expect("valid dm");
     let golden = decode_hex(include_str!(
         "../../../proto/golden/v1/channel-event-envelope.golden.hex"
     ));
-    let mut storage = Storage::attach(&mut connection).expect("attach migrated storage");
-
-    storage
-        .insert_committed_event(CommittedEvent {
-            tenant_id: "tenant-golden",
-            conversation,
-            event_id: "evt-golden-0001",
-            committed_sequence: 314,
-            envelope_bytes: &golden,
-        })
-        .expect("store opaque event");
-
-    let loaded = storage
-        .load_committed_event("tenant-golden", conversation, "evt-golden-0001")
-        .expect("load opaque event")
-        .expect("event exists");
-    assert_eq!(loaded, golden);
-}
-
-#[test]
-fn committed_sequence_is_lossless_sortable_and_unique_per_conversation() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    let channel = ConversationRef::channel("channel-a").expect("valid channel");
-    let dm = ConversationRef::direct_message("dm-a").expect("valid dm");
-    let mut storage = Storage::attach(&mut connection).expect("attach migrated storage");
+    let mut database = fixture.open();
 
     for (event_id, sequence) in [
         ("evt-max", u64::MAX),
         ("evt-zero", 0),
         ("evt-i64-max", i64::MAX as u64),
     ] {
-        storage
-            .insert_committed_event(synthetic_event("tenant-a", channel, event_id, sequence))
-            .expect("store boundary event");
+        database
+            .insert_committed_event(CommittedEvent {
+                tenant_id: "tenant-a",
+                conversation: channel,
+                event_id,
+                committed_sequence: sequence,
+                envelope_bytes: &golden,
+            })
+            .expect("store opaque event");
     }
-
     assert_eq!(
-        storage
+        database
             .list_committed_sequences("tenant-a", channel)
             .expect("list ordered sequences"),
         vec![0, i64::MAX as u64, u64::MAX]
     );
     assert_eq!(
-        storage.insert_committed_event(synthetic_event(
-            "tenant-a",
-            channel,
-            "evt-duplicate-sequence",
-            u64::MAX,
-        )),
+        database.insert_committed_event(CommittedEvent {
+            tenant_id: "tenant-a",
+            conversation: channel,
+            event_id: "evt-duplicate-sequence",
+            committed_sequence: u64::MAX,
+            envelope_bytes: &golden,
+        }),
         Err(StorageError::Conflict)
     );
-    storage
-        .insert_committed_event(synthetic_event(
-            "tenant-a",
-            dm,
-            "evt-same-sequence-other-scope",
-            u64::MAX,
-        ))
-        .expect("sequence uniqueness is conversation-scoped");
+    database
+        .insert_committed_event(CommittedEvent {
+            tenant_id: "tenant-a",
+            conversation: direct_message,
+            event_id: "evt-other-scope",
+            committed_sequence: u64::MAX,
+            envelope_bytes: &golden,
+        })
+        .expect("scope sequence uniqueness by conversation");
 }
 
 #[test]
-fn outbox_preserves_bytes_and_scopes_idempotency() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
+fn outbox_and_cursor_semantics_survive_correct_key_reopen() {
+    let fixture = DatabaseFixture::create();
     let channel = ConversationRef::channel("channel-a").expect("valid channel");
-    let other_channel = ConversationRef::channel("channel-b").expect("valid channel");
-    let pending_bytes = [
-        0x0A, 0x05, b'e', b'v', b't', b'-', b'1', 0x82, 0xB5, 0x18, 0x01, 0xA5,
-    ];
-    let mut storage = Storage::attach(&mut connection).expect("attach migrated storage");
-
-    storage
+    let pending_bytes = [0x0A, 0x05, b'e', b'v', b't', b'-', b'1', 0x82, 0xB5, 0x18];
+    let cursor_bytes = [0x18, 0x01];
+    let mut database = fixture.open();
+    database
         .enqueue_outbox(PendingOutboxEvent {
             tenant_id: "tenant-a",
             conversation: channel,
@@ -297,112 +183,146 @@ fn outbox_preserves_bytes_and_scopes_idempotency() {
             envelope_bytes: &pending_bytes,
         })
         .expect("enqueue pending event");
-
     assert_eq!(
-        storage
+        database.enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: channel,
+            event_id: "evt-1",
+            idempotency_key: "idem-conflicting-event",
+            envelope_bytes: &pending_bytes,
+        }),
+        Err(StorageError::Conflict)
+    );
+    assert_eq!(
+        database.enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: channel,
+            event_id: "evt-conflicting-idempotency",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        }),
+        Err(StorageError::Conflict)
+    );
+    database
+        .enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-a",
+            conversation: ConversationRef::channel("channel-b").expect("valid channel"),
+            event_id: "evt-other-channel",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        })
+        .expect("scope idempotency by conversation");
+    database
+        .enqueue_outbox(PendingOutboxEvent {
+            tenant_id: "tenant-b",
+            conversation: channel,
+            event_id: "evt-other-tenant",
+            idempotency_key: "idem-1",
+            envelope_bytes: &pending_bytes,
+        })
+        .expect("scope idempotency by tenant");
+    database
+        .record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: None,
+            last_applied_sequence: 1,
+            cursor_bytes: &cursor_bytes,
+        })
+        .expect("record initial cursor");
+    drop(database);
+
+    let reopened = fixture.open();
+    assert_eq!(
+        reopened
             .load_outbox_event("tenant-a", channel, "evt-1")
             .expect("load pending event"),
         Some(pending_bytes.to_vec())
     );
     assert_eq!(
-        storage.enqueue_outbox(PendingOutboxEvent {
-            tenant_id: "tenant-a",
-            conversation: channel,
-            event_id: "evt-1",
-            idempotency_key: "idem-2",
-            envelope_bytes: &pending_bytes,
-        }),
-        Err(StorageError::Conflict)
-    );
-    assert_eq!(
-        storage.enqueue_outbox(PendingOutboxEvent {
-            tenant_id: "tenant-a",
-            conversation: channel,
-            event_id: "evt-2",
-            idempotency_key: "idem-1",
-            envelope_bytes: &pending_bytes,
-        }),
-        Err(StorageError::Conflict)
-    );
-    storage
-        .enqueue_outbox(PendingOutboxEvent {
-            tenant_id: "tenant-a",
-            conversation: other_channel,
-            event_id: "evt-2",
-            idempotency_key: "idem-1",
-            envelope_bytes: &pending_bytes,
+        reopened
+            .load_cursor("tenant-a", "device-a", channel)
+            .expect("load cursor"),
+        Some(StoredCursor {
+            last_applied_sequence: 1,
+            cursor_bytes: cursor_bytes.to_vec(),
         })
-        .expect("idempotency is conversation-scoped");
-    storage
-        .enqueue_outbox(PendingOutboxEvent {
-            tenant_id: "tenant-b",
-            conversation: channel,
-            event_id: "evt-2",
-            idempotency_key: "idem-1",
-            envelope_bytes: &pending_bytes,
-        })
-        .expect("idempotency is tenant-scoped");
+    );
 }
 
 #[test]
-fn cursor_compare_and_swap_preserves_contiguous_progress_and_bytes() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
-    let channel = ConversationRef::channel("channel-a").expect("valid channel");
-    let mut storage = Storage::attach(&mut connection).expect("attach migrated storage");
+fn cursor_compare_and_swap_rejects_stale_progress_and_preserves_u64_boundaries() {
+    let fixture = DatabaseFixture::create();
+    let channel = ConversationRef::channel("channel-cursor").expect("valid channel");
+    let mut database = fixture.open();
+    let initial_cursor = [0x18, 0x00];
+    let signed_max_cursor = [0x18, 0x7F];
+    let unsigned_max_cursor = [0x18, 0xFF, 0x01];
 
-    storage
+    database
         .record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
             device_id: "device-a",
             conversation: channel,
             expected_previous_sequence: None,
             last_applied_sequence: 0,
-            cursor_bytes: &[
-                0x0A, 0x09, b'c', b'h', b'a', b'n', b'n', b'e', b'l', b'-', b'a',
-            ],
+            cursor_bytes: &initial_cursor,
         })
         .expect("record initial cursor");
-    storage
+    database
         .record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
             device_id: "device-a",
             conversation: channel,
             expected_previous_sequence: Some(0),
             last_applied_sequence: i64::MAX as u64,
-            cursor_bytes: &[0x18, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F],
+            cursor_bytes: &signed_max_cursor,
         })
-        .expect("advance over a verified contiguous batch");
-    let max_cursor = [0x18, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01];
-    storage
+        .expect("advance through signed maximum");
+    database
         .record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
             device_id: "device-a",
             conversation: channel,
             expected_previous_sequence: Some(i64::MAX as u64),
             last_applied_sequence: u64::MAX,
-            cursor_bytes: &max_cursor,
+            cursor_bytes: &unsigned_max_cursor,
         })
-        .expect("record u64 max cursor");
-
-    let stored = storage
-        .load_cursor("tenant-a", "device-a", channel)
-        .expect("load cursor")
-        .expect("cursor exists");
-    assert_eq!(stored.last_applied_sequence, u64::MAX);
-    assert_eq!(stored.cursor_bytes, max_cursor);
-    assert_eq!(
-        storage.record_cursor(CursorUpdate {
+        .expect("advance through unsigned maximum");
+    database
+        .record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
             device_id: "device-a",
             conversation: channel,
             expected_previous_sequence: Some(u64::MAX),
             last_applied_sequence: u64::MAX,
-            cursor_bytes: &[0x18, 0x00],
+            cursor_bytes: &unsigned_max_cursor,
+        })
+        .expect("accept exact idempotent cursor replay");
+
+    assert_eq!(
+        database
+            .load_cursor("tenant-a", "device-a", channel)
+            .expect("load maximum cursor"),
+        Some(StoredCursor {
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: unsigned_max_cursor.to_vec(),
+        })
+    );
+    assert_eq!(
+        database.record_cursor(CursorUpdate {
+            tenant_id: "tenant-a",
+            device_id: "device-a",
+            conversation: channel,
+            expected_previous_sequence: Some(u64::MAX),
+            last_applied_sequence: u64::MAX,
+            cursor_bytes: &[0x18, 0x01],
         }),
         Err(StorageError::Conflict)
     );
     assert_eq!(
-        storage.record_cursor(CursorUpdate {
+        database.record_cursor(CursorUpdate {
             tenant_id: "tenant-a",
             device_id: "device-a",
             conversation: channel,
@@ -415,12 +335,11 @@ fn cursor_compare_and_swap_preserves_contiguous_progress_and_bytes() {
 }
 
 #[test]
-fn public_errors_are_stable_and_do_not_echo_sensitive_inputs() {
-    let mut connection = Connection::open_in_memory().expect("open synthetic database");
+fn public_record_errors_are_stable_and_secret_safe() {
+    let fixture = DatabaseFixture::create();
     let conversation = ConversationRef::channel("channel-secret").expect("valid channel");
-    let mut storage = Storage::attach(&mut connection).expect("attach migrated storage");
-
-    let error = storage
+    let mut database = fixture.open();
+    let error = database
         .enqueue_outbox(PendingOutboxEvent {
             tenant_id: "tenant-secret",
             conversation,
@@ -434,57 +353,118 @@ fn public_errors_are_stable_and_do_not_echo_sensitive_inputs() {
     assert_eq!(error.to_string(), "storage_invalid_input");
 }
 
+fn rejected_open(fixture: &DatabaseFixture) -> StorageError {
+    match EncryptedDatabase::open(
+        &fixture.path,
+        DatabaseKey::new(fixture.key).expect("accept generated fixed-size key"),
+    ) {
+        Ok(_) => panic!("invalid fixture unexpectedly opened"),
+        Err(error) => error,
+    }
+}
+
 fn pragma_i64(connection: &Connection, name: &str) -> i64 {
     connection
         .query_row(&format!("PRAGMA {name}"), [], |row| row.get(0))
-        .expect("read pragma")
-}
-
-fn user_object_count(connection: &Connection) -> i64 {
-    connection
-        .query_row(
-            "SELECT count(*) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("count user objects")
-}
-
-fn table_columns(connection: &Connection, table: &str) -> Vec<String> {
-    let query = match table {
-        "opaque_events" => "PRAGMA table_info(opaque_events)",
-        "outbox_events" => "PRAGMA table_info(outbox_events)",
-        "sync_cursors" => "PRAGMA table_info(sync_cursors)",
-        _ => panic!("unexpected table"),
-    };
-    let mut statement = connection.prepare(query).expect("inspect table columns");
-    statement
-        .query_map([], |row| row.get(1))
-        .expect("query table columns")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("read table columns")
+        .expect("read integer pragma")
 }
 
 fn decode_hex(input: &str) -> Vec<u8> {
-    let hex = input.trim();
-    assert_eq!(hex.len() % 2, 0, "fixture hex has whole bytes");
-    (0..hex.len())
+    let input = input.trim();
+    assert!(input.len().is_multiple_of(2), "fixture has whole bytes");
+    (0..input.len())
         .step_by(2)
-        .map(|index| u8::from_str_radix(&hex[index..index + 2], 16).expect("valid fixture hex"))
+        .map(|index| u8::from_str_radix(&input[index..index + 2], 16).expect("valid fixture hex"))
         .collect()
 }
 
-fn synthetic_event<'value>(
-    tenant_id: &'value str,
-    conversation: ConversationRef<'value>,
-    event_id: &'value str,
-    committed_sequence: u64,
-) -> CommittedEvent<'value> {
-    CommittedEvent {
-        tenant_id,
-        conversation,
-        event_id,
-        committed_sequence,
-        envelope_bytes: &[0x8A, 0x01, 0x02, 0xA5],
+struct DatabaseFixture {
+    directory: PathBuf,
+    path: PathBuf,
+    key: [u8; 32],
+}
+
+impl DatabaseFixture {
+    fn create() -> Self {
+        let mut nonce = [0_u8; 16];
+        let mut key = [0_u8; 32];
+        getrandom::fill(&mut nonce).expect("obtain runtime directory nonce");
+        getrandom::fill(&mut key).expect("obtain runtime database key");
+        if key.iter().all(|byte| *byte == 0) {
+            key[0] = 1;
+        }
+        let suffix = nonce
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let directory = std::env::temp_dir().join(format!("threadline-storage-{suffix}"));
+        fs::create_dir(&directory).expect("create isolated storage test directory");
+        let path = directory.join("client-core.db");
+        Self {
+            directory,
+            path,
+            key,
+        }
     }
+
+    fn open(&self) -> EncryptedDatabase {
+        EncryptedDatabase::open(
+            &self.path,
+            DatabaseKey::new(self.key).expect("accept generated fixed-size key"),
+        )
+        .expect("open encrypted database through production interface")
+    }
+
+    fn open_empty_keyed_fixture(&self) -> Connection {
+        let connection = Connection::open(&self.path).expect("open encrypted fixture");
+        apply_raw_key(&connection, &self.key);
+        connection
+    }
+
+    fn open_for_fixture_inspection(&self) -> Connection {
+        let connection = self.open_empty_keyed_fixture();
+        connection
+            .query_row("SELECT count(*) FROM sqlite_schema", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .expect("verify fixture key");
+        connection
+    }
+
+    fn database_family_state(&self) -> [Option<Vec<u8>>; 3] {
+        let suffix_path = |suffix: &str| {
+            let mut path = self.path.as_os_str().to_os_string();
+            path.push(suffix);
+            PathBuf::from(path)
+        };
+        [self.path.clone(), suffix_path("-wal"), suffix_path("-shm")].map(|path| {
+            path.exists()
+                .then(|| fs::read(path).expect("read encrypted database-family member"))
+        })
+    }
+
+    fn database_family_matches(&self, expected: &[Option<Vec<u8>>; 3]) -> bool {
+        self.database_family_state()
+            .iter()
+            .zip(expected)
+            .all(|(actual, expected)| actual == expected)
+    }
+}
+
+impl Drop for DatabaseFixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.directory);
+    }
+}
+
+fn apply_raw_key(connection: &Connection, key: &[u8; 32]) {
+    let mut command = Zeroizing::new(String::with_capacity(86));
+    command.push_str("PRAGMA key = \"x'");
+    for byte in key {
+        write!(&mut command, "{byte:02x}").expect("encode fixture key");
+    }
+    command.push_str("'\";");
+    connection
+        .execute_batch(&command)
+        .expect("apply fixture inspection key");
 }

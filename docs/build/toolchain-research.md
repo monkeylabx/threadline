@@ -16,6 +16,7 @@ Threadline 应冻结下列生产构建基线。版本号必须精确匹配，不
 | pnpm | `11.20.0` | 根 `package.json#packageManager` | pnpm 11 支持 Node 24；锁文件只由该精确版本生成 |
 | Rust | `1.97.1` | `rust-toolchain.toml` | 包含该发行版配套的 Cargo，并显式安装 `rustfmt`、`clippy` 和所需 targets |
 | Go | `1.26.5` | `services/go.mod` 的 `toolchain go1.26.5` | `go 1.26.0` 表达语言/模块语义，`toolchain` 表达补丁版本 |
+| Atlas Community | `1.3.0` | `toolchains.json#database.atlas`、`db/atlas.hcl` | Apache-2.0；冻结五个平台二进制 SHA-256 和双架构容器 manifest digest |
 | Tauri core | `tauri = =2.11.5` | `apps/desktop/src-tauri/Cargo.toml` | Rust crate 与 JS API 保持同一 `2.11` minor |
 | Tauri build | `tauri-build = =2.6.3` | `apps/desktop/src-tauri/Cargo.toml` | Cargo 中必须带 `=`；普通 `2.6.3` 仍允许 caret 漂移 |
 | Tauri CLI | `@tauri-apps/cli = 2.11.4` | `apps/desktop/package.json` | 只采用 Node CLI，不再并行安装 Cargo CLI |
@@ -35,6 +36,34 @@ Threadline 应冻结下列生产构建基线。版本号必须精确匹配，不
 这些版本是“已验证组合”，不是“自动跟随最新”。安全补丁或平台提交要求变化时，通过独立升级 PR 更新所有 pin、校验和、锁文件和验证证据。
 
 ## 选择依据与兼容边界
+
+### PostgreSQL versioned migration runner
+
+Atlas Community 1.3.0 is the PostgreSQL migration runner. Its Apache-2.0
+Community distribution provides versioned apply/status, a database revision
+ledger, a migration-directory integrity manifest, and official `linux/amd64`
+plus `linux/arm64` images. The existing
+`NNNNNN_name.up.sql`/`.down.sql` directory is consumed with the
+`golang-migrate` format adapter, so only up files enter production history.
+
+Flyway was evaluated first because its history/checksum behavior matches the
+desired fail-closed policy. The official Flyway 13.4.0 container published on
+2026-08-26 exposes only `linux/amd64`, while Threadline's offline stack supports
+both Linux architectures. Shipping an unreviewed custom Java/Flyway image would
+add a second build and dependency-resolution surface. Goose and golang-migrate
+fit the Go stack but do not provide Atlas's committed directory-integrity
+manifest by default. Liquibase 5 adds a Java runtime and its Community
+distribution uses the Functional Source License. Atlas Community therefore has
+the smallest pinned, cross-platform, open-source operational surface for this
+repository. Unlike Flyway's schema-history checksum, Atlas's revision ledger
+does not retain each applied file hash: `atlas.sum` detects an un-rehashed edit,
+and protected Git review must reject any attempt to edit a merged migration and
+regenerate the manifest.
+
+- Atlas Community edition and license: https://atlasgo.io/community-edition
+- Atlas versioned apply and revision table: https://atlasgo.io/versioned/apply
+- Atlas migration directory integrity: https://atlasgo.io/concepts/migration-directory-integrity
+- Flyway checksum validation: https://documentation.red-gate.com/flyway/reference/commands/validate
 
 ### Node.js 和 pnpm
 

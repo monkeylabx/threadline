@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.members (
   tenant_id text NOT NULL,
   actor_type smallint NOT NULL,
@@ -21,5 +19,3 @@ CREATE TABLE domain.members (
   CONSTRAINT members_state_known
     CHECK (state IN (1, 2, 3))
 );
-
-COMMIT;

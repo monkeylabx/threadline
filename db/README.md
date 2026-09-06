@@ -14,17 +14,54 @@ does not yet define Message, Session, Device, key, or recovery tables.
 
 ## Migration rules
 
+- PostgreSQL versioned migrations are applied only through Atlas Community
+  1.3.0. Atlas owns the per-file transaction, advisory lock, revision ledger,
+  and migration-directory integrity validation. Do not run the production up
+  directory by hand or from application startup.
 - Migration identifiers are immutable once merged. Every `*.up.sql` file has a
   matching `*.down.sql` file with the same numeric identifier.
-- Each migration is transactional. Prefer expand/contract changes once durable
-  application data exists; do not combine destructive cleanup with an expand
-  step.
+- Each up migration is transactional at the Atlas file boundary, so checked-in
+  up files must not contain `BEGIN` or `COMMIT`. Prefer expand/contract changes
+  once durable application data exists; do not combine destructive cleanup with
+  an expand step.
+- Versioned DDL must be strict. Do not add `IF NOT EXISTS` or `IF EXISTS` to
+  object creation or removal: an unexpected object is schema drift and must
+  stop the migration.
 - Down migrations must name the exact object they own and must not use
   `CASCADE`. Production rollback or data deletion always requires a separately
   reviewed, visible approval; this local harness does not authorize either.
 - Tests use only the generated `threadline_migration_test_<pid>` database name.
   Fixtures must be synthetic and must not contain credentials, tenant data,
   message content, keys, tokens, or production identifiers.
+
+`migrations/atlas.sum` is the committed integrity manifest for all up
+migrations. Regenerate it only when adding a new migration, using the reviewed
+Atlas version. Editing an already merged migration and regenerating the hash is
+not an approved repair path. Atlas validates files against the committed
+`atlas.sum`, while `atlas_schema_revisions.atlas_schema_revisions` records
+execution state rather than a durable copy of each file hash. Git review and
+protected-branch controls therefore enforce merged-migration immutability; a
+later repair must be a new migration.
+
+Verify the migration directory without connecting to a database:
+
+```text
+make -C db migration-integrity
+```
+
+Apply or inspect pending migrations only with a dedicated DDL credential:
+
+```text
+THREADLINE_MIGRATION_URL='<operator-supplied PostgreSQL URL>' \
+  make -C db migration-apply
+THREADLINE_MIGRATION_URL='<operator-supplied PostgreSQL URL>' \
+  make -C db migration-status
+```
+
+`pgcrypto` remains a deployment-owned prerequisite. It must be provisioned
+before Atlas reaches migration `000009`; feature migrations do not create or
+drop extensions. The normal Core and Worker roles must not receive schema DDL
+privileges.
 
 All live shell tests source `tests/postgres_harness.sh` for the PostgreSQL 16.4
 version gate, pinned tool resolution, disposable-database lifecycle, cleanup

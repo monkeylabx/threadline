@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.spaces (
   tenant_id text NOT NULL,
   space_id text NOT NULL,
@@ -14,5 +12,3 @@ CREATE TABLE domain.spaces (
   CONSTRAINT spaces_space_id_not_blank
     CHECK (space_id <> '' AND space_id = btrim(space_id))
 );
-
-COMMIT;

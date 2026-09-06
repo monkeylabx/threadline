@@ -2,7 +2,9 @@ const root = document.querySelector(".desktop-window");
 const rootViews = new Set(["messages", "search", "activity", "profile"]);
 const validViews = new Set([...rootViews, "channel", "task", "approval"]);
 const isMobile = () => window.matchMedia("(max-width: 820px)").matches;
-const requestedView = new URLSearchParams(window.location.search).get("view");
+const initialParams = new URLSearchParams(window.location.search);
+const requestedView = initialParams.get("view");
+const artifactResultMode = initialParams.get("mode") === "artifact";
 const initialView = requestedView === "home" ? "messages" : requestedView || (isMobile() ? "messages" : "channel");
 const viewLabels = {
   messages: "消息",
@@ -10,7 +12,7 @@ const viewLabels = {
   activity: "活动",
   profile: "我的",
   channel: "产品研发频道",
-  task: "任务执行现场：Runtime Lease 与 Fencing Token",
+  task: artifactResultMode ? "Artifact 审查：empty-state-v2.patch" : "任务执行现场：Runtime Lease 与 Fencing Token",
   approval: "权限审批：删除过期状态文件",
 };
 const viewFocusOrigins = new Map();
@@ -44,6 +46,7 @@ function renderView(view, { moveFocus = false, restoreFrom = null } = {}) {
   const mobileHomeActive = rootViewActive && isMobile();
   root.dataset.mobileView = nextView;
   root.dataset.view = workbenchView;
+  renderArtifactResultMode(nextView);
 
   const workbench = document.querySelector(".workbench");
   const mobileHome = document.querySelector(".mobile-home");
@@ -331,6 +334,32 @@ document.querySelector("#approve-action").addEventListener("click", (event) => {
   event.currentTarget.classList.add("is-approved");
   event.currentTarget.disabled = true;
   document.querySelector(".sheet-kicker.amber").innerHTML = "<i></i>已授权 · 10 分钟后失效";
+});
+
+function renderArtifactResultMode(view) {
+  if (!artifactResultMode || view !== "task") return;
+  root.dataset.artifactResult = "true";
+  document.querySelector(".task-sheet .sheet-kicker").innerHTML = "<i></i>DES-088 · 等待人工审查";
+  document.querySelector("#mobile-task-title").textContent = "empty-state-v2.patch";
+  document.querySelector("#mobile-task-title + p").textContent = "Nova · Run 02 · Artifact v2";
+  document.querySelector(".task-artifact-placeholder").hidden = true;
+  document.querySelector(".mobile-artifact-result").hidden = false;
+  document.querySelector(".task-default-footer").hidden = true;
+  document.querySelector(".artifact-result-footer").hidden = false;
+  const artifactTab = document.querySelector("#task-tab-artifacts");
+  if (artifactTab.getAttribute("aria-selected") !== "true") artifactTab.click();
+}
+
+document.querySelector("#mobile-accept-artifact").addEventListener("click", (event) => {
+  event.currentTarget.textContent = "✓ 已接受 · PR #418";
+  event.currentTarget.disabled = true;
+  document.querySelector(".task-sheet .sheet-kicker").innerHTML = "<i></i>DES-088 · 已交付";
+});
+
+document.querySelector("#mobile-revise-artifact").addEventListener("click", (event) => {
+  event.currentTarget.textContent = "✓ 已请求 Run 03";
+  event.currentTarget.disabled = true;
+  document.querySelector(".mobile-next-revision strong").textContent = "Nova · Run 03 等待开始";
 });
 
 const normalizedInitialView = normalizeView(initialView);
