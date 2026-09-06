@@ -138,3 +138,11 @@ make verify — PASS (51 required surfaces)
 - Surfaces: HTML/CSS、产品需求；无协议、迁移、依赖或权限变化。
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过。浏览器确认三项状态为同色8px橙点、位置不变；两个数字背景透明，频道#保留，计数仍为1和4。未截图。
 - Risks/Next: 仅静态原型样式，等待用户评估计数位置；无阻塞。
+
+## V31 follow-up
+
+- Identity: #183，codex/183-ui-v11；Base `4f06ca4`，Head 为本提交。
+- Outcome: 第二栏通知数字实际改为深橙色 `#a95113`，无底色；位置、尺寸及外层状态点不变。
+- Surfaces: HTML/CSS、产品需求；无契约、迁移、依赖或权限变化。
+- Verification: `git diff --check`、`make verify`通过；浏览器两个计数均为rgb(169,81,19)，背景透明。未截图。
+- Risks/Next: 静态原型；无阻塞。

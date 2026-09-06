@@ -1350,7 +1350,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v14-app-rail .v18-profile-button:hover { background: #e0e8e3; }
 
 /* Shared notification indicator; count mode is the contextual-list default. */
-.slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #555; font-size: 10px; font-weight: 600; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; align-self: center; justify-self: end; grid-column: 3; }
+.slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #a95113; font-size: 10px; font-weight: 600; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; align-self: center; justify-self: end; grid-column: 3; }
 /* V28 — status at the outer icon corner, numeric detail on the contextual row. */
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { grid-template-columns: 26px minmax(0,1fr); gap: 8px; }
 .slack-shell-v14.is-app-compact .v14-app-rail > button { grid-template-columns: 1fr; column-gap: 0; }
