@@ -163,7 +163,6 @@ GitHub-hosted runner 的 OS label 只固定 OS major，不固定每周更新的�
 | `actions/setup-node` | `820762786026740c76f36085b0efc47a31fe5020` | `v7.0.0` |
 | `actions/setup-go` | `4a3601121dd01d1626a1e23e37211e3254c1c06c` | `v6.4.0` |
 | `actions/setup-java` | `03ad4de0992f5dab5e18fcb136590ce7c4a0ac95` | `v5.6.0` |
-| `docker/setup-docker-action` | `77e84dbf09b47d1e29270283c22f16145aa85ca1` | `v5.0.0` |
 | `gradle/actions/setup-gradle` | `16f3e46a58d2b926c34615132d7969a96bccb22b` | `v6.0.0` |
 | `actions/cache`（仅手工 cache） | `9255dc7a253b0ccc959486e2bca901246202afeb` | `v5.0.1` |
 
