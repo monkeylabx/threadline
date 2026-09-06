@@ -65,3 +65,14 @@ make verify — PASS (51 required surfaces)
 - Security/data: 宽度仅存内存，无新增数据访问或持久化。
 - Risks: Escape/系统取消处理已实现但未自动化触发验证；窗口极窄时仍依赖现有移动端路由，未完成跨平台原生验证。
 - Next: 用户试用拖拽手感；无阻塞。
+
+## V23 follow-up
+
+- Identity: #183，同一原型分支；Base `c78e21d`，Head 为此增补所在提交。
+- Outcome: 第一栏默认 104px，仅显示企业 Logo；文字应用导航保留。第一栏展开时可独立拖拽 88–160px，折叠仍为 48px。
+- Changed surfaces: HTML、CSS、JS、PRD；两栏共用拖拽行为，无协议/迁移/依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。
+- Browser: 第一栏拖拽104→130、第二栏228→258；折叠再展开两者保留；分别双击恢复104/228，全部通过。未截图。
+- Security/data: 内存偏好，无新增访问或持久化。
+- Risks: 原生窗口集成、极窄桌面视口仍待验证。
+- Next: 用户确认默认比例；无阻塞。

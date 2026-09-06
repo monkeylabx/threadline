@@ -650,60 +650,64 @@ if (imAgentPrototypeEnabled) {
     v19HistoryToggle.setAttribute("aria-expanded", String(open));
   });
 
-  const v22Resizer = document.querySelector("[data-v22-resizer]");
-  let v22PreferredWidth = 228;
-  let v22Drag = null;
-  const v22MaxWidth = () => Math.max(180, Math.min(360, v14Shell.clientWidth - (v14Shell.classList.contains("is-app-compact") ? 48 : 144) - 320));
-  const applyV22Width = () => {
+  const navPane = { element: document.querySelector("[data-v23-resizer]"), preferred: 104, initial: 104, min: 88, max: 160, css: "--v23-nav-width" };
+  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 228, initial: 228, min: 180, max: 360, css: "--v22-context-width" };
+  const paneMax = pane => Math.max(pane.min, Math.min(pane.max, v14Shell.clientWidth - 320 - (pane === navPane ? contextPane.min : v14Shell.classList.contains("is-app-compact") ? 48 : navPane.width || 104)));
+  const applyPaneWidths = () => {
     if (!v14Shell.clientWidth) return;
-    const width = Math.round(Math.max(180, Math.min(v22PreferredWidth, v22MaxWidth())));
-    v14Shell.style.setProperty("--v22-context-width", `${width}px`);
-    v22Resizer.setAttribute("aria-valuenow", String(width));
-    v22Resizer.setAttribute("aria-valuemax", String(v22MaxWidth()));
-    v22Resizer.setAttribute("aria-valuetext", `${width} 像素`);
+    for (const pane of [navPane, contextPane]) {
+      pane.width = Math.round(Math.max(pane.min, Math.min(pane.preferred, paneMax(pane))));
+      v14Shell.style.setProperty(pane.css, `${pane.width}px`);
+      pane.element.setAttribute("aria-valuenow", String(pane.width));
+      pane.element.setAttribute("aria-valuemax", String(paneMax(pane)));
+      pane.element.setAttribute("aria-valuetext", `${pane.width} 像素`);
+    }
   };
-  const setV22Width = (width) => {
-    v22PreferredWidth = Math.max(180, Math.min(width, v22MaxWidth()));
-    applyV22Width();
+  const setPaneWidth = (pane, width) => {
+    pane.preferred = Math.max(pane.min, Math.min(width, paneMax(pane)));
+    applyPaneWidths();
   };
-  const stopV22Drag = (cancel = false) => {
-    if (!v22Drag) return;
-    const { pointerId, preferred } = v22Drag;
-    v22Drag = null;
-    if (cancel) { v22PreferredWidth = preferred; applyV22Width(); }
+  let paneDrag = null;
+  const stopPaneDrag = (cancel = false) => {
+    if (!paneDrag) return;
+    const { pane, pointerId, preferred } = paneDrag;
+    paneDrag = null;
+    if (cancel) { pane.preferred = preferred; applyPaneWidths(); }
     v14Shell.classList.remove("is-resizing");
-    if (v22Resizer.hasPointerCapture(pointerId)) v22Resizer.releasePointerCapture(pointerId);
+    if (pane.element.hasPointerCapture(pointerId)) pane.element.releasePointerCapture(pointerId);
   };
-  v22Resizer.addEventListener("pointerdown", event => {
-    if (event.button !== 0 || v22Drag) return;
-    event.preventDefault();
-    v22Resizer.focus();
-    v22Drag = { pointerId: event.pointerId, x: event.clientX, width: Number(v22Resizer.getAttribute("aria-valuenow")), preferred: v22PreferredWidth, scale: v14Shell.getBoundingClientRect().width / v14Shell.clientWidth };
-    v22Resizer.setPointerCapture(event.pointerId);
-    v14Shell.classList.add("is-resizing");
-  });
-  v22Resizer.addEventListener("pointermove", event => {
-    if (v22Drag?.pointerId !== event.pointerId) return;
-    setV22Width(v22Drag.width + (event.clientX - v22Drag.x) / v22Drag.scale);
-  });
-  v22Resizer.addEventListener("pointerup", () => stopV22Drag());
-  v22Resizer.addEventListener("pointercancel", () => stopV22Drag(true));
-  v22Resizer.addEventListener("lostpointercapture", () => stopV22Drag());
-  v22Resizer.addEventListener("dblclick", () => setV22Width(228));
-  v22Resizer.addEventListener("keydown", event => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.key === "Escape") { stopV22Drag(true); return; }
-    const width = Number(v22Resizer.getAttribute("aria-valuenow"));
-    setV22Width(event.key === "Home" ? 180 : event.key === "End" ? v22MaxWidth() : width + (event.key === "ArrowRight" ? 10 : -10));
-  });
-  new ResizeObserver(applyV22Width).observe(v14Shell);
-  applyV22Width();
+  for (const pane of [navPane, contextPane]) {
+    const handle = pane.element;
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || paneDrag) return;
+      event.preventDefault();
+      handle.focus();
+      paneDrag = { pane, pointerId: event.pointerId, x: event.clientX, width: pane.width, preferred: pane.preferred, scale: v14Shell.getBoundingClientRect().width / v14Shell.clientWidth };
+      handle.setPointerCapture(event.pointerId);
+      v14Shell.classList.add("is-resizing");
+    });
+    handle.addEventListener("pointermove", event => {
+      if (paneDrag?.pane !== pane || paneDrag.pointerId !== event.pointerId) return;
+      setPaneWidth(pane, paneDrag.width + (event.clientX - paneDrag.x) / paneDrag.scale);
+    });
+    handle.addEventListener("pointerup", () => stopPaneDrag());
+    handle.addEventListener("pointercancel", () => stopPaneDrag(true));
+    handle.addEventListener("lostpointercapture", () => stopPaneDrag());
+    handle.addEventListener("dblclick", () => setPaneWidth(pane, pane.initial));
+    handle.addEventListener("keydown", event => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.key === "Escape") { stopPaneDrag(true); return; }
+      setPaneWidth(pane, event.key === "Home" ? pane.min : event.key === "End" ? paneMax(pane) : pane.width + (event.key === "ArrowRight" ? 10 : -10));
+    });
+  }
+  new ResizeObserver(applyPaneWidths).observe(v14Shell);
+  applyPaneWidths();
 
   const setV20NavCompact = (compact) => {
     v14Shell.classList.toggle("is-app-compact", compact);
-    applyV22Width();
+    applyPaneWidths();
     closeV18Menus();
     v20NavToggle.setAttribute("aria-expanded", String(!compact));
     v20NavToggle.setAttribute("aria-label", compact ? "展开导航文字" : "收起导航文字");

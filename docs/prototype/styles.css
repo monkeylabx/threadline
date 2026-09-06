@@ -1323,6 +1323,15 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-resizing { transition: none; cursor: col-resize; user-select: none; }
 .slack-shell-v14.is-resizing * { cursor: col-resize !important; }
 
+/* V23 — logo-only company entry, slimmer default and independently resizable app rail. */
+.slack-shell-v14 { --v23-nav-width: 104px; }
+.slack-shell-v14:not(.is-app-compact) { --v22-app-width: var(--v23-nav-width); }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { gap: 8px; padding: 0 5px; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise { align-self: flex-start; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise > .v18-enterprise { width: 38px; justify-content: center; }
+.slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 47px; }
+.slack-shell-v14.is-app-compact .v23-nav-resizer { display: none; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
