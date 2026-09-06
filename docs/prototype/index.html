@@ -26,7 +26,7 @@
         window.location.replace(`./mobile/index.html?view=${view}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=24" />
+    <link rel="stylesheet" href="./styles.css?v=25" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -379,9 +379,9 @@
                   <button class="v18-enterprise" data-v17-org-menu-toggle aria-expanded="false" aria-controls="v18-enterprise-menu" aria-label="北辰科技 · 企业菜单" title="北辰科技 · 企业菜单"><span class="v18-enterprise-logo">北</span></button>
                   <div class="v17-org-menu" id="v18-enterprise-menu" data-v17-org-menu hidden><span>当前企业</span><button class="is-current" data-v18-current-org><b>北</b><strong>北辰科技</strong><i>✓</i></button><small class="v18-menu-note">原型仅展示当前企业</small></div>
                 </div>
-                <button data-v14-app-button="messages" title="消息 · 1 条提及" aria-label="消息 · 1 条提及"><span><svg><use href="#i-message"></use></svg><b>@1</b></span><small>消息</small></button>
+                <button data-v14-app-button="messages" title="消息 · 有未读提醒" aria-label="消息 · 有未读提醒"><span><svg><use href="#i-message"></use></svg></span><small>消息</small><em class="v25-notification-dot" aria-hidden="true"></em></button>
                 <button class="is-current" data-v14-app-button="work" title="私人工作" aria-label="私人工作" aria-current="page"><span><svg><use href="#i-bot"></use></svg><i></i></span><small>工作</small></button>
-                <button data-v14-app-button="attention" title="需要处理 · 2 项" aria-label="需要处理 · 2 项"><span><svg><use href="#i-checks"></use></svg><b>2</b></span><small>处理</small></button>
+                <button data-v14-app-button="attention" title="需要处理 · 2 项" aria-label="需要处理 · 2 项"><span><svg><use href="#i-checks"></use></svg></span><small>处理</small><em class="v25-count" aria-hidden="true">2</em><em class="v25-notification-dot v25-compact-only" aria-hidden="true"></em></button>
                 <footer class="v18-personal">
                   <button class="v18-profile-button" data-v18-profile-toggle aria-label="林嘉 · 个人菜单" title="林嘉 · 个人菜单" aria-expanded="false" aria-controls="v18-profile-menu"><span class="avatar avatar-user">林</span><i data-v18-presence-dot></i></button>
                   <div class="v18-profile-menu" id="v18-profile-menu" data-v18-profile-menu hidden><header><span class="avatar avatar-user">林</span><div><strong>林嘉</strong><small>北辰科技</small></div></header><button data-v18-status-toggle aria-pressed="false"><i data-v18-status-dot></i><span data-v18-status-label>在线 · 开启勿扰</span></button><small class="v18-menu-note">状态仅在本次原型预览中生效</small></div>
@@ -391,7 +391,7 @@
                 <div class="v22-sidebar-resizer" data-v22-resizer role="separator" tabindex="0" aria-label="调整列表宽度" aria-orientation="vertical" aria-controls="v18-context-sidebar" aria-valuemin="180" aria-valuemax="360" aria-valuenow="228" title="拖动调整列表宽度 · 双击恢复默认 · 左右键微调"></div>
                 <section data-v14-context="messages" hidden>
                   <header><div><strong>消息</strong><small>北辰科技</small></div><button title="新建频道或私聊"><svg><use href="#i-plus"></use></svg></button></header>
-                  <div class="v14-context-list"><span>频道</span><button class="is-current"><b>#</b><div>产品研发</div><i>@1</i></button><button><b>#</b><div>客户端体验</div><i>4</i></button><button><b>#</b><div>安全与合规</div></button><button><b>#</b><div>发布协调</div></button><span>私聊</span><button><em class="avatar avatar-tiny avatar-meng">孟</em><div>孟青</div><i class="online"></i></button><button><em class="avatar avatar-tiny avatar-zhou">周</em><div>周一鸣</div></button></div>
+                  <div class="v14-context-list"><span>频道</span><button class="is-current v25-unread" aria-label="产品研发 · 1 条未读提及" title="产品研发 · 1 条未读提及"><b>#</b><div>产品研发</div><em class="v25-count v25-mention-count" aria-hidden="true">1</em></button><button class="v25-unread" aria-label="客户端体验 · 有未读消息" title="客户端体验 · 有未读消息"><b>#</b><div>客户端体验</div></button><button><b>#</b><div>安全与合规</div></button><button><b>#</b><div>发布协调</div></button><span>私聊</span><button><em class="avatar avatar-tiny avatar-meng">孟</em><div>孟青</div><i class="online"></i></button><button><em class="avatar avatar-tiny avatar-zhou">周</em><div>周一鸣</div></button></div>
                 </section>
                 <section data-v14-context="work">
                   <header><div><strong>私人工作</strong><small>仅保存在你的设备</small></div><button data-v14-new-work title="新建私人工作"><svg><use href="#i-plus"></use></svg></button></header>
@@ -785,6 +785,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=24"></script>
+    <script src="./app.js?v=25"></script>
   </body>
 </html>

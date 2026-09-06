@@ -85,3 +85,13 @@ make verify — PASS (51 required surfaces)
 - Verification: `git diff --check`、`make verify` 通过；浏览器 DOM 实测两个头像展开态中心均约61.58px、折叠态均约33.66px。
 - Security/data: 无变化。
 - Risks/Next: 原生宿主仍待验证；当前原型无阻塞。
+
+## V25 follow-up
+
+- Identity: #183，同一产品原型分支；Base `c79ab98`，Head 为此增补所在提交。
+- Outcome: 应用图标不再叠加微型 `@1`／数字；消息显示提醒点、普通未读加粗、频道行末保留提及数、处理文字旁显示中性色数量。企业和个人入口统一为32px圆角图形、38px点击区及同一中轴。
+- Changed surfaces: HTML/CSS/PRD；无协议、迁移或依赖变化，JS行为未变。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。浏览器确认两个身份图形尺寸/颜色/圆角/中心一致；88px导航文字与数字无重叠；折叠后数量隐藏、小点和第二栏仍显示。
+- Security/data: 无变化；读屏名称保留未读、提及及数量语义。
+- Risks: 标记仍为静态示例，未实现真实未读清除；不将本轮样式确认视为此前整栏视觉对齐争议已解决。
+- Next: 用户评估统一样式；无技术阻塞。未截图。

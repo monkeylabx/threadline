@@ -1332,6 +1332,30 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise .v17-org-menu { left: 47px; }
 .slack-shell-v14.is-app-compact .v23-nav-resizer { display: none; }
 
+/* V25 — quiet unread signals; counts belong beside their labels, never over icons. */
+.v25-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 6px; background: #e6ebe8; color: #53615b; font-size: 10px; font-weight: 650; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; }
+.v25-notification-dot { display: block; width: 6px; height: 6px; border-radius: 50%; background: #587e6d; justify-self: center; }
+.v25-compact-only { display: none; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { display: grid; grid-template-columns: 20px minmax(0,1fr) 18px; gap: 4px; padding: 0 2px; justify-items: start; align-items: center; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > span { width: 20px; }
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > small { white-space: nowrap; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button { position: relative; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > .v25-count { display: none; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button > .v25-notification-dot { display: block; position: absolute; top: 4px; right: 2px; width: 5px; height: 5px; }
+.v14-context-list > .v25-unread > div { color: var(--ink); font-weight: 700; }
+.v14-context-list .v25-mention-count { background: #dcebe3; color: #28523e; justify-self: end; }
+
+/* Identity controls share the same visual frame and center in both rail modes. */
+.v14-app-rail .v19-rail-enterprise,
+.v14-app-rail > .v18-personal { align-self: center; width: 38px; }
+.v14-app-rail .v19-rail-enterprise > .v18-enterprise,
+.v14-app-rail .v18-profile-button { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 10px; background: transparent; }
+.v14-app-rail .v18-enterprise-logo,
+.v14-app-rail .v18-profile-button .avatar { width: 32px; height: 32px; display: grid; place-items: center; margin: 0; padding: 0; border: 1px solid #d2dfd8; border-radius: 9px; background: #e6eee9; color: #385a48; font-size: 12px; font-weight: 700; line-height: 1; box-shadow: none; }
+.v14-app-rail .v18-profile-button > i { width: 8px; height: 8px; right: 1px; bottom: 1px; border: 2px solid #f5f7f6; }
+.v14-app-rail .v18-enterprise:hover,
+.v14-app-rail .v18-profile-button:hover { background: #e0e8e3; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }
