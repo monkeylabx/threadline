@@ -10,6 +10,9 @@ Issue：[#16 T002](https://github.com/monkeylabx/threadline/issues/16)
 
 范围基线：[Private Enterprise v1.0 Scope Freeze](./scope.md)
 
+2026-09-06：AC-006 是共享Task基线，不证明“私人工作→显式发布”的受众隔离。
+后者单列于 [补充验收提案](./private-work-publication.md)，状态NOT RUN；本次同步不改写已有AC和Gate结果。
+
 ## 1. 目的与通过规则
 
 本文把 v1 核心用户旅程、安全不变量和里程碑结果定义成可重复执行的验收场景。场景描述业务输入、状态和可观察结果，不绑定具体测试框架、云厂商或 CI 产品。

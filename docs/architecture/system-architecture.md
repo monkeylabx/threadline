@@ -1,7 +1,12 @@
 # Threadline 系统架构与通信协议
 
-状态：架构评审草案
+状态：历史架构草案（2026-09-06补充适用性说明；非独立实施基线）
 更新时间：2026-07-23
+
+本文图示保留早期背景；现行平台、七工作负载和受众规则以[ADR-0001](../adr/0001-client-platform.md)、
+[ADR-0002](../adr/0002-server-protocol-storage.md)、[ADR-0003](../adr/0003-group-e2ee-recovery.md)及后续ADR为准。
+旧图不是当前拓扑验收证据。V33私人工作边界见[ADR-0005提案](../adr/0005-private-work-publication-boundary.md)，
+本文共享Task的派发/回流不代表私人工作会自动公开。
 
 ## 1. 结论
 
@@ -46,9 +51,9 @@ Audit 必须持久化。系统只保证 Channel 内顺序，不追求没有业�
 [服务目录](./service-catalog.md) · [SVG](./assets/threadline-p0-deployed-services.svg) ·
 [PNG](./assets/threadline-p0-deployed-services.png)
 
-P0 精确包含 **6 个 Threadline 服务端工作负载**：`threadline-web`、`threadline-core`、
-`threadline-realtime`、`threadline-runtime-gateway`、`threadline-worker` 和
-`threadline-model-control`。另外有 3 个设备本地服务和 6 类生产基础设施，它们分别计数。
+上图为早期六工作负载草图；ADR-0002基线为 **7个**：`threadline-web`、`threadline-core`、
+`threadline-realtime`、`threadline-runtime-gateway`、`threadline-worker`、`threadline-model-control`、
+独立安全域的`threadline-recovery-control`。本地服务和基础设施另计，旧图尚未重绘。
 
 #### 逻辑服务边界
 
@@ -315,19 +320,19 @@ sequenceDiagram
 E2EE Channel 使用 RFC 9420 MLS，而不是自研群组加密：
 
 - Organization Identity Service 签发并验证设备身份；Device Directory 发布 MLS KeyPackage。
-- 每个 Channel 对应一个 MLS Group；加入、移除 Device 或 Agent Device 都产生新 Epoch。
+- 每个Channel或DM对应一个E2EE Group；获权人类Device的成员变化推进Epoch，Agent不作为密码成员加入。
 - Server 是 Delivery Service，只保存 MLS Message、Ciphertext Attachment 和必要路由元数据。
 - Attachment 使用随机 Content Key 分块加密；Content Key 经当前 MLS Epoch 安全分发。
 - 设备私钥只存在 OS Secure Storage；换机和恢复必须走显式的设备授权流程。
-- Agent Runtime 若要读取 E2EE Channel，必须作为可见 Device 加入，或只接收一次性加密 Context Bundle。
+- Agent Runtime仅通过短期Capability Grant从授权设备的Context API获得有限上下文，不持有Channel/Epoch Key，不能作为Agent Device入群获得持续解密能力。
 
 E2EE 不隐藏所有元数据。Server 仍可能看到 Tenant、Channel 路由标识、设备、时间、消息长度、IP
 和流量频率。隐私承诺必须准确写成“内容端到端加密”，并单独定义 Metadata 最小化和保留周期。
 端点被解锁、被恶意软件控制，或用户已经导出明文时，E2EE 也不能追回数据；本地加密主要保护
 设备丢失和静态磁盘泄漏。
 
-企业合规还需要 Managed Encryption 模式。Legal Hold、Server Search 和 DLP 与严格 E2EE 存在
-真实冲突，必须由 Organization Policy 按 Space / Channel 选择，不能同时承诺两者完整成立。
+现行v1为E2EE与隔离的多人审批企业恢复，不采用本草案早期的Managed Encryption双模式。
+Legal Hold、服务端正文搜索和DLP不能通过组织策略获得普通解密入口；变更必须重开Scope与安全评审。
 
 ## 7. 服务端数据与事件
 

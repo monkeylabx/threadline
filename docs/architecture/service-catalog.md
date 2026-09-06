@@ -1,7 +1,10 @@
 # Threadline P0 部署服务目录
 
-状态：架构评审草案
+状态：历史架构草案（当前依据为ADR-0002；下方图示及六服务分节为早期记录）
 更新时间：2026-07-24
+
+2026-09-06：[ADR-0002](../adr/0002-server-protocol-storage.md)明确新增独立Recovery Control，禁止按旧六服务图合并恢复权限。
+当前工作负载表如下；下方旧图/分节尚未完整重绘，不作为部署验收证据。私人工作提案不新增服务，见[ADR-0005](../adr/0005-private-work-publication-boundary.md)。
 
 ## 1. 服务数量
 
@@ -9,13 +12,13 @@
 
 | 类别 | 数量 | 是否属于 Threadline 服务端发版 | 内容 |
 | --- | ---: | --- | --- |
-| Threadline 服务端工作负载 | **6** | 是 | web、core、realtime、runtime-gateway、worker、model-control |
+| Threadline 服务端工作负载 | **7** | 是 | web、core、realtime、runtime-gateway、worker、model-control、recovery-control（独立安全域） |
 | 用户设备本地服务 | **3** | 属于客户端发版 | locald、agentd、connectord |
 | 生产基础设施 | **6 类** | 否，企业提供或随私有化方案交付 | PostgreSQL、NATS、Redis、对象存储、Vault/HSM、Observability |
 | 企业集成 | 2 类必选 + 可选项 | 否 | 企业 IdP、内部模型；APNs/FCM 是可选受控出网 |
 
 `Threadline Client` 是桌面、Web 或移动客户端，不计入服务；企业 Ingress 是平台组件，也不计入
-6 个 Threadline 服务端工作负载。
+7 个 Threadline 服务端工作负载。
 
 ## 2. 总体服务架构
 
@@ -23,7 +26,7 @@
 
 [SVG](./assets/threadline-p0-deployed-services.svg) · [PNG](./assets/threadline-p0-deployed-services.png)
 
-### 为什么是 6 个
+### 早期六工作负载的拆分理由（现行增加独立Recovery Control）
 
 - Realtime 长连接的资源模型与普通 API 不同，需要独立扩缩容和优雅摘流。
 - Local Runtime 长连接与 Run Event 可能突发，必须与人类聊天主链路隔离。

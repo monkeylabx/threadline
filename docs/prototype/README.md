@@ -10,6 +10,24 @@
 
 ## 页面
 
+### 当前已确认：V33（2026-09-06）
+
+从仓库根目录执行 `python3 -m http.server 4175 --directory docs/prototype`，打开：
+
+[V33 消息 / 个人工作 / 处理原型](http://localhost:4175/?screen=channel&prototype=im-agent-fusion&variant=A&ui=v33&viewport=desktop)。
+
+- 第一栏默认104px，拖动88–160px，折叠后48px；企业和个人入口左对齐，应用图标仍可见。
+- 第二栏默认180px，拖动112–360px，双击恢复180px；不因第一栏折叠而消失。
+- 外层橙点提示有更新；会话行尾深橙数字，无底色，频道图标与私聊头像保留。
+- 工作主区有持续 AI 对话、底部固定输入框与显式上下文；频道内容不会自动变成 Agent Session。
+
+这是静态交互样例：发送/创建/发布、会话历史、通知数量、目录与 Runtime 状态不能视为真实后端能力。
+V33 确认仅覆盖桌面信息架构；原生窗口、移动端同等交互和完整无障碍仍需独立验证。
+`prototype=private-publish`、`prototype=artifact` 及融合方案B/C保留为历史探索，不是同时生效的产品规范。
+详见 [产品需求](../product-requirements.md)、[文档一致性审查](../design/v33-documentation-audit.md)。
+
+### 领域路由（不等于常驻一级导航）
+
 通过 `?screen=<route>` 直接进入页面：
 
 | Route | 页面 |
@@ -29,7 +47,7 @@
 
 创建任务弹窗使用 `?screen=channel&modal=task`。
 
-## 已实现交互
+## 已有演示交互（不代表生产实现）
 
 - 全局导航和页面深链接。
 - 从频道消息创建 Agent 任务。

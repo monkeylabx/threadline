@@ -1,5 +1,7 @@
 # V20 折叠范围交接
 
+本文按版本保留历史交接；当前界面以[V33原型指南](./README.md)为准，旧版宽度、颜色和位置并非同时生效。
+
 ## Identity
 
 - Issue: #183
@@ -162,3 +164,13 @@ make verify — PASS (51 required surfaces)
 - Surfaces: HTML/CSS/JS、产品需求；无契约、迁移、依赖或权限变化。
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify`通过；浏览器初始宽180，两个计数距行右边缘均8px，图标角标为0；112px时无行溢出，双击恢复180。未截图。
 - Risks/Next: 静态原型，等待用户评估默认密度；无阻塞。
+
+## V33 PR与文档同步交接
+
+- Identity: #183后续，codex/183-ui-v11；原型确认`8d9b8d4`，主分支基线`e2f06d6`，合并`bffeaec`；Head为本文增补提交。
+- Outcome: 用户确认V33并要求PR和工程文档扫描；已统一README/PRD、领域术语、现行导航、拟议验收/实施边界和历史证据适用性。
+- Merge: 保留#185默认Artifact接力/审查及Mobile路由，仅对冲突选择当前缓存版本并保留历史原型切换标记。
+- Surfaces: 原型与产品/架构/安全/验收说明；ADR-0005为Proposed。无Proto、生成SDK、迁移、锁文件或证据JSON改动。
+- Verification: `git diff --check`、Desktop/Mobile JS语法检查、`make verify`通过；本轮21份修改/新增Markdown相对文件链接检查无缺失。合并后V33正常加载、默认第二栏180px；原task-result修订按钮仍进入Run03待开始示意状态。未截图。
+- Risks: 旧架构图尚未重绘，已明确历史适用性；私人存储/发布受众契约和生产验证待完成，未改写A11Y FAIL/HOLD或密码/真机Gate。
+- Next: 以[文档审查记录](../design/v33-documentation-audit.md)和ADR-0005拆分后续契约工作；当前PR只请求原型/文档合并，不请求生产功能批准。

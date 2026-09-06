@@ -12,6 +12,10 @@ Issue：[#31 T017](https://github.com/monkeylabx/threadline/issues/31)
 
 ## 1. 目的、边界与当前依赖
 
+2026-09-06 产品设计增补：[私人工作与发布场景PW-01–PW-08](../acceptance/private-work-publication.md)
+独立于既有AC矩阵，待Scope/ADR及契约评审后纳入执行。V33布局检查不等于私人受众隔离、同步或密码验收通过，
+也不清除 [既有原型无障碍审计](./prototype-accessibility.md) 的FAIL/HOLD。
+
 本文把功能、权限、离线、兼容、E2EE/Recovery、Rust FFI、性能、安全和五平台要求映射到测试层级、责任人、证据与 Gate。它定义如何证明候选制品满足要求，不把测试替代产品签字、安全控制、独立评审或企业试点。
 
 本文已完成测试设计冻结，但不表示任何 Gate 已通过：
