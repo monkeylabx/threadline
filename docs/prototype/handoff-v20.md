@@ -113,3 +113,12 @@ make verify — PASS (51 required surfaces)
 - Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过；浏览器五个标记均18px、同灰色，折叠后三项图标与标记无重叠。
 - Security/data: 无权限变化；示例数字只用于原型，语义由标题说明。
 - Risks/Next: 真实已读状态尚未接入；等待用户评估显示方案，无技术阻塞。未截图。
+
+## V28 follow-up
+
+- Identity: #183，同一原型分支；Base `6a13b4f`，Head 为此增补所在提交。
+- Outcome: 同一个通知组件支持两层显示：外层三项仅在图标右上圆角显示灰色状态点，第二栏保留行尾数量；企业及个人入口保持左对齐。
+- Surfaces: HTML/CSS/JS/PRD；无契约、迁移或依赖变化。
+- Verification: `git diff --check`、`node --check docs/prototype/app.js`、`make verify` 通过。浏览器确认三项图标框均26px，状态标记均8px、top/right均-2px；展开和折叠规则一致，第二栏仍为228px且显示1、4两个数字徽标。未截图。
+- Security/data: 无权限变化；通知状态仍为静态示例，完整语义保留在入口无障碍名称和提示中。
+- Risks/Next: 未接入真实未读状态；等待用户评估，无技术阻塞。

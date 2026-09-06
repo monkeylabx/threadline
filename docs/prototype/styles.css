@@ -1334,7 +1334,6 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 
 /* Shared navigation rows: icon, label, indicator slot. */
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { display: grid; grid-template-columns: 20px minmax(0,1fr) 18px; gap: 4px; padding: 0 2px; justify-items: start; align-items: center; }
-.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > span { width: 20px; }
 .slack-shell-v14:not(.is-app-compact) .v14-app-rail > button > small { white-space: nowrap; }
 .slack-shell-v14.is-app-compact .v14-app-rail > button { position: relative; }
 .v14-context-list > .v25-unread > div { color: var(--ink); font-weight: 700; }
@@ -1350,11 +1349,14 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v14-app-rail .v18-enterprise:hover,
 .v14-app-rail .v18-profile-button:hover { background: #e0e8e3; }
 
-/* V27 — one neutral numeric badge for both navigation layers, never a presence dot. */
+/* Shared notification indicator; count mode is the contextual-list default. */
 .slack-shell-v14 .nav-signal { display: grid; place-items: center; width: 18px; height: 18px; margin: 0; padding: 0; border: 0; border-radius: 5px; background: #e7e7e7; color: #555; font-size: 10px; font-weight: 600; font-style: normal; font-variant-numeric: tabular-nums; line-height: 1; align-self: center; justify-self: end; grid-column: 3; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button { grid-template-columns: 20px 18px; column-gap: 0; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button > span { width: 20px; }
-.slack-shell-v14.is-app-compact .v14-app-rail > button > .nav-signal { grid-column: 2; }
+/* V28 — status at the outer icon corner, numeric detail on the contextual row. */
+.slack-shell-v14:not(.is-app-compact) .v14-app-rail > button { grid-template-columns: 26px minmax(0,1fr); gap: 8px; }
+.slack-shell-v14.is-app-compact .v14-app-rail > button { grid-template-columns: 1fr; column-gap: 0; }
+.slack-shell-v14 .v14-app-rail > button > .nav-icon-frame { position: relative; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: #e9ecea; }
+.slack-shell-v14 .v14-app-rail > button.is-current > .nav-icon-frame { background: #d7e3dc; }
+.slack-shell-v14 .nav-icon-frame > .nav-signal--status { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border: 1.5px solid #f5f7f6; border-radius: 50%; background: #6b7078; grid-column: auto; }
 .slack-shell-v14:not(.is-app-compact) .v19-rail-enterprise,
 .slack-shell-v14:not(.is-app-compact) .v18-personal,
 .slack-shell-v14 .v19-rail-enterprise,

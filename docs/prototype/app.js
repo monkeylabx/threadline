@@ -583,8 +583,14 @@ if (imAgentPrototypeEnabled) {
     const count = Number(row.dataset.navCount);
     if (Number.isInteger(count) && count > 0) {
       const signal = navSignalTemplate.content.cloneNode(true);
-      signal.querySelector(".nav-signal").textContent = count > 9 ? "9+" : String(count);
-      row.append(signal);
+      const badge = signal.querySelector(".nav-signal");
+      if (row.dataset.navMode === "status") {
+        badge.classList.add("nav-signal--status");
+        row.querySelector(".nav-icon-frame").append(signal);
+      } else {
+        badge.textContent = count > 9 ? "9+" : String(count);
+        row.append(signal);
+      }
     }
     row.title = row.dataset.navSignal;
     row.setAttribute("aria-label", row.dataset.navSignal);
