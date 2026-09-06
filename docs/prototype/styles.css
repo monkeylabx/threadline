@@ -1238,6 +1238,36 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.is-org-collapsed .v17-org-name, .slack-shell-v14.is-org-collapsed .v17-org-fold { display: none; }
 .slack-shell-v14.is-org-collapsed .v17-org-logo { cursor: pointer; }
 
+/* V18 — one enterprise menu, one stable list toggle, persistent personal identity. */
+.v17-global-topbar,
+.slack-shell-v14.is-context-collapsed .v17-global-topbar { grid-template-columns: 265px minmax(0,1fr) 92px; }
+.v17-global-topbar .v14-global-search-wrap { grid-column: 2; width: min(520px,100%); min-width: 0; }
+.v17-global-topbar .v14-runtime-status { position: static; grid-column: 3; }
+.v17-org-control { justify-content: space-between; }
+.v17-org-control > .v18-enterprise { justify-content: flex-start; gap: 8px; padding-right: 8px; border-radius: 6px; }
+.v18-enterprise:hover, .v18-list-toggle:hover { background: #e5ece8; }
+.v18-enterprise-logo { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; background: #dcebe5; color: var(--green-strong); font-size: 11px; font-weight: 800; }
+.v18-enterprise strong { font-size: 11px; }
+.v18-enterprise-chevron { color: var(--subtle); font-size: 10px; }
+.v17-org-control > .v18-list-toggle { width: 30px; border-radius: 5px; color: #718078; }
+.v18-list-toggle svg { width: 15px; height: 15px; }
+.slack-shell-v14.is-context-collapsed .v18-enterprise strong,
+.slack-shell-v14.is-context-collapsed .v18-enterprise-chevron { display: none; }
+.slack-shell-v14.is-context-collapsed .v18-list-toggle svg { transform: rotate(180deg); }
+.v14-app-rail > .v18-personal { position: relative; z-index: 10; padding-bottom: 3px; }
+.v14-app-rail .v18-profile-button { position: relative; width: 38px; height: 38px; }
+.v18-profile-button .avatar { width: 30px; height: 30px; font-size: 11px; border-radius: 50%; }
+.v18-profile-button > i { position: absolute; bottom: 3px; right: 2px; width: 9px; height: 9px; border: 2px solid #f5f7f6; border-radius: 50%; background: #36a07c; }
+.v18-profile-menu { position: absolute; bottom: 0; left: 47px; width: 228px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: white; box-shadow: 0 8px 28px rgba(23,43,35,.16); }
+.v18-profile-menu header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.v18-profile-menu header > div { display: grid; gap: 3px; }
+.v18-profile-menu strong { font-size: 12px; }
+.v18-profile-menu small { color: var(--muted); font-size: 10px; }
+.v14-app-rail .v18-profile-menu > button { width: 100%; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 11px; text-align: left; background: #f2f5f3; }
+.v18-profile-menu button > i { width: 7px; height: 7px; border-radius: 50%; background: #36a07c; }
+.v18-personal i.is-dnd { background: #b76553; }
+.v18-menu-note { display: block; margin-top: 8px; color: var(--subtle); font-size: 9px; line-height: 1.5; }
+
 @media (forced-colors: active) {
   button, input, textarea, [role="dialog"], [role="tab"] { forced-color-adjust: auto; }
   button, input, textarea, .composer, .task-event, .context-preview { border-color: ButtonText; }

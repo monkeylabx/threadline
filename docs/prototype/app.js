@@ -578,11 +578,16 @@ if (imAgentPrototypeEnabled) {
   });
   const v14Shell = document.querySelector("[data-v14-shell]");
   const v14ContextToggle = document.querySelector("[data-v14-context-toggle]");
-  const v14ContextReveal = document.querySelector("[data-v14-context-reveal]");
-  const v14OrgToggle = document.querySelector("[data-v14-org-toggle]");
-  const v14OrgReveal = document.querySelector("[data-v14-org-reveal]");
   const v17OrgMenuToggle = document.querySelector("[data-v17-org-menu-toggle]");
   const v17OrgMenu = document.querySelector("[data-v17-org-menu]");
+  const v18ProfileToggle = document.querySelector("[data-v18-profile-toggle]");
+  const v18ProfileMenu = document.querySelector("[data-v18-profile-menu]");
+  const closeV18Menus = () => {
+    v17OrgMenu.hidden = true;
+    v17OrgMenuToggle.setAttribute("aria-expanded", "false");
+    v18ProfileMenu.hidden = true;
+    v18ProfileToggle.setAttribute("aria-expanded", "false");
+  };
   const v14Search = document.querySelector("[data-v14-search]");
   const v14SearchResults = document.querySelector("[data-v14-search-results]");
   const setV14App = (app) => {
@@ -591,11 +596,13 @@ if (imAgentPrototypeEnabled) {
     document.querySelectorAll("[data-v14-context]").forEach((panel) => { panel.hidden = panel.dataset.v14Context !== app; });
     document.querySelectorAll("[data-v14-content]").forEach((panel) => { panel.hidden = panel.dataset.v14Content !== app; });
     v14SearchResults.hidden = true;
+    closeV18Menus();
   };
 
   const setV14ContextCollapsed = (collapsed) => {
     if (!v14Shell || !v14ContextToggle) return;
     v14Shell.classList.toggle("is-context-collapsed", collapsed);
+    closeV18Menus();
     v14ContextToggle.setAttribute("aria-expanded", String(!collapsed));
     v14ContextToggle.setAttribute("aria-label", collapsed ? "展开列表" : "收起列表");
     v14ContextToggle.title = collapsed ? "展开列表" : "收起列表";
@@ -606,38 +613,39 @@ if (imAgentPrototypeEnabled) {
     if (event.detail) event.currentTarget.blur();
   });
 
-  v14ContextReveal?.addEventListener("click", (event) => {
-    setV14ContextCollapsed(false);
-    if (event.detail) event.currentTarget.blur();
-  });
-
-  const setV14OrgCollapsed = (collapsed) => {
-    if (!v14Shell || !v14OrgToggle) return;
-    v14Shell.classList.toggle("is-org-collapsed", collapsed);
-    v14OrgToggle.setAttribute("aria-expanded", String(!collapsed));
-    v14OrgToggle.setAttribute("aria-label", collapsed ? "展开企业信息" : "收起企业信息");
-    v14OrgToggle.title = collapsed ? "展开企业信息" : "收起企业信息";
-    if (v14OrgReveal) {
-      v14OrgReveal.setAttribute("aria-label", collapsed ? "展开企业信息" : "当前企业：北辰科技");
-      v14OrgReveal.title = collapsed ? "展开企业信息" : "当前企业：北辰科技";
-    }
-    if (v17OrgMenu) v17OrgMenu.hidden = true;
-    v17OrgMenuToggle?.setAttribute("aria-expanded", "false");
-  };
-
-  v14OrgToggle?.addEventListener("click", (event) => {
-    setV14OrgCollapsed(true);
-    if (event.detail) event.currentTarget.blur();
-  });
-
-  v14OrgReveal?.addEventListener("click", (event) => {
-    if (v14Shell?.classList.contains("is-org-collapsed")) setV14OrgCollapsed(false);
-    if (event.detail) event.currentTarget.blur();
-  });
   v17OrgMenuToggle?.addEventListener("click", (event) => {
-    if (!v17OrgMenu) return;
-    v17OrgMenu.hidden = !v17OrgMenu.hidden;
-    event.currentTarget.setAttribute("aria-expanded", String(!v17OrgMenu.hidden));
+    const open = v17OrgMenu.hidden;
+    closeV18Menus();
+    v14SearchResults.hidden = true;
+    v17OrgMenu.hidden = !open;
+    event.currentTarget.setAttribute("aria-expanded", String(open));
+  });
+  document.querySelector("[data-v18-current-org]")?.addEventListener("click", () => {
+    closeV18Menus();
+    v17OrgMenuToggle.focus();
+  });
+  v18ProfileToggle?.addEventListener("click", () => {
+    const open = v18ProfileMenu.hidden;
+    closeV18Menus();
+    v14SearchResults.hidden = true;
+    v18ProfileMenu.hidden = !open;
+    v18ProfileToggle.setAttribute("aria-expanded", String(open));
+  });
+  document.querySelector("[data-v18-status-toggle]")?.addEventListener("click", (event) => {
+    const dnd = event.currentTarget.getAttribute("aria-pressed") !== "true";
+    event.currentTarget.setAttribute("aria-pressed", String(dnd));
+    document.querySelector("[data-v18-status-label]").textContent = dnd ? "勿扰中 · 恢复在线" : "在线 · 开启勿扰";
+    document.querySelectorAll("[data-v18-presence-dot], [data-v18-status-dot]").forEach(dot => dot.classList.toggle("is-dnd", dnd));
+    v18ProfileToggle.setAttribute("aria-label", `林嘉 · ${dnd ? "勿扰中" : "在线"} · 个人菜单`);
+  });
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".v17-org-control, .v18-personal")) closeV18Menus();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    const opener = !v17OrgMenu.hidden ? v17OrgMenuToggle : !v18ProfileMenu.hidden ? v18ProfileToggle : null;
+    closeV18Menus();
+    opener?.focus();
   });
   document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
     button.addEventListener("click", () => setV14App(button.dataset.v14AppButton));
