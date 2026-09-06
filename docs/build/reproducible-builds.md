@@ -28,6 +28,23 @@ Homebrew, Snap, Docker, or `go install ...@latest` binary as release evidence.
 P03-01A owns generated-query determinism and migration round trips; this
 toolchain baseline does not create or alter a database.
 
+PostgreSQL versioned migrations use Atlas Community 1.3.0, the Apache-2.0
+distribution. `toolchains.json` pins the macOS, Linux, and Windows binary
+checksums plus the multi-architecture container manifest digest. Download a
+binary only from `https://release.ariga.io/atlas/` using the exact filename and
+SHA-256 in that manifest, or load the locked container from the offline image
+bundle. The standard Atlas distribution and moving `latest-community` tag are
+not substitutes for the pinned Community build.
+
+Run `node scripts/toolchain.mjs doctor --scope=database` to verify both sqlc and
+Atlas. `make -C db migration-integrity` verifies `db/migrations/atlas.sum`
+without database access. `make -C db migration-ledger-test` additionally proves
+clean apply, repeat no-op, and rejection of a migration file that no longer
+matches the committed integrity manifest against a disposable PostgreSQL 16.4
+database. The revision table records execution state, not an independent copy
+of each committed file hash; protected Git history is the authority that
+prevents someone from modifying a merged migration and regenerating the sum.
+
 The Rust SQLite API boundary is pinned to `rusqlite` 0.40.2 with default
 features disabled. P05-01B-1 selects its
 `bundled-sqlcipher-vendored-openssl` feature as the source-built encryption

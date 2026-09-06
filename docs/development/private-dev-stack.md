@@ -19,6 +19,7 @@ reusable credential for its peers:
 | Service | User | Password / database |
 | --- | --- | --- |
 | PostgreSQL | `threadline_postgres_dev` | `threadline-postgres-dev-only`; database `threadline` |
+| Schema migration | one-shot Atlas Community job | Uses the development PostgreSQL owner only during stack initialization |
 | NATS Worker fixture | `threadline_worker_dev` | `threadline-worker-dev-only` |
 | Redis | n/a | `threadline-redis-dev-only` |
 | MinIO | `threadline_minio_dev` | `threadline-minio-dev-only` |
@@ -113,6 +114,16 @@ also carries an exact image-ID manifest and checksum. Offline startup uses
 tag aliases only after the archive, platform, ID manifest, and exact locked
 image set have all been verified. Update tools and image digests together in
 one reviewed change; never move a tag without its digest.
+
+On a new Compose volume, PostgreSQL provisions the deployment-owned `pgcrypto`
+extension and the one-shot `schema-migrate` service applies all pending
+versioned migrations before exiting successfully. Atlas records migration
+execution state in its own revision schema and validates the checked-out
+directory against `atlas.sum`. A later `make -C deploy/compose up` revalidates
+that directory manifest and applies only new migrations. Protected Git history,
+not the revision table, prevents a merged migration from being edited and
+re-hashed. An Atlas failure stops startup; do not add idempotent DDL guards to
+bypass it.
 
 These checks validate tools that are already installed. T016 does not provide
 tool installers, binary packages, or their checksums, so it is not a complete

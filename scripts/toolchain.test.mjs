@@ -48,6 +48,12 @@ test("database pin verification rejects a drifted pgx dependency", () => {
   );
 });
 
+test("database pin verification rejects a drifted Atlas checksum", () => {
+  const database = structuredClone(pins.database);
+  database.atlas.archives["linux-arm64"].sha256 = "0".repeat(64);
+  assert.match(validateDatabasePins(database, databaseSources).join("\n"), /Atlas linux-arm64 SHA-256/);
+});
+
 test("database pin verification rejects pgx text that appears only in a comment", () => {
   const commented = {
     ...databaseSources,

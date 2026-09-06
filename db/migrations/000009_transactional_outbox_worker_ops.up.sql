@@ -1,5 +1,3 @@
-BEGIN;
-
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -776,5 +774,3 @@ REVOKE ALL ON FUNCTION domain.transactional_outbox_backoff_delay_ms(
 REVOKE ALL ON TYPE domain.transactional_outbox_claim_result FROM PUBLIC;
 REVOKE ALL ON TYPE domain.transactional_outbox_renew_result FROM PUBLIC;
 REVOKE ALL ON TYPE domain.transactional_outbox_failure_result FROM PUBLIC;
-
-COMMIT;

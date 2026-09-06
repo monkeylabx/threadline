@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.channels (
   tenant_id text NOT NULL,
   channel_id text NOT NULL,
@@ -159,5 +157,3 @@ CREATE TRIGGER direct_message_participants_append_only_during_creation
 BEFORE INSERT OR UPDATE OR DELETE ON domain.direct_message_participants
 FOR EACH ROW
 EXECUTE FUNCTION domain.enforce_direct_message_participants_append_only();
-
-COMMIT;

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.channel_memberships (
   interval_id bigint GENERATED ALWAYS AS IDENTITY,
   tenant_id text NOT NULL,
@@ -93,5 +91,3 @@ CREATE TRIGGER channel_memberships_interval_lifecycle_guard
 BEFORE UPDATE OR DELETE ON domain.channel_memberships
 FOR EACH ROW
 EXECUTE FUNCTION domain.enforce_channel_membership_interval_lifecycle();
-
-COMMIT;

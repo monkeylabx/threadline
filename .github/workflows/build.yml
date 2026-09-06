@@ -200,12 +200,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-16
+      - name: Install pinned Atlas Community migration runner
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "${RUNNER_TEMP}/atlas" \
+            https://release.ariga.io/atlas/atlas-community-linux-amd64-v1.3.0
+          printf '%s  %s\n' \
+            '10d7913e3dce43ab99b8d71534a4cbadaf11a16dc293adf3b91d10e83a0ac70b' \
+            "${RUNNER_TEMP}/atlas" | sha256sum --check
+          sudo install --mode 0755 "${RUNNER_TEMP}/atlas" /usr/local/bin/atlas
+          atlas version | grep -Fx 'atlas community version v1.3.0'
       - name: Verify mandatory PostgreSQL test environment
         run: |
           test -n "${THREADLINE_TEST_POSTGRES_DSN}"
           test "$(psql --no-psqlrc --tuples-only --no-align --command='SHOW server_version')" = "16.4"
       - name: Test migrations and database contracts
         run: |
+          make -C db migration-integrity
+          make -C db migration-ledger-test
           make -C db migration-test
           make -C db organization-test
           make -C db member-test
