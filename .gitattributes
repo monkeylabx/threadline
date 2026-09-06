@@ -1,0 +1,2 @@
+# Preserve audited/generated upstream source byte-for-byte.
+third_party/libsqlite3-sys/** -whitespace

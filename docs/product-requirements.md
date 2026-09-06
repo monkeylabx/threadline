@@ -831,6 +831,7 @@ Retry 创建新的 Run Attempt。
 - Channel History 在 IM；Runtime Session 只承载 Task Execution。
 - Task Context 使用引用、权限过滤和版本控制。
 - Runtime 输出 Typed Event，不把所有活动伪装成聊天消息。
+- Artifact 协作采用“来源 Task → Agent 交付 → 人工审查 → 下一次修订”的明确接力；当前 Artifact 在审查步骤中展开完整内容、验证证据和决定操作。
 - 企业权限、审计和隔离从第一天进入领域模型。
 - 私有化部署是默认基线；核心服务和数据组件不依赖公网 SaaS。
 - v1 只支持单 Region 私有化部署，不包含 SaaS 多租户运营能力。

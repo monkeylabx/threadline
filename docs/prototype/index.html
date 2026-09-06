@@ -23,10 +23,12 @@
           admin: "profile",
         };
         const view = params.get("view") || mobileRoutes[params.get("screen")] || "messages";
-        window.location.replace(`./mobile/index.html?view=${view}`);
+        const mobileParams = new URLSearchParams({ view });
+        if (params.get("screen") === "task-result") mobileParams.set("mode", "artifact");
+        window.location.replace(`./mobile/index.html?${mobileParams}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=2" />
+    <link rel="stylesheet" href="./styles.css?v=3" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -327,23 +329,18 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         </section>
 
         <section class="screen screen-task-result" data-screen="task-result">
-          <div class="result-layout">
-            <div class="result-main"><div class="result-header"><div><span class="eyebrow">DES-088 · 已完成</span><h2>桌面端空状态视觉修复</h2><p>Nova 完成于 18 分钟前 · Run 02</p></div><span class="result-check">✓</span></div>
-              <div class="delivery-summary"><div><span>交付</span><strong>3 个文件</strong></div><div><span>测试</span><strong class="green-text">24/24 通过</strong></div><div><span>审查</span><strong>等待人工确认</strong></div><div><span>成本</span><strong>¥1.26</strong></div></div>
-              <div class="result-tabs"><button class="is-active">变更</button><button>预览</button><button>运行摘要</button></div>
-              <div class="diff-view"><div class="diff-file"><span>components/EmptyState.tsx</span><strong>+18 −7</strong></div><pre class="code-diff"><span class="context">  export function EmptyState() {</span>
-<span class="removed">-   return &lt;div className="empty-card"&gt;暂无任务&lt;/div&gt;;</span>
-<span class="added">+   return (</span>
-<span class="added">+     &lt;section className="empty-state" aria-labelledby="empty-title"&gt;</span>
-<span class="added">+       &lt;FileSearch aria-hidden="true" /&gt;</span>
-<span class="added">+       &lt;h2 id="empty-title"&gt;这里还没有任务&lt;/h2&gt;</span>
-<span class="added">+       &lt;p&gt;从一段讨论开始，或直接创建工作。&lt;/p&gt;</span>
-<span class="added">+     &lt;/section&gt;</span>
-<span class="added">+   );</span>
-<span class="context">  }</span></pre></div>
-              <div class="result-actions"><button class="secondary-button">要求修改</button><button class="secondary-button">下载 Patch</button><button class="primary-button" id="accept-result"><svg><use href="#i-checks"></use></svg>接受并创建 PR</button></div>
+          <div class="artifact-result">
+            <header class="artifact-result-head"><div><span class="eyebrow">DES-088 · Artifact handoff</span><h2>清楚推进，也能仔细审查</h2><p>任务、Agent 交付、人工决定和下一次修订形成可追踪的协作链。</p></div><span class="artifact-stage">第 3 / 4 步 · 等待你</span></header>
+            <div class="artifact-handoff">
+              <ol class="handoff-rail"><li class="is-done"><span>01</span><div><small>来源任务</small><strong>DES-088</strong><p># 客户端体验 · 2 条消息</p></div></li><li class="is-done"><span>02</span><div><small>Agent 交付</small><strong>Nova · Run 02</strong><p>3 个文件 · 18 分钟前</p></div></li><li class="is-current"><span>03</span><div><small>当前步骤</small><strong>人工审查 Artifact</strong><p>检查内容、证据并作出决定。</p></div></li><li><span>04</span><div><small>若要求修改</small><strong>Nova · Run 03</strong><p>只携带审查意见与当前版本。</p></div></li></ol>
+              <section class="artifact-workbench">
+                <header class="artifact-workbench-head"><span class="file-icon diff">DIFF</span><div><span class="context-label">正在审查 · Artifact v2</span><h3>empty-state-v2.patch</h3><p>Nova · Run 02 · 12 KB · SHA256 已验证</p></div><span class="artifact-file-count">3 files</span></header>
+                <div class="result-tabs"><button class="is-active">变更</button><button>渲染预览</button><button>运行摘要</button></div>
+                <div class="artifact-diff"><div class="diff-file"><span>components/EmptyState.tsx</span><strong>+18 −7</strong></div><pre class="code-diff"><span class="context">  export function EmptyState() {</span><span class="removed">-   return &lt;div className=&quot;empty-card&quot;&gt;暂无任务&lt;/div&gt;;</span><span class="added">+   return (</span><span class="added">+     &lt;section className=&quot;empty-state&quot; aria-labelledby=&quot;empty-title&quot;&gt;</span><span class="added">+       &lt;FileSearch aria-hidden=&quot;true&quot; /&gt;</span><span class="added">+       &lt;h2 id=&quot;empty-title&quot;&gt;这里还没有任务&lt;/h2&gt;</span><span class="added">+       &lt;p&gt;从一段讨论开始，或直接创建工作。&lt;/p&gt;</span><span class="added">+     &lt;/section&gt;</span><span class="added">+   );</span><span class="context">  }</span></pre></div>
+                <div class="artifact-evidence"><div><span>测试</span><strong>24 / 24 通过</strong><small>单元测试 · TypeScript</small></div><div><span>视觉检查</span><strong>3 个视口</strong><small>1440 · 1024 · 430</small></div><div><span>安全</span><strong>内容已验证</strong><small>SHA256 · 无新增权限</small></div></div>
+                <footer class="artifact-review-bar"><div><span class="context-label">你的决定</span><strong>这个 Artifact 可以进入 PR 吗？</strong><p>要求修改会创建 Run 03，并只携带审查意见与当前版本。</p></div><div><button class="secondary-button" id="revise-result">要求 Agent 修订</button><button class="primary-button" id="accept-result"><svg><use href="#i-checks"></use></svg>接受并创建 PR</button></div></footer>
+              </section>
             </div>
-            <aside class="result-aside"><span class="context-label">Agent 总结</span><p>移除了装饰性卡片和过大的标题；空状态现在与任务列表保持同一信息密度，并补充了无障碍标签。</p><span class="context-label">验证</span><div class="check-list"><span>✓ TypeScript</span><span>✓ 单元测试 24 项</span><span>✓ 1440 / 1024 / 430 截图</span><span>✓ 无文字溢出</span></div><span class="context-label">来源</span><button class="source-link" data-route="channel"><span># 客户端体验</span><p>这个页面的布局简直没法看呀……</p></button><span class="context-label">产物</span><button class="artifact-link"><i class="file-icon diff">DIFF</i><div><strong>empty-state-v2.patch</strong><span>12 KB · SHA256 已验证</span></div></button></aside>
           </div>
         </section>
 
@@ -377,6 +374,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=2"></script>
+    <script src="./app.js?v=3"></script>
   </body>
 </html>

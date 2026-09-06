@@ -1,6 +1,6 @@
-use rusqlite::{ffi::ErrorCode, Connection, OptionalExtension};
+use rusqlite::{ffi::ErrorCode, OptionalExtension};
 
-use super::{migrate, StorageError};
+use super::{EncryptedDatabase, StorageError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(i64)]
@@ -68,16 +68,7 @@ pub struct StoredCursor {
     pub cursor_bytes: Vec<u8>,
 }
 
-pub struct Storage<'connection> {
-    connection: &'connection mut Connection,
-}
-
-impl<'connection> Storage<'connection> {
-    pub fn attach(connection: &'connection mut Connection) -> Result<Self, StorageError> {
-        migrate(connection)?;
-        Ok(Self { connection })
-    }
-
+impl EncryptedDatabase {
     pub fn insert_committed_event(
         &mut self,
         event: CommittedEvent<'_>,

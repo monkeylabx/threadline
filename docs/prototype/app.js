@@ -185,6 +185,12 @@ document.querySelector("#accept-result").addEventListener("click", (event) => {
   document.querySelector(".screen-task-result .eyebrow").textContent = "DES-088 · 已交付";
 });
 
+document.querySelector("#revise-result").addEventListener("click", (event) => {
+  event.currentTarget.innerHTML = "<span>✓</span> 已请求 Nova 修订";
+  event.currentTarget.disabled = true;
+  document.querySelector(".artifact-stage").textContent = "第 4 / 4 步 · Run 03 待开始";
+});
+
 document.querySelector("#simulate-offline").addEventListener("click", (event) => {
   event.currentTarget.textContent = "重新连接";
   document.querySelector(".runtime-detail-head .eyebrow").textContent = "本地 Runtime · 连接中断";

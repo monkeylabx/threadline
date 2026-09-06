@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Threadline - 移动端原型</title>
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=7" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -254,12 +254,18 @@ RUN   lease recovery after crash</code></pre></div>
               </section>
 
               <section id="task-panel-artifacts" role="tabpanel" aria-labelledby="task-tab-artifacts" tabindex="0" class="context-scope" hidden>
-                <div class="section-label"><span>任务产物</span><i>1</i></div>
-                <p>测试证据将在 Run 完成后出现在这里。</p>
+                <div class="task-artifact-placeholder"><div class="section-label"><span>任务产物</span><i>1</i></div><p>测试证据将在 Run 完成后出现在这里。</p></div>
+                <div class="mobile-artifact-result" hidden>
+                  <ol class="mobile-handoff-rail"><li class="is-done"><span>1</span><small>任务</small></li><li class="is-done"><span>2</span><small>交付</small></li><li class="is-current"><span>3</span><small>审查</small></li><li><span>4</span><small>修订</small></li></ol>
+                  <section class="mobile-artifact-card"><header><span class="file-badge">DIFF</span><div><span>Artifact v2</span><strong>empty-state-v2.patch</strong><small>Nova · Run 02 · SHA256 已验证</small></div></header><pre><code><b>-</b> empty-card / 暂无任务<br><b>+</b> empty-state / aria-labelledby<br><b>+</b> 空状态说明与下一步入口</code></pre></section>
+                  <div class="mobile-artifact-evidence"><div><span>测试</span><strong>24 / 24</strong></div><div><span>视口</span><strong>3 个</strong></div><div><span>权限</span><strong>无新增</strong></div></div>
+                  <section class="mobile-next-revision"><span>要求修改后的下一步</span><strong>Nova 将创建 Run 03</strong><small>只携带审查意见与当前 Artifact。</small></section>
+                </div>
               </section>
             </div>
 
-            <footer class="sheet-footer"><button class="plain-button"><svg><use href="#i-pause"></use></svg>暂停</button><button class="blue-button">打开完整任务</button></footer>
+            <footer class="sheet-footer task-default-footer"><button class="plain-button"><svg><use href="#i-pause"></use></svg>暂停</button><button class="blue-button">打开完整任务</button></footer>
+            <footer class="sheet-footer artifact-result-footer" hidden><button class="plain-button" id="mobile-revise-artifact">要求 Nova 修订</button><button class="blue-button" id="mobile-accept-artifact">接受并创建 PR</button></footer>
           </section>
 
           <section class="activity-sheet approval-sheet" role="region" aria-labelledby="mobile-approval-title" aria-hidden="true" tabindex="-1">
@@ -367,6 +373,6 @@ RUN   lease recovery after crash</code></pre></div>
       </section>
     </main>
 
-    <script src="./app.js?v=4"></script>
+    <script src="./app.js?v=5"></script>
   </body>
 </html>
