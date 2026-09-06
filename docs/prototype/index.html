@@ -28,7 +28,7 @@
         window.location.replace(`./mobile/index.html?${mobileParams}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=3" />
+    <link rel="stylesheet" href="./styles.css?v=33" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -48,8 +48,10 @@
       <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></symbol>
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
+      <symbol id="i-sidebar" viewBox="0 0 24 24"><path d="M7 4v16M17 7l-5 5 5 5"></path></symbol>
     </svg>
 
+    <template id="nav-signal-template"><em class="nav-signal" aria-hidden="true"></em></template>
     <main class="app-shell" id="app-shell">
       <aside class="org-rail" aria-label="组织导航">
         <span class="brand-mark" aria-label="Threadline">R</span>
@@ -61,10 +63,12 @@
           <button class="rail-button" data-route="files" title="文件与产物"><svg><use href="#i-folder"></use></svg></button>
         </nav>
         <div class="rail-bottom">
+          <button class="rail-collapse" data-org-rail-toggle title="收起应用导航" aria-label="收起应用导航">‹</button>
           <button class="rail-button" data-route="admin" title="管理后台"><svg><use href="#i-settings"></use></svg></button>
           <button class="avatar avatar-user" title="林嘉">林</button>
         </div>
       </aside>
+      <button class="org-rail-reveal" data-org-rail-toggle title="展开应用导航" aria-label="展开应用导航">›</button>
 
       <aside class="channel-sidebar">
         <button class="workspace-switcher" data-route="organization">
@@ -89,6 +93,11 @@
             <button class="sidebar-item"><span class="avatar avatar-small avatar-zhou">周</span><span>周一鸣</span><i class="online"></i></button>
             <button class="sidebar-item"><span class="avatar avatar-small avatar-agent">A</span><span>Atlas · 工程 Agent</span><i class="agent-label">AI</i></button>
           </section>
+          <section class="sidebar-section private-publish-nav" aria-label="我的制作">
+            <div class="section-title"><span>我的制作</span><span class="private-mark">仅自己</span></div>
+            <button class="sidebar-item is-private-selected"><span class="item-symbol">◐</span><span>入职引导页</span><strong>草稿</strong></button>
+            <button class="sidebar-item"><span class="item-symbol">◐</span><span>Q3 复盘摘要</span></button>
+          </section>
           <section class="sidebar-section">
             <div class="section-title"><span>动态</span><span class="count-badge">5</span></div>
             <button class="sidebar-item" data-route="inbox"><span class="item-symbol">@</span><span>提及、回复与 Agent 结果</span><strong>5</strong></button>
@@ -112,8 +121,8 @@
         </header>
 
         <section class="screen screen-channel is-visible" data-screen="channel">
-          <h2 style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道消息</h2>
-          <div class="conversation-pane">
+          <h2 data-default-channel style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">产品研发频道消息</h2>
+          <div class="conversation-pane" data-default-channel>
             <div class="timeline" id="timeline">
               <div class="date-divider"><span>今天</span></div>
               <article class="message-row">
@@ -173,7 +182,7 @@
               </div>
             </div>
           </div>
-          <aside class="context-panel">
+          <aside class="context-panel" data-default-channel>
             <div class="context-heading"><strong>频道上下文</strong><button class="icon-button" title="关闭"><svg><use href="#i-close"></use></svg></button></div>
             <section class="context-block">
               <div class="context-label">活跃任务 <span>1</span></div>
@@ -198,6 +207,326 @@
               <div class="member-line"><span class="avatar avatar-small avatar-sage">S</span><div><strong>Sage</strong><small>决策记录 · 按需</small></div><span class="quiet">休眠</span></div>
             </section>
           </aside>
+
+          <!-- PROTOTYPE #183 V2 — three disposable layouts for private AI making → public IM delivery. -->
+          <section class="private-publish-prototype private-publish-variant-a" data-private-publish-variant="A" aria-labelledby="private-publish-a-title" hidden>
+            <header class="private-publish-header">
+              <div><span class="eyebrow">V2 · 私人制作与公共交付</span><h2 id="private-publish-a-title">双域工作台</h2><p>私人制作与人际频道同时在场；发布是两者之间唯一的显式边界。</p></div>
+              <div class="private-publish-state"><span class="private-dot"></span><b data-private-publish-state-label>私人草稿</b><small>AI 对话未公开</small></div>
+            </header>
+            <div class="private-publish-dual">
+              <section class="private-making-zone" aria-label="私人 AI 制作空间">
+                <div class="zone-heading"><div><span class="zone-kicker private">仅自己可见</span><strong>我的制作 · 入职引导页</strong></div><span class="lock-label">🔒 私人</span></div>
+                <blockquote class="making-brief"><small>来自 #产品研发 · 孟青</small><p>新成员第一次打开桌面端时，需要快速理解频道、文件和任务分别在哪里。</p></blockquote>
+                <div class="making-chat">
+                  <div><span class="avatar avatar-small avatar-user">林</span><p><b>我</b>先做成一个能直接点的引导页，不要解释型长文。</p></div>
+                  <div><span class="avatar avatar-small avatar-nova">N</span><p><b>Nova</b>已把入口收敛成三个动作，并生成当前画布。这里的对话不会随发布进入频道。</p></div>
+                </div>
+                <div class="making-canvas">
+                  <div class="making-browser-bar"><i></i><i></i><i></i><span>onboarding-v1.local</span></div>
+                  <div class="making-canvas-body"><small>WELCOME TO THREADLINE</small><h3>从一次真实协作开始</h3><p>加入频道、找到资料、把讨论变成可交付的工作。</p><div class="making-step-row"><span><b>1</b>进入频道</span><span><b>2</b>查看共享资料</span><span><b>3</b>开始制作</span></div></div>
+                </div>
+                <footer class="making-footer"><span>草稿 v1 · 自动保存在本机</span><button class="primary-button when-draft" data-private-publish-action="publish">发布到 #产品研发</button><button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>发布修订版 v2</button><button class="secondary-button when-published" data-private-publish-action="reset" hidden>继续私人制作</button></footer>
+              </section>
+              <section class="public-channel-zone" aria-label="公共人际频道">
+                <div class="zone-heading"><div><span class="zone-kicker public">团队公开</span><strong># 产品研发</strong></div><span class="member-count">18 位成员</span></div>
+                <div class="public-message"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>引导页今天能给大家看一版吗？重点确认新成员能不能直接上手。</p></div></div>
+                <div class="public-message"><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣</b><p>可以先看真实页面，制作过程不用同步。</p></div></div>
+                <div class="public-empty when-draft"><span>等待林嘉发布</span><p>私人 AI 对话和未发布草稿不会出现在这里。</p></div>
+                <article class="published-artifact when-published when-revision when-v2" hidden>
+                  <header><div><small>林嘉发布了 Artifact</small><strong>桌面端入职引导页</strong></div><span data-artifact-version>v1</span></header>
+                  <div class="published-preview"><small>WELCOME TO THREADLINE</small><b>从一次真实协作开始</b><span>交互式页面 · 可直接预览</span></div>
+                  <footer><span data-public-decision>等待团队审阅</span><div><button class="text-button" data-private-publish-action="request-revision">请求修改</button><button class="primary-button" data-private-publish-action="forward">接受并流转</button></div></footer>
+                </article>
+                <div class="revision-note when-revision" hidden><span class="avatar avatar-small avatar-meng">孟</span><p><b>孟青请求修改</b>把“查看共享资料”改为“找到项目文件”，其他部分可以保留。</p></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="private-publish-prototype private-publish-variant-b" data-private-publish-variant="B" aria-labelledby="private-publish-b-title" hidden>
+            <header class="private-publish-header compact ai-studio-titlebar">
+              <div><span class="eyebrow">V3 · 个人 AI 主工作界面</span><h2 id="private-publish-b-title">AI 工作台</h2><p>对话、资料与成果都留在私人空间；只有你选定的版本会进入团队频道。</p></div>
+              <div class="space-boundary"><span class="is-current">🔒 私人工作台</span><i>发布版本</i><span># 产品研发</span></div>
+            </header>
+            <div class="ai-studio-shell">
+              <aside class="ai-source-context" aria-label="公共频道上下文">
+                <div class="ai-source-head">
+                  <div><span class="zone-kicker public">团队公开</span><strong># 产品研发</strong></div>
+                  <button class="icon-button" title="打开频道"><svg><use href="#i-arrow"></use></svg></button>
+                </div>
+                <div class="ai-source-summary">
+                  <small>今天 · 3 条消息</small>
+                  <article><span class="avatar avatar-tiny avatar-meng">孟</span><p><b>孟青</b>希望新成员一打开客户端就知道下一步做什么。</p></article>
+                  <article><span class="avatar avatar-tiny avatar-zhou">周</span><p><b>周一鸣</b>先用一个真实项目，不要做功能导览。</p></article>
+                  <article><span class="avatar avatar-tiny avatar-user">林</span><p><b>你</b>我先私下做一版可交互页面。</p></article>
+                  <button class="ai-context-button is-added" data-ai-context-toggle><span>✓</span>已作为工作上下文</button>
+                </div>
+                <div class="ai-public-boundary">
+                  <b>公开边界</b>
+                  <p>频道成员看得到上面的讨论，看不到右侧的 Prompt、草稿和工具过程。</p>
+                </div>
+                <div class="public-empty when-draft ai-channel-empty"><span>尚未发布成果</span><p>完成后，从成果区选择版本发布。</p></div>
+                <article class="focus-delivery when-published when-revision when-v2 ai-channel-delivery" hidden>
+                  <small>林嘉 · 刚刚发布</small>
+                  <strong>桌面端入职引导页 <b data-artifact-version>v1</b></strong>
+                  <div>可交互预览</div>
+                  <p data-public-decision>等待团队审阅</p>
+                  <button data-private-publish-action="request-revision">请求修改</button>
+                  <button data-private-publish-action="forward">接受并流转</button>
+                </article>
+              </aside>
+
+              <main class="ai-conversation" aria-label="与 AI 的私人工作对话">
+                <header class="ai-conversation-head">
+                  <div><span class="avatar avatar-small avatar-nova">N</span><div><strong>Nova</strong><small><i></i>本地工作区已连接</small></div></div>
+                  <span class="ai-private-badge">🔒 仅你可见</span>
+                </header>
+                <div class="ai-thread" id="private-ai-thread" role="log" aria-live="polite">
+                  <div class="ai-thread-notice"><span>今天 10:42</span><p>已引用 #产品研发 的 3 条公开消息。新的对话与文件默认保持私密。</p></div>
+                  <article class="ai-turn is-user"><div class="ai-turn-body"><strong>你</strong><p>根据频道讨论，设计一个桌面端入职引导页。不要讲所有功能，让新成员直接进入一个真实项目。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="ai-turn is-agent"><span class="avatar avatar-small avatar-nova">N</span><div class="ai-turn-body"><strong>Nova</strong><p>我把引导收敛成三个动作：进入项目频道、找到项目文件、开始第一次协作。右侧已经生成可编辑页面。</p><button class="ai-artifact-jump">入职引导页 · 草稿 v1 <span>打开成果 →</span></button></div></article>
+                  <article class="ai-turn is-user"><div class="ai-turn-body"><strong>你</strong><p>第一屏再明确一点，告诉他为什么先进入频道。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="ai-turn is-agent"><span class="avatar avatar-small avatar-nova">N</span><div class="ai-turn-body"><strong>Nova</strong><p>已改成“先进入正在发生的工作”，并补充了团队协作说明。这个修改仍然只有你能看到。</p><div class="ai-change-summary"><span>已修改</span><b>标题</b><b>说明文字</b><b>主按钮</b></div></div></article>
+                  <article class="ai-turn is-agent when-revision" hidden><span class="avatar avatar-small avatar-nova">N</span><div class="ai-turn-body"><strong>Nova</strong><p>孟青从公共频道请求修改：把“查看共享资料”改为“找到项目文件”。我已在私人草稿中更新，等待你确认后发布 v2。</p></div></article>
+                </div>
+                <div class="ai-composer-wrap">
+                  <div class="ai-composer-context"><span># 产品研发 · 3 条消息</span><span>入职引导页 · 草稿</span></div>
+                  <div class="ai-composer">
+                    <label for="private-ai-input">继续和 Nova 一起工作</label>
+                    <textarea id="private-ai-input" rows="2" placeholder="告诉 Nova 接下来要修改什么，或拖入文件…" data-ai-composer></textarea>
+                    <div class="ai-composer-toolbar">
+                      <div><button title="添加文件"><svg><use href="#i-paperclip"></use></svg></button><button title="引用频道消息"># 引用</button><button title="选择工具">＋ 工具</button></div>
+                      <div><span data-ai-activity>工作内容不会自动发布</span><button class="ai-send" title="发送" data-ai-send><svg><use href="#i-send"></use></svg></button></div>
+                    </div>
+                  </div>
+                </div>
+              </main>
+
+              <section class="ai-artifact-panel" aria-label="成果编辑与预览">
+                <header class="ai-artifact-head">
+                  <div class="ai-artifact-tabs"><button class="is-active">成果</button><button>资料</button><button>版本</button></div>
+                  <button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button>
+                </header>
+                <div class="ai-artifact-meta">
+                  <div><small>交互页面</small><h3>桌面端入职引导页</h3></div>
+                  <span data-private-publish-state-label>私人草稿</span>
+                </div>
+                <div class="ai-artifact-canvas">
+                  <div class="making-browser-bar"><i></i><i></i><i></i><span>threadline.local / welcome</span><b>预览</b></div>
+                  <article class="ai-artifact-page" contenteditable="true" spellcheck="false" aria-label="可编辑的成果内容">
+                    <em>01 / 03</em>
+                    <small>WELCOME TO THREADLINE</small>
+                    <h3>先进入正在发生的工作</h3>
+                    <p>频道不是通知列表，而是团队正在共同推进工作的地方。从一个真实项目开始认识 Threadline。</p>
+                    <button contenteditable="false">进入 #产品研发</button>
+                    <div><span>接下来</span><b>找到项目文件</b><b>开始第一次协作</b></div>
+                  </article>
+                </div>
+                <footer class="ai-artifact-footer">
+                  <div><span><i></i>所有更改已保存</span><small>最后编辑 10:51 · 仅你可见</small></div>
+                  <button class="primary-button when-draft" data-private-publish-action="publish">发布 v1 到 #产品研发</button>
+                  <button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>发布修订版 v2</button>
+                  <button class="secondary-button when-published when-v2" data-private-publish-action="reset" hidden>创建新的私人修订</button>
+                </footer>
+              </section>
+            </div>
+          </section>
+
+          <section class="private-publish-prototype private-publish-variant-c" data-private-publish-variant="C" aria-labelledby="private-publish-c-title" hidden>
+            <header class="private-publish-header">
+              <div><span class="eyebrow">V2 · 交付流</span><h2 id="private-publish-c-title">制作与流转轨道</h2><p>把个人制作、发布边界和公共消费摆成一条可检查的流转线。</p></div>
+              <button class="secondary-button" data-private-publish-action="reset">重置演示</button>
+            </header>
+            <div class="private-publish-track">
+              <section class="track-public-source"><span class="zone-kicker public">公共 · #产品研发</span><h3>需求来自人际沟通</h3><div class="public-message"><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青</b><p>需要一版新成员能直接操作的引导页。</p></div></div><button class="secondary-button">带到我的制作</button></section>
+              <section class="track-private"><span class="zone-kicker private">私人 · 我的制作</span><h3>林嘉与 Nova 制作</h3><div class="track-private-canvas"><small>本机草稿</small><strong>从一次真实协作开始</strong><span>频道 · 文件 · 制作</span></div><p>Prompt、失败版本和工具过程留在这里。</p><button class="primary-button when-draft" data-private-publish-action="publish">发布 Artifact v1</button><button class="primary-button when-revision" data-private-publish-action="publish-v2" hidden>发布 Artifact v2</button></section>
+              <div class="track-transfer"><span>显式发布</span><i>→</i><small>只携带 Artifact、版本和交付说明</small></div>
+              <section class="track-public-delivery"><span class="zone-kicker public">公共 · #产品研发</span><h3>团队接收交付</h3><div class="public-empty when-draft"><span>等待交付</span><p>这里不会自动同步私人制作。</p></div><article class="track-artifact when-published when-revision when-v2" hidden><small>ART-014 · <b data-artifact-version>v1</b></small><strong>桌面端入职引导页</strong><div>LIVE PREVIEW</div><p data-public-decision>等待团队审阅</p><footer><button data-private-publish-action="request-revision">退回修改</button><button data-private-publish-action="forward">流转 #发布协调</button></footer></article></section>
+              <footer class="track-history"><span>公开交付历史</span><ol><li class="is-current">创建私人草稿</li><li data-flow-history="published">发布 v1</li><li data-flow-history="revision">请求修改</li><li data-flow-history="v2">发布 v2</li></ol></footer>
+            </div>
+          </section>
+
+          <nav class="private-publish-switcher" id="private-publish-switcher" aria-label="私人制作与公共交付原型版本" hidden>
+            <button data-private-publish-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="private-publish-label">A · 双域工作台</span>
+            <button data-private-publish-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
+
+          <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
+          <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
+            <div class="im-agent-stage slack-shell-v14" data-v14-shell data-v14-app="work">
+              <header class="v14-global-topbar v17-global-topbar">
+                <div class="v19-window-tools">
+                  <span class="v19-window-controls" title="原生窗口控制预留区 · 原型示意" aria-label="原生窗口控制预留区，原型示意"><i></i><i></i><i></i></span>
+                  <button class="v18-list-toggle" data-v20-nav-toggle aria-expanded="true" aria-controls="v20-app-rail" title="收起导航文字" aria-label="收起导航文字"><svg><use href="#i-sidebar"></use></svg></button>
+                  <button data-v19-back disabled title="后退" aria-label="后退"><svg class="v19-back"><use href="#i-arrow"></use></svg></button>
+                  <button data-v19-forward disabled title="前进" aria-label="前进"><svg><use href="#i-arrow"></use></svg></button>
+                  <button data-v19-history-toggle title="最近访问" aria-label="最近访问" aria-expanded="false" aria-controls="v19-history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></button>
+                  <div class="v19-history-menu" id="v19-history" data-v19-history hidden><strong>最近访问</strong><div data-v19-history-items></div><small>仅记录本次预览访问的栏目</small></div>
+                </div>
+                <div class="v14-global-search-wrap">
+                  <label class="v14-global-search"><svg><use href="#i-search"></use></svg><input data-v14-search type="search" placeholder="搜索消息、频道、工作或成员" aria-label="全局搜索" /><kbd>⌘ K</kbd></label>
+                  <div class="v14-search-results" data-v14-search-results hidden>
+                    <span>快速前往</span>
+                    <button data-v14-search-item data-result-app="messages"><svg><use href="#i-message"></use></svg><div><b># 产品研发</b><small>频道 · 1 条提及</small></div></button>
+                    <button data-v14-search-item data-result-app="work"><svg><use href="#i-bot"></use></svg><div><b>重做桌面端入职引导</b><small>私人工作 · 今天</small></div></button>
+                    <button data-v14-search-item data-result-app="attention"><svg><use href="#i-checks"></use></svg><div><b>批准本地文件删除</b><small>需要处理 · ENG-248</small></div></button>
+                    <button data-v14-search-item data-result-app="messages"><svg><use href="#i-users"></use></svg><div><b>孟青</b><small>组织成员</small></div></button>
+                  </div>
+                </div>
+                <button class="v14-runtime-status"><i></i><span>Runtime 在线</span></button>
+              </header>
+              <nav class="v14-app-rail" id="v20-app-rail" aria-label="应用">
+                <div class="v22-sidebar-resizer v23-nav-resizer" data-v23-resizer role="separator" tabindex="0" aria-label="调整应用导航宽度" aria-orientation="vertical" aria-controls="v20-app-rail" aria-valuemin="88" aria-valuemax="160" aria-valuenow="104" title="拖动调整导航宽度 · 双击恢复默认 · 左右键微调"></div>
+                <div class="v17-org-control v19-rail-enterprise">
+                  <button class="v18-enterprise" data-v17-org-menu-toggle aria-expanded="false" aria-controls="v18-enterprise-menu" aria-label="北辰科技 · 企业菜单" title="北辰科技 · 企业菜单"><span class="v18-enterprise-logo">北</span></button>
+                  <div class="v17-org-menu" id="v18-enterprise-menu" data-v17-org-menu hidden><span>当前企业</span><button class="is-current" data-v18-current-org><b>北</b><strong>北辰科技</strong><i>✓</i></button><small class="v18-menu-note">原型仅展示当前企业</small></div>
+                </div>
+                <button data-v14-app-button="messages" data-nav-mode="status" data-nav-count="1" data-nav-signal="消息 · 1 条未读提及"><span class="nav-icon-frame"><svg><use href="#i-message"></use></svg></span><small>消息</small></button>
+                <button class="is-current" data-v14-app-button="work" data-nav-mode="status" data-nav-count="1" data-nav-signal="私人工作 · 1 项工作有更新" aria-current="page"><span class="nav-icon-frame"><svg><use href="#i-bot"></use></svg></span><small>工作</small></button>
+                <button data-v14-app-button="attention" data-nav-mode="status" data-nav-count="2" data-nav-signal="需要处理 · 2 项"><span class="nav-icon-frame"><svg><use href="#i-checks"></use></svg></span><small>处理</small></button>
+                <footer class="v18-personal">
+                  <button class="v18-profile-button" data-v18-profile-toggle aria-label="林嘉 · 个人菜单" title="林嘉 · 个人菜单" aria-expanded="false" aria-controls="v18-profile-menu"><span class="avatar avatar-user">林</span><i data-v18-presence-dot></i></button>
+                  <div class="v18-profile-menu" id="v18-profile-menu" data-v18-profile-menu hidden><header><span class="avatar avatar-user">林</span><div><strong>林嘉</strong><small>北辰科技</small></div></header><button data-v18-status-toggle aria-pressed="false"><i data-v18-status-dot></i><span data-v18-status-label>在线 · 开启勿扰</span></button><small class="v18-menu-note">状态仅在本次原型预览中生效</small></div>
+                </footer>
+              </nav>
+              <aside class="v14-context-sidebar" id="v18-context-sidebar" aria-label="当前应用导航">
+                <div class="v22-sidebar-resizer" data-v22-resizer role="separator" tabindex="0" aria-label="调整列表宽度" aria-orientation="vertical" aria-controls="v18-context-sidebar" aria-valuemin="112" aria-valuemax="360" aria-valuenow="180" title="拖动调整列表宽度 · 双击恢复默认 · 左右键微调"></div>
+                <section data-v14-context="messages" hidden>
+                  <header><div><strong>消息</strong><small>北辰科技</small></div><button title="新建频道或私聊"><svg><use href="#i-plus"></use></svg></button></header>
+                  <div class="v14-context-list"><span>频道</span><button class="is-current v25-unread" data-nav-count="1" data-nav-signal="产品研发 · 1 条未读提及"><b>#</b><div>产品研发</div></button><button class="v25-unread" data-nav-count="4" data-nav-signal="客户端体验 · 4 条未读消息"><b>#</b><div>客户端体验</div></button><button><b>#</b><div>安全与合规</div></button><button><b>#</b><div>发布协调</div></button><span>私聊</span><button title="孟青 · 在线" aria-label="孟青 · 在线"><em class="avatar avatar-tiny avatar-meng">孟</em><div>孟青</div></button><button><em class="avatar avatar-tiny avatar-zhou">周</em><div>周一鸣</div></button></div>
+                </section>
+                <section data-v14-context="work">
+                  <header><div><strong>私人工作</strong><small>仅保存在你的设备</small></div><button data-v14-new-work title="新建私人工作"><svg><use href="#i-plus"></use></svg></button></header>
+                  <div class="v14-context-list v14-work-list"><span>最近</span><button class="is-current"><svg><use href="#i-bot"></use></svg><div><b>重做桌面端入职引导</b><small>引用 #产品研发</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>整理 Q3 客户反馈</b><small>今天 09:16 · 未关联频道</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>检查离线同步方案</b><small>昨天 · #客户端体验</small></div></button><button><svg><use href="#i-bot"></use></svg><div><b>准备产品评审材料</b><small>周一 · Nova</small></div></button></div>
+                  <footer><i></i><span>本地 Runtime 在线</span></footer>
+                </section>
+                <section data-v14-context="attention" hidden>
+                  <header><div><strong>需要处理</strong><small>2 项待确认</small></div></header>
+                  <div class="v14-context-list v14-attention-list"><span>今天</span><button class="is-current"><b>!</b><div><strong>批准本地文件删除</strong><small>Atlas · ENG-248</small></div><i>审批</i></button><button><b>✓</b><div><strong>入职引导页已完成</strong><small>Nova · 等待确认成果</small></div><i>结果</i></button></div>
+                </section>
+              </aside>
+              <section class="v14-content-area">
+                <section class="v14-content-view v14-message-content" data-v14-content="messages" hidden>
+                  <header><div><b>#</b><span><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></span></div><button><svg><use href="#i-users"></use></svg></button></header>
+                  <main><div class="focus-day">今天</div><article><span class="avatar avatar-meng">孟</span><div><b>孟青 <time>10:18</time></b><p>桌面端离线恢复还有一个问题：旧同步进程可能覆盖新状态。</p></div></article><article><span class="avatar avatar-zhou">周</span><div><b>周一鸣 <time>10:21</time></b><p>建议把 Run Lease 和消息同步分开，Runtime 使用 fencing token。</p></div></article><article class="is-agent"><span class="avatar avatar-agent">A</span><div><b>Atlas · Agent <time>10:22</time></b><p>我可以根据上方两条消息建立一个任务，不读取频道其他历史。</p><button>开始执行</button></div></article></main>
+                  <div class="v14-message-composer"><textarea rows="2" placeholder="发消息到 #产品研发"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>消息</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                </section>
+                <section class="v14-content-view v14-work-content" data-v14-content="work">
+                  <header><div><div class="work-breadcrumb"><button># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="v14-work-title">重做桌面端入职引导</h2></div><div><button class="directory-picker"><svg><use href="#i-folder"></use></svg><span>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div></header>
+                  <main><div class="focus-day">今天 10:42 · 仅你可见</div><article class="focus-turn user"><div><b>你</b><p>根据频道里的讨论，重做桌面端入职引导。让新成员直接进入真实工作。</p></div><span class="avatar avatar-small avatar-user">林</span></article><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已读取你明确引用的 3 条频道消息，其他频道内容不会进入本次工作。</p><button class="focus-inline-result"><span>入职引导页 · 草稿 v1</span><small>已更新 3 处</small><i>打开预览 →</i></button></div></article><article class="focus-turn user"><div><b>你</b><p>把第二步改成邀请一位同事共同编辑。</p></div><span class="avatar avatar-small avatar-user">林</span></article><article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已经修改。当前版本仍是私人草稿，准备好后可以共享到 #产品研发。</p></div></article></main>
+                  <div class="focus-composer-dock"><div class="focus-agent-composer"><div><span>#产品研发 · 3</span><span>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div></div>
+                </section>
+                <section class="v14-content-view v14-attention-content" data-v14-content="attention" hidden>
+                  <header><div><strong>批准本地文件删除</strong><small>Atlas · ENG-248 · 2 分钟前</small></div></header>
+                  <main><span class="v14-risk-mark">!</span><h2>Agent 请求删除 3 个本地缓存文件</h2><p>该操作只影响你授权的 <code>~/Projects/threadline</code> 工作目录，频道成员不会看到私人工作内容。</p><div><span>能力</span><b>workspace.file.delete</b><span>范围</span><b>3 个缓存文件</b><span>发起者</span><b>Atlas</b></div><footer><button>拒绝</button><button class="primary-button">批准一次</button></footer></main>
+                </section>
+              </section>
+            </div>
+
+            <div class="im-agent-stage overlay-stage" hidden>
+              <aside class="agent-history-rail unified-conversation-nav" aria-label="Threadline 对话导航">
+                <header class="unified-org-header"><span class="unified-org-mark">北</span><div><strong>北辰科技</strong><small>产品与工程</small></div><button title="切换组织" aria-label="切换组织">⌄</button></header>
+                <div class="unified-sidebar-tools">
+                  <label class="unified-search"><svg><use href="#i-search"></use></svg><input data-unified-search type="search" placeholder="搜索频道、工作或成员" aria-label="搜索频道、私人工作或组织成员" /><kbd>⌘K</kbd></label>
+                  <button class="sidebar-panel-toggle" data-unified-nav-toggle aria-expanded="true" title="收起侧栏" aria-label="收起侧栏"><svg><use href="#i-sidebar"></use></svg></button>
+                </div>
+                <nav class="collapsed-category-nav" aria-label="侧栏分类">
+                  <button data-collapsed-nav-target="attention" title="需要处理" aria-label="展开需要处理"><span>!</span><b>2</b></button>
+                  <button data-collapsed-nav-target="communication" title="沟通" aria-label="展开沟通"><svg><use href="#i-message"></use></svg><b>@</b></button>
+                  <button data-collapsed-nav-target="work" title="私人工作" aria-label="展开私人工作"><svg><use href="#i-bot"></use></svg><i></i></button>
+                </nav>
+                <button class="attention-inbox" data-attention-inbox><span>!</span><div><strong>需要处理</strong><small>1 个审批 · 1 个 Agent 结果</small></div><b>2</b></button>
+                <div class="unified-nav-scroll">
+                  <section class="unified-nav-section communication-section">
+                    <div class="unified-section-title"><span>沟通</span><button data-new-communication title="新建频道或私聊" aria-label="新建频道或发起私聊"><svg><use href="#i-plus"></use></svg></button></div>
+                    <div class="communication-create-menu" data-communication-create-menu hidden><button data-new-channel><b>#</b><span>新建频道</span></button><button data-new-conversation><svg><use href="#i-users"></use></svg><span>发起私聊</span></button></div>
+                    <button class="unified-channel"><b>#</b><span>产品研发</span><i class="has-mention">@1</i></button>
+                    <button class="unified-dm"><span class="avatar avatar-tiny avatar-meng">孟</span><b>孟青</b><i></i></button>
+                    <button class="unified-channel"><b>#</b><span>客户端体验</span><i class="has-unread">4</i></button>
+                    <button class="unified-dm"><span class="avatar avatar-tiny avatar-zhou">周</span><b>周一鸣</b></button>
+                    <button class="unified-channel"><b>#</b><span>安全与合规</span></button>
+                    <button class="unified-channel"><b>#</b><span>发布协调</span></button>
+                  </section>
+                  <section class="unified-nav-section agent-history-list">
+                    <div class="unified-section-title"><span>私人工作</span><button data-new-agent-work title="新建私人工作" aria-label="新建私人工作"><svg><use href="#i-plus"></use></svg></button></div>
+                    <button class="is-current" data-agent-history-item data-history-title="重做桌面端入职引导" data-history-channel="# 产品研发"><b>重做桌面端入职引导</b><small>🔒 仅你可见 · 引用 #产品研发</small></button>
+                    <button data-agent-history-item data-history-title="整理 Q3 客户反馈" data-history-channel="未关联频道"><b>整理 Q3 客户反馈</b><small>今天 09:16 · 未关联频道</small></button>
+                    <button data-agent-history-item data-history-title="检查离线同步方案" data-history-channel="# 客户端体验"><b>检查离线同步方案</b><small>昨天 · 来自 #客户端体验</small></button>
+                    <button data-agent-history-item data-history-title="准备产品评审材料" data-history-channel="未关联频道"><b>准备产品评审材料</b><small>周一 · Nova</small></button>
+                  </section>
+                </div>
+                <footer><span><i></i>消息与本地 Runtime 在线</span><small>私人工作不会自动共享</small></footer>
+              </aside>
+              <section class="agent-focus-content">
+              <header class="focus-app-header">
+                <div class="unified-work-heading"><div><div class="work-breadcrumb"><button data-work-parent># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="im-agent-a-title" data-agent-work-title>重做桌面端入职引导</h2></div></div>
+                <div class="focus-header-actions"><button class="directory-picker" data-directory-picker><svg><use href="#i-folder"></use></svg><span data-directory-label>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div>
+                <div class="directory-menu" data-directory-menu hidden>
+                  <span>本地工作目录</span>
+                  <button class="is-current" data-directory-option="~/Projects/threadline"><svg><use href="#i-folder"></use></svg><div><b>threadline</b><small>~/Projects/threadline</small></div><i>✓</i></button>
+                  <button data-directory-option="~/Work/client-app"><svg><use href="#i-folder"></use></svg><div><b>client-app</b><small>~/Work/client-app</small></div><i></i></button>
+                  <button data-directory-option="~/Documents/product-notes"><svg><use href="#i-folder"></use></svg><div><b>product-notes</b><small>~/Documents/product-notes</small></div><i></i></button>
+                  <button class="choose-directory"><span>＋</span>选择其他本地目录…</button>
+                </div>
+              </header>
+              <main class="focus-agent-main">
+                <div class="focus-agent-thread">
+                  <div class="focus-day">今天 10:42 · 仅你可见</div>
+                  <article class="focus-turn user"><div><b>你</b><p>根据频道里的讨论，重做桌面端入职引导。让新成员直接进入真实工作，不要做功能说明书。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>我会把第一步聚焦到“进入正在发生的工作”。已读取你明确引用的 3 条频道消息，其他频道内容不会进入本次工作。</p><button class="focus-inline-result"><span>入职引导页 · 草稿 v1</span><small>已更新 3 处</small><i>打开预览 →</i></button></div></article>
+                  <article class="focus-turn user"><div><b>你</b><p>把第二步改成邀请一位同事共同编辑。</p></div><span class="avatar avatar-small avatar-user">林</span></article>
+                  <article class="focus-turn agent"><span class="avatar avatar-small avatar-nova">N</span><div><b>Nova</b><p>已经修改。当前版本仍是私人草稿，准备好后可以共享到 #产品研发。</p></div></article>
+                </div>
+                <div class="focus-composer-dock">
+                  <div class="focus-agent-composer"><div><span data-work-context>#产品研发 · 3</span><span data-work-artifact>入职引导页 v1</span></div><textarea rows="2" placeholder="继续告诉 Nova 要做什么…"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · 工作不会自动共享</span><button class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                </div>
+              </main>
+              </section>
+            </div>
+          </section>
+
+          <section class="im-agent-prototype im-agent-variant-b" data-im-agent-variant="B" aria-labelledby="im-agent-b-title" hidden>
+            <div class="im-agent-stage edge-stage">
+              <header class="focus-app-header"><div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-b-title">通信边缘轨</h2></div><button class="context-pill">上下文 3</button></header>
+              <main class="edge-agent-work">
+                <div class="edge-agent-copy"><span>入职引导页 · 私人草稿</span><h3>让新成员从真实协作开始</h3><p>Nova 正在根据你的反馈调整第二步。右侧边缘轨只显示需要你注意的人，不展示频道信息流。</p></div>
+                <div class="edge-result-preview"><small>WELCOME TO THREADLINE</small><strong>先进入正在发生的工作</strong><p>找到项目、邀请同事，然后完成第一次协作。</p><button>继续修改</button></div>
+                <div class="edge-composer"><textarea rows="2" placeholder="继续工作…"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </main>
+              <aside class="communication-edge">
+                <button class="edge-home"><svg><use href="#i-message"></use></svg><b>3</b></button>
+                <button class="edge-person is-current"><span class="avatar avatar-small avatar-meng">孟</span><i></i></button>
+                <button class="edge-person"><span class="avatar avatar-small avatar-zhou">周</span></button>
+                <span class="edge-divider"></span>
+                <button class="edge-channel">#<b>1</b></button>
+              </aside>
+              <aside class="edge-peek"><small>孟青 · 刚刚</small><p>第一屏能不能再直接一点？</p><div><button>稍后</button><button>快速回复</button></div></aside>
+            </div>
+          </section>
+
+          <section class="im-agent-prototype im-agent-variant-c" data-im-agent-variant="C" aria-labelledby="im-agent-c-title" hidden>
+            <div class="im-agent-stage pinned-stage">
+              <main class="pinned-agent-work">
+                <header class="focus-app-header"><div><span class="focus-private-mark">私人 Agent 工作</span><h2 id="im-agent-c-title">重做桌面端入职引导</h2></div><button class="context-pill">🔒 仅自己可见</button></header>
+                <div class="pinned-focus-body"><span>当前成果</span><h3>先进入正在发生的工作</h3><p>从一个真实项目开始理解 Threadline，而不是浏览一套功能说明。</p><div class="pinned-progress"><i></i><i></i><i></i></div><button class="primary-button">打开成果预览</button></div>
+                <div class="pinned-composer"><textarea rows="2" placeholder="继续和 Nova 工作…"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </main>
+              <aside class="pinned-channel">
+                <header><div><span>已固定频道</span><strong># 产品研发</strong></div><button class="icon-button" title="取消固定"><svg><use href="#i-close"></use></svg></button></header>
+                <div class="pinned-channel-note">只有当当前工作需要持续协作时，频道才固定在旁边。</div>
+                <article><span class="avatar avatar-small avatar-meng">孟</span><div><b>孟青 <time>10:51</time></b><p>第一屏能不能再直接一点？</p><button>引用到 Agent 工作</button></div></article>
+                <article><span class="avatar avatar-small avatar-zhou">周</span><div><b>周一鸣 <time>10:53</time></b><p>第二步最好让他马上找到一个协作者。</p></div></article>
+                <div class="pinned-channel-composer"><textarea rows="2" placeholder="回复 #产品研发"></textarea><button><svg><use href="#i-send"></use></svg></button></div>
+              </aside>
+            </div>
+          </section>
+
+          <nav class="im-agent-switcher" id="im-agent-switcher" aria-label="Agent 工作中的 IM 融合方案" hidden>
+            <button data-im-agent-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="im-agent-label">A · 统一对话</span>
+            <button data-im-agent-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
         </section>
 
         <section class="screen screen-tasks" data-screen="tasks">
@@ -329,7 +658,7 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         </section>
 
         <section class="screen screen-task-result" data-screen="task-result">
-          <div class="artifact-result">
+          <div class="artifact-result" data-default-task-result>
             <header class="artifact-result-head"><div><span class="eyebrow">DES-088 · Artifact handoff</span><h2>清楚推进，也能仔细审查</h2><p>任务、Agent 交付、人工决定和下一次修订形成可追踪的协作链。</p></div><span class="artifact-stage">第 3 / 4 步 · 等待你</span></header>
             <div class="artifact-handoff">
               <ol class="handoff-rail"><li class="is-done"><span>01</span><div><small>来源任务</small><strong>DES-088</strong><p># 客户端体验 · 2 条消息</p></div></li><li class="is-done"><span>02</span><div><small>Agent 交付</small><strong>Nova · Run 02</strong><p>3 个文件 · 18 分钟前</p></div></li><li class="is-current"><span>03</span><div><small>当前步骤</small><strong>人工审查 Artifact</strong><p>检查内容、证据并作出决定。</p></div></li><li><span>04</span><div><small>若要求修改</small><strong>Nova · Run 03</strong><p>只携带审查意见与当前版本。</p></div></li></ol>
@@ -342,6 +671,86 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
               </section>
             </div>
           </div>
+          <!-- PROTOTYPE #183 — three throwaway answers to: how should Artifact become primary IM content? -->
+          <section class="artifact-prototype artifact-variant-a" data-artifact-variant="A" aria-labelledby="artifact-variant-a-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · Artifact 01 · 版本 3</span><h2 id="artifact-variant-a-title">画布审阅</h2><p>任务、产物与批注围绕同一个可操作预览。</p></div>
+              <div class="artifact-status"><span>待 2 人确认</span><span>Nova · Run 02</span></div>
+            </header>
+            <div class="artifact-canvas-layout">
+              <section class="artifact-canvas" aria-label="新成员引导流程交互预览">
+                <div class="artifact-canvas-toolbar"><span class="artifact-type">交互原型</span><strong>新成员引导 · Runtime 连接</strong><span>1,440 px</span></div>
+                <div class="artifact-browser">
+                  <div class="artifact-browser-bar"><span></span><span></span><span></span><div>threadline.local/onboarding</div></div>
+                  <div class="artifact-browser-body">
+                    <aside><b>TL</b><i></i><i></i><i></i></aside>
+                    <main>
+                      <div class="artifact-browser-nav"><span>工作区</span><strong>连接你的 Runtime</strong><em>步骤 2 / 3</em></div>
+                      <section class="artifact-browser-hero"><div class="artifact-runtime-mark">M</div><div><small>本地设备</small><h3>Mac Studio 已发现</h3><p>只在你确认后授予这个工作区访问权限。</p></div><button>继续连接</button></section>
+                      <div class="artifact-browser-steps"><span class="is-done">1<span>登录组织</span></span><span class="is-current">2<span>连接设备</span></span><span>3<span>选择工作区</span></span></div>
+                    </main>
+                  </div>
+                </div>
+                <footer class="artifact-canvas-footer"><span>来源：# 客户端体验 · 3 条指定消息</span><button class="text-button">在频道定位</button></footer>
+              </section>
+              <aside class="artifact-review-rail" aria-label="当前版本批注">
+                <div class="artifact-review-head"><div><span class="context-label">审阅 · 版本 3</span><strong>2 个待确认点</strong></div><button class="icon-button" title="更多"><svg><use href="#i-more"></use></svg></button></div>
+                <article class="artifact-comment is-active"><span class="comment-pin">1</span><div><header><strong>孟青</strong><time>刚刚</time></header><p>解释文字应该先说清楚不会上传本地路径。</p><button>回复</button></div></article>
+                <article class="artifact-comment"><span class="comment-pin">2</span><div><header><strong>周一鸣</strong><time>8 分钟前</time></header><p>“继续连接”前补一个权限范围预览。</p><button>回复</button></div></article>
+                <div class="artifact-revision-ask"><span class="context-label">下一步</span><p>把 2 条意见交给 Nova，在当前 Artifact 上创建版本 4。</p><button class="primary-button">交给 Agent 修订</button></div>
+              </aside>
+            </div>
+            <footer class="artifact-prototype-actions"><button class="secondary-button">退回当前版本</button><button class="primary-button">确认版本 3</button></footer>
+          </section>
+
+          <section class="artifact-prototype artifact-variant-b" data-artifact-variant="B" aria-labelledby="artifact-variant-b-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · Artifact 01</span><h2 id="artifact-variant-b-title">版本舞台</h2><p>先对比真实成果，再决定采用哪一次 Agent 修订。</p></div>
+              <div class="artifact-status"><span>当前：版本 3</span><span>3 次修订</span></div>
+            </header>
+            <div class="artifact-stage-layout">
+              <section class="artifact-stage" aria-label="版本 3 的交互原型预览">
+                <div class="artifact-stage-label"><span class="artifact-type">交互原型</span><strong>版本 3 · Nova · 12:26</strong><span class="status status-running">待审阅</span></div>
+                <div class="artifact-stage-preview">
+                  <div class="stage-sidebar"><b>TL</b><span>消息</span><span class="is-active">连接设备</span><span>工作区</span></div>
+                  <div class="stage-main"><div class="stage-topline"><span>开始使用</span><em>02 / 03</em></div><div class="stage-card"><div class="artifact-runtime-mark">M</div><span class="status status-running">设备在线</span><h3>连接 Mac Studio</h3><p>Threadline 会在此设备上运行 Agent；任何文件访问均需你逐次授权。</p><button>查看权限范围</button><button class="stage-primary">连接并继续</button></div><div class="stage-progress"><i></i><i class="is-active"></i><i></i></div></div>
+                </div>
+              </section>
+              <section class="artifact-version-strip" aria-label="Artifact 版本历史">
+                <div class="artifact-version-head"><div><span class="context-label">版本轨迹</span><strong>同一个 Artifact，不产生新的聊天附件</strong></div><button class="text-button">查看完整历史</button></div>
+                <div class="artifact-version-list"><button><span>v1</span><div><strong>初稿</strong><small>Nova · 11:42</small></div><em>未审阅</em></button><button><span>v2</span><div><strong>补充权限提醒</strong><small>Nova · 12:08</small></div><em>孟青评论</em></button><button class="is-selected"><span>v3</span><div><strong>明确本地边界</strong><small>Nova · 12:26</small></div><em>当前</em></button></div>
+              </section>
+              <aside class="artifact-decision-sheet">
+                <span class="context-label">本次决定</span><h3>版本 3 是否可进入发布任务？</h3><p>接受后，DES-088 将把当前 Artifact 作为可复用交付物，而不是把 Agent 总结写回频道。</p><div class="artifact-decision-facts"><span><b>来源</b># 客户端体验</span><span><b>审阅者</b>林嘉、孟青</span><span><b>下一动作</b>创建发布任务</span></div><button class="secondary-button">要求 Nova 再修订</button><button class="primary-button">接受版本 3</button>
+              </aside>
+            </div>
+          </section>
+
+          <section class="artifact-prototype artifact-variant-c" data-artifact-variant="C" aria-labelledby="artifact-variant-c-title" hidden>
+            <header class="artifact-prototype-header">
+              <div><span class="eyebrow">DES-088 · 由讨论生成的交付</span><h2 id="artifact-variant-c-title">交付三栏</h2><p>把“从哪来、交付什么、接下来由谁决定”并列，而不是串成消息流。</p></div>
+              <div class="artifact-status"><span>Agent：Nova</span><span>Artifact 01 / 01</span></div>
+            </header>
+            <div class="artifact-flow-layout">
+              <section class="artifact-provenance-lane" aria-label="任务来源与约束">
+                <span class="context-label">任务上下文</span><h3>DES-088</h3><p>移动端 Runtime 连接引导</p><div class="artifact-source-quote"><small># 客户端体验 · 孟青</small><p>第一次打开时，用户不应把本地 Runtime 当成云端服务。</p></div><div class="artifact-source-quote"><small>约束</small><p>不暴露本机目录；所有访问权限必须在执行前解释。</p></div><div class="artifact-provenance-meta"><span><b>Run</b>02 · 已完成</span><span><b>输入</b>3 条消息</span><span><b>权限</b>无文件读取</span></div><button class="text-button">打开完整 Task</button>
+              </section>
+              <section class="artifact-board" aria-label="当前 Artifact">
+                <div class="artifact-board-head"><div><span class="artifact-type">交互原型</span><strong>Runtime 连接引导</strong></div><button class="secondary-button">全屏预览</button></div>
+                <div class="artifact-board-preview"><div class="board-device"><div class="board-device-head"><span>09:41</span><b>Threadline</b><span>•••</span></div><div class="board-device-content"><small>开始使用</small><h3>连接你的工作设备</h3><p>Agent 只会在这台设备和你授权的目录中工作。</p><div class="board-device-row"><span class="artifact-runtime-mark">M</span><div><strong>Mac Studio</strong><small>已验证 · 本地</small></div><i>›</i></div><button>查看授权范围</button><em>继续</em></div></div></div>
+                <div class="artifact-board-footer"><span>版本 3 · 由 Nova 在 Run 02 生成</span><button class="text-button">查看差异</button></div>
+              </section>
+              <aside class="artifact-next-lane" aria-label="审阅与下一步">
+                <span class="context-label">团队决定</span><div class="artifact-vote"><span class="avatar avatar-small avatar-user">林</span><div><strong>林嘉</strong><small>等待确认</small></div><button>查看</button></div><div class="artifact-vote"><span class="avatar avatar-small avatar-meng">孟</span><div><strong>孟青</strong><small>要求补充说明</small></div><button>定位</button></div><div class="artifact-next-callout"><span>修订请求</span><p>补上“不会上传本地路径”的解释，然后新建版本 4。</p><button class="primary-button">发送给 Nova</button></div><button class="secondary-button artifact-accept">接受当前版本</button>
+              </aside>
+            </div>
+          </section>
+
+          <nav class="artifact-prototype-switcher" id="artifact-prototype-switcher" aria-label="Artifact 原型版本" hidden>
+            <button type="button" data-artifact-cycle="previous" aria-label="上一个方案">←</button>
+            <span id="artifact-prototype-label">A · 画布审阅</span>
+            <button type="button" data-artifact-cycle="next" aria-label="下一个方案">→</button>
+          </nav>
         </section>
 
         <section class="screen screen-runtime" data-screen="runtime">
@@ -374,6 +783,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
         <div class="modal-actions"><button class="secondary-button modal-close">取消</button><button class="primary-button" id="confirm-task"><svg><use href="#i-play"></use></svg>创建并运行</button></div>
       </section>
     </div>
-    <script src="./app.js?v=3"></script>
+    <script src="./app.js?v=33"></script>
   </body>
 </html>

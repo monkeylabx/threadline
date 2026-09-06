@@ -116,6 +116,10 @@ Fallback 只能在预先批准的候选中选择，不能因故障绕过数据�
 
 ### 3.6 Run、Artifact 与审计回流
 
+以下规则适用于获权团队Task。V33私人工作不因来源引用而自动产生团队可见Run投影；
+发布需复检目标、来源分享策略和密码受众，见 [ADR-0005提案](../adr/0005-private-work-publication-boundary.md)。
+私人内容与日志不是频道成员或管理员默认可浏览的数据源；此提案尚未实现，隐藏UI不能替代隔离测试。
+
 - Runtime Gateway 可接收状态枚举、时间、Step/Approval/Usage 元数据和脱敏错误，但不接收 Prompt、文件正文、
   工具 Secret 或任意 stdout/stderr 原文。
 - 要回到 Channel 的结果先由 Runtime 分类；消息正文由 Client 侧加密，Artifact 在上传对象存储前加密。
