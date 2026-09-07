@@ -206,10 +206,22 @@ premature dependency on Agent/Task implementations.
 | M5 Local pending/ACK contract, 1d | Client-core contract task: `docs/contracts/` | Message wire + this draft → local atomic merge/reseal/cancel/retry fixtures | `git diff --check`; ACK-first/event-first/N-1/unknown commit/rekey schedules; schema prerequisites assigned separately |
 | M6 Local merge implementation, 1–2d | Client-core: `crates/client-core/` | M5 and separate migration integrated → one pending-to-committed atomic operation | `cargo test -p threadline-client-core --locked`; crash/reopen duplicate ACK, out-of-order events and key mismatch |
 | M7 Unfiltered Sync query slice, 1–2d | Core: `services/core/internal/messagesync/` | M2 and trusted read authorization → bounded contiguous batch | `cd services && go test -race ./core/internal/messagesync`; gap, retention, revoke, mixed valid/invalid cursors and tenant isolation |
-| M8 First synthetic message integration, 1–2d | Quality: `test/e2e/` | M4/M6/M7 and independently assembled services/client + admitted crypto → two-device scenario | New test runner exact command frozen at issue creation; two members send, offline restart, retry 100 times, no server plaintext; unavailable Runtime does not affect IM |
+| M8a Synthetic harness entry, 1d | Quality: `test/e2e/message-smoke/` | Reviewed test-control interfaces for assembled services/client → `run.py`, synthetic scenario data, config schema and redacted result format in that directory | Proposed entry `python3 test/e2e/message-smoke/run.py --self-test`; detects malformed config, unexpected success, missing test-control capability and leaked canary; no production readiness claim |
+| M8b First synthetic message integration, 1–2d | Quality: `test/e2e/message-smoke/` | M8a + M4/M6/M7, independently assembled services/client and admitted crypto → real two-device scenario | Proposed entry `python3 test/e2e/message-smoke/run.py --scenario all --config "$THREADLINE_E2E_CONFIG"`; two members send, offline restart, retry 100 times, no server plaintext; unavailable Runtime does not affect IM |
 
-M8 is blocked until a runnable harness exists; this Draft does not invent a
-passing command. Server registration/transport assembly, DM authorization,
+M8a/M8b commands define future harness entry points; the runner does not exist at
+this baseline and both executions are currently NOT RUN. Before claiming M8a,
+freeze its test-control interface for two isolated synthetic device profiles,
+service start/stop, network cut/restore and read-only logical event/outbox counts.
+M8b requires a disposable PostgreSQL/service environment, separately built real
+client/crypto binaries, isolated synthetic identities and a config path in
+`THREADLINE_E2E_CONFIG`. Secrets must be supplied by the reviewed test credential
+mechanism, not command-line arguments or checked-in config. Missing prerequisites,
+a skipped required scenario, duplicate event, broken restart recovery, false ACK
+or private-content canary in service storage/telemetry returns nonzero. Only all
+required assertions passing returns zero; results retain sanitized counts/status
+and build digests. Infrastructure failure is never a PASS. No end-to-end outcome
+is claimed by defining this entry point. Server registration/transport assembly, DM authorization,
 checkpoint signing, Agent attribution and membership handshake are separate
 successors. #148 still blocks permission-readiness claims until reviewed;
 this does not invalidate database commit semantics or authorize skipping Worker
