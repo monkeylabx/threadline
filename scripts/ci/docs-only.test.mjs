@@ -93,7 +93,7 @@ test("escaping link targets fail even if the host target exists", (t) => {
 test("required job names, failure propagation and full-build gating remain wired", () => {
   const workflow = readFileSync(new URL("../../.github/workflows/build.yml", import.meta.url), "utf8");
   assert.ok(!workflow.includes("paths-ignore:"));
-  assert.ok(workflow.includes("run: node --test scripts/ci/docs-only.test.mjs"));
+  assert.ok(workflow.includes("run: node --test scripts/toolchain.test.mjs scripts/ci/docs-only.test.mjs"));
   assert.ok(workflow.includes("PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}"));
   const full = "needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'";
   for (const id of ["workspace-linux", "postgresql", "desktop", "apple", "android"]) {
@@ -105,8 +105,8 @@ test("required job names, failure propagation and full-build gating remain wired
   }
   assert.ok(workflow.includes("name: desktop-${{ matrix.name }}"));
   assert.ok(workflow.includes("matrix.os || 'ubuntu-24.04'"));
-  assert.ok(workflow.includes("'macos-26' || 'ubuntu-24.04'"));
-  assert.ok(workflow.includes("' || '' }}")); // No PostgreSQL service on docs/failure lane.
+  assert.ok(workflow.includes("- os: macos-26"));
+  assert.ok(workflow.includes("matrix.image || '' }}")); // No PostgreSQL service on docs/failure lane.
 });
 
 test("CLI emits skip only after validation and only for the exact checked-out commit", (t) => {
@@ -138,4 +138,9 @@ test("balanced and escaped parentheses resolve the exact Markdown destination", 
   assert.doesNotThrow(() => checkDocs(f.root, f.base, head, ["README.md"]));
   f.write("README.md", "[missing](docs/contracts/missing(v2).md)\n");
   assert.throws(() => checkDocs(f.root, head, f.commit(), ["README.md"]), /Missing/);
+});
+
+test("conditional runner and service selection remains compatible with repository pin verification", async () => {
+  const { verifyPins } = await import("../toolchain.mjs");
+  assert.equal(verifyPins(), true);
 });

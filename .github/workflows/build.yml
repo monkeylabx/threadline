@@ -31,7 +31,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Test documentation routing
-        run: node --test scripts/ci/docs-only.test.mjs
+        run: node --test scripts/toolchain.test.mjs scripts/ci/docs-only.test.mjs
       - name: Classify changes and check Markdown
         id: scope
         env:
@@ -196,13 +196,19 @@ jobs:
           go build ./...
 
   postgresql:
+    name: postgresql
+    strategy:
+      matrix:
+        include:
+          - name: postgres
+            image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
     needs: contracts
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
       postgres:
-        image: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && 'postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c' || '' }}
+        image: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && matrix.image || '' }}
         env:
           POSTGRES_DB: postgres
           POSTGRES_USER: threadline_postgres_dev
@@ -344,9 +350,14 @@ jobs:
         run: pnpm --filter @threadline/desktop build:native
 
   apple:
+    name: apple
+    strategy:
+      matrix:
+        include:
+          - os: macos-26
     needs: contracts
     if: always()
-    runs-on: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && 'macos-26' || 'ubuntu-24.04' }}
+    runs-on: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && matrix.os || 'ubuntu-24.04' }}
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
