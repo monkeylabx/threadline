@@ -8,6 +8,9 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 export const pins = JSON.parse(readFileSync(join(root, "toolchains.json"), "utf8"));
 
 const sqlcReleaseVersion = "1.31.1";
+const atlasReleaseVersion = "1.3.0";
+const atlasImage =
+  "arigaio/atlas:1.3.0-community@sha256:57f5560604d8a9595eb2bbd91177a2455e33143842c5691e6cde2fa2c6f1a226";
 export const postgresCIImage =
   "postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c";
 const sqlcReleaseArchives = Object.freeze({
@@ -30,6 +33,28 @@ const sqlcReleaseArchives = Object.freeze({
   "windows-amd64": Object.freeze({
     file: "sqlc_1.31.1_windows_amd64.zip",
     sha256: "352711fa7dcb05dcdfefca0ad71b2c9a74fd090f8d7fc609419de4cbc725429f",
+  }),
+});
+const atlasReleaseArchives = Object.freeze({
+  "darwin-amd64": Object.freeze({
+    file: "atlas-community-darwin-amd64-v1.3.0",
+    sha256: "650981a024301775ec964e5134e2d5712b7ef1b25fec4b2ec54bad762b4bdf6f",
+  }),
+  "darwin-arm64": Object.freeze({
+    file: "atlas-community-darwin-arm64-v1.3.0",
+    sha256: "4e5ffdc10b2b4fd3a06074aba72848150907d5316cacad7b19bae6c6ae3db991",
+  }),
+  "linux-amd64": Object.freeze({
+    file: "atlas-community-linux-amd64-v1.3.0",
+    sha256: "10d7913e3dce43ab99b8d71534a4cbadaf11a16dc293adf3b91d10e83a0ac70b",
+  }),
+  "linux-arm64": Object.freeze({
+    file: "atlas-community-linux-arm64-v1.3.0",
+    sha256: "082188c57a53439596a3ee52173b12e785aa83ec718505674e2052db0fec0c4c",
+  }),
+  "windows-amd64": Object.freeze({
+    file: "atlas-community-windows-amd64-v1.3.0.exe",
+    sha256: "3e2e040fc1d9998d1b0a070c0482ff1745444b8e88f34e5f6945535d901a72c5",
   }),
 });
 
@@ -69,6 +94,9 @@ function assertEveryCapturedValue(errors, label, text, pattern, expected) {
 
 export function validateWorkflowPins(workflow, expectedPins = pins) {
   const errors = [];
+  const atlasLinux = expectedPins.database.atlas.archives["linux-amd64"];
+  assertIncludes(errors, "CI Atlas archive", workflow, atlasLinux.file);
+  assertIncludes(errors, "CI Atlas checksum", workflow, atlasLinux.sha256);
   assertEveryCapturedValue(
     errors,
     "CI PostgreSQL image",
@@ -175,6 +203,29 @@ function parseGoDependencyDirectives(source) {
 
 export function validateDatabasePins(databasePins, sources) {
   const errors = [];
+  assertEqual(errors, "Atlas release version", databasePins.atlas.version, atlasReleaseVersion);
+  assertEqual(errors, "Atlas edition", databasePins.atlas.edition, "community");
+  assertEqual(errors, "Atlas license", databasePins.atlas.license, "Apache-2.0");
+  assertEqual(errors, "Atlas image", databasePins.atlas.image, atlasImage);
+  const actualAtlasPlatforms = Object.keys(databasePins.atlas.archives).sort();
+  const expectedAtlasPlatforms = Object.keys(atlasReleaseArchives).sort();
+  assertEqual(
+    errors,
+    "Atlas archive platform set",
+    actualAtlasPlatforms.join(","),
+    expectedAtlasPlatforms.join(","),
+  );
+  for (const platform of expectedAtlasPlatforms) {
+    const archive = databasePins.atlas.archives[platform];
+    if (!archive) continue;
+    assertEqual(errors, `Atlas ${platform} archive`, archive.file, atlasReleaseArchives[platform].file);
+    assertEqual(
+      errors,
+      `Atlas ${platform} SHA-256`,
+      archive.sha256,
+      atlasReleaseArchives[platform].sha256,
+    );
+  }
   assertEqual(errors, "sqlc release version", databasePins.sqlc.version, sqlcReleaseVersion);
   if (!/^\d+\.\d+\.\d+$/.test(databasePins.pgx)) {
     errors.push(`pgx version is not exact: ${databasePins.pgx}`);
@@ -231,6 +282,12 @@ export function validateDatabasePins(databasePins, sources) {
     "database reproducibility runbook",
     sources.reproducibleBuilds,
     `sqlc ${databasePins.sqlc.version}`,
+  );
+  assertIncludes(
+    errors,
+    "database migration runbook",
+    sources.reproducibleBuilds,
+    `Atlas Community ${databasePins.atlas.version}`,
   );
   return errors;
 }
@@ -406,6 +463,10 @@ export function doctor(scopes = ["workspace", "desktop", "android", "apple"]) {
   }
   if (selected.has("database")) {
     valid = probe("sqlc", "sqlc", ["version"], [`v${pins.database.sqlc.version}`]) && valid;
+    valid =
+      probe("Atlas", "atlas", ["version"], [
+        `atlas community version v${pins.database.atlas.version}`,
+      ]) && valid;
   }
   if (selected.has("desktop")) {
     valid =

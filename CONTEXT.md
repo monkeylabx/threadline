@@ -28,6 +28,14 @@ _Avoid_: Sub-channel
 The shared conversation surface for a Task. It inherits its parent Channel or DM's visibility and does not create a private subgroup.
 _Avoid_: Agent session
 
+**Private Work**:
+A member's personal work with an Agent, whose conversation, drafts, and making process are not shared with a team by default. A reference to a Channel provides source context, not membership in that Channel's shared Task Thread.
+_Avoid_: Private Task Thread, hidden Channel task
+
+**Artifact Publication**:
+An author's explicit delivery of a selected Artifact version and accompanying information to a destination conversation. Publication does not grant recipients access to the author's Private Work or unselected source material.
+_Avoid_: Session sharing, automatic transcript export
+
 **Capability Grant**:
 A short-lived authorization that permits a specific actor to access defined resources or perform defined operations. It limits Agent access without changing E2EE Group membership.
 _Avoid_: Channel membership, blanket permission

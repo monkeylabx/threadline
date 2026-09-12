@@ -1,13 +1,16 @@
 # Threadline
 
-**Delegate work to local AI agents from team conversations while keeping access, activity, and human approval visible.**
+**A team IM and Agent runtime: communicate with people, work privately with AI, and share results your team can review and continue.**
 
 Threadline is an open-source, agent-native enterprise messaging project. Humans, agents, and services are first-class actors with explicit identities, responsibilities, permissions, and audit records—not a chatbot bolted onto team chat with standing access.
 
-Two boundaries shape the product:
+The product brings everyday channels and DMs together with a personal AI work surface. Its value hypothesis is less friction between making something with AI and having colleagues review, decide on, and reuse it—not more agents, or visibility into every employee's private AI process. Private work and team tasks both remain available.
+
+Three boundaries shape the product:
 
 - **Messaging and agent runtimes remain independent.** Teams can keep communicating when models or runtimes are offline.
 - **Context and authority are granted per task.** An agent receives only the messages, files, and tools needed for its task; high-impact actions require visible, auditable approval.
+- **Private work is not a shared Task Thread.** Referencing a channel does not publish personal prompts, drafts, files, or tool history. The author explicitly selects an Artifact version and destination when sharing; destination permissions still apply.
 
 ## First product slice
 
@@ -19,7 +22,7 @@ E2EE Message
     → Verifiable Artifact
 ```
 
-The target experience starts when a team turns part of a conversation into a task. A local runtime works inside an authorized workspace with explicit read scope, model egress, tool access, and budget. It requests approval before high-impact actions and returns results and evidence to the original conversation.
+This is the frozen engineering slice for a **shared team task**, not a rule that all AI work must be public. A local runtime works inside an authorized workspace with explicit read scope, model egress, tool access, and budget. It requests approval before high-impact actions and returns authorized results and evidence to the original conversation. The complementary private-work-to-explicit-publication path is a product design with implementation contracts still pending; see [ADR-0005](./docs/adr/0005-private-work-publication-boundary.md).
 
 Threadline is not a general-purpose AI control panel. Agent activity belongs in the collaboration context, but a Channel is not an Agent Session.
 
@@ -31,7 +34,7 @@ Threadline is not a general-purpose AI control panel. Agent activity belongs in 
 python3 -m http.server 4173 --directory docs/prototype
 ```
 
-Then visit <http://localhost:4173>.
+Then visit [the selected V33 desktop prototype](http://localhost:4173/?screen=channel&prototype=im-agent-fusion&variant=A&ui=v33&viewport=desktop). See the [prototype guide](./docs/prototype/README.md) for the default and historical review routes.
 
 The prototype covers channel collaboration, agent tasks, risk approvals, artifact delivery, files, search, runtime health, and enterprise administration. Narrow viewports route to the mobile renderer.
 
@@ -52,6 +55,8 @@ Threadline is building its foundational contracts and engineering substrate. It 
 Do not use the current repository for production messages, confidential data, or high-impact agent actions.
 
 ## Why Threadline
+
+The intended benefit is a shorter handoff from personal AI work to team collaboration: preview the actual result, discuss its version, make a decision, and continue the work without joining the author's private AI conversation. Messaging remains useful even when AI is unavailable. This is a product hypothesis, not evidence of customer willingness to switch or pay; compare it against existing IM and AI workflows using handoff time, repeated context explanation, and colleague reuse of results.
 
 Chatbots usually answer questions. Agents can read files, run tools, and change external systems. That requires clearer governance boundaries:
 
@@ -112,7 +117,7 @@ Do not disclose secrets, message bodies, prompts, tokens, or enterprise data in 
 
 Threadline is licensed under the Apache License 2.0 and may be studied, modified, integrated, and used commercially subject to the terms in [`LICENSE`](./LICENSE).
 
-Private deployment, enterprise identity and model integration, security reviews, custom connectors, upgrade assistance, and commercial support may be offered in the future. No paid plan or SLA is currently available. Teams interested in design collaboration or a private pilot can contact the maintainers through a GitHub Issue without posting sensitive environment details.
+Private deployment, enterprise identity and model integration, security reviews, custom connectors, upgrade assistance, and commercial support may be offered in the future. No paid plan or SLA is currently available; this design does not introduce Enterprise feature gates or paid privacy controls. Teams interested in design collaboration or a private pilot can contact the maintainers through a GitHub Issue without posting sensitive environment details.
 
 ## License
 

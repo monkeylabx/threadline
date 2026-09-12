@@ -16,6 +16,10 @@ Issue：[#15 T001](https://github.com/monkeylabx/threadline/issues/15)
 
 ## 1. 冻结目的
 
+> 2026-09-06 产品设计增补：V33 保留私人AI工作与团队IM，见 [ADR-0005提案](../adr/0005-private-work-publication-boundary.md)。
+> 本文“团队观察与审批”针对共享Task，不授权查看成员私人过程。私人工作/显式发布的生产契约与验收尚待评审，
+> 不因HTML原型确认而自动进入既有冻结排期；拟议场景见 [补充验收](./private-work-publication.md)。
+
 本文冻结 Threadline Private Enterprise v1.0 的目标用户、产品承诺、平台范围、核心流程和明确
 非目标。后续 PRD、ADR、Threat Model、Proto、客户端和部署任务必须引用本基线；超出本基线的需求
 必须经过变更评审和重新排期。

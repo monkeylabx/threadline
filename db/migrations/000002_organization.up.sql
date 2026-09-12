@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE domain.organizations (
   tenant_id text PRIMARY KEY,
   display_name text NOT NULL,
@@ -11,5 +9,3 @@ CREATE TABLE domain.organizations (
   CONSTRAINT organizations_state_known
     CHECK (state IN (1, 2, 3))
 );
-
-COMMIT;

@@ -7,6 +7,10 @@ Scope: the single HTML prototype at `docs/prototype/index.html` and its internal
 
 ## Decision
 
+2026-09-06 applicability note: measurements below remain evidence for the recorded base commit, not V33.
+V33 navigation/resize checks do not rerun axe, assistive technology or native-device validation and do not
+turn this historical FAIL/HOLD into PASS. Re-audit the new surface with the recorded runner and a new report.
+
 The prototype is keyboard-navigable at its nominal Desktop and Mobile viewports, inactive Mobile surfaces are removed from navigation with `inert`, and neither nominal viewport has horizontal overflow. It does not yet meet the accessibility baseline because the Mobile Task Sheet has a Critical ARIA failure and every audited state has Serious contrast failures.
 
 T020 is an audit, not a remediation task. The exceptions below have accountable owners, rationale, and ready follow-ups:

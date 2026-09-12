@@ -2,6 +2,10 @@
 
 状态：Frozen Scope 1.1 交付基线 1.0
 
+2026-09-06 产品设计增补：V33“私人工作→显式发布”见 [ADR-0005提案](./adr/0005-private-work-publication-boundary.md)。
+共享Task工作包不能被视为已经覆盖私人存储/恢复、发布受众和版本交接；需Product/Architecture复核范围，
+再拆分客户端、Runtime、Contracts/Core/Crypto任务。本次不修改原估算、Gate和排期，也不将原型确认记为交付完成。
+
 计划起点：2026-07-27
 
 基准 GA：2027-10-29

@@ -67,6 +67,37 @@ printf '%s\n' "ordinary fixture content" >"${safe_repository}/fixture.txt"
 commit_all "${safe_repository}" "safe fixture"
 "${scan}" "${gitleaks}" "${safe_repository}" >/dev/null
 
+sqlite_api_prefix="sqlite3_api"
+sqlite_member_operator="->"
+sqlite_column_member="column_bytes16"
+sqlite_soft_limit_member="soft_heap_limit64"
+sqlite_hard_limit_member="hard_heap_limit64"
+sqlite_key_name="iKey"
+sqlite_averages_comparison="==FTS5_AVERAGES_ROWID"
+
+readonly sqlite_allowlist_repository="${temporary_directory}/sqlite-allowlist"
+initialize_repository "${sqlite_allowlist_repository}"
+mkdir -p "${sqlite_allowlist_repository}/third_party/libsqlite3-sys/sqlcipher"
+printf '#define sqlite3_column_bytes16 %s%s%s\n#define sqlite3_soft_heap_limit64 %s%s%s\n#define sqlite3_hard_heap_limit64 %s%s%s\nif( %s%s ){}\n' \
+  "${sqlite_api_prefix}" "${sqlite_member_operator}" "${sqlite_column_member}" \
+  "${sqlite_api_prefix}" "${sqlite_member_operator}" "${sqlite_soft_limit_member}" \
+  "${sqlite_api_prefix}" "${sqlite_member_operator}" "${sqlite_hard_limit_member}" \
+  "${sqlite_key_name}" "${sqlite_averages_comparison}" \
+  >"${sqlite_allowlist_repository}/third_party/libsqlite3-sys/sqlcipher/sqlite3.c"
+commit_all "${sqlite_allowlist_repository}" "audited SQLite identifiers"
+"${scan}" "${gitleaks}" "${sqlite_allowlist_repository}" >/dev/null
+
+readonly sqlite_near_miss_repository="${temporary_directory}/sqlite-near-miss"
+initialize_repository "${sqlite_near_miss_repository}"
+printf '#define sqlite3_column_bytes16 %s%s%s\n' \
+  "${sqlite_api_prefix}" "${sqlite_member_operator}" "${sqlite_column_member}" \
+  >"${sqlite_near_miss_repository}/fixture.c"
+commit_all "${sqlite_near_miss_repository}" "SQLite identifier outside audited path"
+readonly sqlite_near_miss_output="${temporary_directory}/sqlite-near-miss-output"
+run_expect_failure "${sqlite_near_miss_output}" \
+  "${scan}" "${gitleaks}" "${sqlite_near_miss_repository}"
+assert_finding_output "${sqlite_near_miss_output}"
+
 readonly finding_repository="${temporary_directory}/finding"
 initialize_repository "${finding_repository}"
 credential_prefix="TL_TEST_"

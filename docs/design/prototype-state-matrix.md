@@ -3,6 +3,11 @@
 状态：T012 基线清点
 基线：`5525eac8cd65e0a011d1f854e4a7a9ddf3b53055`
 
+> 2026-09-06 更新说明：本文矩阵和 Gap 是 T012 历史基线，不是 V33 复验结果；不得把旧 `●` 自动视为新版本通过。
+> V33 的现行导航见 [原型指南](../prototype/README.md)，私人工作/发布待验场景见
+> [补充场景](../acceptance/private-work-publication.md)。#185 已补充默认 Artifact 审查及 Mobile 对应模式，
+> 下文“独立 task-result 仅兼容重定向”等基线结论不能用于否定此后变更，也不能替代对新模式的完整验证。
+
 ## 1. 范围与结论
 
 本文清点 [`docs/prototype/README.md`](../prototype/README.md) 中的全部 Route，并定义 Desktop、iOS、Android 在 Loading、Empty、Error、Offline、Permission、E2EE 和 Recovery 下应保持的产品语义。
@@ -267,7 +272,7 @@ Recovery 至少包含：
 
 | 平台 | 根导航 | 内容推进 | Sheet 或高影响动作 | 返回语义 |
 | --- | --- | --- | --- | --- |
-| Desktop/Web | 组织 Rail、Channel Sidebar、主 Workspace；宽屏可有 Context/Inspector | Route 在 Workspace 切换；任务和文件可多栏检查 | 创建 Task 使用 Modal；Task/Approval 可用独立页面或活动层 | 保留组织、频道、所选对象和滚动位置 |
+| Desktop/Web | V33：应用导航（企业/消息/工作/处理/个人）、可拖拽上下文列表、主内容区；搜索/历史在顶部 | 人际对话、私人工作、需处理事项在主区切换，当前列表保持可见 | 创建动作属于所在栏目；共享Task/Approval可用页面或活动层，私人工作不公开投影 | 折叠仅压缩应用导航，保留第二栏、当前选择与栏宽；会话级滚动/草稿恢复仍需验证 |
 | iOS | `消息 / 活动 / 我的` Tab；频道从消息列表推进 | Channel、Thread、File 与本机 Runtime/Sync 自助使用 Navigation Stack | Task/Approval 优先使用可扩展 Sheet；Recovery/撤销使用全屏安全流程 | 支持边缘返回；处理未提交意见；遵守 Safe Area 和键盘 |
 | Android | `消息 / 活动 / 我的` Bottom Navigation；频道从消息列表推进 | Channel、Thread、File 与本机 Runtime/Sync 自助使用 Navigation Compose | Task/Approval 使用 Modal Bottom Sheet 或全屏目的地；Recovery/撤销使用全屏流程 | 支持系统和 Predictive Back；恢复目的地及滚动状态 |
 
