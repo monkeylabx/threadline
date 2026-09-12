@@ -36,11 +36,39 @@ export function classify(root, event, base, head) {
   return { docsOnly, paths };
 }
 
+function destination(text, start) {
+  if (text[start] === "<") {
+    const end = text.indexOf(">", start + 1);
+    return end < 0 ? null : text.slice(start + 1, end);
+  }
+  let depth = 0;
+  let value = "";
+  for (let index = start; index < text.length; index++) {
+    const character = text[index];
+    if (character === "\\" && index + 1 < text.length) {
+      value += text[++index];
+    } else if (character === "(") {
+      depth++;
+      value += character;
+    } else if (character === ")") {
+      if (depth === 0) return value;
+      depth--;
+      value += character;
+    } else if (/\s/.test(character)) {
+      return depth === 0 ? value : null;
+    } else {
+      value += character;
+    }
+  }
+  return null;
+}
+
 export function localLinks(markdown) {
   // Check inline/image destinations and reference definitions; not anchors or HTML.
   const prose = markdown.replace(/^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?^[ \t]*\1[^\n]*$/gm, "")
     .replace(/`[^`\n]*`/g, "");
-  const links = [...prose.matchAll(/\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+["'][^\n]*?["'])?\s*\)/g)].map((m) => m[1]);
+  const links = [...prose.matchAll(/\]\(\s*/g)]
+    .map((match) => destination(prose, match.index + match[0].length)).filter(Boolean);
   for (const match of prose.matchAll(/^\s{0,3}\[[^\]]+\]:\s*(<[^>]+>|\S+)/gm)) links.push(match[1]);
   return links.map((link) => link.replace(/^<|>$/g, ""))
     .filter((link) => !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(link))

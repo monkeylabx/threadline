@@ -128,3 +128,14 @@ test("CLI emits skip only after validation and only for the exact checked-out co
   assert.throws(() => invoke(good));
   assert.equal(readFileSync(output, "utf8"), "");
 });
+
+test("balanced and escaped parentheses resolve the exact Markdown destination", (t) => {
+  assert.deepEqual(localLinks(String.raw`[a](guide(v2).md) [b](guide\(v2\).md) [c](guide(nested(v2)).md "title")`), ["guide(v2).md", "guide(v2).md", "guide(nested(v2)).md"]);
+  const f = fixture(t);
+  f.write("docs/contracts/guide(v2).md", "# Guide\n");
+  f.write("README.md", "[guide](docs/contracts/guide(v2).md)\n");
+  const head = f.commit();
+  assert.doesNotThrow(() => checkDocs(f.root, f.base, head, ["README.md"]));
+  f.write("README.md", "[missing](docs/contracts/missing(v2).md)\n");
+  assert.throws(() => checkDocs(f.root, head, f.commit(), ["README.md"]), /Missing/);
+});
