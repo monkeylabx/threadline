@@ -105,7 +105,7 @@ test("required job names, failure propagation and full-build gating remain wired
   }
   assert.ok(workflow.includes("name: desktop-${{ matrix.name }}"));
   assert.ok(workflow.includes("matrix.os || 'ubuntu-24.04'"));
-  assert.ok(workflow.includes("- os: macos-26"));
+  assert.ok(workflow.includes("os: macos-26"));
   assert.ok(workflow.includes("matrix.image || '' }}")); // No PostgreSQL service on docs/failure lane.
 });
 
@@ -143,4 +143,15 @@ test("balanced and escaped parentheses resolve the exact Markdown destination", 
 test("conditional runner and service selection remains compatible with repository pin verification", async () => {
   const { verifyPins } = await import("../toolchain.mjs");
   assert.equal(verifyPins(), true);
+});
+
+// GitHub appends matrix values to literal names; an explicit matrix-derived name
+// preserves the exact branch-protection context, as the desktop job already does.
+test("single-platform matrices explicitly consume their stable check names", () => {
+  const workflow = readFileSync(new URL("../../.github/workflows/build.yml", import.meta.url), "utf8");
+  for (const name of ["apple", "postgresql"]) {
+    const block = workflow.split(`\n  ${name}:\n`)[1].split(/\n  [a-z-]+:\n/)[0];
+    assert.ok(block.includes("name: ${{ matrix.name }}"));
+    assert.ok(block.includes(`- name: ${name}`));
+  }
 });
