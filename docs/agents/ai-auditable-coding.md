@@ -2,7 +2,7 @@
 
 Status: project generation policy
 
-This standard controls how human and Agent-authored code is designed and generated in Threadline. Generation and manual review enforce this policy today. Existing static checks cover only the surfaces identified in section 6; a green build does not certify all numeric limits.
+This standard controls how human and Agent-authored code is designed and generated in Threadline. It is enforced at generation time by the authoring Agent and at review time by the review Agent, not by CI. Existing static checks cover only the surfaces identified in section 6; a green build does not certify all numeric limits.
 
 The keywords **MUST**, **MUST NOT**, **SHOULD**, and **MAY** are normative. Numeric limits apply to new or materially changed handwritten code. Existing code is ratcheted: a change MUST NOT worsen a metric, and touched code SHOULD move toward the limits.
 
@@ -78,10 +78,10 @@ For cohesion reviews, build a simple method-to-state/invariant map. If two metho
 
 ## 5. Reviewability and reversibility
 
-- A change set SHOULD stay at or below 400 human-authored changed lines. Above 800 lines, it MUST be split unless the excess is generated or mechanical and isolated.
-- Refactoring and behavior changes SHOULD be separate commits or change sets.
+- A change set SHOULD stay at or below 400 handwritten changed lines. Above 800 lines, it MUST be split unless the excess is generated or mechanical and isolated.
+- Refactoring and behavior changes SHOULD be separate change sets (separate Issues and PRs), because each PR lands on `main` as a single squashed commit.
 - Generated output MUST be isolated from handwritten logic so reviewers can inspect the generator input and semantic change.
-- Each commit MUST build and preserve the agreed behavior. Schema, persisted state, and protocol changes require an explicit migration, compatibility, and rollback story.
+- Each commit merged to `main` MUST build and preserve the agreed behavior. Schema, persisted state, and protocol changes require an explicit migration, compatibility, and rollback story.
 - Comments and Issue context MUST explain *why* a non-obvious constraint exists; code and names SHOULD explain *what* happens.
 
 ## 6. Language verification map
@@ -99,9 +99,10 @@ executed checks from planned tooling. This documentation change installs no anal
 
 All six function metrics, the type/module triggers and ceilings, the 80% changed-line
 coverage policy, security decision branch completeness, and the 400/800 change-size
-budgets therefore require author evidence and manual review today. Reviewers record
-measurements and exceptions in the Issue/handoff; CI success is not a substitute.
-Legacy ratcheting and method-to-invariant maps also remain manual review obligations.
+budgets therefore require the authoring Agent to measure them and record the evidence
+today. The authoring Agent states each measurement and exception in the Issue/handoff
+and the review Agent verifies it there; CI success is not a substitute. Legacy
+ratcheting and method-to-invariant maps are likewise verified by reading, not by a tool.
 
 The following is a **planned tooling map**, not a list of installed checks. A separate
 Integration task must pin versions, define counting/exclusion semantics, add failing

@@ -50,6 +50,7 @@ Use a single-context layout: `CONTEXT.md` at the repo root for domain language a
 - Keep agent-sized tasks between half a day and two days. Delivery-plan items are work packages and must be split before coding.
 - Finish with the handoff format in `docs/templates/agent-handoff.md`, including commit, tests, contract changes, risks, and unblock notes.
 - A task is not complete until its acceptance checks pass and the integration owner can merge it without relying on uncommitted local state.
+- Merge every PR to `main` with squash so one Issue lands as one CI-verified, independently revertable commit. Do not use merge commits or rebase merges.
 
 ## Frontend direction
 
