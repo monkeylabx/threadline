@@ -17,6 +17,8 @@ env:
 
 jobs:
   contracts:
+    outputs:
+      docs_only: ${{ steps.scope.outputs.docs_only }}
     runs-on: ubuntu-24.04
     steps:
       - name: Check out source
@@ -28,6 +30,13 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - name: Test documentation routing
+        run: node --test scripts/toolchain.test.mjs scripts/ci/docs-only.test.mjs
+      - name: Classify changes and check Markdown
+        id: scope
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci/docs-only.mjs
       - name: Set up pnpm
         run: |
           npm install --global corepack@0.35.0 --force
@@ -45,47 +54,65 @@ jobs:
         run: node scripts/proto.mjs generate ts
 
   workspace-linux:
+    needs: contracts
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; platform build NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Node
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
       - name: Set up pnpm
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Set up Go
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: 1.26.5
           cache: false
       - name: Install JavaScript dependencies
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
       - name: Verify pins and installed tools
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           node --test scripts/toolchain.test.mjs
           node scripts/toolchain.mjs verify
           node scripts/toolchain.mjs doctor --scope=workspace
       - name: Check TypeScript skeleton
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           pnpm --filter @threadline/desktop build
           pnpm --filter @threadline/desktop test
           pnpm --filter @threadline/desktop lint
       - name: Check Rust workspace
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           cargo fmt --all --check
           cargo clippy --workspace --exclude threadline-desktop-host --all-targets --locked -- -D warnings
           cargo test --workspace --exclude threadline-desktop-host --locked
       - name: Run Ubuntu fail-closed community SQLCipher evidence
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         env:
           LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
         run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
       - name: Verify native bridge process crash and cursor resume fixture
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           CURSOR_FIXTURE="${RUNNER_TEMP}/threadline-native-bridge.cursor"
           CRASH_RESUME_LOG="${RUNNER_TEMP}/threadline-native-bridge-crash-resume.txt"
@@ -96,7 +123,7 @@ jobs:
           test "${CRASH_EXIT}" -eq 86
           cargo run --package threadline-client-ffi --example crash_resume --locked -- resume "${CURSOR_FIXTURE}" | tee "${CRASH_RESUME_LOG}"
       - name: Upload native bridge crash/resume evidence
-        if: always()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (always())
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-bridge-crash-resume
@@ -104,6 +131,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Validate the pinned NATS Worker fixture
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           python3 deploy/nats/contract_test.py
           python3 deploy/nats/probe_test.py
@@ -113,6 +141,7 @@ jobs:
             nats:2.10.20-alpine@sha256:2c19fe5c950ed2ea9e8c9d1f16d89d2f4a2595e51fa0d3ac37d8c537be30aec9 \
             -t -c /etc/nats/nats-server.conf
       - name: Start the pinned NATS Worker fixture
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           nats_container="$(docker run --detach --pull never \
             --publish 127.0.0.1:14222:4222 \
@@ -124,6 +153,7 @@ jobs:
           test -n "${nats_container}"
           printf '%s\n' "${nats_container}" > "${RUNNER_TEMP}/threadline-nats-container-id"
       - name: Require live NATS effective-permission evidence
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           ready=0
           for _ in $(seq 1 50); do
@@ -144,20 +174,21 @@ jobs:
               --port 14222 \
               --monitor-url http://127.0.0.1:18222
       - name: Show NATS diagnostics on failure
-        if: failure()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (failure())
         run: |
           if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
             read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
             docker logs "${nats_container}" 2>&1 | sed -E 's/User "[^"]*"/User "[redacted]"/g'
           fi
       - name: Stop the NATS Worker fixture
-        if: always()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (always())
         run: |
           if test -f "${RUNNER_TEMP}/threadline-nats-container-id"; then
             read -r nats_container < "${RUNNER_TEMP}/threadline-nats-container-id"
             docker rm --force "${nats_container}"
           fi
       - name: Check Go services
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         working-directory: services
         run: |
           test -z "$(gofmt -l .)"
@@ -165,11 +196,19 @@ jobs:
           go build ./...
 
   postgresql:
+    name: ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: postgresql
+            image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+    needs: contracts
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
       postgres:
-        image: postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c
+        image: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && matrix.image || '' }}
         env:
           POSTGRES_DB: postgres
           POSTGRES_USER: threadline_postgres_dev
@@ -189,18 +228,28 @@ jobs:
       PGDATABASE: postgres
       THREADLINE_TEST_POSTGRES_DSN: postgres://threadline_postgres_dev:threadline_postgres_dev@127.0.0.1:5432/postgres?sslmode=disable
     steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; platform build NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Go
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: 1.26.5
           cache: false
       - name: Install PostgreSQL 16 client
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-16
       - name: Install pinned Atlas Community migration runner
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           curl --fail --silent --show-error --location \
             --output "${RUNNER_TEMP}/atlas" \
@@ -211,10 +260,12 @@ jobs:
           sudo install --mode 0755 "${RUNNER_TEMP}/atlas" /usr/local/bin/atlas
           atlas version | grep -Fx 'atlas community version v1.3.0'
       - name: Verify mandatory PostgreSQL test environment
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           test -n "${THREADLINE_TEST_POSTGRES_DSN}"
           test "$(psql --no-psqlrc --tuples-only --no-align --command='SHOW server_version')" = "16.4"
       - name: Test migrations and database contracts
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           make -C db migration-integrity
           make -C db migration-ledger-test
@@ -229,10 +280,13 @@ jobs:
           make -C db transactional-outbox-test
           make -C db transactional-outbox-worker-ops-test
       - name: Test all PostgreSQL-backed Go stores
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         working-directory: services
         run: go test -mod=readonly -race ./... -count=1
 
   desktop:
+    needs: contracts
+    if: always()
     name: desktop-${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -242,13 +296,20 @@ jobs:
             os: ubuntu-24.04
           - name: windows
             os: windows-2025
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && matrix.os || 'ubuntu-24.04' }}
     timeout-minutes: 45
     steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; platform build NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install Linux WebView prerequisites
-        if: runner.os == 'Linux'
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Linux')
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
@@ -263,58 +324,86 @@ jobs:
             patchelf \
             wget
       - name: Set up Node
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
       - name: Set up pnpm
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Install JavaScript dependencies
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
       - name: Verify desktop toolchain
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: node scripts/toolchain.mjs doctor --scope=desktop
       - name: Run Windows fail-closed community SQLCipher evidence
-        if: runner.os == 'Windows'
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows')
         env:
           LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
         run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
       - name: Build unsigned Tauri host
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm --filter @threadline/desktop build:native
 
   apple:
-    runs-on: macos-26
+    name: ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: apple
+            os: macos-26
+    needs: contracts
+    if: always()
+    runs-on: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && matrix.os || 'ubuntu-24.04' }}
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; platform build NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Node
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
       - name: Set up pnpm
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Install JavaScript dependencies
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
       - name: Verify Apple and desktop toolchains
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: node scripts/toolchain.mjs doctor --scope=apple,desktop
       - name: Run macOS fail-closed community SQLCipher evidence
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         env:
           LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
         run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
       - name: Build host FFI facade for Swift tests
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: cargo build --package threadline-client-ffi --locked
       - name: Test Swift package through the Rust facade
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: swift test --package-path apps/ios --scratch-path "${RUNNER_TEMP}/threadline-swift"
       - name: Build universal FFI facade for iOS Simulator
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           rustup target add aarch64-apple-ios-sim x86_64-apple-ios
           cargo build --package threadline-client-ffi --release --target aarch64-apple-ios-sim --locked
@@ -325,18 +414,19 @@ jobs:
             target/x86_64-apple-ios/release/libthreadline_client_ffi.a \
             -output target/ios-simulator-universal/release/libthreadline_client_ffi.a
       - name: Test Rust facade inside a booted iOS Simulator
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/ios-simulator-universal/release
         run: bash scripts/ci/run-ios-simulator-ffi.sh
       - name: Summarize iOS Simulator evidence
-        if: always()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (always())
         run: |
           RESULT_BUNDLE="${RUNNER_TEMP}/threadline-ios-simulator.xcresult"
           if [[ -d "${RESULT_BUNDLE}" ]]; then
             xcrun xcresulttool get test-results summary --path "${RESULT_BUNDLE}" || true
           fi
       - name: Upload iOS Simulator evidence
-        if: always()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (always())
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-bridge-ios-simulator
@@ -344,33 +434,48 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Build unsigned macOS Tauri host
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm --filter @threadline/desktop build:native
 
   android:
+    needs: contracts
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; platform build NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
       - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Node
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
       - name: Set up pnpm
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           npm install --global corepack@0.35.0 --force
           corepack enable
           corepack install --global pnpm@11.20.0
       - name: Set up Java
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           distribution: temurin
           java-version: 17.0.19+10
       - name: Set up Gradle
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         uses: gradle/actions/setup-gradle@16f3e46a58d2b926c34615132d7969a96bccb22b # v6.0.0
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
       - name: Install pinned Android SDK packages
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           SDKMANAGER="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
           test -x "${SDKMANAGER}"
@@ -382,10 +487,13 @@ jobs:
             'emulator' \
             'system-images;android-35;google_apis;x86_64'
       - name: Install JavaScript dependencies
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm install --frozen-lockfile
       - name: Verify pins and Android toolchain
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: node scripts/toolchain.mjs doctor --scope=android
       - name: Cross-compile FFI facade for Android device and Emulator
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           rustup target add aarch64-linux-android x86_64-linux-android
           AARCH64_LINKER="${ANDROID_SDK_ROOT}/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"
@@ -401,8 +509,10 @@ jobs:
             target/x86_64-linux-android/release/libthreadline_client_ffi.so \
             apps/android/src/main/jniLibs/x86_64/libthreadline_client_ffi.so
       - name: Build host FFI facade for Kotlin tests
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: cargo build --package threadline-client-ffi --locked
       - name: Build and test Android skeleton
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         working-directory: apps/android
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
@@ -413,16 +523,18 @@ jobs:
           lintDebug
           --no-daemon
       - name: Allow the Android Emulator to use KVM
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: |
           if [[ -e /dev/kvm ]]; then
             sudo chown "${USER}" /dev/kvm
           fi
       - name: Test Rust facade inside a booted Android Emulator
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         env:
           THREADLINE_FFI_LIBRARY_DIR: ${{ github.workspace }}/target/debug
         run: bash scripts/ci/run-android-emulator-ffi.sh
       - name: Upload Android JVM and Emulator evidence
-        if: always()
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (always())
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-bridge-android-emulator
