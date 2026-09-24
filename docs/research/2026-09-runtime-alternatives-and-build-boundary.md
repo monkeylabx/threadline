@@ -96,7 +96,7 @@ Do not write a new cross-platform OS sandbox, cryptographic scheme or full provi
 | Product need | First option to validate | Reason / remaining cost |
 | --- | --- | --- |
 | Typed business tools and authorized local documents | Small Rust runtime with reusable components | Closely fits Threadline capabilities; Threadline owns durability and lifecycle. |
-| Multi-model coding and shell execution | Pi worker plus a selected sandbox backend | Reuses sessions/loop; installation, host extensions and cleanup need proof. |
+| Multi-model coding and shell execution | Goose ACP or Pi worker, each behind a validated execution boundary | Reuses an existing loop; default tool exposure, installation and child-process cleanup need proof. |
 | General-purpose agent with context management and subagents | Deep Agents worker with custom Connector backend | More assembled orchestration; adds Python/JS packaging and backend validation. |
 | Existing service workflows in Microsoft stack | Microsoft Agent Framework | Useful workflow integration; does not establish desktop isolation. |
 
@@ -106,11 +106,37 @@ A bounded evaluation should use the same product scenario: read an authorized do
 
 Record release/commit pins, host OS, policy, event traces and observed results. Compare startup time, memory, packaging dependencies and cleanup alongside task success. Allocate one or two days per focused spike as an evaluation budget, not a delivery estimate. Repeat OS-specific security checks on every supported desktop platform before making cross-platform claims.
 
+## Goose ACP macOS verification (2026-09-24)
+
+**Decision from this bounded test:** Goose ACP is technically integrable as a separate Rust-built process, but its default configuration fails Threadline's local-tool boundary. A preconfigured, isolated process can omit the tested built-in tools. ACP cancellation did not stop one deliberately backgrounded shell child. Goose is therefore a candidate for a supervised coding worker, not an approved production runtime or a substitute for the Connector.
+
+The host was macOS Darwin 25.4.0, arm64. The official [v1.52.0 release](https://github.com/aaif-goose/goose/releases/tag/v1.52.0) macOS arm64 CLI archive had SHA-256 **7674b0124aab685c71f8782fb7e65bac100c736ce3de0c9d3bf46ba07910e412**, matching the release asset digest. The extracted binary reported version 1.52.0. Its Mach-O signature was ad hoc; this test did not assess distribution signing or notarization. No real model credentials or user documents were supplied.
+
+The child process received only synthetic environment values and an isolated absolute GOOSE_PATH_ROOT. A child macOS Seatbelt profile denied reads and writes under the user's home and denied non-loopback networking; it permitted a temporary localhost OpenAI-compatible fixture server. Controls showed localhost HTTP succeeded and a non-loopback IP connection failed under that profile. This is **external test isolation**, not a Goose-provided sandbox. The source's [path resolver](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose/src/config/paths.rs) explains why GOOSE_PATH_ROOT was required: an initial attempt using GOOSE_CONFIG_DIR alone tried to create a config directory in the user's home and failed under the child profile.
+
+The test sent ACP initialize, session/new and session/prompt over stdio. The synthetic model returned the release's [basic text fixture](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose/tests/acp_test_data/openai_basic.txt) or a [shell tool-call fixture](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose/tests/acp_test_data/openai_shell_tool_call.txt); it did not call a real model endpoint. The [ACP new-session implementation](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose/src/acp/server/new_session.rs) and [extension selection](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose/src/acp/server.rs) were read alongside the observed events.
+
+| Probe | Observed result | Limit |
+| --- | --- | --- |
+| ACP initialize and synthetic text turn | Protocol v1 initialized; session/new succeeded with synthetic provider settings; session/prompt streamed text and ended normally. | Only the macOS CLI and a local fixture were exercised. |
+| Fresh configuration | New session mode was auto. Eight extensions loaded, including developer. Model request advertised shell, write and edit; a synthetic shell call ran echo and returned its output. | This demonstrates the tested default, not every configuration or tool. |
+| Preconfigured restricted session | GOOSE_MODE was approve and all observed default extensions, including developer, were disabled before startup. New session mode was approve, extensionResults was empty, and model requests had no tools. A forced shell call failed: “Tool 'shell' was not advertised for this model turn.” | The test did not attach a Connector tool or attempt to re-enable tools through recipes, client metadata or later configuration changes. |
+| Foreground command cancellation | A command created a start marker, slept five seconds, then would create a completion marker. After the start marker appeared, session/cancel returned stopReason cancelled; the completion marker was absent six seconds later. | One attached command under one Seatbelt policy. |
+| Background child cancellation | A command launched a background child that would write a marker after five seconds, then kept the foreground shell busy. After the start marker appeared, session/cancel returned cancelled, **but the background marker appeared within nine seconds**. | One synthetic detached-child pattern; other launch forms, shutdown and OS platforms remain untested. |
+
+The default auto mode and developer extension match Goose's [permission-mode definition](https://github.com/aaif-goose/goose/blob/v1.52.0/crates/goose-provider-types/src/goose_mode.rs) and [developer-tool documentation](https://github.com/aaif-goose/goose/blob/v1.52.0/documentation/docs/mcp/developer-mcp.md). The successful restricted configuration shows that the tools can be absent at session creation in this setup. It does not prove that a managed Threadline build has permanently removed all host-capable paths.
+
+The restricted config set GOOSE_MODE to approve and marked analyze, apps, extensionmanager, scheduler, summon, tom, skills and developer disabled before process startup. The test process used an empty environment except for those isolated paths, a fake provider key, the localhost fixture endpoint and required execution variables. A session without any provider setting failed explicitly with “Configuration value not found: GOOSE_PROVIDER”.
+
+**Integration gate:** Threadline must create the configuration before process launch, restrict extension and MCP loading, expose local files only through its authorized Connector, and run the worker inside an OS-level containment boundary. A security Stop must revoke Connector capabilities, cancel inference, terminate the sandbox/process group including descendants, and verify cleanup. A cancelled ACP prompt alone cannot be treated as evidence that host execution has stopped. Repeat the same scenario with a real Connector adapter, real endpoint policy and on every supported desktop OS before choosing Goose for production.
+
+No real-model task quality, approval-to-exact-arguments binding, crash recovery, session retention, third-party MCP behavior, Windows/Linux isolation, or signed desktop packaging was validated. The temporary probe scripts and synthetic files were not product code.
+
 ## Handoff and evidence limits
 
 - Issue: #210; branch: `codex/210-runtime-alternatives`.
 - Changed surface: this research note only; no protocol, runtime, dependency or security policy changes.
-- Verification: primary-source reading and document checks. No candidate was installed or executed in this research pass; the earlier Codex report separately records its bounded experiments.
+- Verification: primary-source reading, document checks and the bounded Goose macOS ACP experiment above. The earlier Codex report separately records its bounded experiments.
 - Open decision: whether arbitrary code execution is required for the first release. The recommendation above covers both answers.
-- Risks: moving upstream documentation, untested packaging and lifecycle semantics, and integration work at authorization boundaries.
-- Next owner action: choose the initial product scope and claim a small validation task. No merge or production readiness is implied by this note.
+- Risks: moving upstream documentation, untested packaging and lifecycle semantics, and integration work at authorization boundaries. Goose cancellation left a tested background child running.
+- Next owner action: choose the initial product scope; validate Connector-only tools and process-tree containment before considering Goose for integration. No merge or production readiness is implied by this note.
