@@ -266,10 +266,10 @@ sequenceDiagram
 sequenceDiagram
   participant U as Human Client
   participant CP as IM Control Plane
-  participant LR as Local Runtime
+  participant LR as Rust agentd
   participant CA as Local Context API
   participant FS as Workspace Connector
-  participant M as Model Adapter
+  participant M as Supervised Goose ACP worker
 
   U->>CP: create Task(selected message/file refs)
   CP->>CP: policy check + issue signed capability grant
@@ -280,11 +280,13 @@ sequenceDiagram
   CA-->>LR: bounded plaintext context
   LR->>FS: access approved paths only
   FS-->>LR: scoped file data
-  LR->>M: inference request under egress policy
+  LR->>M: Run-scoped prompt and approved route
   M-->>LR: response
   LR->>CP: encrypted run event / artifact metadata
   CP-->>U: progress, approval or result
 ```
+
+Goose worker 只通过 `agentd` 获得选定的 Context 和授权工具；Run/Session 映射、取消与生产准入见 [ADR-0006](../adr/0006-rust-agentd-goose-runtime.md)。
 
 ### Agent 的三种数据模式
 

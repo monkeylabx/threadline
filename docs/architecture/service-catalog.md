@@ -1,10 +1,10 @@
 # Threadline P0 部署服务目录
 
 状态：历史架构草案（当前依据为ADR-0002；下方图示及六服务分节为早期记录）
-更新时间：2026-07-24
+更新时间：2026-09-25
 
 2026-09-06：[ADR-0002](../adr/0002-server-protocol-storage.md)明确新增独立Recovery Control，禁止按旧六服务图合并恢复权限。
-当前工作负载表如下；下方旧图/分节尚未完整重绘，不作为部署验收证据。私人工作提案不新增服务，见[ADR-0005](../adr/0005-private-work-publication-boundary.md)。
+当前工作负载表如下；下方旧图/分节尚未完整重绘，不作为部署验收证据。私人工作提案不新增服务，见[ADR-0005](../adr/0005-private-work-publication-boundary.md)。本地 Rust `agentd` 与内部 Goose worker 的选择见[ADR-0006](../adr/0006-rust-agentd-goose-runtime.md)。
 
 ## 1. 服务数量
 
@@ -130,17 +130,17 @@ Stream / DLQ，由管理员查看并重放。
 | 故障影响 | 不能生成新 Route Grant；已有未过期 Grant 可继续，IM 和正在运行的本地工具不受影响 |
 
 Model Control 不接收、代理或存储用户 Prompt。`agentd` 通过 Runtime Gateway 获取 Endpoint、模型、
-参数约束和短期凭据后，直接调用企业内网模型。Strict Local Policy 可以只返回本机模型。
+参数约束和短期凭据，并将限于该 Run 的配置交给受监管的 Goose worker；worker 在出口策略下直连批准的企业内网模型。Strict Local Policy 可以只返回本机模型。
 
 ## 4. 设备本地服务
 
 | 本地服务 | 职责 | 本地数据 | 服务端关系 |
 | --- | --- | --- | --- |
 | `threadline-locald` | SQLite 单写者、IM Sync、Outbox、Context API、Search | 加密消息库、Cursor、FTS | Connect/Protobuf + WSS 访问 Core/Realtime |
-| `threadline-agentd` | Agent Runtime、Run、Tools、Model Adapter、Event | Run 目录、Session、临时 Context Bundle | 只主动连接 Runtime Gateway；模型调用直达内网 Endpoint |
+| `threadline-agentd`（Rust） | Run/Lease、Capability/Approval、Goose ACP worker 监管、Event | 受控 Run 状态、Goose Session 映射、临时 Context Bundle | 只主动连接 Runtime Gateway；受限 Goose worker 直连批准的模型 Endpoint |
 | `threadline-connectord` | Workspace 路径授权、Sandbox、文件读写和受保护动作 | Grant、授权目录映射、操作日志 | 只接受本机 Agentd 的 Capability 调用 |
 
-Desktop UI 不直接打开 SQLite，也不直接调用 Workspace。Mobile 和 Web 没有 `agentd` 与
+Desktop UI 不直接打开 SQLite，也不直接调用 Workspace。Goose 是 `agentd` 的内部子进程，不是拥有独立业务事实的第四个本地服务；它不能直接读取消息数据库或任意 Workspace。Mobile 和 Web 没有 `agentd` 与
 `connectord`，只能发起、审批和观察投递到授权 Desktop Runtime 的 Task。
 
 ## 5. 生产基础设施
@@ -172,7 +172,7 @@ CA 和 NetworkPolicy；PostgreSQL、NATS、Redis、Vault 不暴露到 Client Net
 | agentd | Runtime Gateway | gRPC Stream / mTLS | Heartbeat、Task、Run Event、Approval | 重连 + Lease/Fencing |
 | Runtime Gateway | Core | gRPC / mTLS | Task Claim、Lease、Run 状态提交 | Task 保持 Pending/Interrupted |
 | Runtime Gateway | Model Control | gRPC / mTLS | Resolve Route、Capability、短期凭据 | 不启动新的模型调用 |
-| agentd | Internal Model Endpoint | 企业模型原生 HTTPS / mTLS | 推理数据路径 | Policy Retry / Fallback |
+| Goose worker（由 agentd 监管） | Internal Model Endpoint | 企业模型原生 HTTPS / mTLS | 获批 Run 的推理数据路径 | Policy Retry / Fallback；网络出口限制 |
 | 所有服务 | OTel Collector | OTLP / mTLS | Trace、Metric、脱敏 Log | 本地 Buffer，不能阻塞业务 |
 
 ### 6.1 PostgreSQL schema ownership

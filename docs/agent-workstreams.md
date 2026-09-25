@@ -69,7 +69,7 @@ Claim 必须先完成 Issue Assignee 和 `status/claimed` 更新，再创建 Wor
 | `desktop` | `apps/desktop/` | Tauri/React 页面、Window、快捷键 | iOS/Android 页面、Client Core |
 | `mobile-ios` | `apps/ios/` | SwiftUI/UIKit、APNs、Keychain、Share、后台恢复 | Android、Desktop、Rust Core |
 | `mobile-android` | `apps/android/` | Compose、FCM、Keystore、Share、后台恢复 | iOS、Desktop、Rust Core |
-| `runtime` | `services/agentd/`、`services/runtime-gateway/`、`crates/connectord/` | Run、Lease、Context、Workspace | IM SQLite、Core 表直写 |
+| `runtime` | `crates/agentd/`、`services/runtime-gateway/`、`crates/connectord/` | Rust agentd、Goose ACP、Run、Lease、Context、Workspace | IM SQLite、Core 表直写 |
 | `model-control` | `services/model-control/` | Discovery、Evaluation、Route Policy、Grant | Workflow 硬编码模型名、代理或记录 Prompt |
 | `admin-web` | `apps/admin-web/` | 管理页面、Audit Viewer | Core Policy 实现 |
 | `platform` | `deploy/`、镜像和 CI Release | Helm、PKI、Observability、Offline Bundle | 业务 Contract |
