@@ -75,6 +75,7 @@ connectord (separate process) <----------- agentd
 - `agentd` 只能用短期 Capability 通过 `locald` Context API 请求有限消息上下文，通过 `connectord` 请求有限 Workspace 操作。
 - `locald`、`agentd`、`connectord` 可独立崩溃和重启。`agentd`/`connectord` 不可用不得阻塞普通 IM、Outbox 或 Sync。
 - Tauri Rust 宿主只负责窗口生命周期、Sidecar 启停、IPC 权限和 OS Adapter，不复制 `locald` 的消息状态机。
+- 本地 `agentd` 的 Rust 实现与受监管的 Goose ACP worker 见 [ADR-0006](./0006-rust-agentd-goose-runtime.md)；本 ADR 的进程和授权边界保持不变。
 
 #### Mobile
 
@@ -162,7 +163,7 @@ Actor Handle 绑定一个 Runtime 实例。Host 可以从任意 UI 线程发起�
 
 #### Tauri Sidecar
 
-- `locald`、`agentd`、`connectord` 按 `{product version, target triple}` 与 Desktop App 一起签名和发布，不从网络独立下载可执行代码。
+- `locald`、`agentd`、`connectord` 以及 `agentd` 启动的 Goose worker 按 `{product version, target triple}` 与 Desktop App 一起签名和发布，不从网络独立下载可执行代码。Goose 是内部 worker，不增加第四个 Threadline 本地服务。
 - Tauri Capability/Permission Manifest 只允许访问明确 IPC 命令和 Sidecar；UI 不能传任意可执行路径、数据库路径或 Connector Root。
 - 启动时校验 Sidecar 签名/哈希和 IPC Contract 范围；版本不兼容时普通 IM 优先以安全降级模式启动，Agent/Connector 单独标为不可用。
 - Auto Update 必须把 App、Sidecar、Schema Migration 和回滚元数据视为一个发布单元。不得在数据库已不可逆迁移后仅回滚 UI。

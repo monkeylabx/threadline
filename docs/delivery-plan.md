@@ -6,6 +6,8 @@
 共享Task工作包不能被视为已经覆盖私人存储/恢复、发布受众和版本交接；需Product/Architecture复核范围，
 再拆分客户端、Runtime、Contracts/Core/Crypto任务。本次不修改原估算、Gate和排期，也不将原型确认记为交付完成。
 
+2026-09-25 Runtime 决策更新：本地 Rust `agentd` 采用受监管的 Goose ACP worker，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md)。此处仅修正技术选型与验收口径；P07/P09 原估算和排期尚未复核。
+
 计划起点：2026-07-27
 
 基准 GA：2027-10-29
@@ -48,7 +50,7 @@
 | Android | Kotlin + Jetpack Compose | 原生消息列表、Composer、Push、后台、Keystore、文件和企业分发 |
 | Shared Client Core | Rust | E2EE、加密 SQLite、Outbox、Cursor、同步归并、本地搜索和附件加密 |
 | Native Bridge | 版本化 Rust FFI | Swift/Kotlin 只依赖稳定 Facade；错误、取消、流和内存所有权必须 Contract Test |
-| Desktop 本地服务 | `locald`、`agentd`、`connectord` | UI 不直接写 SQLite，不直接访问任意文件系统 |
+| Desktop 本地服务 | Rust `locald`、Rust `agentd`、Rust `connectord` | `agentd` 监管无 UI 的 Goose ACP worker；UI 不直接写 SQLite 或访问任意文件系统，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md) |
 | Mobile 本地能力 | Rust Core 进程内 Actor | 不包含 `agentd` 和 `connectord`，不执行长任务 |
 
 M0 验证两条不可逆风险：Rust Core 在 Swift/Kotlin 中的 FFI、取消和恢复，以及候选 Group E2EE 库
@@ -59,7 +61,7 @@ M0 验证两条不可逆风险：Rust Core 在 Swift/Kotlin 中的 FFI、取消�
 
 | 层 | 选择 | 说明 |
 | --- | --- | --- |
-| 语言 | Go | 复用现有 `agent-core` 能力与团队执行契约；适合网络服务和单二进制私有化交付 |
+| 语言 | Go（服务端工作负载） | Core、Runtime Gateway 等服务端组件使用 Go；Desktop 本地 `agentd` 使用 Rust，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md) |
 | RPC | Protobuf + ConnectRPC | Admin Web、Desktop、iOS、Android 走 Connect；服务间和 Runtime Stream 走 gRPC/mTLS |
 | Realtime | WSS + Protobuf Binary Frame | WSS 只负责连接与在线提示；可靠性由 Outbox、ACK、Cursor Sync 保证 |
 | 数据访问 | pgx + sqlc | 显式 SQL、事务和 Schema Ownership，不使用隐式 ORM |
@@ -112,6 +114,7 @@ threadline/
     client-ffi/              # stable Swift/Kotlin facade and generated bindings
     locald/                  # Desktop single-writer daemon
     connectord/              # Workspace capability and sandbox
+    agentd/                  # Rust local Run supervisor; Goose ACP worker
     tauri-plugins/           # desktop keychain, file, updater adapters
   services/
     core/
@@ -120,7 +123,6 @@ threadline/
     worker/
     model-control/
     recovery-control/
-    agentd/                  # Go; wraps agent-core
   packages/
     ui/
     design-tokens/
@@ -274,7 +276,7 @@ Monorepo 使用 `pnpm workspace + Cargo workspace + Go workspace + SwiftPM + Gra
 
 | ID | 任务 | 人日 | 依赖 | 完成标准 |
 | --- | --- | ---: | --- | --- |
-| P07-01 | Tauri Shell、Sidecar、权限 Manifest | 22 | P00-05,P05-12 | 最小权限启动 locald/agentd/connectord |
+| P07-01 | Tauri Shell、Sidecar、权限 Manifest | 22 | P00-05,P05-12 | 最小权限启动 locald/agentd/connectord；Goose worker 按固定版本签名打包并受限启动 |
 | P07-02 | 登录、设备注册、密钥授权、组织切换 | 20 | P03-02,P03-03,P05-05 | 过期、撤销、离线和 Key Package 状态完整 |
 | P07-03 | 消息根页、Channel/DM 列表、导航 | 26 | P01-04,P05-04 | 10,000 会话可流畅滚动 |
 | P07-04 | Timeline、Thread、Composer、Mention | 36 | P04-04,P05-06 | 输入法、引用、编辑、撤回和解密失败可用 |
@@ -312,7 +314,7 @@ Monorepo 使用 `pnpm workspace + Cargo workspace + Go workspace + SwiftPM + Gra
 | P09-01 | Runtime Enrollment、mTLS、Heartbeat | 24 | P03-03,P02-04 | Runtime 只主动出站连接 |
 | P09-02 | Task/Run 状态机、Execution Owner、Dispatch | 30 | P03-06,P03-08 | Task/Run 历史不可覆盖且同一 Run 只有一个 Owner |
 | P09-03 | Lease、Fencing、Transfer、Crash Recovery | 32 | P09-02 | 旧 Writer 和旧 Grant 不能提交新状态 |
-| P09-04 | agentd Agent Loop、Session、Cancel | 38 | P09-02 | 多轮、取消、恢复和预算限制通过 |
+| P09-04 | Rust agentd、Goose ACP、Session、Cancel | 38 | P09-02 | 多轮、Run/Session 映射、取消及子进程清理、恢复和预算限制通过；Goose 准入门见 ADR-0006 |
 | P09-05 | Context Manifest、本地解密 Context API | 28 | P05-04,P05-06,P03-06 | 只返回授权引用和有限窗口，Server 不接触明文 |
 | P09-06 | Run Event、Projection、Artifact | 20 | P09-04 | UI 只展示结构化活动，不刷原始日志 |
 | P09-07 | connectord Path Grant、Sandbox | 32 | P03-06 | 无法越过路径、动作和时限范围 |
