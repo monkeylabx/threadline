@@ -137,10 +137,10 @@ Model Control 不接收、代理或存储用户 Prompt。`agentd` 通过 Runtime
 | 本地服务 | 职责 | 本地数据 | 服务端关系 |
 | --- | --- | --- | --- |
 | `threadline-locald` | SQLite 单写者、IM Sync、Outbox、Context API、Search | 加密消息库、Cursor、FTS | Connect/Protobuf + WSS 访问 Core/Realtime |
-| `threadline-agentd`（Rust） | 面向 UI 的 ACP Agent、面向 Goose 的 ACP Client；Run/Lease、Capability/Approval、worker 监管、Event | 受控 Run 状态、Goose Session 映射、临时 Context Bundle | 只主动连接 Runtime Gateway；受限 Goose worker 直连批准的模型 Endpoint |
+| `threadline-agentd`（Rust） | 本地任务接口、内部 Goose ACP Client；Run/Lease、Capability/Approval、worker 监管、Event | 受控 Run 状态、Goose Session 映射、临时 Context Bundle | 只主动连接 Runtime Gateway；受限 Goose worker 直连批准的模型 Endpoint |
 | `threadline-connectord` | Workspace 路径授权、Sandbox、文件读写和受保护动作 | Grant、授权目录映射、操作日志 | 只接受本机 Agentd 的 Capability 调用 |
 
-Desktop Agent UI 经受限 Tauri 桥接由 Rust 宿主通过 ACP stdio 连接 `agentd`；标准交互、可信 Run 绑定与第三方客户端准入见 [ADR-0007](../adr/0007-acp-agent-client-interface.md) 和 [实现 Profile](./agent-client-acp-profile.md)。Task/Run 事实、权限、审批、审计和发布继续使用 Threadline 业务契约。Desktop UI 不直接打开 SQLite，也不直接调用 Workspace。Goose 是 `agentd` 的内部子进程，不是拥有独立业务事实的第四个本地服务；它不能直接读取消息数据库或任意 Workspace。Mobile 和 Web 没有 `agentd` 与
+Desktop Agent UI 经受限 Tauri 桥接由 Rust 宿主通过本地业务 IPC 调用 `agentd` 的任务接口；仅 `agentd`→Goose 使用 ACP，不提供 ACP 转发或对外 ACP 入口，见 [ADR-0007](../adr/0007-agentd-task-interface.md) 和 [Draft Profile](./agentd-task-interface.md)。Task/Run 事实、权限、审批、审计和发布继续使用 Threadline 业务契约。Desktop UI 不直接打开 SQLite，也不直接调用 Workspace。Goose 是 `agentd` 的内部子进程，不是拥有独立业务事实的第四个本地服务；它不能直接读取消息数据库或任意 Workspace。Mobile 和 Web 没有 `agentd` 与
 `connectord`，只能发起、审批和观察投递到授权 Desktop Runtime 的 Task。
 
 ## 5. 生产基础设施
@@ -169,8 +169,8 @@ CA 和 NetworkPolicy；PostgreSQL、NATS、Redis、Vault 不暴露到 Client Net
 | Worker | PostgreSQL | PostgreSQL Protocol / TLS | Claim Outbox/Job、更新 Delivery | Lease + Retry |
 | Worker | NATS | NATS Protocol / mTLS | 发布已提交领域事件 | Outbox 保留待重放 |
 | NATS | Realtime | Durable/Internal Subscription | 在线 Fan-out 通知 | Client Cursor 补洞 |
-| Desktop Agent UI（经 Tauri 宿主） | agentd | ACP / JSON-RPC，子进程 stdio | 获权 Run 的会话、输入、活动、审批交互和取消 | 重新验证身份/Run；不盲目重放；IM 保持可用 |
-| agentd | Goose worker | 独立 ACP / JSON-RPC，子进程 stdio | 受控推理/工具循环 | 撤权、受监管进程回收、Run 状态对账 |
+| Desktop Agent UI（经 Tauri 宿主） | agentd | 本地业务 gRPC / Protobuf，UDS / Named Pipe | 获权 Run 的输入、活动、审批交互和取消 | 重新验证身份/Run；不盲目重放；IM 保持可用 |
+| agentd | Goose worker | 内部 ACP / JSON-RPC，子进程 stdio | 受控推理/工具循环 | 撤权、受监管进程回收、Run 状态对账 |
 | agentd | Runtime Gateway | gRPC Stream / mTLS | Heartbeat、Task、Run Event、Approval | 重连 + Lease/Fencing |
 | Runtime Gateway | Core | gRPC / mTLS | Task Claim、Lease、Run 状态提交 | Task 保持 Pending/Interrupted |
 | Runtime Gateway | Model Control | gRPC / mTLS | Resolve Route、Capability、短期凭据 | 不启动新的模型调用 |
