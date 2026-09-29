@@ -7,17 +7,20 @@ date: 2026-09-25
 
 Threadline Desktop will implement its local `agentd` supervisor in Rust and select Goose as the first Agent execution engine. The initial integration is a separately packaged, pinned Goose CLI binary running `goose acp` over stdio; Goose Desktop and its UI are not part of Threadline. This choice preserves the process and authorization boundaries in [ADR-0001](./0001-client-platform.md) while reusing an existing multi-model Agent loop. **Accepted architecture does not mean Goose has passed production security admission.**
 
+The Desktop Agent client interface is clarified by [ADR-0007](./0007-acp-agent-client-interface.md): the Tauri host speaks ACP to `agentd`, which remains a separate ACP Client toward Goose. ADR-0007 replaces only the generic UI-to-agentd IPC selection in the original diagram, not the runtime choice or admission gates.
+
 ## Context and decision
 
 `locald`, `connectord`, and the Tauri host are already Rust-based, whereas the current Go `services/agentd/main.go` is only an empty process target. The delivery plan's Go `agentd` entry is superseded by this ADR; Go remains the language for the server-side Runtime Gateway and other planned server workloads. Mobile and Web remain Task controllers/observers and do not run a local Agent.
 
 ```text
-Tauri UI ── versioned IPC ──> Rust agentd (signed Desktop sidecar)
-                               ├─ Run/Lease/Fencing, budget, approval, audit events
-                               ├─ authorized Context API ──> locald
-                               ├─ capability-scoped tools ──> connectord
-                               └─ supervised stdio ACP ──> Goose CLI worker
-                                                         └─ approved model endpoint
+Tauri Agent UI
+  └─ Tauri Rust host ── ACP stdio ──> Rust agentd (signed Desktop sidecar)
+                                      ├─ Run/Lease/Fencing, budget, approval, audit events
+                                      ├─ authorized Context API ──> locald
+                                      ├─ capability-scoped tools ──> connectord
+                                      └─ supervised stdio ACP ──> Goose CLI worker
+                                                                └─ approved model endpoint
 ```
 
 The diagram shows ownership, not direct authority for Goose. Threadline owns Task and Run identity, durable state, current grants, exact-action approvals, model route policy, retention, and publication. A Goose session is an internal execution detail mapped to one authorized Run; a Channel is never a Goose session. Goose owns the model/tool loop and its working-context compaction. `agentd` turns ACP events into Threadline's versioned Run events and never treats model text or a compacted summary as authorization evidence.

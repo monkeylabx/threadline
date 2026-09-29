@@ -8,6 +8,8 @@
 
 2026-09-25 Runtime 决策更新：本地 Rust `agentd` 采用受监管的 Goose ACP worker，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md)。此处仅修正技术选型与验收口径；P07/P09 原估算和排期尚未复核。
 
+2026-09-29 Agent 交互决策：Desktop 界面经 Tauri 宿主通过 ACP 连接 `agentd`，`agentd` 再通过独立 ACP 连接 Goose，见 [ADR-0007](./adr/0007-acp-agent-client-interface.md) 和 [Draft Profile](./architecture/agent-client-acp-profile.md)。IM/Task/权限/审批/发布业务契约保持 Threadline 所有；本地运行与第三方兼容证据仍为 NOT RUN，原估算、范围和 Gate 状态不变。
+
 计划起点：2026-07-27
 
 基准 GA：2027-10-29
@@ -50,7 +52,7 @@
 | Android | Kotlin + Jetpack Compose | 原生消息列表、Composer、Push、后台、Keystore、文件和企业分发 |
 | Shared Client Core | Rust | E2EE、加密 SQLite、Outbox、Cursor、同步归并、本地搜索和附件加密 |
 | Native Bridge | 版本化 Rust FFI | Swift/Kotlin 只依赖稳定 Facade；错误、取消、流和内存所有权必须 Contract Test |
-| Desktop 本地服务 | Rust `locald`、Rust `agentd`、Rust `connectord` | `agentd` 监管无 UI 的 Goose ACP worker；UI 不直接写 SQLite 或访问任意文件系统，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md) |
+| Desktop 本地服务 | Rust `locald`、Rust `agentd`、Rust `connectord` | Agent UI 经 Tauri 宿主通过 ACP 连接 `agentd`；`agentd` 监管无 UI 的 Goose ACP worker。UI 不直接写 SQLite 或访问任意文件系统，见 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md)、[ADR-0007](./adr/0007-acp-agent-client-interface.md) |
 | Mobile 本地能力 | Rust Core 进程内 Actor | 不包含 `agentd` 和 `connectord`，不执行长任务 |
 
 M0 验证两条不可逆风险：Rust Core 在 Swift/Kotlin 中的 FFI、取消和恢复，以及候选 Group E2EE 库
@@ -281,7 +283,7 @@ Monorepo 使用 `pnpm workspace + Cargo workspace + Go workspace + SwiftPM + Gra
 | P07-03 | 消息根页、Channel/DM 列表、导航 | 26 | P01-04,P05-04 | 10,000 会话可流畅滚动 |
 | P07-04 | Timeline、Thread、Composer、Mention | 36 | P04-04,P05-06 | 输入法、引用、编辑、撤回和解密失败可用 |
 | P07-05 | File、Search、Preview | 22 | P06 | 拖放、上传、搜索、密钥和权限错误完整 |
-| P07-06 | Task Activity、Approval、Artifact/Diff | 32 | P09 | 可观察、批准、拒绝、中断和接收结果 |
+| P07-06 | Task Activity、Approval、Artifact/Diff | 32 | P09 | 经受限 ACP 桥接可观察、批准、拒绝、中断和接收结果；持久化 Task/Run、审批和成果仍按业务契约验收 |
 | P07-07 | Runtime、Workspace、Model/数据边界状态 | 20 | P09,P10 | 设备、路径、模型 Endpoint 和数据去向可见 |
 | P07-08 | 通知、快捷键、深链接、系统托盘 | 18 | P04-05 | 三平台行为定义并通过测试 |
 | P07-09 | Auto Update、签名、安装和卸载 | 20 | P12-07 | 三平台升级/回滚不丢本地数据 |
@@ -314,7 +316,7 @@ Monorepo 使用 `pnpm workspace + Cargo workspace + Go workspace + SwiftPM + Gra
 | P09-01 | Runtime Enrollment、mTLS、Heartbeat | 24 | P03-03,P02-04 | Runtime 只主动出站连接 |
 | P09-02 | Task/Run 状态机、Execution Owner、Dispatch | 30 | P03-06,P03-08 | Task/Run 历史不可覆盖且同一 Run 只有一个 Owner |
 | P09-03 | Lease、Fencing、Transfer、Crash Recovery | 32 | P09-02 | 旧 Writer 和旧 Grant 不能提交新状态 |
-| P09-04 | Rust agentd、Goose ACP、Session、Cancel | 38 | P09-02 | 多轮、Run/Session 映射、取消及子进程清理、恢复和预算限制通过；Goose 准入门见 ADR-0006 |
+| P09-04 | Rust agentd、客户端/Goose ACP 接入、Session、Cancel | 38 | P09-02 | 两段 ACP 版本/能力协商、可信 Run/Session 绑定、授权交互、取消及子进程清理、恢复和预算限制通过；接口和准入门见 ADR-0006/0007 与 Draft Profile |
 | P09-05 | Context Manifest、本地解密 Context API | 28 | P05-04,P05-06,P03-06 | 只返回授权引用和有限窗口，Server 不接触明文 |
 | P09-06 | Run Event、Projection、Artifact | 20 | P09-04 | UI 只展示结构化活动，不刷原始日志 |
 | P09-07 | connectord Path Grant、Sandbox | 32 | P03-06 | 无法越过路径、动作和时限范围 |

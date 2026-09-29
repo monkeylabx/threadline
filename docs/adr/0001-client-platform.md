@@ -76,6 +76,7 @@ connectord (separate process) <----------- agentd
 - `locald`、`agentd`、`connectord` 可独立崩溃和重启。`agentd`/`connectord` 不可用不得阻塞普通 IM、Outbox 或 Sync。
 - Tauri Rust 宿主只负责窗口生命周期、Sidecar 启停、IPC 权限和 OS Adapter，不复制 `locald` 的消息状态机。
 - 本地 `agentd` 的 Rust 实现与受监管的 Goose ACP worker 见 [ADR-0006](./0006-rust-agentd-goose-runtime.md)；本 ADR 的进程和授权边界保持不变。
+- Desktop Agent 交互经受限 Tauri 桥接，由 Rust 宿主通过 ACP stdio 连接 `agentd`，见 [ADR-0007](./0007-acp-agent-client-interface.md)。`agentd` 对界面充当 ACP Agent、对 Goose 充当 ACP Client；这里不替换 UI→`locald` 的 IM IPC、Mobile FFI 或服务端业务契约。认证、Run 绑定和权限复检不能从前端字段或协议能力声明推导。
 
 #### Mobile
 
