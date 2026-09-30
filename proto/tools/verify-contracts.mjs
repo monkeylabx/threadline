@@ -264,6 +264,8 @@ const auditRetentionContractTestPath = join(protoRoot, "tools", "verify-audit-re
 assert(statSync(auditRetentionContractTestPath).isFile(), "P03-07A Audit/Retention metadata verifier must exist");
 const cryptoContractTestPath = join(protoRoot, "tools", "verify-crypto-contracts.mjs");
 assert(statSync(cryptoContractTestPath).isFile(), "T019 crypto/recovery behavior verifier must exist");
+const localAgentContractTestPath = join(protoRoot, "tools", "verify-agentd-local-contracts.mjs");
+assert(statSync(localAgentContractTestPath).isFile(), "agentd local interface verifier must exist");
 const cryptoContractManifest = JSON.parse(read(join(repositoryRoot, "test", "fixtures", "proto", "crypto", "manifest.json")));
 const t019GeneratedCompatTestPath = join(protoRoot, "tools", "verify-t019-generated-compat.mjs");
 const t019GeneratedCompatManifestPath = join(repositoryRoot, "test", "fixtures", "proto", "crypto", "generated-compat-manifest.json");
@@ -311,6 +313,8 @@ const auditRetentionContractTests = spawnSync(process.execPath, [auditRetentionC
 if (auditRetentionContractTests.status !== 0) errors.push(`${auditRetentionContractTests.stdout ?? ""}${auditRetentionContractTests.stderr ?? ""}`.trim());
 const cryptoContractTests = spawnSync(process.execPath, [cryptoContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (cryptoContractTests.status !== 0) errors.push(`${cryptoContractTests.stdout ?? ""}${cryptoContractTests.stderr ?? ""}`.trim());
+const localAgentContractTests = spawnSync(process.execPath, [localAgentContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+if (localAgentContractTests.status !== 0) errors.push(`${localAgentContractTests.stdout ?? ""}${localAgentContractTests.stderr ?? ""}`.trim());
 const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
 if (cryptoSemanticFixtureTests.status !== 0) errors.push(`${cryptoSemanticFixtureTests.stdout ?? ""}${cryptoSemanticFixtureTests.stderr ?? ""}`.trim());
 
@@ -331,5 +335,6 @@ console.log("Threadline P03-05B authorization behavior fixtures are valid.");
 console.log("Threadline P03-06B Capability Grant signature fixtures are valid.");
 console.log("Threadline P03-07A Audit/Retention metadata fixtures are valid.");
 console.log("Threadline T019 crypto/recovery behavior fixtures are valid.");
+console.log("Threadline agentd local interface fixtures are valid.");
 console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");
