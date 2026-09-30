@@ -179,7 +179,8 @@ flowchart LR
 | First-party Command API | Connect RPC / HTTPS | Protobuf | 第一方客户端共享强类型 Schema 和版本兼容规则 |
 | Client Sync API | HTTPS | Protobuf Batch | 历史分页和补洞体积更小，并复用 Realtime Schema |
 | Service-to-Service | gRPC over HTTP/2 + mTLS | Protobuf | 强类型契约、流式调用、Deadline 和统一错误码 |
-| Local IPC | UDS（macOS/Linux）/ Named Pipe（Windows） | gRPC + Protobuf | 不开放本机 TCP 端口，可依赖 OS ACL |
+| Local business IPC（IM/Agent Task/Context/Connector） | UDS（macOS/Linux）/ Named Pipe（Windows） | gRPC + Protobuf | 本地业务契约与授权复检；不开放本机 TCP 端口 |
+| Agent execution worker | agentd 管理的子进程 stdio | ACP / JSON-RPC | 仅 agentd→Goose 使用 ACP；固定版本、进程监管与任务接口见 ADR-0006/0007 |
 | Runtime Dispatch | Runtime 主动建立的 mTLS 长连接 | Protobuf Task Envelope | 无需给用户电脑开放入站端口，支持 NAT/企业网络 |
 | Attachment / Artifact | HTTPS resumable multipart | 加密二进制块 | 大文件不占用 WebSocket；支持断点续传与校验 |
 | External Integration | HTTPS REST | 标准 JSON / Form | OIDC、SCIM、Webhook 遵循外部标准原生格式 |
@@ -192,7 +193,7 @@ flowchart LR
 改变消息语义。
 
 第一方 API 采用 Proto-first。JSON 只保留在 OIDC、SCIM、Webhook 等外部标准边界，不在内部再
-维护一套平行的 Message / Task / Approval 数据模型。
+维护一套平行的 Message / Task / Approval 数据模型。Agent worker 的 ACP JSON-RPC 属于外部引擎边界；界面使用 Threadline 业务类型。
 
 ### Realtime Envelope
 
@@ -264,29 +265,32 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-  participant U as Human Client
+  participant U as Desktop Human Client
   participant CP as IM Control Plane
   participant LR as Rust agentd
   participant CA as Local Context API
   participant FS as Workspace Connector
   participant M as Supervised Goose ACP worker
 
-  U->>CP: create Task(selected message/file refs)
+  U->>CP: create Task / start Run(selected message/file refs)
   CP->>CP: policy check + issue signed capability grant
   CP-->>LR: encrypted task envelope over outbound stream
   LR->>CP: claim lease(fencing token)
+  U->>LR: Run-bound input through typed Tauri / local IPC
+  LR->>LR: bind trusted principal and authorized Run
   LR->>CA: get_context(refs, grant)
   CA->>CA: verify device, scope, epoch, expiry, revocation
   CA-->>LR: bounded plaintext context
   LR->>FS: access approved paths only
   FS-->>LR: scoped file data
-  LR->>M: Run-scoped prompt and approved route
-  M-->>LR: response
+  LR->>M: ACP prompt with bounded context and approved route
+  M-->>LR: ACP updates / permission requests
+  LR-->>U: scoped Threadline Run activity
   LR->>CP: encrypted run event / artifact metadata
   CP-->>U: progress, approval or result
 ```
 
-Goose worker 只通过 `agentd` 获得选定的 Context 和授权工具；Run/Session 映射、取消与生产准入见 [ADR-0006](../adr/0006-rust-agentd-goose-runtime.md)。
+Goose worker 只通过 `agentd` 获得选定的 Context 和授权工具；Run/Session 映射、取消与生产准入见 [ADR-0006](../adr/0006-rust-agentd-goose-runtime.md)。Desktop 界面使用 `agentd` 的任务接口，只有 `agentd` 与 Goose 之间使用 ACP，见 [ADR-0007](../adr/0007-agentd-task-interface.md) 与 [Draft Profile](./agentd-task-interface.md)；界面不依赖引擎 Session，活动输出不代替持久化 Run 状态或审批。以上为 Desktop 场景，Web/Mobile 继续通过 Threadline 业务契约控制和观察任务，不运行本地 Agent。
 
 ### Agent 的三种数据模式
 
