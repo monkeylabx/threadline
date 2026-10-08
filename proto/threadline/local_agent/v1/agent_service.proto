@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+// Device-local interaction with the Threadline Run supervisor. This service is
+// served only by agentd over authenticated local IPC, never by Core or Goose.
+package threadline.local_agent.v1;
+
+option go_package = "github.com/monkeylabx/threadline/services/gen/threadline/local_agent/v1;localagentv1";
+option java_multiple_files = true;
+option java_outer_classname = "LocalAgentServiceProto";
+option java_package = "com.threadline.proto.threadline.local_agent.v1";
+option swift_prefix = "";
+
+// LocalAgentService supplies the local content and interruption missing from
+// Core's durable RunService. Approval decisions remain with ApprovalService.
+service LocalAgentService {
+  // Admits one follow-up turn for an existing authorized Run. The initial Task
+  // goal travels through Core dispatch; this method never creates a Task/Run.
+  rpc SubmitRunInput(SubmitRunInputRequest) returns (SubmitRunInputResponse);
+
+  // Streams filtered device-local activity. Core RunEvent remains metadata-only.
+  rpc WatchRunActivity(WatchRunActivityRequest) returns (stream WatchRunActivityResponse);
+
+  // Requests immediate local interruption. The reply does not confirm cleanup
+  // or the durable cancellation state owned by Core.
+  rpc RequestRunStop(RequestRunStopRequest) returns (RequestRunStopResponse);
+}
+
+message SubmitRunInputRequest {
+  string run_id = 1;
+  // Opaque client-generated key, unique within this Run. Retries keep this key
+  // and the exact UTF-8 bytes; it is not an ACP or JSON-RPC request ID.
+  string input_id = 2;
+  // Device-local C3 plaintext, at most 64 KiB UTF-8. No file/MCP descriptors.
+  string text = 3;
+}
+
+enum RunInputDisposition {
+  RUN_INPUT_DISPOSITION_UNSPECIFIED = 0;
+  // The authorized input has been recorded in the protected local intake.
+  RUN_INPUT_DISPOSITION_ACCEPTED = 1;
+  // The same input_id and text bytes were already recorded for this Run.
+  RUN_INPUT_DISPOSITION_DUPLICATE = 2;
+}
+
+message SubmitRunInputResponse {
+  string input_id = 1;
+  // Acceptance is local intake only, not Goose completion or a Core RunEvent.
+  RunInputDisposition disposition = 2;
+}
+
+message WatchRunActivityRequest {
+  string run_id = 1;
+  // Empty on first watch. A reconnect must name the previously issued stream.
+  string stream_id = 2;
+  // Last applied local sequence; 0 on first watch. Not Core RunEvent.sequence.
+  uint64 after_sequence = 3;
+}
+
+message ActivityStreamReady {
+  // The first retained local update; can exceed 1 after bounded-buffer loss.
+  uint64 first_available_sequence = 1;
+  uint64 latest_sequence = 2;
+}
+
+enum LocalToolPhase {
+  LOCAL_TOOL_PHASE_UNSPECIFIED = 0;
+  LOCAL_TOOL_PHASE_PENDING = 1;
+  LOCAL_TOOL_PHASE_RUNNING = 2;
+  LOCAL_TOOL_PHASE_FINISHED = 3;
+  LOCAL_TOOL_PHASE_FAILED = 4;
+}
+
+message LocalToolActivity {
+  // Bounded, filtered display label. Never raw arguments, paths or tool output.
+  string label = 1;
+  LocalToolPhase phase = 2;
+}
+
+message WatchRunActivityResponse {
+  string run_id = 1;
+  // Agentd incarnation-scoped identifier, distinct from a Goose Session ID.
+  string stream_id = 2;
+  // 0 for the first ready frame; positive and increasing for local updates.
+  uint64 sequence = 3;
+  string input_id = 4;
+  oneof view {
+    ActivityStreamReady ready = 5;
+    // Filtered text for this observer only. Never submit it as Core RunEvent.
+    string agent_text = 6;
+    LocalToolActivity tool = 7;
+  }
+}
+
+message RequestRunStopRequest {
+  string run_id = 1;
+}
+
+message RequestRunStopResponse {
+  string run_id = 1;
+  // Receipt only. Confirmed cancellation needs descendant cleanup and a Core
+  // Execution Owner acknowledgement through the existing business path.
+}

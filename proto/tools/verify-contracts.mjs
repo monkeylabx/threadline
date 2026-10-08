@@ -264,6 +264,8 @@ const auditRetentionContractTestPath = join(protoRoot, "tools", "verify-audit-re
 assert(statSync(auditRetentionContractTestPath).isFile(), "P03-07A Audit/Retention metadata verifier must exist");
 const cryptoContractTestPath = join(protoRoot, "tools", "verify-crypto-contracts.mjs");
 assert(statSync(cryptoContractTestPath).isFile(), "T019 crypto/recovery behavior verifier must exist");
+const localAgentContractTestPath = join(protoRoot, "tools", "verify-agentd-local-contracts.mjs");
+assert(statSync(localAgentContractTestPath).isFile(), "agentd local interface verifier must exist");
 const cryptoContractManifest = JSON.parse(read(join(repositoryRoot, "test", "fixtures", "proto", "crypto", "manifest.json")));
 const t019GeneratedCompatTestPath = join(protoRoot, "tools", "verify-t019-generated-compat.mjs");
 const t019GeneratedCompatManifestPath = join(repositoryRoot, "test", "fixtures", "proto", "crypto", "generated-compat-manifest.json");
@@ -299,20 +301,13 @@ const rustHarnessLock = read(join(rustEnvelopeHarnessRoot, "Cargo.lock"));
 assert(rustHarnessManifest.includes('prost = "=0.14.1"'), "Rust harness must exactly pin prost 0.14.1");
 assert(rustHarnessManifest.includes('prost-reflect = "=0.16.5"'), "Rust harness must exactly pin prost-reflect 0.16.5");
 assert(rustHarnessLock.includes('name = "prost-reflect"\nversion = "0.16.5"'), "Rust harness lock must retain prost-reflect 0.16.5");
-const goldenTests = spawnSync(process.execPath, [goldenTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (goldenTests.status !== 0) errors.push(`${goldenTests.stdout ?? ""}${goldenTests.stderr ?? ""}`.trim());
-const messageSyncTests = spawnSync(process.execPath, [messageSyncTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (messageSyncTests.status !== 0) errors.push(`${messageSyncTests.stdout ?? ""}${messageSyncTests.stderr ?? ""}`.trim());
-const authorizationContractTests = spawnSync(process.execPath, [authorizationContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (authorizationContractTests.status !== 0) errors.push(`${authorizationContractTests.stdout ?? ""}${authorizationContractTests.stderr ?? ""}`.trim());
-const capabilityGrantContractTests = spawnSync(process.execPath, [capabilityGrantContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (capabilityGrantContractTests.status !== 0) errors.push(`${capabilityGrantContractTests.stdout ?? ""}${capabilityGrantContractTests.stderr ?? ""}`.trim());
-const auditRetentionContractTests = spawnSync(process.execPath, [auditRetentionContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (auditRetentionContractTests.status !== 0) errors.push(`${auditRetentionContractTests.stdout ?? ""}${auditRetentionContractTests.stderr ?? ""}`.trim());
-const cryptoContractTests = spawnSync(process.execPath, [cryptoContractTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (cryptoContractTests.status !== 0) errors.push(`${cryptoContractTests.stdout ?? ""}${cryptoContractTests.stderr ?? ""}`.trim());
-const cryptoSemanticFixtureTests = spawnSync(process.execPath, [cryptoSemanticFixtureTestPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
-if (cryptoSemanticFixtureTests.status !== 0) errors.push(`${cryptoSemanticFixtureTests.stdout ?? ""}${cryptoSemanticFixtureTests.stderr ?? ""}`.trim());
+for (const testPath of [
+  goldenTestPath, messageSyncTestPath, authorizationContractTestPath, capabilityGrantContractTestPath,
+  auditRetentionContractTestPath, cryptoContractTestPath, localAgentContractTestPath, cryptoSemanticFixtureTestPath,
+]) {
+  const result = spawnSync(process.execPath, [testPath], { cwd: repositoryRoot, encoding: "utf8", stdio: "pipe" });
+  if (result.status !== 0) errors.push(`${result.stdout ?? ""}${result.stderr ?? ""}`.trim());
+}
 
 if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join("\n"));
@@ -331,5 +326,6 @@ console.log("Threadline P03-05B authorization behavior fixtures are valid.");
 console.log("Threadline P03-06B Capability Grant signature fixtures are valid.");
 console.log("Threadline P03-07A Audit/Retention metadata fixtures are valid.");
 console.log("Threadline T019 crypto/recovery behavior fixtures are valid.");
+console.log("Threadline agentd local interface fixtures are valid.");
 console.log("Threadline T011 Crypto semantic fixture manifest is valid.");
 console.log("Threadline codegen repository failure-injection tests are valid.");
