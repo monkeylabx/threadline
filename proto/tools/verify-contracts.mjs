@@ -304,6 +304,8 @@ assert(rustHarnessLock.includes('name = "prost-reflect"\nversion = "0.16.5"'), "
 for (const testPath of [
   join(protoRoot, "tools", "codegen-output.test.mjs"), join(protoRoot, "tools", "codegen-bundle-tools.test.mjs"),
   join(protoRoot, "tools", "export-codegen-install.test.mjs"),
+  join(protoRoot, "tools", "create-codegen-bundle-spec.test.mjs"),
+  join(protoRoot, "tools", "codegen-bootstrap.test.mjs"),
   goldenTestPath, messageSyncTestPath, authorizationContractTestPath, capabilityGrantContractTestPath,
   auditRetentionContractTestPath, cryptoContractTestPath, localAgentContractTestPath, cryptoSemanticFixtureTestPath,
 ]) {

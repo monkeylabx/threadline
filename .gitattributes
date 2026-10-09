@@ -1,2 +1,10 @@
 # Preserve audited/generated upstream source byte-for-byte.
 third_party/libsqlite3-sys/** -whitespace
+
+# Preserve authenticated generator bytes, including upstream whitespace.
+services/gen/** -whitespace linguist-generated=true
+packages/generated-ts/src/** -whitespace linguist-generated=true
+crates/client-proto/src/generated/** -whitespace linguist-generated=true
+packages/generated-swift/Sources/ThreadlineProto/** -whitespace linguist-generated=true
+packages/generated-kotlin/src/main/java/** -whitespace linguist-generated=true
+packages/generated-kotlin/src/main/kotlin/** -whitespace linguist-generated=true

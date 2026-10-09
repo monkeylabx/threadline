@@ -210,6 +210,28 @@ the compiled SDK. Missing inputs are failures, not skips.
 
 The directories are adapters around the versioned Protobuf seam. Application code should expose domain-level interfaces rather than pass generator-specific reflection objects across module boundaries.
 
+## SDK consumers
+
+| Language | Package entry | Build and consumer check |
+| --- | --- | --- |
+| Go | `github.com/monkeylabx/threadline/services/gen/...` in the services module | `cd services && go test ./... && go build ./...` |
+| TypeScript | private workspace package `@threadline/proto`, exported descriptor subpaths | `pnpm --filter @threadline/proto build && pnpm --filter @threadline/proto test` |
+| Rust | workspace crate `threadline-client-proto` | `cargo test -p threadline-client-proto --locked` |
+| Swift | local Swift package/product `ThreadlineProto` | `swift test --package-path packages/generated-swift --force-resolved-versions` |
+| Kotlin | standalone JVM library in `packages/generated-kotlin` | `apps/android/gradlew -p packages/generated-kotlin test --no-daemon` |
+
+All five consumers roundtrip the existing local-agent `SubmitRunInputRequest`
+wire fixture, including its UTF-8 text. The package builds also compile the
+remaining generated domains and Connect clients where generated. Rust messages
+are RPC types; persisted opaque envelopes must retain the separate
+unknown-field-preserving implementation in [the compatibility contract](./compatibility.md). These checks do
+not admit an agentd worker, enable tools, or demonstrate physical-device behavior.
+Native build CI runs the consumers with the committed Cargo, pnpm, SwiftPM,
+Gradle, and Go dependency locks. No generated source is manually patched to
+make a consumer compile.
+The new TypeScript consumer uses compiler 5.9.3 for the runtime's typed-array
+declarations; the generator's internal TypeScript 5.4.5 pin remains unchanged.
+
 ## Ownership workflow
 
 Only the Integration Owner may execute the fixed generation command and commit its output:

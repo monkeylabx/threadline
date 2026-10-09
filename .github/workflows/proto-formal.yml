@@ -317,6 +317,8 @@ jobs:
           test "$(shasum -a 256 "${BUNDLE}/manifest.json" | awk '{print $1}')" = "${MANIFEST_SHA256}"
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
+            import { verifiedBootstrapNode } from "./proto/tools/codegen-bootstrap.mjs";
+            verifiedBootstrapNode(process.env.BUNDLE, process.env.MANIFEST_SHA256);
             const evidence = JSON.parse(readFileSync(process.env.BUNDLE + "/prepare-evidence.json", "utf8"));
             if (evidence.targetPr !== process.env.TARGET_PR || evidence.targetSha !== process.env.TARGET_SHA || evidence.prepareRunId !== process.env.PREPARED_RUN_ID || evidence.manifestSha256 !== process.env.MANIFEST_SHA256) process.exit(1);
             const compatibility = JSON.parse(readFileSync("proto/golden/v1/manifest.json", "utf8")).compatibilityEvidence;
