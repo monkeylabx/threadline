@@ -302,7 +302,8 @@ assert(rustHarnessManifest.includes('prost = "=0.14.1"'), "Rust harness must exa
 assert(rustHarnessManifest.includes('prost-reflect = "=0.16.5"'), "Rust harness must exactly pin prost-reflect 0.16.5");
 assert(rustHarnessLock.includes('name = "prost-reflect"\nversion = "0.16.5"'), "Rust harness lock must retain prost-reflect 0.16.5");
 for (const testPath of [
-  join(protoRoot, "tools", "codegen-output.test.mjs"),
+  join(protoRoot, "tools", "codegen-output.test.mjs"), join(protoRoot, "tools", "codegen-bundle-tools.test.mjs"),
+  join(protoRoot, "tools", "export-codegen-install.test.mjs"),
   goldenTestPath, messageSyncTestPath, authorizationContractTestPath, capabilityGrantContractTestPath,
   auditRetentionContractTestPath, cryptoContractTestPath, localAgentContractTestPath, cryptoSemanticFixtureTestPath,
 ]) {

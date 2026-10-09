@@ -27,7 +27,7 @@ The machine-readable pins live in `proto/toolchain.lock.json`. The pinned set is
 | protoc-gen-swift | 1.38.1 | Swift messages |
 | protoc-gen-connect-swift | 1.2.3 | Swift Connect clients |
 | protoc-gen-connect-kotlin | 0.9.0 | Kotlin Connect clients |
-| Git CLI | 2.50.1 | Repository-mode clean-worktree gate only; supplied in the verified release manifest |
+| Git CLI | 2.50.1 | Repository-mode cleanliness and scoped patch export; supplied in the verified release manifest |
 | Kotlin compiler | 2.4.10 | Kotlin generated-source compile smoke |
 | protobuf-java | 4.35.1 | Java message runtime used by the Kotlin SDK |
 | protobuf-kotlin | 4.35.1 | Kotlin DSL runtime used by the Kotlin SDK |
@@ -155,8 +155,8 @@ contains all six observed trees, `status: "candidate-awaiting-review"`, and
 `installed: false`. It does not synchronize repository files or attest release
 acceptance. Neither `verify-only` nor `repository` accepts a stale baseline.
 
-The authenticated workflow accepts three dispatch choices: `prepare`,
-`candidate`, and `verify`. Prepare a bundle for the exact open PR head, review
+The authenticated workflow accepts `prepare`, `candidate`, `verify`, and
+`install`. Prepare a bundle for the exact open PR head, review
 its manifest digest separately, then dispatch `candidate` with that PR/SHA,
 prepare run ID, and digest. The `proto-codegen-candidate` artifact binds the
 observed trees to those inputs in `candidate-evidence.json`; it cannot produce
@@ -164,6 +164,25 @@ observed trees to those inputs in `candidate-evidence.json`; it cannot produce
 separate Integration task updates `generationChecks` and installs SDKs. A new
 target commit requires a new prepare artifact and formal verification of that
 exact target; candidate evidence must never be relabelled as release PASS.
+
+For repository installation, dispatch `prepare` with `include_git: true`.
+This adds Git 2.50.1 built from its official source tag under the authenticated
+Xcode builder, with only operating-system library dependencies. Review its
+source, closure, executable digest, and build log alongside the other tools.
+Generation-only bundles still contain exactly the original thirteen tools;
+repository bundles additionally contain Git. Dispatch `install` with the
+reviewed prepare run, manifest digest, and exact open PR head. It runs the
+existing repository-mode verifier, then exports only the six generated trees
+as `proto-sdk-install/codegen-sdk.patch` with `install-evidence.json`.
+
+Before applying the patch in the Integration worktree, verify the artifact's
+PR, target SHA, prepare/install run IDs, manifest digest, patch digest, and
+six-tree inventory with `verifyInstallArtifact`. After applying, inspect all
+six trees against the locked counts and hashes before committing. This is
+artifact transfer from the protected installation, not local formal generation.
+Rerun prepare/install against the final committed PR head; the final patch
+should be empty when the committed SDKs already match the reviewed inventory.
+Generated SDK source is committed; native compiler outputs remain ignored.
 
 The canonical command and the exact required environment-variable names are
 machine-readable in `proto/golden/v1/manifest.json`. Each variable points to a
