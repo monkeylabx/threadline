@@ -214,10 +214,12 @@ jobs:
             'https://github.com/git/git/archive/refs/tags/v2.50.1.tar.gz' --output "${FORMAL_ROOT}/sources/git-2.50.1.tar.gz"
           mkdir -p "${FORMAL_ROOT}/build/git" "${FORMAL_ROOT}/closures/git"
           tar -xzf "${FORMAL_ROOT}/sources/git-2.50.1.tar.gz" -C "${FORMAL_ROOT}/build/git" --strip-components=1
+          # Keep system iconv: macOS precomposition includes it even with NO_ICONV,
+          # which otherwise loads SDK ctype declarations after Git's ctype macros.
           PATH='/usr/bin:/bin:/usr/sbin:/sbin' /usr/bin/make -C "${FORMAL_ROOT}/build/git" -j 3 git \
             CC="$(xcrun --find clang) -isysroot $(xcrun --sdk macosx --show-sdk-path)" \
             NO_GETTEXT=YesPlease NO_CURL=YesPlease NO_EXPAT=YesPlease \
-            NO_OPENSSL=YesPlease NO_ICONV=YesPlease NO_TCLTK=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease NO_DARWIN_PORTS=YesPlease
+            NO_OPENSSL=YesPlease NO_TCLTK=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease NO_DARWIN_PORTS=YesPlease
           install -m 0755 "${FORMAL_ROOT}/build/git/git" "${FORMAL_ROOT}/closures/git/git"
           "${FORMAL_ROOT}/closures/git/git" --version | grep -Fx 'git version 2.50.1'
           otool -L "${FORMAL_ROOT}/closures/git/git" | tail -n +2 | awk '{print $1}' > "${FORMAL_ROOT}/build/git/libraries.txt"
