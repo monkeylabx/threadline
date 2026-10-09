@@ -7,11 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Prepare an immutable bundle, or verify a previously reviewed bundle
+        description: Prepare a bundle, inspect candidate output, or verify the locked release baseline
         required: true
         type: choice
         options:
           - prepare
+          - candidate
           - verify
       target_pr:
         description: Open protocol PR number whose exact head is being tested
@@ -22,11 +23,11 @@ on:
         required: true
         type: string
       prepared_run_id:
-        description: Prepare workflow run ID (required for verify)
+        description: Prepare workflow run ID (required for candidate or verify)
         required: false
         type: string
       manifest_sha256:
-        description: Separately reviewed manifest SHA-256 (required for verify)
+        description: Separately reviewed manifest SHA-256 (required for candidate or verify)
         required: false
         type: string
 
@@ -241,7 +242,7 @@ jobs:
           retention-days: 14
 
   verify:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'verify'
+    if: github.event_name == 'workflow_dispatch' && (inputs.mode == 'verify' || inputs.mode == 'candidate')
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -251,11 +252,15 @@ jobs:
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           [[ "${TARGET_PR}" =~ ^[1-9][0-9]*$ ]]
           [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
           [[ "${PREPARED_RUN_ID}" =~ ^[0-9]+$ ]]
           [[ "${MANIFEST_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          test "$(gh pr view "${TARGET_PR}" --repo "${GITHUB_REPOSITORY}" --json state --jq .state)" = 'OPEN'
+          test "$(gh pr view "${TARGET_PR}" --repo "${GITHUB_REPOSITORY}" --json headRefOid --jq .headRefOid)" = "${TARGET_SHA}"
       - name: Check out exact protocol commit
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -270,13 +275,14 @@ jobs:
           gh run download "${PREPARED_RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name proto-formal-bundle --dir "${RUNNER_TEMP}/prepared"
           (cd "${RUNNER_TEMP}/prepared" && shasum -a 256 -c proto-formal-bundle.tgz.sha256)
           tar -xzf "${RUNNER_TEMP}/prepared/proto-formal-bundle.tgz" -C "${RUNNER_TEMP}"
-      - name: Verify artifact identity and formal generation
+      - name: Verify artifact identity and inspect generated output
         env:
           TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
           BUNDLE: ${{ runner.temp }}/threadline-formal-bundle
+          CODEGEN_MODE: ${{ inputs.mode == 'candidate' && 'candidate' || 'verify-only' }}
         run: |
           set -euo pipefail
           BUNDLE="${RUNNER_TEMP}/threadline-formal-bundle"
@@ -301,37 +307,42 @@ jobs:
             THREADLINE_PROTOBUF_KOTLIN_JAR="${BUNDLE}/kotlin/runtime/protobuf-kotlin-4.35.1.jar" \
             THREADLINE_KOTLIN_STDLIB_JAR="${BUNDLE}/kotlin/runtime/kotlin-stdlib-2.4.10.jar" \
             THREADLINE_CONNECT_KOTLIN_JAR="${BUNDLE}/kotlin/runtime/connect-kotlin-0.9.0.jar" \
-            "${NODE}" proto/tools/verify-codegen.mjs --mode=verify-only | tee "${RUNNER_TEMP}/formal-verification.log"
-      - name: Record verified evidence
+            "${NODE}" proto/tools/verify-codegen.mjs --mode="${CODEGEN_MODE}" | tee "${RUNNER_TEMP}/formal-verification.log"
+      - name: Record release or provisional candidate evidence
         env:
           TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+          EVIDENCE_MODE: ${{ inputs.mode }}
         run: |
           node --input-type=module -e '
             import { readFileSync, writeFileSync } from "node:fs";
+            import { candidateEvidence } from "./proto/tools/codegen-output.mjs";
             const lock = JSON.parse(readFileSync("proto/toolchain.lock.json", "utf8"));
             const evidence = {
               schemaVersion: 1,
-              status: "passed",
               targetPr: process.env.TARGET_PR,
               targetSha: process.env.TARGET_SHA,
               preparedRunId: process.env.PREPARED_RUN_ID,
               verifyRunId: process.env.GITHUB_RUN_ID,
               runnerImageVersion: process.env.ImageVersion ?? "unavailable",
               manifestSha256: process.env.MANIFEST_SHA256,
-              generationTrees: Object.fromEntries(Object.entries(lock.generationChecks).map(([name, value]) => [name, { fileCount: value.fileCount, treeSha256: value.treeSha256 }])),
               physicalDevices: "NOT RUN",
             };
-            writeFileSync(process.env.RUNNER_TEMP + "/formal-evidence.json", JSON.stringify(evidence, null, 2) + "\n");
+            const candidate = process.env.EVIDENCE_MODE === "candidate";
+            const result = candidate
+              ? candidateEvidence(readFileSync(process.env.RUNNER_TEMP + "/formal-verification.log", "utf8"), evidence, lock)
+              : { ...evidence, status: "passed", generationTrees: Object.fromEntries(Object.entries(lock.generationChecks).map(([name, value]) => [name, { fileCount: value.fileCount, treeSha256: value.treeSha256 }])) };
+            const filename = candidate ? "candidate-evidence.json" : "formal-evidence.json";
+            writeFileSync(process.env.RUNNER_TEMP + "/" + filename, JSON.stringify(result, null, 2) + "\n");
           '
-      - name: Upload formal verification evidence
+      - name: Upload scoped codegen evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: proto-formal-verification
+          name: ${{ inputs.mode == 'candidate' && 'proto-codegen-candidate' || 'proto-formal-verification' }}
           path: |
-            ${{ runner.temp }}/formal-evidence.json
+            ${{ runner.temp }}/${{ inputs.mode == 'candidate' && 'candidate-evidence.json' || 'formal-evidence.json' }}
             ${{ runner.temp }}/formal-verification.log
           if-no-files-found: error
           retention-days: 30

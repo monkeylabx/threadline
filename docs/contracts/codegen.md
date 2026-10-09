@@ -145,6 +145,26 @@ THREADLINE_CONNECT_KOTLIN_JAR=/path/to/connect-kotlin-0.9.0.jar \
 
 `--mode=protocol-smoke` is a deliberately weaker harness for exercising the plugin protocol with declared stubs. Its output is labelled `PROTOCOL-SMOKE ONLY` and is never release evidence. `--mode=verify-only` requires non-stub provenance. The separate `verify-generated-envelope-compat.mjs` harness generates and compiles Go, TypeScript, Rust, Swift, and Kotlin adapters, then relays the representative `ChannelEventEnvelope` and `RecoveryEnvelope` in both directions between the current schema and the exact pre-T014 main commit. Every hop mutates a known field and must preserve the exact field-50000 unknown canary. This closes the generated-adapter and N-1 acceptance items, but it is local compatibility evidence rather than the protected-runner formal codegen attestation.
 
+When merged Proto changes make the locked output counts or hashes stale, use
+`--mode=candidate` with the same approved launcher, release manifest, and Kotlin
+inputs shown above. This mode retains tool authentication, real-generator
+signatures, contract structures, symlink/stub rejection, and Java/Kotlin
+compilation. It skips only comparison with the locked counts/tree hashes and
+emits one `CODEGEN_CANDIDATE` JSON record after compilation succeeds. The record
+contains all six observed trees, `status: "candidate-awaiting-review"`, and
+`installed: false`. It does not synchronize repository files or attest release
+acceptance. Neither `verify-only` nor `repository` accepts a stale baseline.
+
+The authenticated workflow accepts three dispatch choices: `prepare`,
+`candidate`, and `verify`. Prepare a bundle for the exact open PR head, review
+its manifest digest separately, then dispatch `candidate` with that PR/SHA,
+prepare run ID, and digest. The `proto-codegen-candidate` artifact binds the
+observed trees to those inputs in `candidate-evidence.json`; it cannot produce
+`formal-evidence.json` or `status: "passed"`. Review the inventory before a
+separate Integration task updates `generationChecks` and installs SDKs. A new
+target commit requires a new prepare artifact and formal verification of that
+exact target; candidate evidence must never be relabelled as release PASS.
+
 The canonical command and the exact required environment-variable names are
 machine-readable in `proto/golden/v1/manifest.json`. Each variable points to a
 pinned executable, JDK/SDK, verified Kotlin JAR directory, or the committed
