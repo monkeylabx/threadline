@@ -122,7 +122,7 @@ const tools = {
 if (includeGit === "true") {
   sources["git-source"] = { kind: "source-archive", path: source("git-2.50.1.tar.gz"), url: "https://github.com/git/git/archive/refs/tags/v2.50.1.tar.gz" };
   closures.git = { root: closure("git"), sources: ["git-source", "xcode-builder"] };
-  tools.git = sourceBuilt(join(closure("git"), "git"), "git", "git-source", ["xcode-builder"], "DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer make git CC=<authenticated-xcode-clang> NO_GETTEXT=YesPlease NO_CURL=YesPlease NO_EXPAT=YesPlease NO_OPENSSL=YesPlease NO_ICONV=YesPlease NO_TCLTK=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease NO_DARWIN_PORTS=YesPlease");
+  tools.git = sourceBuilt(join(closure("git"), "git"), "git", "git-source", ["xcode-builder"], "DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer make git CC='<authenticated-xcode-clang> -isysroot <authenticated-macos-sdk>' NO_GETTEXT=YesPlease NO_CURL=YesPlease NO_EXPAT=YesPlease NO_OPENSSL=YesPlease NO_ICONV=YesPlease NO_TCLTK=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease NO_DARWIN_PORTS=YesPlease");
 }
 
 writeFileSync(output, `${JSON.stringify({ schemaVersion: 1, platform: "darwin-arm64", profile: "release", sources, closures, tools }, null, 2)}\n`);
