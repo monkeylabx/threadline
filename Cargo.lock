@@ -3258,6 +3258,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "threadline-agentd"
+version = "0.0.0"
+
+[[package]]
 name = "threadline-client-core"
 version = "0.0.0"
 dependencies = [
