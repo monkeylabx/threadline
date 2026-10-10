@@ -1,4 +1,6 @@
-//! Local shutdown coordination only; this library does not admit or launch a runtime.
+//! Local worker primitives only; this library does not admit or launch a runtime.
+
+pub mod acp;
 
 mod stop;
 mod stop_driver;
