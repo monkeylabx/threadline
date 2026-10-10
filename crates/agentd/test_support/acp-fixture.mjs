@@ -4,7 +4,8 @@ import { createInterface } from 'node:readline';
 const lines = createInterface({ input: process.stdin });
 lines.once('line', line => {
   const request = JSON.parse(line);
-  if (request.method !== 'initialize' || request.params.protocolVersion !== 1) {
+  if (process.version !== process.argv[3] || request.method !== 'initialize'
+      || request.params.protocolVersion !== 1) {
     process.exitCode = 43;
   } else if (process.argv[2] === 'partial') {
     process.stdout.end('{"jsonrpc":');
