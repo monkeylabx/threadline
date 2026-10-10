@@ -14,6 +14,12 @@ on:
           - prepare
           - candidate
           - verify
+          - install
+      include_git:
+        description: Prepare a repository-mode bundle with verified Git (required for install)
+        required: false
+        type: boolean
+        default: false
       target_pr:
         description: Open protocol PR number whose exact head is being tested
         required: true
@@ -23,11 +29,11 @@ on:
         required: true
         type: string
       prepared_run_id:
-        description: Prepare workflow run ID (required for candidate or verify)
+        description: Prepare workflow run ID (required for candidate, verify or install)
         required: false
         type: string
       manifest_sha256:
-        description: Separately reviewed manifest SHA-256 (required for candidate or verify)
+        description: Separately reviewed manifest SHA-256 (required for candidate, verify or install)
         required: false
         type: string
 
@@ -198,10 +204,31 @@ jobs:
           while IFS=$'\t' read -r group name url; do
             curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error "${url}" --output "${FORMAL_ROOT}/kotlin/${group}/${name}"
           done < "${FORMAL_ROOT}/kotlin/downloads.tsv"
+      - name: Build pinned repository Git
+        if: inputs.include_git
+        env:
+          FORMAL_ROOT: ${{ runner.temp }}/threadline-formal
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            'https://github.com/git/git/archive/refs/tags/v2.50.1.tar.gz' --output "${FORMAL_ROOT}/sources/git-2.50.1.tar.gz"
+          mkdir -p "${FORMAL_ROOT}/build/git" "${FORMAL_ROOT}/closures/git"
+          tar -xzf "${FORMAL_ROOT}/sources/git-2.50.1.tar.gz" -C "${FORMAL_ROOT}/build/git" --strip-components=1
+          # Keep system iconv: macOS precomposition includes it even with NO_ICONV,
+          # which otherwise loads SDK ctype declarations after Git's ctype macros.
+          PATH='/usr/bin:/bin:/usr/sbin:/sbin' /usr/bin/make -C "${FORMAL_ROOT}/build/git" -j 3 git \
+            CC="$(xcrun --find clang) -isysroot $(xcrun --sdk macosx --show-sdk-path)" \
+            NO_GETTEXT=YesPlease NO_CURL=YesPlease NO_EXPAT=YesPlease \
+            NO_OPENSSL=YesPlease NO_TCLTK=YesPlease NO_PERL=YesPlease NO_PYTHON=YesPlease NO_DARWIN_PORTS=YesPlease
+          install -m 0755 "${FORMAL_ROOT}/build/git/git" "${FORMAL_ROOT}/closures/git/git"
+          "${FORMAL_ROOT}/closures/git/git" --version | grep -Fx 'git version 2.50.1'
+          otool -L "${FORMAL_ROOT}/closures/git/git" | tail -n +2 | awk '{print $1}' > "${FORMAL_ROOT}/build/git/libraries.txt"
+          if grep -Ev '^(/usr/lib/|/System/Library/)' "${FORMAL_ROOT}/build/git/libraries.txt"; then exit 1; fi
       - name: Create immutable candidate bundle
         env:
           FORMAL_ROOT: ${{ runner.temp }}/threadline-formal
           THREADLINE_RUNNER_IMAGES_SHA: ${{ env.RUNNER_IMAGES_SHA }}
+          THREADLINE_CODEGEN_INCLUDE_GIT: ${{ inputs.include_git }}
           THREADLINE_FORMAL_WORK_ROOT: ${{ runner.temp }}/threadline-formal
           THREADLINE_CODEGEN_BUNDLE_SPEC: ${{ runner.temp }}/threadline-formal/spec.json
           THREADLINE_CODEGEN_BUNDLE_DIR: ${{ runner.temp }}/threadline-formal-bundle
@@ -242,7 +269,7 @@ jobs:
           retention-days: 14
 
   verify:
-    if: github.event_name == 'workflow_dispatch' && (inputs.mode == 'verify' || inputs.mode == 'candidate')
+    if: github.event_name == 'workflow_dispatch' && (inputs.mode == 'verify' || inputs.mode == 'candidate' || inputs.mode == 'install')
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -282,7 +309,7 @@ jobs:
           PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
           MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
           BUNDLE: ${{ runner.temp }}/threadline-formal-bundle
-          CODEGEN_MODE: ${{ inputs.mode == 'candidate' && 'candidate' || 'verify-only' }}
+          CODEGEN_MODE: ${{ inputs.mode == 'install' && 'repository' || inputs.mode == 'candidate' && 'candidate' || 'verify-only' }}
         run: |
           set -euo pipefail
           BUNDLE="${RUNNER_TEMP}/threadline-formal-bundle"
@@ -290,6 +317,8 @@ jobs:
           test "$(shasum -a 256 "${BUNDLE}/manifest.json" | awk '{print $1}')" = "${MANIFEST_SHA256}"
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
+            import { verifiedBootstrapNode } from "./proto/tools/codegen-bootstrap.mjs";
+            verifiedBootstrapNode(process.env.BUNDLE, process.env.MANIFEST_SHA256);
             const evidence = JSON.parse(readFileSync(process.env.BUNDLE + "/prepare-evidence.json", "utf8"));
             if (evidence.targetPr !== process.env.TARGET_PR || evidence.targetSha !== process.env.TARGET_SHA || evidence.prepareRunId !== process.env.PREPARED_RUN_ID || evidence.manifestSha256 !== process.env.MANIFEST_SHA256) process.exit(1);
             const compatibility = JSON.parse(readFileSync("proto/golden/v1/manifest.json", "utf8")).compatibilityEvidence;
@@ -300,6 +329,7 @@ jobs:
             HOME="${RUNNER_TEMP}/formal-home" \
             PATH='/usr/bin:/bin:/usr/sbin:/sbin' \
             LANG=C LC_ALL=C TZ=UTC \
+            THREADLINE_INTEGRATION_OWNER_GENERATION="${{ inputs.mode == 'install' && 'I_ACKNOWLEDGE_SHARED_GENERATED_SURFACES' || '' }}" \
             THREADLINE_PROTO_TOOL_MANIFEST="${BUNDLE}/manifest.json" \
             THREADLINE_PROTO_TOOL_MANIFEST_SHA256="${MANIFEST_SHA256}" \
             THREADLINE_KOTLIN_COMPILER_DIR="${BUNDLE}/kotlin/compiler" \
@@ -308,7 +338,18 @@ jobs:
             THREADLINE_KOTLIN_STDLIB_JAR="${BUNDLE}/kotlin/runtime/kotlin-stdlib-2.4.10.jar" \
             THREADLINE_CONNECT_KOTLIN_JAR="${BUNDLE}/kotlin/runtime/connect-kotlin-0.9.0.jar" \
             "${NODE}" proto/tools/verify-codegen.mjs --mode="${CODEGEN_MODE}" | tee "${RUNNER_TEMP}/formal-verification.log"
+      - name: Export verified SDK patch and installation evidence
+        if: inputs.mode == 'install'
+        env:
+          BUNDLE: ${{ runner.temp }}/threadline-formal-bundle
+          SDK_EXPORT: ${{ runner.temp }}/sdk-export
+          TARGET_PR: ${{ inputs.target_pr }}
+          TARGET_SHA: ${{ inputs.target_sha }}
+          PREPARED_RUN_ID: ${{ inputs.prepared_run_id }}
+          MANIFEST_SHA256: ${{ inputs.manifest_sha256 }}
+        run: node proto/tools/export-codegen-install.mjs
       - name: Record release or provisional candidate evidence
+        if: inputs.mode != 'install'
         env:
           TARGET_PR: ${{ inputs.target_pr }}
           TARGET_SHA: ${{ inputs.target_sha }}
@@ -340,9 +381,10 @@ jobs:
       - name: Upload scoped codegen evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ inputs.mode == 'candidate' && 'proto-codegen-candidate' || 'proto-formal-verification' }}
+          name: ${{ inputs.mode == 'install' && 'proto-sdk-install' || inputs.mode == 'candidate' && 'proto-codegen-candidate' || 'proto-formal-verification' }}
           path: |
-            ${{ runner.temp }}/${{ inputs.mode == 'candidate' && 'candidate-evidence.json' || 'formal-evidence.json' }}
+            ${{ runner.temp }}/${{ inputs.mode == 'install' && 'sdk-export/install-evidence.json' || inputs.mode == 'candidate' && 'candidate-evidence.json' || 'formal-evidence.json' }}
+            ${{ inputs.mode == 'install' && format('{0}/sdk-export/codegen-sdk.patch', runner.temp) || '' }}
             ${{ runner.temp }}/formal-verification.log
           if-no-files-found: error
           retention-days: 30

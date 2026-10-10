@@ -15,7 +15,6 @@ const formalEvidence = JSON.parse(formalEvidenceBytes.toString("utf8"));
 const nMinusOneEvidenceBytes = readFileSync(join(fixtureRoot, "generated-n-minus-one-evidence.json"));
 const nMinusOneEvidence = JSON.parse(nMinusOneEvidenceBytes.toString("utf8"));
 const generatedCompatManifest = JSON.parse(readFileSync(join(fixtureRoot, "generated-compat-manifest.json"), "utf8"));
-const toolchain = JSON.parse(readFileSync(join(repositoryRoot, "proto", "toolchain.lock.json"), "utf8"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -1311,16 +1310,40 @@ assert(canonicalEqual(manifest.integrationEvidence.generatedFiveLanguageNMinusOn
 }), "generated N-1 evidence binding changed");
 assert(sha256(formalEvidenceBytes) === manifest.integrationEvidence.formalCodegen.sha256, "formal codegen evidence SHA-256 mismatch");
 assert(sha256(nMinusOneEvidenceBytes) === manifest.integrationEvidence.generatedFiveLanguageNMinusOne.sha256, "generated N-1 evidence SHA-256 mismatch");
-const expectedGenerationTrees = Object.fromEntries(Object.entries(toolchain.generationChecks).map(([name, value]) => [name, {
-  fileCount: value.fileCount,
-  treeSha256: value.treeSha256,
-}]));
+// PR #94 evidence is historical: its separately pinned file digest above binds
+// the complete inventory. Later contract additions must not rewrite that record.
+const expectedGenerationTrees = {
+  "go": {
+    "fileCount": 29,
+    "treeSha256": "41e25dd9461f29dac259e48850e96a8a92bc2aa1e47713faab6bd1047101b131"
+  },
+  "typescript": {
+    "fileCount": 22,
+    "treeSha256": "08d6305d6dfa4c0082fde7f8280b3e839021230a3aae425a7f99007f8eae34cf"
+  },
+  "rust": {
+    "fileCount": 11,
+    "treeSha256": "6f40c3b76e4d95d2cead20218bb9801218dfa2a4127973f98c2bc67352296b66"
+  },
+  "swift": {
+    "fileCount": 29,
+    "treeSha256": "0e5e077ac1aa7587221200c6e4826a1d1719c373db9f8385fbe7dcc2fb78e153"
+  },
+  "kotlinJava": {
+    "fileCount": 582,
+    "treeSha256": "4c09fe78e9a9216196a460bae19db52754f82cbd627179b55db7a3248c3e2ebd"
+  },
+  "kotlinDsl": {
+    "fileCount": 316,
+    "treeSha256": "b0869fad5b137238bb16c58efc4d0067dbf179f710cf9a398085eb6d71674c09"
+  }
+};
 assert(formalEvidence.schemaVersion === 1 && formalEvidence.status === "passed", "formal codegen evidence must be passed v1 evidence");
 assert(formalEvidence.targetPr === "94" && formalEvidence.targetSha === "f367a2412a1f0e3afdb8d8ca0de6fe37dbfbc4f2", "formal evidence target PR/SHA mismatch");
 assert(formalEvidence.preparedRunId === "32620498494" && formalEvidence.verifyRunId === "32620744741", "formal evidence protected run IDs mismatch");
 assert(formalEvidence.runnerImageVersion === "20260728.0273.1", "formal evidence runner image mismatch");
 assert(formalEvidence.manifestSha256 === "35f827306b794fd26922b928032354c4de539d3df36e6517d964adbf94ff3564", "formal evidence manifest digest mismatch");
-assert(canonicalEqual(formalEvidence.generationTrees, expectedGenerationTrees), "formal evidence generation trees differ from toolchain lock");
+assert(canonicalEqual(formalEvidence.generationTrees, expectedGenerationTrees), "formal evidence generation trees differ from its historical baseline");
 assert(formalEvidence.physicalDevices === "NOT RUN", "formal evidence must not claim physical-device execution");
 assert(nMinusOneEvidence.schemaVersion === 1 && nMinusOneEvidence.status === "passed" && nMinusOneEvidence.issue === 79, "generated N-1 evidence identity mismatch");
 assert(nMinusOneEvidence.parentPr === "77" && nMinusOneEvidence.companionPr === "94"
