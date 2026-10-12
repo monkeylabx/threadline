@@ -32,9 +32,8 @@ process owner must handle exit. See issue #227 for the R1-A scope.
 `acp::stdio` binds already owned async streams to independent read/write halves
 with a trusted nonzero deadline. Each UTF-8 JSON-RPC 2.0 frame is bounded to
 256 KiB including its terminating LF, on input and during output serialization.
-`RpcMessage` validates envelope shapes only. Method payloads, initialization,
-protocol version, capabilities, request correlation and Session lifecycle need
-a typed ACP client. Parsed JSON is internal data, never Run or tool authority.
+`RpcMessage` validates envelope shapes only. Parsed JSON is internal data, never
+Run or tool authority. Typed Session lifecycle and scoped requests remain pending.
 
 Every transport error and cancellation of a polled I/O future permanently closes
 both halves to new operations. An already in-flight operation can remain pending
@@ -45,8 +44,25 @@ stderr is outside this transport. See issue #229 for the R1-B contract and the
 [ACP transport specification](https://agentclientprotocol.com/protocol/v1/transports).
 
 Remaining gates include authenticated IPC/Run authorization, protected input and
-activity lifetime, the typed ACP client, OS containment with descendant cleanup
+activity lifetime, the typed Session client, OS containment with descendant cleanup
 and crash recovery, and pinned Goose admission under ADR-0006.
+
+## ACP initialization
+
+`acp::Initialization` privately owns the transport halves for exactly one attempt.
+It sends a fixed client-owned request ID, protocol version 1 and empty client
+capabilities, then requires a matching v1 result within one total send/receive
+deadline. Errors, unsolicited requests/notices, timeout and cancellation of a
+polled attempt permanently prevent reinitialization; success also forbids replay.
+
+The opaque `InitializedV1` receipt proves protocol agreement only. Optional
+`agentCapabilities` and `authMethods` may be omitted; supplied containers must
+be an object and array respectively. No capability flags, authentication entries,
+implementation information or extension metadata are consumed, exposed or granted.
+There is no Session/tool dispatch or transport extraction API. This restrictive
+pre-initialization profile does not support callbacks. Failure does not kill/reap
+a worker. See issue #231 and the
+[ACP v1 initialization schema](https://agentclientprotocol.com/protocol/v1/schema#initialize).
 
 ## Verification
 
