@@ -216,7 +216,7 @@ document.querySelector("#simulate-gap").addEventListener("click", (event) => {
 });
 
 // PROTOTYPE #183 — three disposable task-delivery layouts, enabled only by URL.
-const initialParams = new URLSearchParams(window.location.search);
+const initialParams = resolvePrototypeEntry(window.location.search);
 const artifactPrototypeEnabled = initialParams.get("prototype") === "artifact";
 const artifactVariantNames = {
   A: "A · 画布审阅",
@@ -436,6 +436,7 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
     nextUrl.searchParams.set("screen", "channel");
     nextUrl.searchParams.set("prototype", "im-agent-fusion");
     nextUrl.searchParams.set("variant", variant);
+    if (variant === "A") nextUrl.searchParams.set("ui", "v34");
     window.history.replaceState({}, "", nextUrl);
   }
 }
@@ -681,16 +682,15 @@ if (imAgentPrototypeEnabled) {
     v19HistoryToggle.setAttribute("aria-expanded", String(open));
   });
 
-  const navPane = { element: document.querySelector("[data-v23-resizer]"), preferred: 104, initial: 104, min: 88, max: 160, css: "--v23-nav-width" };
-  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 180, initial: 180, min: 112, max: 360, css: "--v22-context-width" };
+  const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 240, initial: 240, min: 208, max: 320, css: "--v22-context-width" };
   document.querySelectorAll(".v14-context-list > button").forEach(row => {
     if (!row.title) row.title = [...row.querySelectorAll("div > b, div > strong, div > small, div:not(:has(*)), i")].map(part => part.textContent.trim()).join(" · ");
     if (!row.hasAttribute("aria-label")) row.setAttribute("aria-label", row.title);
   });
-  const paneMax = pane => Math.max(pane.min, Math.min(pane.max, v14Shell.clientWidth - 320 - (pane === navPane ? contextPane.min : v14Shell.classList.contains("is-app-compact") ? 48 : navPane.width || 104)));
+  const paneMax = pane => Math.max(pane.min, Math.min(pane.max, v14Shell.clientWidth - 360));
   const applyPaneWidths = () => {
     if (!v14Shell.clientWidth) return;
-    for (const pane of [navPane, contextPane]) {
+    for (const pane of [contextPane]) {
       pane.width = Math.round(Math.max(pane.min, Math.min(pane.preferred, paneMax(pane))));
       v14Shell.style.setProperty(pane.css, `${pane.width}px`);
       pane.element.setAttribute("aria-valuenow", String(pane.width));
@@ -711,7 +711,7 @@ if (imAgentPrototypeEnabled) {
     v14Shell.classList.remove("is-resizing");
     if (pane.element.hasPointerCapture(pointerId)) pane.element.releasePointerCapture(pointerId);
   };
-  for (const pane of [navPane, contextPane]) {
+  for (const pane of [contextPane]) {
     const handle = pane.element;
     handle.addEventListener("pointerdown", event => {
       if (event.button !== 0 || paneDrag) return;
@@ -741,16 +741,17 @@ if (imAgentPrototypeEnabled) {
   applyPaneWidths();
 
   const setV20NavCompact = (compact) => {
-    v14Shell.classList.toggle("is-app-compact", compact);
+    v14Shell.classList.toggle("is-sidebar-hidden", compact);
+    document.querySelector("#v18-context-sidebar").inert = compact;
     applyPaneWidths();
     closeV18Menus();
     v20NavToggle.setAttribute("aria-expanded", String(!compact));
-    v20NavToggle.setAttribute("aria-label", compact ? "展开导航文字" : "收起导航文字");
-    v20NavToggle.title = compact ? "展开导航文字" : "收起导航文字";
+    v20NavToggle.setAttribute("aria-label", compact ? "展开侧栏" : "收起侧栏");
+    v20NavToggle.title = compact ? "展开侧栏" : "收起侧栏";
   };
 
   v20NavToggle.addEventListener("click", (event) => {
-    setV20NavCompact(!v14Shell.classList.contains("is-app-compact"));
+    setV20NavCompact(!v14Shell.classList.contains("is-sidebar-hidden"));
     if (event.detail) event.currentTarget.blur();
   });
 
@@ -791,6 +792,56 @@ if (imAgentPrototypeEnabled) {
   document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
     button.addEventListener("click", () => setV14App(button.dataset.v14AppButton));
   });
+  // All decisions are in-memory prototype state; no runtime or local file access.
+  const detailSheet = document.querySelector("[data-v34-sheet]");
+  let approvalDecision = null;
+  let resultAccepted = false;
+  const renderV34Decisions = () => {
+    const pending = Number(!approvalDecision) + Number(!resultAccepted);
+    document.querySelector("[data-v34-pending-count]").textContent = `${pending} 项待确认`;
+    const overviewButton = document.querySelector(".v14-attention-list > button");
+    overviewButton.title = `全部待办 · ${pending} 项待确认`;
+    overviewButton.setAttribute("aria-label", overviewButton.title);
+    document.querySelector('[data-v14-context="attention"] header small').textContent = `${pending} 项待确认`;
+    const attentionButton = document.querySelector('[data-v14-app-button="attention"]');
+    attentionButton.dataset.navCount = String(pending);
+    attentionButton.title = `需要处理 · ${pending} 项`;
+    attentionButton.setAttribute("aria-label", attentionButton.title);
+    const signal = attentionButton.querySelector(".nav-signal");
+    if (signal) signal.hidden = !pending;
+    document.querySelector("[data-v34-approval-status]").textContent = approvalDecision ? (approvalDecision === "approve" ? "已批准" : "已拒绝") : "待审批";
+    document.querySelector("[data-v34-result-status]").textContent = resultAccepted ? "已确认" : "待确认";
+    document.querySelector("[data-v34-approval-actions]").hidden = !!approvalDecision;
+    document.querySelector("[data-v34-request-summary]").textContent = approvalDecision ? (approvalDecision === "approve" ? "本次文件删除授权已模拟批准。原型不会实际执行文件操作。" : "本次文件删除请求已拒绝，任务保持暂停。") : "ENG-248 已暂停，等待你确认 3 个缓存文件的删除范围。";
+    const approvalStatus = document.querySelector("[data-v34-approval-decision]");
+    approvalStatus.hidden = !approvalDecision;
+    approvalStatus.textContent = approvalDecision === "approve" ? "已模拟批准一次。未执行文件操作。" : "已模拟拒绝。任务保持暂停。";
+    document.querySelector("[data-v34-result-decision]").hidden = !resultAccepted;
+    document.querySelector("[data-v34-result-decision]").textContent = "已确认成果。私人草稿尚未发布。";
+    document.querySelector("[data-v34-accept-result]").hidden = resultAccepted;
+  };
+  document.querySelectorAll("[data-v34-open]").forEach(button => {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.v34Open;
+      document.querySelectorAll("[data-v34-detail]").forEach(panel => { panel.hidden = panel.dataset.v34Detail !== kind; });
+      detailSheet.setAttribute("aria-labelledby", kind === "approval" ? "v34-detail-title" : "v34-result-title");
+      document.querySelector("[data-v34-sheet-kind]").textContent = kind === "approval" ? "一次性审批" : "成果确认";
+      renderV34Decisions();
+      detailSheet.showModal();
+      document.querySelector(kind === "approval" ? "#v34-detail-title" : "#v34-result-title").focus();
+    });
+  });
+  document.querySelector("[data-v34-close]").addEventListener("click", () => detailSheet.close());
+  detailSheet.addEventListener("click", event => {
+    const bounds = detailSheet.getBoundingClientRect();
+    if (event.target === detailSheet && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) detailSheet.close();
+  });
+  document.querySelectorAll("[data-v34-decide]").forEach(button => {
+    button.addEventListener("click", () => { approvalDecision = button.dataset.v34Decide; renderV34Decisions(); document.querySelector("[data-v34-close]").focus(); });
+  });
+  document.querySelector("[data-v34-accept-result]").addEventListener("click", () => { resultAccepted = true; renderV34Decisions(); document.querySelector("[data-v34-close]").focus(); });
+  document.querySelector("[data-v34-review-result]").addEventListener("click", () => { detailSheet.close(); setV14App("work"); document.querySelector("#v14-work-title").setAttribute("tabindex", "-1"); document.querySelector("#v14-work-title").focus(); });
+
   const filterV14Search = () => {
     const query = v14Search.value.trim().toLocaleLowerCase("zh-CN");
     document.querySelectorAll("[data-v14-search-item]").forEach((item) => {
@@ -825,7 +876,7 @@ if (imAgentPrototypeEnabled) {
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
     const isEditing = active instanceof HTMLElement && active.matches("input, textarea, [contenteditable='true']");
-    if (isEditing || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    if (!document.querySelector(".im-agent-variant-a").hidden || detailSheet.open || isEditing || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
     event.preventDefault();
     const current = new URLSearchParams(window.location.search).get("variant") || "A";
     const currentIndex = imAgentVariantKeys.indexOf(current);
