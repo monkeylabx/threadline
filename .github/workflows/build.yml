@@ -346,16 +346,12 @@ jobs:
       - name: Verify desktop toolchain
         if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: node scripts/toolchain.mjs doctor --scope=desktop
-      - name: Run Windows fail-closed community SQLCipher evidence
-        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows')
-        env:
-          LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
-        run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
       - name: Test native Windows agentd baseline
         if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows')
         env:
           NODE_V8_COVERAGE: ${{ runner.temp }}/agentd-windows-coverage
         run: |
+          node scripts/ci/probe-agentd-fixture.mjs | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP 'agentd-fixture-probe.log')
           $agentdLog = Join-Path $env:RUNNER_TEMP 'agentd-windows.log'
           $agentdReceipt = Join-Path $env:RUNNER_TEMP 'agentd-windows.json'
           if (Test-Path $agentdReceipt) { Remove-Item $agentdReceipt -ErrorAction Stop }
@@ -374,11 +370,17 @@ jobs:
         with:
           name: agentd-windows-baseline
           path: |
+            ${{ runner.temp }}/agentd-fixture-probe.log
             ${{ runner.temp }}/agentd-windows.log
             ${{ runner.temp }}/agentd-windows.json
             ${{ runner.temp }}/agentd-windows-coverage
           if-no-files-found: warn
           retention-days: 14
+      - name: Run Windows fail-closed community SQLCipher evidence
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows')
+        env:
+          LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
+        run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
       - name: Build unsigned Tauri host
         if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm --filter @threadline/desktop build:native
