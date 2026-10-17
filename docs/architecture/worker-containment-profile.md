@@ -232,7 +232,7 @@ the synthetic driver may script those steps but cannot admit them in production.
 | Preparing | Configure the fresh boundary, inheritance and creation attributes before starting the fixture. Failure closes owned resources; never resume outside the boundary. | No cleanup proof until failed-launch resources are reconciled. |
 | Running | One internal fixture launch; descendants stay in the same ancestor job. No public relaunch/assignment/duplication API. | `LiveMembers` when independently observed; missing evidence is an error. |
 | Stopping | Irreversibly fence launch/assignment before effects; terminate, wait/release process references and query the retained job. Explicit retries can advance cleanup only. | `LiveMembers` or coarse error until every proof obligation holds. |
-| Confirmed | No route back to Preparing/Running. Release remaining owner resources without reopening a boundary. | `SealedAndEmpty` only after stable exclusive ownership, no escape/admission, zero accounting and discharged wait/resource obligations are established together. |
+| Confirmed | No route back to Preparing/Running and no remaining OS effects or owner resources to release. | `SealedAndEmpty` only after stable exclusive ownership, no escape/admission, zero accounting and discharged wait/resource obligations are established together. |
 | Owner lost | No callbacks can return on behalf of the dead incarnation. Restart creates a distinct owner and leaves earlier effects uncertain. | No inferred proof or durable cancellation. |
 
 This is an ownership lifecycle, not another Run state machine or a new public
@@ -254,6 +254,9 @@ retaining the owner's job handle. Microsoft's documented reference-release
 condition means querying zero while retaining those references can deadlock the
 proof procedure. If a process reference cannot be discharged, report uncertainty;
 do not reinterpret the accounting field or close the job early to fabricate proof.
+After the final zero query, successfully close the last owned job handle before
+returning `SealedAndEmpty`. A close failure leaves cleanup unconfirmed; no resource
+release is deferred until after confirmation.
 [Accounting source](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information).
 
 Each explicit synthetic stop attempt has one trusted monotonic budget of ten
