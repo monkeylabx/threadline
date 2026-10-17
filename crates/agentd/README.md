@@ -107,3 +107,22 @@ Unit tests use in-memory streams and Tokio's paused clock. The pipe integration
 test launches only the checked-in synthetic fixture with pinned Node, clears its
 environment, and kills/reaps the direct child. It proves pipe exchange and EOF,
 not descendant containment. No tests call models or access user files/network.
+
+## Windows Job resource probe (W0)
+
+The private `windows_job` integration target owns empty unnamed Job references
+with non-inheritable handles, kill-on-last-close and an eight-process limit;
+both breakaway flags remain disabled. Native queries verify those settings.
+Explicit close is terminal/idempotent; failed close retains the reference for an
+explicit retry. Synthetic setup/query/close faults are labelled in the tests.
+The harness's Drop fallback fails visibly on release error and supplies no proof.
+
+This test-only probe is compiled from `test_support/`; it changes no production
+library/binary API and cannot assign or launch a process. It emits no
+`SealedAndEmpty`, StopReport or Run transition. The receipt's `windowsJobResources`
+field records empty-object testing only; `windowsApi` still describes the earlier
+symbol fixture, while containment and Goose remain NOT_RUN.
+
+Creation-time JOB_LIST with suspended launch, descendant cleanup, supervisor
+crashes, leaked-handle negative experiments and StopDriver integration remain
+separate follow-ups under the [containment profile](../../docs/architecture/worker-containment-profile.md).
