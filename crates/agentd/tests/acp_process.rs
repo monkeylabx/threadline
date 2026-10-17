@@ -16,14 +16,22 @@ fn node_path() -> PathBuf {
 }
 
 fn fixture(mode: &str) -> Child {
-    Command::new(node_path())
+    let mut command = Command::new(node_path());
+    command
         .arg(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test_support/acp-fixture.mjs"))
         .arg(mode)
         .arg(format!(
             "v{}",
             include_str!("../../../.node-version").trim()
         ))
-        .env_clear()
+        .env_clear();
+    // Keep only the Windows OS directory for the pinned Node bootstrap.
+    #[cfg(windows)]
+    command.env(
+        "SystemRoot",
+        std::env::var_os("SystemRoot").expect("Windows OS directory"),
+    );
+    command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
