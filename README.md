@@ -31,10 +31,10 @@ Threadline is not a general-purpose AI control panel. Agent activity belongs in 
 [Open the interactive HTML prototype](./docs/prototype/index.html), or serve it locally for desktop and mobile viewport testing:
 
 ```bash
-python3 -m http.server 4173 --directory docs/prototype
+python3 -m http.server 4173 --bind 127.0.0.1 --directory docs/prototype
 ```
 
-Then visit [the selected V33 desktop prototype](http://localhost:4173/?screen=channel&prototype=im-agent-fusion&variant=A&ui=v33&viewport=desktop). See the [prototype guide](./docs/prototype/README.md) for the default and historical review routes.
+Then visit [the default demo](http://127.0.0.1:4173/): desktop opens the confirmed V34 two-pane layout. To preview desktop in a narrow window, use [the desktop demo](http://127.0.0.1:4173/?viewport=desktop). See the [prototype guide](./docs/prototype/README.md) for the default and historical review routes.
 
 The prototype covers channel collaboration, agent tasks, risk approvals, artifact delivery, files, search, runtime health, and enterprise administration. Narrow viewports route to the mobile renderer.
 
