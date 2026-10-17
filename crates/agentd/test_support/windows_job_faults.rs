@@ -3,9 +3,15 @@ use windows_sys::Win32::System::Threading::{GetCurrentProcess, GetProcessHandleC
 
 #[test]
 fn windows_job_configuration_failure_releases_the_new_owner() {
-    let mut warmup = Job::new().expect("initialize native job APIs");
-    warmup.close().expect("release warmup reference");
+    let warmup = Job::new().expect("initialize native job APIs");
+    let with_warmup = handle_count().expect("live warmup reference");
+    drop(warmup);
     let before = handle_count().expect("serial harness handle accounting");
+    assert_eq!(
+        before + 1,
+        with_warmup,
+        "Drop must release its sole reference"
+    );
     let result = Job::create_with(|_| Err(JobError::Rejected)); // Synthetic configuration fault.
     assert!(matches!(result, Err(JobError::Rejected)));
     assert_eq!(handle_count().expect("post-failure accounting"), before);
