@@ -351,7 +351,6 @@ jobs:
         env:
           NODE_V8_COVERAGE: ${{ runner.temp }}/agentd-windows-coverage
         run: |
-          node scripts/ci/probe-agentd-fixture.mjs | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP 'agentd-fixture-probe.log')
           $agentdLog = Join-Path $env:RUNNER_TEMP 'agentd-windows.log'
           $agentdReceipt = Join-Path $env:RUNNER_TEMP 'agentd-windows.json'
           if (Test-Path $agentdReceipt) { Remove-Item $agentdReceipt -ErrorAction Stop }
@@ -370,7 +369,6 @@ jobs:
         with:
           name: agentd-windows-baseline
           path: |
-            ${{ runner.temp }}/agentd-fixture-probe.log
             ${{ runner.temp }}/agentd-windows.log
             ${{ runner.temp }}/agentd-windows.json
             ${{ runner.temp }}/agentd-windows-coverage
