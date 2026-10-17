@@ -3,6 +3,9 @@ use serde_json::{json, Value};
 use std::{fmt, time::Duration};
 use tokio::io::{AsyncRead, AsyncWrite};
 
+mod session;
+pub use session::{CreatedSession, SessionError};
+
 const INITIALIZE_ID: i64 = 1;
 
 /// Protocol agreement only: not authentication, Run authority or admission.
@@ -29,13 +32,22 @@ impl fmt::Display for InitializeError {
 
 impl std::error::Error for InitializeError {}
 
-/// Owns one initialization attempt. No raw transport or worker metadata escapes.
+#[derive(Eq, PartialEq)]
+enum Phase {
+    Fresh,
+    Initialized,
+    Unavailable,
+    Session(CreatedSession),
+}
+
+/// Owns initialization followed by at most one internal Session creation.
+/// No raw transport or worker metadata escapes.
 /// Dropping this owner is not process termination or cleanup evidence.
 pub struct Initialization<R, W> {
     reader: AcpReader<R>,
     writer: AcpWriter<W>,
     deadline: Duration,
-    attempted: bool,
+    phase: Phase,
 }
 
 impl<R: AsyncRead + Unpin, W: AsyncWrite + Unpin> Initialization<R, W> {
@@ -51,20 +63,22 @@ impl<R: AsyncRead + Unpin, W: AsyncWrite + Unpin> Initialization<R, W> {
             reader,
             writer,
             deadline,
-            attempted: false,
+            phase: Phase::Fresh,
         })
     }
 
     /// A polled attempt consumes the connection even if its future is cancelled.
     /// This restricted profile rejects every pre-initialization callback/notice.
     pub async fn initialize(&mut self) -> Result<InitializedV1, InitializeError> {
-        if self.attempted {
+        if self.phase != Phase::Fresh {
             return Err(InitializeError::Unavailable);
         }
-        self.attempted = true;
-        tokio::time::timeout(self.deadline, self.exchange())
+        self.phase = Phase::Unavailable;
+        let receipt = tokio::time::timeout(self.deadline, self.exchange())
             .await
-            .unwrap_or(Err(InitializeError::Timeout))
+            .unwrap_or(Err(InitializeError::Timeout))?;
+        self.phase = Phase::Initialized;
+        Ok(receipt)
     }
 
     async fn exchange(&mut self) -> Result<InitializedV1, InitializeError> {
@@ -73,16 +87,16 @@ impl<R: AsyncRead + Unpin, W: AsyncWrite + Unpin> Initialization<R, W> {
             "params": {"protocolVersion": 1, "clientCapabilities": {}}
         }))
         .map_err(InitializeError::Transport)?;
-        self.writer
-            .send(&request)
-            .await
-            .map_err(InitializeError::Transport)?;
         let response = self
-            .reader
-            .receive()
+            .exchange_rpc(&request)
             .await
             .map_err(InitializeError::Transport)?;
         validate_response(response.value())
+    }
+
+    async fn exchange_rpc(&mut self, request: &RpcMessage) -> Result<RpcMessage, TransportError> {
+        self.writer.send(request).await?;
+        self.reader.receive().await
     }
 }
 
