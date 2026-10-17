@@ -9,6 +9,12 @@ const SESSION_REQUEST_ID: i64 = 2;
 #[derive(Clone, Eq, PartialEq)]
 pub struct CreatedSession(String);
 
+impl CreatedSession {
+    pub(super) fn id(&self) -> &str {
+        &self.0
+    }
+}
+
 impl fmt::Debug for CreatedSession {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CreatedSession").finish_non_exhaustive()

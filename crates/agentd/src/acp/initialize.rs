@@ -4,7 +4,9 @@ use std::{fmt, time::Duration};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod session;
+mod turn;
 pub use session::{CreatedSession, SessionError};
+pub use turn::{StopReason, TurnError, TurnResult};
 
 const INITIALIZE_ID: i64 = 1;
 
@@ -40,7 +42,7 @@ enum Phase {
     Session(CreatedSession),
 }
 
-/// Owns initialization followed by at most one internal Session creation.
+/// Owns initialization, one internal Session creation and one bounded text turn.
 /// No raw transport or worker metadata escapes.
 /// Dropping this owner is not process termination or cleanup evidence.
 pub struct Initialization<R, W> {
