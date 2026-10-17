@@ -1,8 +1,16 @@
 # OpenAI Agent Runtime for Threadline: source audit, experiments, and integration decision
 
+> **Historical research — runtime selection superseded.** As of 2026-10-17, Threadline retains
+> Rust `agentd` + a pinned Goose ACP worker under accepted [ADR-0006](../adr/0006-rust-agentd-goose-runtime.md)
+> and the task-oriented client interface in [ADR-0007](../adr/0007-agentd-task-interface.md).
+> The Codex recommendation, topology and implementation observations below describe the 2026-09-16
+> investigation only; they are not the current architecture, implementation status or an automatic fallback.
+> Experiments and version-specific findings remain intact as historical evidence. See the
+> [current Runtime requirements](../product-requirements.md#10-当前-runtimerust-agentd--goose-acp).
+
 Date: 2026-09-16. Issue: [#207](https://github.com/monkeylabx/threadline/issues/207). Status: architecture proposal with bounded macOS experiments; not production acceptance. This report supersedes earlier candidate rankings. It does not change Frozen Scope.
 
-## Decision and the requirement that can change it
+## Historical recommendation and the requirement that could change it
 
 **Use a separately supervised Codex App Server as the preferred integration seam, conditional on the enterprise model endpoint supporting its Responses protocol. Do not embed codex-core in the IM process.** Codex supplies an existing execution service and native command-confinement machinery; Threadline owns authorization, Connector effects, process supervision, data retention, and distribution.
 
@@ -23,7 +31,7 @@ No arbitrary numerical scores or production delivery estimates are assigned. Pro
 
 Threadline is an enterprise IM with permissioned Agent actors. IM must work while models/runtime are offline. A Channel is not a runtime session. Local resources require a user-authorized Connector; high-impact effects require visible approval. The [delivery plan](../delivery-plan.md) places v1 execution on Desktop/Workstation and excludes Enterprise Runner. [Trust boundaries](../security/trust-boundaries.md) and [ADR-0001](../adr/0001-client-platform.md) already separate IM, locald, agentd and connectord.
 
-The [PRD](../product-requirements.md) describes an existing self-owned agent-core with Run/Step, events, artifacts, file approval and subprocess support, but missing loop, cancellation, service API, capability enforcement and concurrent-write protection. That source was not available for inspection. Current [agentd](../../services/agentd/main.go) is an empty entry point and [Go dependencies](../../services/go.mod) do not import that core. Its documented state/event contracts may be retained; its execution implementation is not assumed safe or complete.
+The [PRD](../product-requirements.md) describes an existing self-owned agent-core with Run/Step, events, artifacts, file approval and subprocess support, but missing loop, cancellation, service API, capability enforcement and concurrent-write protection. That source was not available for inspection. At investigation time, `services/agentd/main.go` was an empty entry point and Go dependencies did not import that core. The stub has since been removed; current Rust primitives are documented in [crates/agentd](../../crates/agentd/README.md). Its documented state/event contracts may be retained; its execution implementation is not assumed safe or complete.
 
 ## Evidence and version identity
 
@@ -113,7 +121,7 @@ This snapshot is more specific than earlier documentation-only conclusions. Sand
 
 SDK timeout cleanup also differs by backend: UnixLocal kills its process group, while Docker user execution uses best-effort command-line matching for cleanup. Neither source path proves arbitrary detached descendants are gone; cancellation and crash reconciliation need their own tests ([UnixLocal timeout](https://github.com/openai/openai-agents-python/blob/fbf59a40e9da5adb88d370fefaeaae0478376d4a/src/agents/sandbox/sandboxes/unix_local.py#L278), [Docker timeout](https://github.com/openai/openai-agents-python/blob/fbf59a40e9da5adb88d370fefaeaae0478376d4a/src/agents/sandbox/sandboxes/docker.py#L555)).
 
-## Concrete Threadline architecture
+## Historical proposed Threadline architecture (not adopted)
 
 ```mermaid
 flowchart TD

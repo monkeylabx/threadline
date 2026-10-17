@@ -1,7 +1,7 @@
 # Agent 原生企业 IM 产品需求文档
 
 状态：M0 工程范围基线 + V34 已确认产品交互（静态原型，非完整功能实现）
-更新：2026-09-06；原始基线日期：2026-07-24
+更新：2026-10-17（Runtime 文档对齐）；原始基线日期：2026-07-24
 
 产品原型：[进入 Threadline 统一原型](./prototype/index.html)
 
@@ -22,8 +22,11 @@ v1 范围基线：[Private Enterprise v1.0 Scope Freeze](./acceptance/scope.md)
 Agent Runtime = Run + 工具 + Workspace + 审批 + 产物 + 记忆
 ```
 
-Runtime 使用项目自有的 `agent-core`。Hermes Agent 只作为设计参考，重点借鉴其 Agent
-Loop、工具调用、Session 恢复、记忆、Subagent、定时任务和异步结果投递，不作为生产依赖。
+Runtime 采用 Rust `agentd` 监管固定版本的无 UI Goose worker，通过内部 ACP stdio 复用模型/工具循环和上下文压缩。
+Desktop UI 经 Tauri Rust 宿主调用 `agentd` 的本地任务接口；Web/Mobile 只控制和观察任务。
+选型以已接受的 [ADR-0006](./adr/0006-rust-agentd-goose-runtime.md) 和
+[ADR-0007](./adr/0007-agentd-task-interface.md) 为准；旧自有内核与 Codex 研究不构成当前实现方案。
+架构已接受，完整集成和生产准入仍需验收，见第 10 节。
 
 产品承诺：
 
@@ -81,7 +84,7 @@ Threadline 的本质是 **IM + Agent Runtime**：人和人的日常沟通是主�
 - 不把每条消息都发送给 LLM。
 - 不默认让 Agent 读取整个企业的历史消息。
 - 不替代 Git、对象存储、企业文档系统或身份提供商。
-- 不使用 `agent-core` 的 Session 文件作为 IM 消息数据库。
+- 不使用 Goose Session、引擎历史或日志作为 IM 消息数据库。
 - 音视频不进入初始核心架构，后续可挂接在相同组织与频道模型下。
 
 ## 4. 目标用户
@@ -129,7 +132,7 @@ Organization
 | WorkspaceBinding | 仓库、文档集合、企业文件位置的逻辑引用 |
 | Task | 从沟通产生或主动创建的协作工作单元 |
 | ContextManifest | Task 使用的版本化上下文引用，不复制整个聊天历史 |
-| Run | Task 的一次 `agent-core` 执行尝试 |
+| Run | Task 的一次执行尝试，由 Threadline 管理，映射到内部 Goose Session |
 | Approval | Runtime 执行受保护动作前的人类决策 |
 | Artifact | Patch、文档、报告、图片或构建结果等运行产物 |
 
@@ -306,7 +309,7 @@ Channel N -> N WorkspaceBinding
 ```
 
 一个 Task 重试时创建新 Run，不覆盖失败 Run。Channel 中的人类消息也不能直接写进
-`agent-core` Session。
+Goose Session；只有显式授权的输入才能进入 Run 的执行上下文。
 
 ## 6. 产品信息架构
 
@@ -585,65 +588,70 @@ Model Control 只提供模型发现、能力、健康、评测、评分和短期
 选择已批准 Endpoint 并直接调用；该 Endpoint 是独立的 Prompt 明文信任边界。一个 Run 固定模型和
 版本，Fallback 只能使用预先批准的候选，用户可以覆盖自动路由。
 
-## 10. 与现有 `agent-core` 的关系
+## 10. 当前 Runtime：Rust agentd + Goose ACP
 
-当前 `agent-core` 已经具备有价值的执行契约，但还不是 Hermes 那种完整交互式 Runtime：
-
-| 能力 | 当前状态 |
-| --- | --- |
-| Run / Step Spec | 已实现 |
-| Status Snapshot | 已实现 |
-| Append-only Event | 已实现 |
-| 文件审批暂停 | 已实现 |
-| Artifact 收集 | 已实现 |
-| Usage / Cost Ledger | 已实现 |
-| 通用 Subprocess 执行 | 已实现 |
-| 文件 Session | 只有最小 Append Store |
-| Cancellation | 未实现 |
-| 交互式多轮 Agent Loop | 未实现 |
-| Runtime Service API | 未实现 |
-| Capability Token Enforcement | 未实现 |
-| 并发写 Lock | 未实现 |
-| Tenant Isolation | 应由 Orchestrator 管理，不放进 Runtime |
-
-继续保持现有边界：
+[ADR-0006](./adr/0006-rust-agentd-goose-runtime.md) 定义执行引擎和监管边界，
+[ADR-0007](./adr/0007-agentd-task-interface.md) 定义客户端交互边界。两者是现行选型；
+早期自有 `agent-core` 的能力清单不再作为当前实现或验收依据。
+[Codex 选型研究](./research/2026-09-agent-runtime-selection.md) 保留为历史调查，不是并行生产方案或自动 fallback。
+Hermes 仅为早期设计参考，不作为生产依赖。
 
 ```text
-agent-core = 如何执行
-workflow   = 执行什么
-IM         = 谁在沟通、谁可以行动、工作如何呈现
+Desktop Agent UI
+  -> typed Tauri bridge -> Tauri Rust host
+    -> local business IPC -> Rust agentd
+      -> supervised ACP / stdio -> pinned Goose worker
+        -> approved model endpoint
 ```
+
+| 组件 | 职责和权威边界 |
+| --- | --- |
+| Core / Orchestrator / Runtime Gateway | Task/Run 创建与持久化状态、调度、Execution Owner、Grant、Lease/Fencing、审批、审计与发布；Gateway 只转发，不成为第二事实源 |
+| Rust `agentd` | 本机任务交互、当前授权校验、Run/Session 绑定、预算、worker 监管、活动映射、取消清理与业务状态对账 |
+| Goose worker | 模型/工具循环、工作上下文压缩和内部 Session；引擎输出不构成授权、审批、Run 完成或发布事实 |
+| `locald` | 检查 Context 权限，解密并返回选定引用的有限上下文；引擎不能直接打开消息数据库或密钥 |
+| `connectord` | 按路径、动作、时限和撤权状态逐次检查本地工作区访问；引擎的工具权限模式不能替代 Connector 授权 |
+| Model Control | 发现与批准模型路由和短期凭据；受限 worker 直连批准 Endpoint，Prompt 不经过 IM 服务或 Model Control |
 
 ### 10.1 Runtime Control Contract
 
-IM Orchestrator 最终通过与 Transport 无关的接口控制 `agent-core`：
+客户端和执行引擎之间不直接传递原始 ACP。现有 Core Task/Run/Approval 服务拥有创建、
+审批和持久化取消意图；Runtime Gateway 提供设备主动建立的调度、Lease 和事件提交路径。
+Desktop 的本地交互仅包含 `SubmitRunInput`、`WatchRunActivity`、`RequestRunStop`，见
+[本地接口契约](./contracts/agentd-local-interface.md) 和 [接口 Profile](./architecture/agentd-task-interface.md)。
+UI 不提交 Goose Session ID、任意引擎方法、可执行路径、MCP 配置或模型凭据。
 
-```text
-CreateRun(task, spec, workspaceLease, capabilityGrant)
-GetRun(runId)
-StreamRunEvents(runId, afterEventId)
-SubmitApproval(runId, approval)
-CancelRun(runId)
-AppendTaskInput(runId, inputRefs)
-ListArtifacts(runId)
-```
-
-Runtime Workspace 内仍可使用当前文件契约作为事实来源。Runtime Service 负责把 API 调用
-转成 `spec.json`、Approval Record、Cancellation Marker 和 Event/Status Stream。
+一个 Run 绑定一个内部执行 Session；重试创建新 Run。恢复前必须重新验证主体、上下文访问权、
+Grant、Lease 和已发生的副作用，不能把保存的 Session 当作权限凭证或盲目重放工具操作。
+取消响应仅表示请求已受理：必须撤权、处理待决审批、终止并验证 worker/子进程清理，
+再通过既有业务路径确认终态。清理或对账失败不能显示为已成功取消。
 
 ### 10.2 Runtime Event 到 IM 的投影
 
-| `agent-core` Event | IM 展示 |
-| --- | --- |
-| `run_started` | Task Run 已启动 |
-| `step_started` | 当前执行活动变化 |
-| `approval_required` | Inbox 和 Task 中出现审批项 |
-| `artifact_created` | Artifact 挂到 Task |
-| `step_failed` | 可重试的结构化失败 |
-| `run_completed` | Task 结果可审查 |
-| `run_failed` | 本次 Run 失败，Task 仍保留 |
+`agentd` 将内部 ACP 活动转换为版本化 Threadline 视图；以下为产品展示语义，不新增 wire event 名称：
 
-Runtime Event 不是普通聊天消息。客户端应分别渲染为状态、审批、活动或 Artifact。
+| 执行事实或活动 | IM 展示 |
+| --- | --- |
+| Core 已提交 Run 启动 | Task Run 已启动 |
+| 经授权过滤的引擎进度 | 当前执行活动变化 |
+| 持久化 Approval 请求 | Inbox 和 Task 中出现审批项 |
+| 已登记 Artifact | Artifact 挂到 Task，发布另行显式授权 |
+| Core 已提交失败或完成 | 本次 Run 的可重试失败或可审查结果 |
+
+Run Event 不是普通聊天消息。Core 持久化事件仅承载约定 Metadata；设备本地的文本/工具内容活动
+按观察者权限过滤，不直接上传成共享 Run Event，也不自动公开 Private Work。
+
+### 10.3 实现状态与准入
+
+仓库已有 [Rust agentd 基础模块](../crates/agentd/README.md)，包含 worker stop 和 ACP 等原语。
+这些局部实现不代表可信本地 IPC、真实 Goose worker、授权上下文/工具、完整任务闭环已集成，
+也不证明 macOS/Windows/Linux 的生产隔离、恢复和取消已通过验收。
+实现与验证范围以模块说明、对应 Issue 和实测结果为准，不能沿用旧内核的“已实现”清单。
+
+发布前仍需通过 ADR-0006 的协议/生命周期、Capability、进程及网络隔离、取消与后代清理、
+数据留存/擦除、许可证和三端签名打包准入门。Goose 的全局 Memory、跨 Session recall、
+动态扩展安装及内建主机工具默认禁用，除非后续审查明确准入。IM 在引擎不可用时保持可用。
+本次文档对齐不改变 Proto、估算、范围或 Gate 状态。
 
 ## 11. 本地优先存储、加密同步与并发
 
@@ -670,14 +678,16 @@ Coordination Server
   +-- Ciphertext Blob Store
   +-- Key Package / Group Epoch Delivery
   +-- Push / Offline Delivery / Audit Metadata
-  |
-  +-- Agent Orchestrator
-          +-- Local agent-core
+  +-- Agent Orchestrator / Core（Task、Run、Grant、Lease）
+  +-- Runtime Gateway（转发调度与执行事件）
 
-Local agent-core
-  +-- decrypt capability-scoped context locally
-  +-- ask Model Control for an approved route
-  +-- call approved Model Endpoint directly
+Desktop Rust agentd（主动连接 Runtime Gateway）
+  +-- request bounded context from locald Context API
+  +-- request capability-scoped workspace tools from connectord
+  +-- obtain an approved Model Route
+  +-- supervise pinned Goose worker over ACP stdio
+        +-- model/tool loop and context compaction
+        +-- call approved Model Endpoint directly
 ```
 
 “本地优先”表示客户端用本地数据库立即读写并支持离线，不表示不需要 Server。Server 仍负责
@@ -767,11 +777,11 @@ group.epoch_changed
 
 ### 11.6 Agent Runtime 读取消息
 
-Local `agent-core` 通过本机 IPC 请求上下文：
+Rust `agentd` 通过本机 IPC 请求上下文，再将有限 Context 提供给 Goose worker：
 
 ```text
-agent-core
-  -> Context API + Capability Token
+Rust agentd
+  -> Context API + Capability Grant
       -> Local Message Service
           -> permission check
           -> decrypt selected message refs
@@ -788,7 +798,7 @@ v1 不交付 Remote Enterprise Runner。
 
 ### 11.7 Runtime 并发
 
-本地文件系统是 Runtime 的持久化边界，但不能让多个进程无协调写同一 Run：
+Core 是共享 Task/Run 持久化状态的权威；本地执行数据和引擎历史必须按 Run 隔离，不能让多个进程无协调写同一 Run：
 
 - 一个 `run_id` 同时只有一个 Writer。
 - 一个 Run 同时只有一个 Execution Owner、设备和 Workspace；其他成员只能观察、审批或中断。
@@ -797,12 +807,12 @@ v1 不交付 Remote Enterprise Runner。
 - 转交 Run 必须显式选择新设备和 Workspace，签发新 Grant 并使旧 Lease 失效。
 - 不同 Run 使用独立目录，可以并发执行。
 - 同一 Workspace 的写任务使用独立 Worktree / Branch / Sandbox。
-- `status.json` 只由 Run Owner 写；Reader 只订阅 Snapshot 和 Event。
-- `events.jsonl` 由单写者追加，或者升级成 Runtime SQLite Event Store。
+- `agentd` 只在当前 Owner、Lease 和 Grant 有效时派发动作；Core 拒绝旧 Fencing Token 的状态提交。
+- Goose Session/日志的本地持久化按 Run/主体隔离并受 Retention 控制，不是共享 Task/Run 或 IM 的事实源。
+- Reader 订阅已授权活动与已提交事件；崩溃恢复先对账再继续，不因本地历史恢复而重新获得权限。
 
-当前 `agent-core` 的 `AppendJSONL` 没有文件锁，Atomic Write 也使用固定 `.tmp` 路径，因此
-只能视为单 Writer 实现。并发安全需要新增 Run Lease、文件锁/单写者队列、唯一临时文件和
-Crash Recovery，不能仅依赖 `O_APPEND`。
+本地存储格式与进程清理必须按 ADR-0006 准入验证，不能把引擎默认的文件或 SQLite 写入行为视为
+已满足 Threadline 的并发、租约和恢复契约。
 
 ### 11.8 数据归属
 
@@ -811,7 +821,8 @@ Crash Recovery，不能仅依赖 `O_APPEND`。
 - Server Ciphertext Event Store 拥有已排序、可离线投递的加密 Event Envelope。
 - Object Storage 保存加密 Attachment / Artifact Blob；Metadata 和 ACL 属于 IM。
 - Agent Orchestrator 拥有 Task 到 Run 的调度、Capability Grant 和 Workspace Lease。
-- `agent-core` 拥有 Run 内 Status、Event、Session、Artifact 和执行文件。
+- Core 拥有共享 Run 持久化状态与 Artifact 业务记录；`agentd` 管理本机执行、结构化活动映射和恢复对账。
+- Goose 只维护内部执行 Session 和工作上下文；其日志、历史和临时文件遵循 Threadline 的隔离与保留策略。
 - Model Control 拥有模型发现、能力、评测、路由决策和 Usage Normalization，但不代理 Prompt。
 - 企业模型 Endpoint 接收 Runtime 直接发出的 Prompt，是独立于 IM 的明文信任边界。
 
@@ -856,7 +867,7 @@ v1 不提供服务端完整文件 Content Index。若未来引入企业 Indexer�
 
 #### Agent 检索
 
-`agent-core` 不直接打开 FTS 或文件索引，而是调用 Local Search Service：
+Goose 不直接打开 FTS 或文件索引，而是使用 `agentd` 暴露的授权检索工具，由 Local Search Service 校验：
 
 ```text
 search_messages(query, channel_ids, time_range, actor_ids, limit)
@@ -951,7 +962,7 @@ Indexer 中计算；把明文发送给外部 Embedding API 等同于向外部模
 - Server Channel Sequencer、Ciphertext Event Store 和 Gap Recovery。
 - 文件、Reaction、Mention、通知和基础管理后台。
 - 从消息创建 Task。
-- `agent-core` Run 创建、Event Stream、Approval、Artifact 和 Cancellation。
+- Core Task/Run/Approval 契约与 Rust `agentd` + Goose ACP 集成，覆盖活动、Artifact 和完整 Cancellation。
 - Agent Actor、明确 Channel Membership、`manual/task_only` 模式。
 - Tauri Desktop、原生 iOS、原生 Android 和私有化管理 Web；完整 Browser IM Client 不属于 v1。
 - 隔离 Local Connector；长任务只在授权 Desktop Runtime 执行。
@@ -1001,13 +1012,13 @@ Channel 成员不能因此访问该用户文件系统。
 
 ### 14.5 Runtime 故障
 
-`agent-core` 中途崩溃时，IM 保持可用；Task 显示失败或可恢复；Event Cursor 恢复不重复；
+`agentd` 或 Goose worker 中途崩溃时，IM 保持可用；Task 显示失败或可恢复；Event Cursor 恢复不重复；
 Retry 创建新的 Run Attempt。
 
 ## 15. 已确定的产品决策
 
 - IM 与 Runtime 是独立部署组件。
-- 自有 `agent-core` 是 Runtime；Hermes 只做研究参考。
+- Runtime 采用 Rust `agentd` + 固定版本 Goose ACP worker，遵循 ADR-0006/0007；完整集成和生产准入另行验收。
 - IM 采用 Local-first Client + Central Coordination，不采用 Blockchain。
 - 多端同步逻辑加密 Event，不复制 SQLite 数据库文件。
 - 设备本地默认保存 Channel Ciphertext；明文只按需出现在 Local Message Service 内存中。
