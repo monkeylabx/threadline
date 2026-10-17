@@ -32,6 +32,8 @@ jobs:
           node-version-file: .node-version
       - name: Test documentation routing
         run: node --test scripts/toolchain.test.mjs scripts/ci/docs-only.test.mjs
+      - name: Test native agentd receipt validation
+        run: node --test scripts/ci/verify-agentd-windows.test.mjs
       - name: Classify changes and check Markdown
         id: scope
         env:
@@ -349,6 +351,34 @@ jobs:
         env:
           LIBSQLITE3_SYS_USE_PKG_CONFIG: "0"
         run: cargo test -p threadline-client-core --test sqlcipher_backend --locked
+      - name: Test native Windows agentd baseline
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows')
+        env:
+          NODE_V8_COVERAGE: ${{ runner.temp }}/agentd-windows-coverage
+        run: |
+          $agentdLog = Join-Path $env:RUNNER_TEMP 'agentd-windows.log'
+          $agentdReceipt = Join-Path $env:RUNNER_TEMP 'agentd-windows.json'
+          if (Test-Path $agentdReceipt) { Remove-Item $agentdReceipt -ErrorAction Stop }
+          node --test scripts/ci/verify-agentd-windows.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clippy -p threadline-agentd --all-targets --locked -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test -p threadline-agentd --locked --tests -- --test-threads=1 --color never 2>&1 | Tee-Object -FilePath $agentdLog
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $agentdResult = node scripts/ci/verify-agentd-windows.mjs $agentdLog
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $agentdResult | Set-Content -Path $agentdReceipt -Encoding utf8
+      - name: Upload native Windows agentd evidence
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && (runner.os == 'Windows') && always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: agentd-windows-baseline
+          path: |
+            ${{ runner.temp }}/agentd-windows.log
+            ${{ runner.temp }}/agentd-windows.json
+            ${{ runner.temp }}/agentd-windows-coverage
+          if-no-files-found: warn
+          retention-days: 14
       - name: Build unsigned Tauri host
         if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         run: pnpm --filter @threadline/desktop build:native
