@@ -12,24 +12,10 @@ import {
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { bundleToolNames } from "./codegen-bundle-tools.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 const toolchain = JSON.parse(readFileSync(join(repositoryRoot, "proto", "toolchain.lock.json"), "utf8"));
-const generationTools = [
-  "buf",
-  "protoc",
-  "protoc-gen-go",
-  "protoc-gen-connect-go",
-  "protoc-gen-es",
-  "protoc-gen-prost",
-  "protoc-gen-prost-crate",
-  "protoc-gen-swift",
-  "protoc-gen-connect-swift",
-  "protoc-gen-connect-kotlin",
-  "java",
-  "javac",
-  "node",
-];
 
 function fail(message) {
   throw new Error(message);
@@ -101,7 +87,7 @@ function main() {
   const spec = JSON.parse(readFileSync(resolve(specPath), "utf8"));
   exactKeys(spec, ["schemaVersion", "platform", "profile", "sources", "closures", "tools"], "bundle spec");
   if (spec.schemaVersion !== 1 || spec.platform !== "darwin-arm64" || spec.profile !== "release") fail("bundle spec must be schema 1 darwin-arm64 release");
-  exactKeys(spec.tools, generationTools, "bundle tools");
+  const selectedTools = bundleToolNames(spec.tools);
 
   const outputRoot = resolve(bundleRoot);
   if (outputRoot === resolve("/") || outputRoot === repositoryRoot || outputRoot.startsWith(`${repositoryRoot}${sep}`)) {
@@ -165,7 +151,7 @@ function main() {
   }
 
   const tools = {};
-  for (const name of generationTools) {
+  for (const name of selectedTools) {
     const input = spec.tools[name];
     exactKeys(input, ["path", "closure", "provenance", "invocation"], `${name} tool`);
     if (!closureInputs[input.closure]) fail(`${name} references unknown closure ${input.closure}`);

@@ -26,13 +26,8 @@ apps/desktop/src-tauri/gen/
 /skills-lock.json
 /.claude/settings.local.json
 
-# Generated protocol SDKs. Reproduced by `make proto-generate`; never edited by
-# hand, so committing them would only create merge conflicts nobody can resolve.
-packages/generated-ts/
-packages/generated-swift/
-packages/generated-kotlin/
-crates/client-proto/src/generated/
-services/gen/
+# Generated protocol SDKs are committed only by the Integration Owner using
+# authenticated repository generation; compiler output stays ignored above.
 
 *.log
 *.swp

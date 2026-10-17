@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { codegenPolicy, filesBelow, inspectGeneratedOutput, outputDefinitions, parseCodegenMode, reportCodegenResult } from "./codegen-output.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 const protoRoot = join(repositoryRoot, "proto");
@@ -61,18 +62,6 @@ const generatorTools = [
 ];
 const generationTools = ["buf", "protoc", ...generatorTools, "java", "javac", "node"];
 const versionlessGenerators = new Set(["protoc-gen-connect-swift", "protoc-gen-connect-kotlin"]);
-const modes = new Set(["verify-only", "repository", "protocol-smoke"]);
-
-function parseMode() {
-  const argumentsAfterNode = process.argv.slice(2);
-  if (argumentsAfterNode.length !== 1 || !argumentsAfterNode[0].startsWith("--mode=")) {
-    throw new Error("exactly one mode is required: --mode=verify-only, --mode=repository, or --mode=protocol-smoke");
-  }
-  const value = argumentsAfterNode[0].slice("--mode=".length);
-  if (!modes.has(value)) throw new Error(`unsupported codegen mode: ${value}`);
-  return value;
-}
-
 function requiredEnvironment(name) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required; see docs/contracts/codegen.md`);
@@ -453,7 +442,7 @@ function verifyProvenance(name, provenance, sources, mode) {
     for (const source of provenance.sources) {
       if (sources[source].kind !== expectedSourceKind) throw new Error(`${name} ${provenance.kind} provenance cannot cite ${sources[source].kind} source ${source}`);
     }
-    if (provenance.kind === "protocol-stub" && mode !== "protocol-smoke") throw new Error(`${name} protocol-stub provenance is forbidden in ${mode} mode`);
+    if (provenance.kind === "protocol-stub" && !codegenPolicy(mode).allowStubs) throw new Error(`${name} protocol-stub provenance is forbidden in ${mode} mode`);
     return provenance.sources;
   }
   if (provenance.kind === "source-built") {
@@ -499,7 +488,7 @@ function verifyToolManifest(manifestPath, expectedDigest, mode, snapshotRoot) {
   if (manifest.platform !== `${process.platform}-${process.arch}`) {
     throw new Error(`Integration tool manifest platform mismatch: expected ${process.platform}-${process.arch}`);
   }
-  const expectedProfile = mode === "protocol-smoke" ? "protocol-smoke" : "release";
+  const expectedProfile = codegenPolicy(mode).profile;
   if (manifest.profile !== expectedProfile) throw new Error(`${mode} requires a ${expectedProfile} manifest profile`);
   if (expectedProfile === "release" && manifest.platform !== "darwin-arm64") {
     throw new Error("formal release codegen is restricted to the protected darwin-arm64 Integration runner");
@@ -569,7 +558,7 @@ function verifyToolManifest(manifestPath, expectedDigest, mode, snapshotRoot) {
   ]));
   assertExactKeys("referenced runtime closures", Object.fromEntries([...referencedClosures].map((name) => [name, true])), Object.keys(closureRoots));
   assertExactKeys("referenced source artifacts", Object.fromEntries([...referencedSources].map((name) => [name, true])), Object.keys(verifiedSources));
-  if (mode === "protocol-smoke" && !generatorTools.some((name) => manifest.tools[name].provenance.kind === "protocol-stub")) {
+  if (codegenPolicy(mode).allowStubs && !generatorTools.some((name) => manifest.tools[name].provenance.kind === "protocol-stub")) {
     throw new Error("protocol-smoke requires at least one generator classified as protocol-stub; use verify-only for real plugins");
   }
   return { manifest, tools, invocations };
@@ -674,59 +663,6 @@ function verifyKotlinArtifacts(tools, snapshotRoot, environment) {
     kotlinStdlib: runtimeSnapshotFiles[basename(kotlinStdlib)],
     connectKotlin: runtimeSnapshotFiles[basename(connectKotlin)],
   };
-}
-
-function filesBelow(directory, suffix = "") {
-  if (!existsSync(directory)) return [];
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) return filesBelow(path, suffix);
-    if (entry.isSymbolicLink()) throw new Error(`generated output must not contain symlinks: ${path}`);
-    return path.endsWith(suffix) ? [path] : [];
-  });
-}
-
-function outputDefinitions() {
-  return [
-    ["go", toolchain.outputs.go],
-    ["typescript", toolchain.outputs.typescript],
-    ["rust", toolchain.outputs.rust],
-    ["swift", toolchain.outputs.swift],
-    ["kotlinJava", toolchain.outputs.kotlin.javaMessages],
-    ["kotlinDsl", toolchain.outputs.kotlin.kotlinDsl],
-  ];
-}
-
-function verifyGeneratedOutput(generatedRoot, formal) {
-  for (const [name, output] of outputDefinitions()) {
-    const outputDirectory = join(generatedRoot, output);
-    const allFiles = filesBelow(outputDirectory);
-    if (allFiles.length === 0) throw new Error(`${name} generator produced no files`);
-    const combined = allFiles.map((path) => readFileSync(path, "utf8")).join("\n");
-    if (formal && combined.includes("THREADLINE_PROTOCOL_STUB")) throw new Error(`${name} output contains a protocol-stub marker in a formal run`);
-    if (!formal) continue;
-
-    const checks = toolchain.generationChecks[name];
-    if (!Number.isSafeInteger(checks.fileCount) || checks.fileCount <= 0 || allFiles.length !== checks.fileCount) {
-      throw new Error(`${name} generated file count mismatch: expected ${checks.fileCount}; got ${allFiles.length}`);
-    }
-    assertCanonicalDigest(checks.treeSha256, 64, `${name} generated treeSha256`);
-    const actualTreeSha256 = canonicalTreeDigest(walkExactTree(outputDirectory));
-    if (actualTreeSha256 !== checks.treeSha256) {
-      throw new Error(`${name} generated exact tree mismatch: expected ${checks.treeSha256}; got ${actualTreeSha256}`);
-    }
-    const sourceFiles = allFiles.filter((path) => checks.extensions.some((extension) => path.endsWith(extension)));
-    if (sourceFiles.length === 0) throw new Error(`${name} produced no source with an expected extension`);
-    for (const path of sourceFiles) {
-      const source = readFileSync(path, "utf8");
-      if (!checks.signatureRegexAny.some((signature) => new RegExp(signature, "su").test(source))) {
-        throw new Error(`${name} source lacks an accepted real-generator signature: ${path}`);
-      }
-    }
-    for (const structure of checks.structureRegex) {
-      if (!new RegExp(structure, "su").test(combined)) throw new Error(`${name} output lacks expected merged-contract structure: ${structure}`);
-    }
-  }
 }
 
 function compileKotlinOutput(generatedRoot, temporaryRoot, tools, artifacts, environment) {
@@ -834,7 +770,7 @@ function assertSafeDestination(destination) {
 export function synchronizeRepositoryOutputs(generatedRoot, gitInvocation, environment, testHooks = {}) {
   const preInstallStatus = gitStatus(gitInvocation, environment);
   if (preInstallStatus !== "") throw new Error(`worktree changed during generation; refusing installation:\n${preInstallStatus}`);
-  const changes = outputDefinitions().map(([name, output]) => {
+  const changes = outputDefinitions(toolchain).map(([name, output]) => {
     const source = join(generatedRoot, output);
     const destination = join(repositoryRoot, output);
     assertSafeDestination(destination);
@@ -907,7 +843,7 @@ function createMinimalEnvironment(tools, temporaryRoot) {
 }
 
 function main() {
-  const mode = parseMode();
+  const mode = parseCodegenMode(process.argv.slice(2));
   assertGenerationPlan();
 
   const temporaryRoot = mkdtempSync(join(tmpdir(), ".threadline-codegen-private-"));
@@ -953,19 +889,13 @@ function main() {
   const generationTemplate = JSON.stringify(verifiedGenerationTemplate(tools, invocations));
   run(tools.buf, formalBufArguments("generate", ["--template", generationTemplate, "-o", generatedRoot]), { env: codegenEnvironment });
 
-  const formal = mode !== "protocol-smoke";
-  verifyGeneratedOutput(generatedRoot, formal);
+  const generationTrees = inspectGeneratedOutput(generatedRoot, toolchain, mode);
   const compiled = compileKotlinOutput(generatedRoot, temporaryRoot, tools, kotlinArtifacts, codegenEnvironment);
   const protoCount = filesBelow(protoRoot, ".proto").length;
 
-  if (mode === "repository") {
+  reportCodegenResult(mode, { protoCount, compiled, generationTrees }, () => {
     synchronizeRepositoryOutputs(generatedRoot, invocations.git, codegenEnvironment);
-    console.log(`Verified release codegen before repository synchronization: ${protoCount} Proto, ${compiled.generatedJava} Java, ${compiled.generatedKotlin} Kotlin files.`);
-  } else if (mode === "verify-only") {
-    console.log(`Verified release codegen in temporary output only: ${protoCount} Proto, ${compiled.generatedJava} Java, ${compiled.generatedKotlin} Kotlin files.`);
-  } else {
-    console.log(`PROTOCOL-SMOKE ONLY: plugin protocol execution and Java/Kotlin compilation passed for ${protoCount} Proto files; this is not full release-codegen evidence.`);
-  }
+  });
   } finally {
     let finalizationError;
     try {

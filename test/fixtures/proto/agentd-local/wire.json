@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "frames": [
+    {
+      "type": "SubmitRunInputRequest",
+      "json": { "runId": "run-a", "inputId": "input-a", "text": "héllo" },
+      "hex": "0a0572756e2d611207696e7075742d611a0668c3a96c6c6f"
+    },
+    {
+      "type": "SubmitRunInputResponse",
+      "json": { "inputId": "input-a", "disposition": "RUN_INPUT_DISPOSITION_ACCEPTED" },
+      "hex": "0a07696e7075742d611001"
+    },
+    {
+      "type": "WatchRunActivityRequest",
+      "json": { "runId": "run-a", "streamId": "stream-a", "afterSequence": "2" },
+      "hex": "0a0572756e2d61120873747265616d2d611802"
+    },
+    {
+      "type": "WatchRunActivityResponse",
+      "json": { "runId": "run-a", "streamId": "stream-a", "ready": { "firstAvailableSequence": "3", "latestSequence": "4" } },
+      "hex": "0a0572756e2d61120873747265616d2d612a0408031004"
+    },
+    {
+      "type": "WatchRunActivityResponse",
+      "json": { "runId": "run-a", "streamId": "stream-a", "sequence": "3", "inputId": "input-a", "agentText": "safe answer" },
+      "hex": "0a0572756e2d61120873747265616d2d6118032207696e7075742d61320b7361666520616e73776572"
+    },
+    {
+      "type": "RequestRunStopRequest",
+      "json": { "runId": "run-a" },
+      "hex": "0a0572756e2d61"
+    },
+    {
+      "type": "RequestRunStopResponse",
+      "json": { "runId": "run-a" },
+      "hex": "0a0572756e2d61"
+    }
+  ]
+}

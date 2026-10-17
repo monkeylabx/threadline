@@ -104,6 +104,9 @@ enum ErrorCode {
   ERROR_CODE_RUNTIME_OFFLINE = 43;
   // The requested transition is not legal from the current state.
   ERROR_CODE_INVALID_STATE_TRANSITION = 44;
+  // A local Run input may already have reached the worker, but its effect is
+  // not yet reconciled. Do not blindly retry it or mint a new input_id.
+  ERROR_CODE_RUN_INPUT_OUTCOME_UNCERTAIN = 45;
 
   // -- Enterprise recovery -------------------------------------------------
   // The Recovery Case has not reached the organization's approver threshold, or

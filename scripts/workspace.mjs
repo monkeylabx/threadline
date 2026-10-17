@@ -15,7 +15,6 @@ const gradleCommand = process.platform === "win32" ? "gradlew.bat" : "./gradlew"
 const desktopSource = "apps/desktop/src/main.ts";
 const desktopTest = "apps/desktop/test/smoke.test.ts";
 const goSources = [
-  "agentd/main.go",
   "core/main.go",
   "model-control/main.go",
   "realtime/main.go",
@@ -225,6 +224,8 @@ function verifyStructure() {
     "crates/client-core/Cargo.toml",
     "crates/client-crypto/Cargo.toml",
     "crates/client-ffi/Cargo.toml",
+    "crates/agentd/Cargo.toml",
+    "crates/agentd/src/main.rs",
     "crates/locald/Cargo.toml",
     "crates/connectord/Cargo.toml",
     "services/go.mod",
@@ -234,7 +235,6 @@ function verifyStructure() {
     "services/worker/main.go",
     "services/model-control/main.go",
     "services/recovery-control/main.go",
-    "services/agentd/main.go",
     "proto/README.md",
     "proto/buf.yaml",
     "proto/threadline/message/v1/envelope.proto",

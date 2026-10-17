@@ -30,6 +30,7 @@ async function fixture() {
   const root = mkdtempSync(join(tmpdir(), "threadline-codegen-install-test-"));
   mkdirSync(join(root, ".git"));
   mkdirSync(join(root, "proto", "tools"), { recursive: true });
+  cpSync(new URL("./codegen-output.mjs", import.meta.url), join(root, "proto", "tools", "codegen-output.mjs"));
   cpSync(new URL("./verify-codegen.mjs", import.meta.url), join(root, "proto", "tools", "verify-codegen.mjs"));
   cpSync(new URL("../toolchain.lock.json", import.meta.url), join(root, "proto", "toolchain.lock.json"));
   cpSync(new URL("../buf.gen.yaml", import.meta.url), join(root, "proto", "buf.gen.yaml"));

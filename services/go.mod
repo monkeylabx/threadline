@@ -9,6 +9,7 @@ require github.com/jackc/pgx/v5 v5.10.0
 require (
 	connectrpc.com/connect v1.20.0
 	github.com/nats-io/nats.go v1.53.1
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
@@ -20,5 +21,4 @@ require (
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )
