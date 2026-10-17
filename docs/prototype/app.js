@@ -216,7 +216,7 @@ document.querySelector("#simulate-gap").addEventListener("click", (event) => {
 });
 
 // PROTOTYPE #183 — three disposable task-delivery layouts, enabled only by URL.
-const initialParams = new URLSearchParams(window.location.search);
+const initialParams = resolvePrototypeEntry(window.location.search);
 const artifactPrototypeEnabled = initialParams.get("prototype") === "artifact";
 const artifactVariantNames = {
   A: "A · 画布审阅",
@@ -436,6 +436,7 @@ function setImAgentVariant(requestedVariant, { updateUrl = true } = {}) {
     nextUrl.searchParams.set("screen", "channel");
     nextUrl.searchParams.set("prototype", "im-agent-fusion");
     nextUrl.searchParams.set("variant", variant);
+    if (variant === "A") nextUrl.searchParams.set("ui", "v34");
     window.history.replaceState({}, "", nextUrl);
   }
 }
