@@ -79,8 +79,8 @@ See [`CONTEXT.md`](./CONTEXT.md) for the domain language.
 | [`docs/acceptance/scope.md`](./docs/acceptance/scope.md) | Frozen scope and acceptance baseline |
 | [`docs/architecture/`](./docs/architecture/) | System, service, data, and security architecture |
 | [`proto/`](./proto/) | Cross-platform Protobuf contracts, golden frames, and generation configuration |
-| [`services/`](./services/) | Go control-plane, realtime, worker, and runtime services |
-| [`crates/`](./crates/) | Rust client core, crypto, FFI, locald, and connector boundaries |
+| [`services/`](./services/) | Go server workloads, including control-plane, realtime, worker, and Runtime Gateway |
+| [`crates/`](./crates/) | Rust client core, crypto, FFI, locald, agentd, and connector boundaries |
 | [`apps/`](./apps/) | Desktop, iOS, Android, and admin client skeletons |
 | [`deploy/`](./deploy/) | Local development stack and private-deployment foundations |
 
@@ -93,10 +93,18 @@ See [`CONTEXT.md`](./CONTEXT.md) for the domain language.
 - Local connectors access files and tools only through user-authorized capabilities.
 - Desktop, web, and mobile share protocol semantics while retaining native implementations.
 
+The selected local runtime is **Rust `agentd` supervising a pinned, headless Goose worker over ACP stdio**.
+The Desktop UI uses Threadline's task interface through the Tauri host; ACP stays internal to `agentd` and Goose.
+Threadline owns Task/Run authority, grants, approvals, Connector effects and publication; Goose supplies the model/tool loop.
+The early self-owned core and Codex research are historical alternatives. Existing [agentd primitives](./crates/agentd/README.md)
+do not establish a complete Goose integration or production admission.
+
 Authoritative references:
 
 - [System architecture and communication protocol](./docs/architecture/system-architecture.md)
 - [Service catalog](./docs/architecture/service-catalog.md)
+- [ADR-0006: Rust agentd with a headless Goose runtime](./docs/adr/0006-rust-agentd-goose-runtime.md)
+- [ADR-0007: Task-oriented client interface with internal ACP](./docs/adr/0007-agentd-task-interface.md)
 - [Private Enterprise v1.0 delivery plan](./docs/delivery-plan.md)
 - [Asynchronous agent workflow](./docs/agent-workstreams.md)
 

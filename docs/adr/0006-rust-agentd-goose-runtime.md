@@ -9,9 +9,17 @@ Threadline Desktop will implement its local `agentd` supervisor in Rust and sele
 
 The Desktop Agent client interface is clarified by [ADR-0007](./0007-agentd-task-interface.md): the Tauri host uses a small, task-oriented local business interface to `agentd`; ACP remains internal between `agentd` and Goose. The client-facing ACP proposal is removed before integration. The runtime choice, ownership and admission gates below remain in force.
 
+## Selection precedence
+
+Reconfirmed on 2026-10-17: Goose remains the selected first execution engine. This accepted decision
+supersedes the self-owned `agent-core` execution choice in the early PRD and the conditional Codex
+App Server recommendation in the [2026-09-16 research](../research/2026-09-agent-runtime-selection.md).
+That report remains historical evidence, not a second production architecture or automatic fallback.
+ADR-0007 governs the client interface; neither decision claims production admission.
+
 ## Context and decision
 
-`locald`, `connectord`, and the Tauri host are already Rust-based, whereas the current Go `services/agentd/main.go` is only an empty process target. The delivery plan's Go `agentd` entry is superseded by this ADR; Go remains the language for the server-side Runtime Gateway and other planned server workloads. Mobile and Web remain Task controllers/observers and do not run a local Agent.
+At decision time, `locald`, `connectord`, and the Tauri host were already Rust-based, whereas Go `services/agentd/main.go` was only an empty process target. The delivery plan's Go `agentd` entry is superseded by this ADR; Go remains the language for the server-side Runtime Gateway and other planned server workloads. Mobile and Web remain Task controllers/observers and do not run a local Agent.
 
 ```text
 Tauri Agent UI
@@ -45,4 +53,4 @@ Keeping Go for `agentd` was viable with ACP, but would add another language and 
 4. **Data lifecycle:** Inventory Goose's session SQLite, logs, prompts, tool results, Memory, context files, and extension configuration. Prove per-Run/actor isolation, at-rest protection or ephemeral handling, retention/deletion, crash recovery, and no cross-Channel or private-to-team disclosure. Goose [stores session messages and tool results locally](https://goose-docs.ai/docs/guides/logs/), and its optional [Memory extension loads saved memories into prompts](https://goose-docs.ai/docs/mcp/memory-mcp/); neither behavior is accepted as Threadline's data policy by default.
 5. **Release evidence:** Package and sign `agentd` and the pinned Goose worker with the Desktop release. Record license/dependency review, exact binary hash, minimum OS targets, resource limits, and a three-OS fault and security matrix. These are implementation gates, not checks passed by this documentation change.
 
-If Goose cannot satisfy these gates, the Run feature remains unavailable while IM continues. Architecture/Security may separately evaluate a constrained GDK worker or another runtime; there is no automatic fallback to unrestricted Goose tools or an uncontained host shell. The Rust `agentd` and Goose integration are future P09 implementation work, including removal of the unused Go stub. P07/P09 estimates must be reviewed after the integration spike. This ADR changes no executable, protocol, or acceptance result today.
+If Goose cannot satisfy these gates, the Run feature remains unavailable while IM continues. Architecture/Security may separately evaluate a constrained GDK worker or another runtime; there is no automatic fallback to unrestricted Goose tools or an uncontained host shell. The unused Go stub has since been removed and [Rust agentd primitives](../../crates/agentd/README.md) exist. Full Goose integration and the admission gates remain P09 implementation work; library primitives are not production acceptance. P07/P09 estimates must be reviewed after the integration spike. This ADR changes no executable, protocol, or acceptance result today.

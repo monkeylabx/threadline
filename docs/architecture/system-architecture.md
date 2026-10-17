@@ -8,6 +8,11 @@
 旧图不是当前拓扑验收证据。V33私人工作边界见[ADR-0005提案](../adr/0005-private-work-publication-boundary.md)，
 本文共享Task的派发/回流不代表私人工作会自动公开。
 
+本地 Runtime 现行选型是 Rust `agentd` + 固定版本 Goose ACP worker，见
+[ADR-0006](../adr/0006-rust-agentd-goose-runtime.md) 和 [ADR-0007](../adr/0007-agentd-task-interface.md)。
+旧自有内核与 Codex 研究不作为当前架构；职责、接口和验收状态汇总在
+[PRD 第 10 节](../product-requirements.md#10-当前-runtimerust-agentd--goose-acp)。
+
 ## 1. 结论
 
 Threadline 采用 **中心化 IM 协调层 + 设备本地 Agent 执行层**，不是纯 P2P，也不是把 Agent

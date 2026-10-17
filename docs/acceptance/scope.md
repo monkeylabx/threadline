@@ -185,7 +185,10 @@ Desktop 先完成首个完整垂直切片；iOS 与 Android 基础工程、Rust 
 - OIDC 负责登录；v1 成员生命周期由管理员邀请、停用和 CSV 导入承担。
 - Standard Private 默认公网出站仅包含 APNs / FCM 和企业显式批准的模型 Endpoint。
 - Air-gapped 安装和运行不能依赖公共 CDN、Package Registry、遥测 SaaS 或在线 License Service。
-- Runtime 使用项目自有 `agent-core`；Hermes Agent 仅作为研究参考，不是生产依赖。
+- Runtime 采用 Rust `agentd` 监管固定版本的无 UI Goose worker，仅内部使用 ACP stdio，见
+  [ADR-0006](../adr/0006-rust-agentd-goose-runtime.md) 和 [ADR-0007](../adr/0007-agentd-task-interface.md)。
+  Desktop UI 通过 Tauri 宿主调用本地任务接口；Task/Run、权限、审批、审计与发布仍由 Threadline 管理。
+  旧自有内核及 Codex 研究不作为当前选型；架构接受不代表集成或生产安全验收通过。
 - 企业模型 Endpoint 是 Prompt 明文的独立信任边界，必须由企业策略批准；Threadline 不负责替企业
   私有部署基础模型。
 
