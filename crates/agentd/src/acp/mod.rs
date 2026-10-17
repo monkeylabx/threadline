@@ -1,13 +1,15 @@
-//! Internal pipe framing, not an ACP Session client or a source of authority.
+//! Internal pipe framing and initialization, not a Session client or authority.
 
 mod connection;
 mod framing;
+mod initialize;
 mod message;
 
 use connection::Connection;
 use std::{fmt, time::Duration};
 use tokio::io::{AsyncRead, AsyncWrite, BufReader};
 
+pub use initialize::{Initialization, InitializeError, InitializedV1};
 pub use message::RpcMessage;
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
 
