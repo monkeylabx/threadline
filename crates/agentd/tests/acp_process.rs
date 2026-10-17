@@ -2,6 +2,7 @@ use serde_json::json;
 use std::{path::PathBuf, process::Stdio, time::Duration};
 use threadline_agentd::acp::{stdio, RpcMessage, TransportError};
 use tokio::{
+    io::AsyncReadExt,
     process::{Child, Command},
     runtime::Builder,
 };
@@ -26,7 +27,7 @@ fn fixture(mode: &str) -> Child {
         .env_clear()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
         .expect("synthetic worker")
@@ -42,6 +43,21 @@ async fn reap(child: &mut Child, failed: bool) -> std::process::ExitStatus {
             .expect("kill and reap overdue fixture");
     }
     kill.expect("kill failed fixture");
+    if failed {
+        eprintln!("[DEBUG-242] child wait: {status:?}");
+        if let Some(stderr) = child.stderr.take() {
+            let mut bytes = Vec::new();
+            let read = tokio::time::timeout(
+                Duration::from_secs(10),
+                stderr.take(8192).read_to_end(&mut bytes),
+            )
+            .await;
+            eprintln!(
+                "[DEBUG-242] stderr: {:?}; read: {read:?}",
+                String::from_utf8_lossy(&bytes)
+            );
+        }
+    }
     status
         .expect("bounded fixture exit")
         .expect("reap direct child")
