@@ -33,7 +33,7 @@ process owner must handle exit. See issue #227 for the R1-A scope.
 with a trusted nonzero deadline. Each UTF-8 JSON-RPC 2.0 frame is bounded to
 256 KiB including its terminating LF, on input and during output serialization.
 `RpcMessage` validates envelope shapes only. Parsed JSON is internal data, never
-Run or tool authority. Typed Session lifecycle and scoped requests remain pending.
+Run or tool authority. Scoped Session turns and lifecycle controls remain pending.
 
 Every transport error and cancellation of a polled I/O future permanently closes
 both halves to new operations. An already in-flight operation can remain pending
@@ -44,7 +44,7 @@ stderr is outside this transport. See issue #229 for the R1-B contract and the
 [ACP transport specification](https://agentclientprotocol.com/protocol/v1/transports).
 
 Remaining gates include authenticated IPC/Run authorization, protected input and
-activity lifetime, the typed Session client, OS containment with descendant cleanup
+activity lifetime, scoped Session requests, OS containment with descendant cleanup
 and crash recovery, and pinned Goose admission under ADR-0006.
 
 ## ACP initialization
@@ -59,10 +59,27 @@ The opaque `InitializedV1` receipt proves protocol agreement only. Optional
 `agentCapabilities` and `authMethods` may be omitted; supplied containers must
 be an object and array respectively. No capability flags, authentication entries,
 implementation information or extension metadata are consumed, exposed or granted.
-There is no Session/tool dispatch or transport extraction API. This restrictive
+There is no prompt/tool dispatch or transport extraction API. This restrictive
 pre-initialization profile does not support callbacks. Failure does not kill/reap
 a worker. See issue #231 and the
 [ACP v1 initialization schema](https://agentclientprotocol.com/protocol/v1/schema#initialize).
+
+## Internal Session creation
+
+After successful initialization, the same `Initialization` owner permits exactly
+one `create_session` exchange with a distinct client-owned request ID and empty
+MCP list. The trusted caller supplies a native absolute UTF-8 workspace path of
+at most 4,096 bytes without NUL; validation grants no file consent or containment.
+Invalid local arguments preserve the initialized owner and emit no request.
+
+One total deadline bounds send/receive. Once the exchange is polled, failure,
+cancellation or success prevents another Session creation. The owner retains the
+exact opaque ID and returns a redacted `CreatedSession` receipt: 1–256 UTF-8 bytes,
+no control characters, no normalization. Other response metadata is discarded.
+These bounds and the refusal of pre-result callbacks/notices are Threadline
+profile constraints. No Session load/resume, prompts, tools or product dispatch
+is enabled. Process cleanup remains separate. See issue #233 and
+[ACP v1 Session setup](https://agentclientprotocol.com/protocol/v1/session-setup).
 
 ## Verification
 

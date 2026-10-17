@@ -1,4 +1,4 @@
-//! Internal pipe framing and initialization, not a Session client or authority.
+//! Restricted internal ACP exchanges, never a source of authority.
 
 mod connection;
 mod framing;
@@ -9,7 +9,9 @@ use connection::Connection;
 use std::{fmt, time::Duration};
 use tokio::io::{AsyncRead, AsyncWrite, BufReader};
 
-pub use initialize::{Initialization, InitializeError, InitializedV1};
+pub use initialize::{
+    CreatedSession, Initialization, InitializeError, InitializedV1, SessionError,
+};
 pub use message::RpcMessage;
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
 
