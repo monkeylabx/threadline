@@ -1,17 +1,15 @@
 mod acp_support;
 #[path = "acp_session/fixtures.rs"]
 mod fixtures;
+#[path = "acp_session/lifecycle.rs"]
+mod lifecycle;
 
 use acp_support::{run, Broken};
-use fixtures::{assert_wire, live, owner, reply, workspace, DEADLINE, INIT_REPLY, IO_DEADLINE};
+use fixtures::{assert_wire, owner, reply, workspace, DEADLINE, INIT_REPLY, IO_DEADLINE};
 use serde_json::{json, Value};
-use std::{
-    future::{poll_fn, Future},
-    task::Poll,
-    time::Duration,
-};
+use std::time::Duration;
 use threadline_agentd::acp::{stdio, Initialization, SessionError as Error, TransportError};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 
 #[test]
 fn preserves_bounded_opaque_ids_and_discards_optional_metadata() {
@@ -233,83 +231,6 @@ fn transport_failures_are_terminal_during_session_creation() {
             client.create_session(workspace(), DEADLINE).await,
             Err(Error::Transport(TransportError::Io))
         );
-        assert_eq!(
-            client.create_session(workspace(), DEADLINE).await,
-            Err(Error::Unavailable)
-        );
-    });
-}
-
-#[test]
-fn cancelled_partial_send_and_pending_receive_never_restore_initialization() {
-    run(async {
-        for capacity in [1, 1024] {
-            let (mut client, mut peer) = live(capacity).await;
-            let prefix = peer.wire.len();
-            let mut attempt = Box::pin(client.create_session(workspace(), DEADLINE));
-            assert!(poll_fn(|cx| Poll::Ready(attempt.as_mut().poll(cx).is_pending())).await);
-            drop(attempt);
-            assert_eq!(
-                client.create_session(workspace(), DEADLINE).await,
-                Err(Error::Unavailable)
-            );
-            assert!(client.initialize().await.is_err());
-            drop(client);
-            peer.output
-                .read_to_end(&mut peer.wire)
-                .await
-                .expect("outbound EOF");
-            if capacity == 1 {
-                assert_eq!(&peer.wire[prefix..], b"{");
-            } else {
-                assert_wire(&peer.wire, workspace());
-            }
-        }
-    });
-}
-
-#[test]
-fn session_deadline_includes_delayed_send_and_receive() {
-    run(async {
-        let (mut client, mut peer) = live(1).await;
-        let server = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(6)).await;
-            peer.output
-                .read_until(b'\n', &mut peer.wire)
-                .await
-                .expect("Session request");
-            assert_wire(&peer.wire, workspace());
-            tokio::time::sleep(Duration::from_secs(6)).await;
-            peer.input
-                .write_all(b"{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"sessionId\":\"late\"}}\n")
-                .await
-                .expect("late response");
-        });
-        let start = tokio::time::Instant::now();
-        assert_eq!(
-            client.create_session(workspace(), DEADLINE).await,
-            Err(Error::Timeout)
-        );
-        assert_eq!(start.elapsed(), DEADLINE);
-        assert_eq!(
-            client.create_session(workspace(), DEADLINE).await,
-            Err(Error::Unavailable)
-        );
-        server.abort();
-        assert!(server.await.expect_err("cancel fixture").is_cancelled());
-    });
-}
-
-#[test]
-fn stalled_session_send_is_bounded_without_retry() {
-    run(async {
-        let (mut client, _peer) = live(1).await;
-        let start = tokio::time::Instant::now();
-        assert_eq!(
-            client.create_session(workspace(), DEADLINE).await,
-            Err(Error::Timeout)
-        );
-        assert_eq!(start.elapsed(), DEADLINE);
         assert_eq!(
             client.create_session(workspace(), DEADLINE).await,
             Err(Error::Unavailable)
