@@ -12,6 +12,7 @@ use tokio::io::{AsyncRead, AsyncWrite, BufReader};
 pub use initialize::{
     CreatedSession, Initialization, InitializeError, InitializedV1, SessionError,
 };
+pub use initialize::{StopReason, TurnError, TurnResult};
 pub use message::RpcMessage;
 pub const MAX_FRAME_BYTES: usize = 256 * 1024;
 
