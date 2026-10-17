@@ -6,6 +6,8 @@ mod api;
 mod cases;
 #[path = "windows_job_faults.rs"]
 mod faults;
+#[path = "windows_launch_owner.rs"]
+mod launch;
 
 use std::{ffi::c_void, ptr::NonNull};
 use windows_sys::Win32::Foundation::HANDLE;
