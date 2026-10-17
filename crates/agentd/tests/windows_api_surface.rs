@@ -7,14 +7,13 @@ fn pinned_windows_job_api_surface_is_available() {
         Foundation::CloseHandle,
         System::{
             JobObjects::{
-                CreateJobObjectW, QueryInformationJobObject, SetInformationJobObject,
-                TerminateJobObject, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                CreateJobObjectW, IsProcessInJob, QueryInformationJobObject,
+                SetInformationJobObject, TerminateJobObject, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
             },
             Threading::{
                 CreateProcessW, DeleteProcThreadAttributeList, InitializeProcThreadAttributeList,
-                IsProcessInJob, ResumeThread, UpdateProcThreadAttribute, WaitForSingleObject,
-                CREATE_SUSPENDED, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                PROC_THREAD_ATTRIBUTE_JOB_LIST,
+                ResumeThread, UpdateProcThreadAttribute, WaitForSingleObject, CREATE_SUSPENDED,
+                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, PROC_THREAD_ATTRIBUTE_JOB_LIST,
             },
         },
     };

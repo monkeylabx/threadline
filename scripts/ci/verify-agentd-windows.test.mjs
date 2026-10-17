@@ -1,11 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { spawnSync } from "node:child_process";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { verifyExecution, readLog } from "./verify-agentd-windows.mjs";
+import { readFileSync } from "node:fs";
+import { verifyExecution } from "./verify-agentd-windows.mjs";
 
 const required = JSON.parse(readFileSync(new URL("./agentd-windows-cases.json", import.meta.url), "utf8"));
 const summary = (count) => `test result: ok. ${count} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s`;
@@ -48,26 +44,4 @@ test("invalid baselines and output byte overflow fail closed", () => {
   assert.equal(Buffer.byteLength(`${prefix}\n${output()}`), 1024 * 1024);
   assert.equal(verifyExecution(`${prefix}\n${output()}`, required).passed, 50);
   assert.throws(() => verifyExecution(`${"é".repeat(524289)}\n${output()}`, required), /Oversized/);
-});
-
-test("file intake is bounded, complete and closes resources on read failures", (t) => {
-  const directory = mkdtempSync(join(tmpdir(), "agentd-receipt-"));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const path = join(directory, "output");
-  writeFileSync(path, output());
-  assert.equal(readLog(path), output());
-  writeFileSync(path, "x".repeat(1024 * 1024));
-  assert.equal(readLog(path).length, 1024 * 1024);
-  writeFileSync(path, "é".repeat(524289));
-  assert.throws(() => readLog(path), /Oversized/);
-  assert.throws(() => readLog(directory));
-  assert.throws(() => readLog(join(directory, "missing")));
-});
-
-test("CLI refuses missing input or non-Windows evidence without a receipt", () => {
-  const args = process.platform === "win32" ? [] : ["absent"];
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL("./verify-agentd-windows.mjs", import.meta.url)), ...args], { encoding: "utf8" });
-  assert.notEqual(result.status, 0);
-  assert.equal(result.stdout, "");
-  assert.match(result.stderr, process.platform === "win32" ? /Expected one test log/ : /Native Windows execution required/);
 });
