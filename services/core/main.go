@@ -16,6 +16,7 @@ import (
 	"github.com/monkeylabx/threadline/services/core/internal/messagerpc"
 	"github.com/monkeylabx/threadline/services/core/internal/outboxstore"
 	"github.com/monkeylabx/threadline/services/core/internal/server"
+	"github.com/monkeylabx/threadline/services/core/internal/syncrpc"
 	"github.com/monkeylabx/threadline/services/internal/devsession"
 	"github.com/monkeylabx/threadline/services/internal/outboxpolicy"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
@@ -58,8 +59,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	cursors, err := syncrpc.New(pool)
+	if err != nil {
+		return err
+	}
 	handler, err := server.NewHandler(server.Dependencies{
-		Pinger: pool, Channels: channels, Messages: messages, Verifier: loadVerifier(),
+		Pinger: pool, Channels: channels, Messages: messages, Sync: cursors, Verifier: loadVerifier(),
 	})
 	if err != nil {
 		return err
