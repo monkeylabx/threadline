@@ -35,6 +35,7 @@
       "type": "RequestRunStopResponse",
       "json": { "runId": "run-a" },
       "hex": "0a0572756e2d61"
-    }
+    },
+    {"type": "WatchRunActivityResponse", "json": {"runId": "run-a", "streamId": "stream-a", "sequence": "4", "inputId": "input-a", "tool": {"label": "Synthetic check", "phase": "LOCAL_TOOL_PHASE_PENDING"}}, "hex": "0a0572756e2d61120873747265616d2d6118042207696e7075742d613a130a0f53796e74686574696320636865636b1001"}
   ]
 }

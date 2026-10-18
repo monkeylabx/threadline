@@ -15,6 +15,10 @@ const fixture = JSON.parse(raw);
 const wire = JSON.parse(wireRaw);
 const manifest = JSON.parse(readFileSync(join(fixtureRoot, "manifest.json"), "utf8"));
 const errors = [];
+const bindingTests = spawnSync(process.execPath, ["--test", join(root, "proto/tools/agentd-local-binding.test.mjs")], {
+  cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024,
+});
+check(bindingTests.status === 0, `binding ordering regression: ${bindingTests.stdout}${bindingTests.stderr}`);
 
 function check(condition, message) {
   if (!condition) errors.push(message);
@@ -52,7 +56,8 @@ check(isDeepStrictEqual(wire.frames.map((frame) => frame.type), [
   "SubmitRunInputRequest", "SubmitRunInputResponse", "WatchRunActivityRequest",
   "WatchRunActivityResponse", "WatchRunActivityResponse",
   "RequestRunStopRequest", "RequestRunStopResponse",
-]), "wire fixture must cover all local request/response types and both watch variants");
+  "WatchRunActivityResponse",
+]), "wire fixture must cover all local request/response types and all three watch views");
 const seen = new Set();
 for (const scenario of fixture.cases) {
   check(typeof scenario.id === "string" && !seen.has(scenario.id), `duplicate or missing case ID: ${scenario.id}`);

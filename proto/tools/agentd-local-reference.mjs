@@ -1,18 +1,7 @@
 // Fixture-only reference decisions. Production authorization and worker
 // cleanup are separate Runtime/Security admission work, not implemented here.
 import { authorization, streamMatches } from "./agentd-local-binding.mjs";
-
-function inputAuthority(facts) {
-  const denied = authorization(facts, "control");
-  if (denied) return denied;
-  const { run } = facts;
-  if (!run.owner) return "ERROR_CODE_NOT_EXECUTION_OWNER";
-  if (!run.lease) return "ERROR_CODE_LEASE_LOST";
-  if (!run.fencing) return "ERROR_CODE_FENCING_TOKEN_STALE";
-  if (!run.grant) return "ERROR_CODE_GRANT_REVOKED";
-  if (!run.live) return "ERROR_CODE_INVALID_STATE_TRANSITION";
-  return null;
-}
+import { grantAuthority, inputAuthority } from "./agentd-local-authority.mjs";
 
 function inputReceipt(facts) {
   const { request, intake } = facts;
@@ -22,6 +11,7 @@ function inputReceipt(facts) {
   if (intake.uncertain) return "ERROR_CODE_RUN_INPUT_OUTCOME_UNCERTAIN";
   if (intake.prior !== null) return intake.prior === request.text ? "DUPLICATE" : "ERROR_CODE_IDEMPOTENCY_CONFLICT";
   if (intake.activeTurn) return "ERROR_CODE_INVALID_STATE_TRANSITION";
+  if (intake.acceptedInputs >= 16) return "RESOURCE_EXHAUSTED";
   return "ACCEPTED";
 }
 
@@ -30,10 +20,9 @@ function input(facts) {
 }
 
 function watch(facts) {
-  const denied = authorization(facts, "observe");
+  const denied = authorization(facts, "observe") ?? grantAuthority(facts);
   if (denied) return denied;
-  const { run, request, activity } = facts;
-  if (!run.grant) return "ERROR_CODE_GRANT_REVOKED";
+  const { request, activity } = facts;
   if (!request.stream) return request.after === 0 ? "WATCH" : "ERROR_CODE_CURSOR_INVALID";
   if (!streamMatches(facts)) return "ERROR_CODE_CURSOR_INVALID";
   if (request.after > activity.latest) return "ERROR_CODE_CURSOR_INVALID";
@@ -57,7 +46,7 @@ function stopOutcome(facts) {
 
 function output(facts) {
   const { activity } = facts;
-  if (authorization(facts, "observe") || !facts.run.grant) return "DROP";
+  if (authorization(facts, "observe") || grantAuthority(facts)) return "DROP";
   if (!streamMatches(facts) || !activity.authorized) return "DROP";
   if (activity.kind !== "agent_text" && activity.kind !== "tool_label") return "DROP";
   const limit = activity.kind === "agent_text" ? 8192 : 128;
@@ -72,9 +61,8 @@ function approvalBinding(facts) {
 }
 
 function approval(facts) {
-  if (!approvalBinding(facts) || authorization(facts, "control")) return "DENY_PROTECTED_EFFECT";
-  const { approval: decision, run } = facts;
-  if (decision.runCancelled || !run.live || !run.owner || !run.grant || !run.lease || !run.fencing) return "DENY_PROTECTED_EFFECT";
+  if (!approvalBinding(facts) || inputAuthority(facts)) return "DENY_PROTECTED_EFFECT";
+  if (facts.approval.runCancelled) return "DENY_PROTECTED_EFFECT";
   return "ALLOW_PROTECTED_EFFECT";
 }
 
