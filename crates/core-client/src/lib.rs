@@ -3,12 +3,13 @@
 //!
 //! One blocking HTTP/1.1 client speaks Connect unary (`application/proto`) to
 //! `MessageService.SendEvent`, `SyncService.SyncEvents` and
-//! `ChannelService.ListChannels`. The bearer credential lives only in memory
+//! `ChannelService.ListChannels`; `server` is the `locald::Server` facade. The bearer credential lives only in memory
 //! and never appears in errors, logs or `Debug` output. Envelope payloads are
 //! opaque to the transport; the Slice A plaintext codec is `envelope`.
 
 pub mod envelope;
 mod rpc;
+mod server;
 mod transport;
 
 pub use rpc::Channel;
