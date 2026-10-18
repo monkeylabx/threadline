@@ -11,8 +11,8 @@ Membership lifecycle. Migration `000007` adds immutable, versioned Resource ACL
 snapshots and an atomic current head for Space and Channel resources. Migration
 `000008` adds the Transactional Outbox persistence foundation. Migration `000011`
 adds conversation sequence heads, immutable channel events and send-command
-bindings for Slice A. This directory does not yet define Session, Device, key,
-or recovery tables.
+bindings for Slice A. Migration `000012` adds per-device sync cursors. This
+directory does not yet define Session, Device, key, or recovery tables.
 
 ## Migration rules
 
@@ -533,6 +533,29 @@ Run the synthetic constraint and `up -> down -> up` matrix against PostgreSQL 16
 ```text
 PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
   make -C db channel-event-test
+```
+
+## Sync cursor persistence
+
+Migration `000012` adds `domain.sync_cursors`: one row per
+`(tenant_id, device_id, conversation_kind, conversation_id)` recording the
+Device's highest contiguously applied `channel_seq` for the Member that owns
+the Device. A trigger forbids regression, identity or owner changes and
+deletion; an equal position is accepted so a retried update is idempotent.
+Validity against committed history (`last_applied_seq <= last_seq` of the
+conversation head) is the handler's responsibility under a plain head read, so
+cursor updates never lock the send path. `device_id` has no foreign key until
+the Session and Device contracts land.
+
+The Core query surface (`queries/core/sync_cursor.sql`) can lock, insert,
+advance (non-regressing) and list a Device's cursors; it exposes no delete.
+`channel_event.sql` gains a lock-free `GetConversationSequenceHead` read.
+
+Run the synthetic constraint and `up -> down -> up` matrix against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db sync-cursor-test
 ```
 
 ## Query generation

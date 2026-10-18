@@ -25,10 +25,13 @@ AUDIT_EVENT_UP="$DB_DIR/migrations/000010_audit_event.up.sql"
 AUDIT_EVENT_DOWN="$DB_DIR/migrations/000010_audit_event.down.sql"
 CHANNEL_EVENT_UP="$DB_DIR/migrations/000011_channel_event.up.sql"
 CHANNEL_EVENT_DOWN="$DB_DIR/migrations/000011_channel_event.down.sql"
+SYNC_CURSOR_UP="$DB_DIR/migrations/000012_sync_cursor.up.sql"
+SYNC_CURSOR_DOWN="$DB_DIR/migrations/000012_sync_cursor.down.sql"
 OUTBOX_CORE_QUERY="$DB_DIR/queries/core/transactional_outbox.sql"
 OUTBOX_WORKER_QUERY="$DB_DIR/queries/worker/transactional_outbox.sql"
 AUDIT_EVENT_CORE_QUERY="$DB_DIR/queries/core/audit_event.sql"
 CHANNEL_EVENT_CORE_QUERY="$DB_DIR/queries/core/channel_event.sql"
+SYNC_CURSOR_CORE_QUERY="$DB_DIR/queries/core/sync_cursor.sql"
 CORE_DBGEN_DIR="$DB_DIR/../services/core/internal/dbgen"
 WORKER_DBGEN_DIR="$DB_DIR/../services/worker/internal/dbgen"
 
@@ -66,10 +69,13 @@ verify_static_contract() {
   test -f "$AUDIT_EVENT_DOWN" || postgres_test_fail "missing 000010 down migration"
   test -f "$CHANNEL_EVENT_UP" || postgres_test_fail "missing 000011 up migration"
   test -f "$CHANNEL_EVENT_DOWN" || postgres_test_fail "missing 000011 down migration"
+  test -f "$SYNC_CURSOR_UP" || postgres_test_fail "missing 000012 up migration"
+  test -f "$SYNC_CURSOR_DOWN" || postgres_test_fail "missing 000012 down migration"
   test -f "$OUTBOX_CORE_QUERY" || postgres_test_fail "missing 000008 Core query surface"
   test -f "$OUTBOX_WORKER_QUERY" || postgres_test_fail "missing 000009 Worker query surface"
   test -f "$AUDIT_EVENT_CORE_QUERY" || postgres_test_fail "missing 000010 Core query surface"
   test -f "$CHANNEL_EVENT_CORE_QUERY" || postgres_test_fail "missing 000011 Core query surface"
+  test -f "$SYNC_CURSOR_CORE_QUERY" || postgres_test_fail "missing 000012 Core query surface"
   grep -Eq '^CREATE SCHEMA domain;$' "$FOUNDATION_UP" || postgres_test_fail "000001 up must create schema domain"
   grep -Eq '^DROP SCHEMA domain;$' "$FOUNDATION_DOWN" || postgres_test_fail "000001 down must drop schema domain"
   grep -Eq '^CREATE TABLE domain\.organizations \($' "$ORGANIZATION_UP" || postgres_test_fail "000002 up must create domain.organizations"
@@ -169,6 +175,13 @@ verify_static_contract() {
   if grep -Eiq 'UPDATE[[:space:]]+domain\.(channel_events|send_commands)|DELETE[[:space:]]+FROM[[:space:]]+domain\.(channel_events|send_commands|conversation_sequence_heads)' "$CHANNEL_EVENT_CORE_QUERY"; then
     postgres_test_fail "000011 Core query surface exposes generic event or binding mutation"
   fi
+  grep -Eq '^CREATE TABLE domain\.sync_cursors \($' "$SYNC_CURSOR_UP" || postgres_test_fail "000012 up must create domain.sync_cursors"
+  grep -Eq '^CREATE TRIGGER sync_cursors_lifecycle_guard$' "$SYNC_CURSOR_UP" || postgres_test_fail "000012 up must guard cursor regression and identity"
+  grep -Eq '^DROP TABLE domain\.sync_cursors;$' "$SYNC_CURSOR_DOWN" || postgres_test_fail "000012 down must drop sync cursors exactly"
+  grep -Eq '^DROP FUNCTION domain\.enforce_sync_cursor_lifecycle\(\);$' "$SYNC_CURSOR_DOWN" || postgres_test_fail "000012 down must drop the cursor lifecycle function exactly"
+  if grep -Eiq 'DELETE[[:space:]]+FROM[[:space:]]+domain\.sync_cursors' "$SYNC_CURSOR_CORE_QUERY"; then
+    postgres_test_fail "000012 Core query surface exposes cursor deletion"
+  fi
   for down_migration in "$DB_DIR"/migrations/*.down.sql; do
     if grep -Eiq '(^|[^[:alnum:]_])CASCADE([^[:alnum:]_]|$)' "$down_migration"; then
       postgres_test_fail "down migration must not use CASCADE: $(basename "$down_migration")"
@@ -207,9 +220,11 @@ apply_up_migrations() {
   psql_test --file="$OUTBOX_WORKER_OPS_UP"
   psql_test --file="$AUDIT_EVENT_UP"
   psql_test --file="$CHANNEL_EVENT_UP"
+  psql_test --file="$SYNC_CURSOR_UP"
 }
 
 apply_down_migrations() {
+  psql_test --file="$SYNC_CURSOR_DOWN"
   psql_test --file="$CHANNEL_EVENT_DOWN"
   psql_test --file="$AUDIT_EVENT_DOWN"
   psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
@@ -262,6 +277,7 @@ test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000007 down changed 
 psql_test --file="$RESOURCE_ACL_UP"
 psql_test --file="$OUTBOX_UP"
 psql_test --file="$OUTBOX_WORKER_OPS_UP"
+psql_test --file="$SYNC_CURSOR_DOWN"
 psql_test --file="$CHANNEL_EVENT_DOWN"
 psql_test --file="$AUDIT_EVENT_DOWN"
 roundtrip_tenant_count=$(
@@ -276,6 +292,12 @@ roundtrip_tenant_count=$(
     --command="SELECT count(*) FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
 )
 test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000011 up changed data owned by a prior migration"
+psql_test --file="$SYNC_CURSOR_UP"
+roundtrip_tenant_count=$(
+  psql_test --tuples-only --no-align \
+    --command="SELECT count(*) FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
+)
+test "$roundtrip_tenant_count" = "1" || postgres_test_fail "000012 up changed data owned by a prior migration"
 psql_test --command="DELETE FROM domain.organizations WHERE tenant_id = 'tenant-acl-roundtrip-synthetic'"
 
 apply_down_migrations
@@ -286,6 +308,7 @@ apply_up_migrations
 dump_domain_schema >"$temp_dir/second.sql"
 cmp -s "$temp_dir/first.sql" "$temp_dir/second.sql" || postgres_test_fail "up migrations produced different schemas"
 
+psql_test --file="$SYNC_CURSOR_DOWN"
 psql_test --file="$CHANNEL_EVENT_DOWN"
 psql_test --file="$AUDIT_EVENT_DOWN"
 psql_test --file="$OUTBOX_WORKER_OPS_DOWN"
