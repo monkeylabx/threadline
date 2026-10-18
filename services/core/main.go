@@ -16,10 +16,18 @@ import (
 	"github.com/monkeylabx/threadline/services/core/internal/messagerpc"
 	"github.com/monkeylabx/threadline/services/core/internal/outboxstore"
 	"github.com/monkeylabx/threadline/services/core/internal/server"
+	"github.com/monkeylabx/threadline/services/internal/devsession"
 	"github.com/monkeylabx/threadline/services/internal/outboxpolicy"
+	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
 
-const envOutboxPolicyFile = "THREADLINE_OUTBOX_POLICY_FILE"
+const (
+	envOutboxPolicyFile = "THREADLINE_OUTBOX_POLICY_FILE"
+	// envDevSessionsEnabled must be exactly "1" together with a fixture file
+	// for the NOT PRODUCTION dev verifier to replace the fail-closed default.
+	envDevSessionsEnabled = "THREADLINE_DEV_SESSIONS_ENABLED"
+	envDevSessionFixtures = "THREADLINE_DEV_SESSION_FIXTURES"
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -51,12 +59,11 @@ func run() error {
 		return err
 	}
 	handler, err := server.NewHandler(server.Dependencies{
-		Pinger: pool, Channels: channels, Messages: messages, Verifier: server.RejectAllVerifier{},
+		Pinger: pool, Channels: channels, Messages: messages, Verifier: loadVerifier(),
 	})
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "threadline-core: no session verifier configured; every RPC fails closed (NOT PRODUCTION)")
 	return server.Serve(ctx, config.ListenAddress(), handler)
 }
 
@@ -86,4 +93,33 @@ func loadProducer() *outboxstore.Producer {
 		return nil
 	}
 	return producer
+}
+
+
+// loadVerifier returns the NOT PRODUCTION dev session verifier only when the
+// operator sets THREADLINE_DEV_SESSIONS_ENABLED=1 and a readable, valid
+// fixture file; otherwise every credential fails closed. Paths, documents and
+// tokens are never echoed.
+func loadVerifier() rpcmiddleware.SessionVerifier {
+	if os.Getenv(envDevSessionsEnabled) != "1" {
+		fmt.Fprintln(os.Stderr, "threadline-core: no session verifier configured; every RPC fails closed (NOT PRODUCTION)")
+		return server.RejectAllVerifier{}
+	}
+	document, err := os.ReadFile(os.Getenv(envDevSessionFixtures))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "threadline-core: dev session fixtures unreadable; every RPC fails closed")
+		return server.RejectAllVerifier{}
+	}
+	fixtures, err := devsession.Parse(document)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "threadline-core: dev session fixtures invalid; every RPC fails closed")
+		return server.RejectAllVerifier{}
+	}
+	verifier, err := devsession.New(devsession.Options{Enabled: true, Fixtures: fixtures})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "threadline-core: dev session verifier rejected; every RPC fails closed")
+		return server.RejectAllVerifier{}
+	}
+	fmt.Fprintf(os.Stderr, "threadline-core: NOT PRODUCTION dev sessions enabled (%d fixtures)\n", len(fixtures))
+	return verifier
 }
