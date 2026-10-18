@@ -115,3 +115,10 @@ WHERE tenant_id = sqlc.arg(tenant_id)
   AND channel_seq < sqlc.arg(before_seq)
 ORDER BY channel_seq DESC
 LIMIT sqlc.arg(page_limit);
+
+-- name: GetConversationSequenceHead :one
+SELECT tenant_id, conversation_kind, conversation_id, last_seq
+FROM domain.conversation_sequence_heads
+WHERE tenant_id = sqlc.arg(tenant_id)
+  AND conversation_kind = sqlc.arg(conversation_kind)
+  AND conversation_id = sqlc.arg(conversation_id);

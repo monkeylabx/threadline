@@ -6,7 +6,7 @@ ATLAS_VERSION := 1.3.0
 CORE_GENERATED_DIR := $(CURDIR)/../services/core/internal/dbgen
 WORKER_GENERATED_DIR := $(CURDIR)/../services/worker/internal/dbgen
 
-.PHONY: check check-atlas check-sqlc generate generate-check migration-apply migration-integrity migration-ledger-test migration-status migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test audit-event-go-test channel-event-test
+.PHONY: check check-atlas check-sqlc generate generate-check migration-apply migration-integrity migration-ledger-test migration-status migration-static migration-test organization-test organization-go-test member-test member-go-test space-test space-go-test channel-dm-test channel-dm-go-test channel-membership-test channel-membership-go-test resource-acl-test resource-acl-go-test authorization-current-test authorization-current-go-test channel-archive-go-test transactional-outbox-test transactional-outbox-go-test transactional-outbox-worker-ops-test transactional-outbox-worker-go-test audit-event-go-test channel-event-test sync-cursor-test
 
 check-atlas:
 	@actual="$$($(ATLAS) version 2>/dev/null | sed -n '1s/^atlas community version v//p')"; test "$$actual" = "$(ATLAS_VERSION)" || { echo "Atlas Community $(ATLAS_VERSION) required; found $${actual:-missing}" >&2; exit 1; }
@@ -39,6 +39,9 @@ transactional-outbox-test:
 
 channel-event-test:
 	@sh "$(CURDIR)/tests/channel_event_persistence.sh"
+
+sync-cursor-test:
+	@sh "$(CURDIR)/tests/sync_cursor_persistence.sh"
 
 transactional-outbox-go-test:
 	@test -n "$$THREADLINE_TEST_POSTGRES_DSN" || { echo "THREADLINE_TEST_POSTGRES_DSN is required" >&2; exit 1; }
