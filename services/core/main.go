@@ -12,8 +12,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/monkeylabx/threadline/services/core/internal/channelrpc"
 	"github.com/monkeylabx/threadline/services/core/internal/server"
-	"github.com/monkeylabx/threadline/services/gen/threadline/channel/v1/channelv1connect"
 )
 
 func main() {
@@ -37,12 +37,12 @@ func run() error {
 	}
 	defer pool.Close()
 
-	// ChannelService procedures answer CodeUnimplemented until the first read
-	// handler (#262 follow-up A1b) replaces this placeholder.
+	channels, err := channelrpc.New(pool)
+	if err != nil {
+		return err
+	}
 	handler, err := server.NewHandler(server.Dependencies{
-		Pinger:   pool,
-		Channels: channelv1connect.UnimplementedChannelServiceHandler{},
-		Verifier: server.RejectAllVerifier{},
+		Pinger: pool, Channels: channels, Verifier: server.RejectAllVerifier{},
 	})
 	if err != nil {
 		return err
