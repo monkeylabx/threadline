@@ -14,7 +14,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/monkeylabx/threadline/services/worker/internal/outboxconfig"
+	"github.com/monkeylabx/threadline/services/internal/outboxpolicy"
 	"github.com/monkeylabx/threadline/services/worker/internal/outboxpublish"
 )
 
@@ -37,7 +37,7 @@ func TestConstructorRejectsInvalidBindingsWithoutDependencyCalls(t *testing.T) {
 		manager manager
 		domain  string
 		mapping outboxpublish.Mapping
-		policy  outboxconfig.Snapshot
+		policy  outboxpolicy.Snapshot
 	}{
 		{name: "nil server", manager: baseManager, mapping: inspectMapping, policy: policy},
 		{name: "typed nil server", server: nilServer, manager: baseManager, mapping: inspectMapping, policy: policy},
@@ -306,9 +306,9 @@ func mustInspector(t *testing.T, server serverFacts, manager manager) *Inspector
 	return inspector
 }
 
-func inspectPolicy(t *testing.T) outboxconfig.Snapshot {
+func inspectPolicy(t *testing.T) outboxpolicy.Snapshot {
 	t.Helper()
-	policy, err := outboxconfig.Parse([]byte(`{
+	policy, err := outboxpolicy.Parse([]byte(`{
 "policy_id":"threadline.outbox.policy/v1","payload_hard_bytes":262144,"wire_hard_bytes":327680,
 "batch_size":64,"lease_ms":30000,"absolute_lifetime_ms":300000,"event_retry_ceiling":8,
 "transport_base_ms":1000,"transport_cap_ms":60000,"unknown_base_ms":5000,"unknown_cap_ms":300000,
