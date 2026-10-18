@@ -38,11 +38,18 @@ export function Shell({ repository, organization = "北辰科技" }: ShellProps)
   useEffect(() => {
     if (selectedId === null) return;
     let cancelled = false;
-    void repository.listMessages(selectedId).then((list) => {
-      if (!cancelled) setMessages(list);
+    const refresh = () => {
+      void repository.listMessages(selectedId).then((list) => {
+        if (!cancelled) setMessages(list);
+      });
+    };
+    refresh();
+    const unsubscribe = repository.onMessagesChange((channelId) => {
+      if (channelId === selectedId) refresh();
     });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [repository, selectedId]);
 

@@ -1,9 +1,34 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+
 import { FixtureRepository, type Repository } from "./repository.ts";
+import { LocaldRepository } from "./repository/locald.ts";
 import { Shell } from "./shell/Shell.tsx";
 
 const fixtures: Repository = new FixtureRepository();
 
-/** Shell root. A8 swaps the fixture repository for the locald bridge. */
-export function App({ repository = fixtures }: { readonly repository?: Repository }) {
-  return <Shell repository={repository} />;
+/**
+ * Picks the data seam once: inside the Tauri host with a configured Device
+ * session the shell talks to locald; everywhere else (browser dev, tests, an
+ * unconfigured host) it stays on fixtures so the IM remains usable.
+ */
+export function App({ repository }: { readonly repository?: Repository }) {
+  const [chosen, setChosen] = useState<Repository | null>(repository ?? (isTauri() ? null : fixtures));
+
+  useEffect(() => {
+    if (chosen !== null) return;
+    let cancelled = false;
+    invoke<unknown>("session_info")
+      .then((info) => {
+        if (!cancelled) setChosen(info ? new LocaldRepository(invoke) : fixtures);
+      })
+      .catch(() => {
+        if (!cancelled) setChosen(fixtures);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chosen]);
+
+  return chosen === null ? null : <Shell repository={chosen} />;
 }

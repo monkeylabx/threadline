@@ -5,7 +5,7 @@
  */
 export type ConnectionState = "online" | "offline";
 
-export type MessageState = "pending" | "committed";
+export type MessageState = "pending" | "committed" | "unreadable";
 
 export interface Channel {
   readonly channelId: string;
@@ -33,6 +33,8 @@ export interface Repository {
   awaitCommit(eventId: string): Promise<Message>;
   connectionState(): ConnectionState;
   onConnectionChange(listener: (state: ConnectionState) => void): () => void;
+  /** Fires when a channel's message list changed outside the caller's own actions. */
+  onMessagesChange(listener: (channelId: string) => void): () => void;
 }
 
 const SELF = "林嘉";
@@ -43,6 +45,7 @@ export class FixtureRepository implements Repository {
   private readonly messages = new Map<string, Message[]>();
   private readonly commits = new Map<string, (message: Message) => void>();
   private readonly listeners = new Set<(state: ConnectionState) => void>();
+  private readonly messageListeners = new Set<(channelId: string) => void>();
   private state: ConnectionState;
   private sequence = 100;
 
@@ -98,6 +101,7 @@ export class FixtureRepository implements Repository {
       this.messages.set(channelId, next);
       this.commits.get(eventId)?.(committed);
       this.commits.delete(eventId);
+      for (const listener of this.messageListeners) listener(channelId);
     }
   }
 
@@ -114,6 +118,11 @@ export class FixtureRepository implements Repository {
   onConnectionChange(listener: (state: ConnectionState) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onMessagesChange(listener: (channelId: string) => void): () => void {
+    this.messageListeners.add(listener);
+    return () => this.messageListeners.delete(listener);
   }
 }
 
