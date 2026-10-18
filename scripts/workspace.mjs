@@ -12,8 +12,7 @@ const swiftScratch = join(tmpdir(), "threadline-swift-skeleton");
 const androidRoot = join(root, "apps", "android");
 const gradleCommand = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
 
-const desktopSource = "apps/desktop/src/main.ts";
-const desktopTest = "apps/desktop/test/smoke.test.ts";
+const desktopFilter = ["--filter", "@threadline/desktop"];
 const goSources = [
   "core/main.go",
   "model-control/main.go",
@@ -143,7 +142,7 @@ function textLint() {
 
 function build() {
   return [
-    run("typescript", "node", ["--experimental-strip-types", "--check", desktopSource]),
+    run("typescript", "pnpm", [...desktopFilter, "build"]),
     run("rust", "cargo", ["build", "--workspace", "--locked"]),
     run("go", "go", ["build", "./..."], {
       cwd: join(root, "services"),
@@ -162,7 +161,7 @@ function build() {
 
 function test() {
   return [
-    run("typescript", "node", ["--experimental-strip-types", "--test", desktopTest]),
+    run("typescript", "pnpm", [...desktopFilter, "test"]),
     run("rust", "cargo", ["test", "--workspace", "--locked"]),
     run("go", "go", ["test", "./..."], {
       cwd: join(root, "services"),
@@ -184,7 +183,7 @@ function lint() {
     textLint(),
     verifyPins(),
     run("node", "node", ["--check", "scripts/workspace.mjs"]),
-    run("typescript", "node", ["--experimental-strip-types", "--check", desktopSource]),
+    run("typescript", "pnpm", [...desktopFilter, "lint"]),
     run("rust", "cargo", ["fmt", "--all", "--check"]),
     runWithEmptyOutput("go", "gofmt", ["-d", ...goSources], {
       cwd: join(root, "services"),
