@@ -10,24 +10,41 @@ use std::fmt;
 use rusqlite::{Connection, TransactionBehavior};
 
 mod database;
+mod outbox;
 mod records;
 
 pub use database::{DatabaseKey, EncryptedDatabase};
+pub use outbox::{CommitPending, CommittedEventRecord, PendingOutboxRecord};
 pub use records::{
     CommittedEvent, ConversationKind, ConversationRef, CursorUpdate, PendingOutboxEvent,
     StoredCursor,
 };
 
 const MIGRATION_0001_SQL: &str = include_str!("migrations/0001.sql");
+const MIGRATION_0002_SQL: &str = include_str!("migrations/0002.sql");
+/// The complete schema after every migration, compared statement-for-statement
+/// with `sqlite_schema` so a tampered or partially migrated database fails closed.
+const CURRENT_SCHEMA_SQL: &str = include_str!("schema/current.sql");
 // SHA-256 of the exact checked-in `migrations/0001.sql` bytes.
 const MIGRATION_0001_SHA256: [u8; 32] = [
     0x61, 0x16, 0xaa, 0xca, 0xec, 0x95, 0x84, 0x15, 0xb7, 0x73, 0xbd, 0xd1, 0xe2, 0xf9, 0xe3, 0x4d,
     0x7d, 0x9f, 0x55, 0xf3, 0x0d, 0xef, 0x8a, 0x5b, 0x8d, 0x9a, 0xce, 0x11, 0xbf, 0x63, 0x37, 0x43,
 ];
+// SHA-256 of the exact checked-in `migrations/0002.sql` bytes.
+const MIGRATION_0002_SHA256: [u8; 32] = [
+    0x30, 0x54, 0xe3, 0x47, 0x8e, 0x49, 0x64, 0xdf, 0xa6, 0x5a, 0x65, 0xcf, 0x8d, 0x41, 0x1b, 0x96,
+    0x89, 0x0c, 0x21, 0xd1, 0x01, 0x17, 0x9b, 0x1d, 0x26, 0xa9, 0xf8, 0xa9, 0xc2, 0x6e, 0x5e, 0x3b,
+];
+
+/// Ordered migration ledger: version, SQL, and the digest recorded on apply.
+const MIGRATIONS: [(i64, &str, [u8; 32]); 2] = [
+    (1, MIGRATION_0001_SQL, MIGRATION_0001_SHA256),
+    (2, MIGRATION_0002_SQL, MIGRATION_0002_SHA256),
+];
 
 /// ASCII `TLIN`, used to reject unrelated SQLite files.
 pub(crate) const APPLICATION_ID: i64 = 1_414_285_646;
-pub(crate) const LATEST_SCHEMA_VERSION: i64 = 1;
+pub(crate) const LATEST_SCHEMA_VERSION: i64 = 2;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StorageError {
@@ -74,34 +91,52 @@ fn migrate(connection: &mut Connection) -> Result<(), StorageError> {
     if user_version > LATEST_SCHEMA_VERSION {
         return Err(StorageError::NewerSchema);
     }
-    if user_version == LATEST_SCHEMA_VERSION {
-        verify_current_schema(connection)?;
-        return Ok(());
-    }
-    if user_version != 0 || has_user_objects(connection)? {
+    if user_version == 0 && has_user_objects(connection)? {
         return Err(StorageError::ForeignDatabase);
     }
+    if user_version > 0 {
+        if application_id != APPLICATION_ID {
+            return Err(StorageError::ForeignDatabase);
+        }
+        verify_ledger(connection, user_version)?;
+    }
+    if user_version < LATEST_SCHEMA_VERSION {
+        apply_pending_migrations(connection, user_version)?;
+    }
+    verify_current_schema(connection)
+}
 
+/// apply_pending_migrations applies every migration above `from_version` in
+/// one transaction, so a failure anywhere leaves the version, ledger and schema
+/// exactly as they were.
+fn apply_pending_migrations(
+    connection: &mut Connection,
+    from_version: i64,
+) -> Result<(), StorageError> {
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|_| StorageError::Database)?;
-    transaction
-        .execute_batch(MIGRATION_0001_SQL)
-        .map_err(|_| StorageError::Database)?;
-    transaction
-        .execute(
-            "INSERT INTO threadline_schema_migrations (version, sha256) VALUES (?1, ?2)",
-            (LATEST_SCHEMA_VERSION, MIGRATION_0001_SHA256.as_slice()),
-        )
-        .map_err(|_| StorageError::Database)?;
+    for (version, sql, digest) in MIGRATIONS
+        .iter()
+        .filter(|(version, _, _)| *version > from_version)
+    {
+        transaction
+            .execute_batch(sql)
+            .map_err(|_| StorageError::Database)?;
+        transaction
+            .execute(
+                "INSERT INTO threadline_schema_migrations (version, sha256) VALUES (?1, ?2)",
+                (version, digest.as_slice()),
+            )
+            .map_err(|_| StorageError::Database)?;
+    }
     transaction
         .pragma_update(None, "application_id", APPLICATION_ID)
         .map_err(|_| StorageError::Database)?;
     transaction
         .pragma_update(None, "user_version", LATEST_SCHEMA_VERSION)
         .map_err(|_| StorageError::Database)?;
-    transaction.commit().map_err(|_| StorageError::Database)?;
-    verify_current_schema(connection)
+    transaction.commit().map_err(|_| StorageError::Database)
 }
 
 fn application_id(connection: &Connection) -> Result<i64, StorageError> {
@@ -126,27 +161,40 @@ fn has_user_objects(connection: &Connection) -> Result<bool, StorageError> {
         .map_err(|_| StorageError::Database)
 }
 
-fn verify_current_schema(connection: &Connection) -> Result<(), StorageError> {
-    if application_id(connection)? != APPLICATION_ID {
-        return Err(StorageError::ForeignDatabase);
-    }
-
-    let ledger = connection
-        .query_row(
-            "SELECT
-                count(*),
-                max(CASE WHEN version = ?1 THEN sha256 END)
-             FROM threadline_schema_migrations",
-            [LATEST_SCHEMA_VERSION],
-            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Option<Vec<u8>>>(1)?)),
-        )
+/// verify_ledger requires exactly one ledger row per applied version with the
+/// checked-in digest, so a drifted or partially recorded history fails closed
+/// before any further migration runs.
+fn verify_ledger(connection: &Connection, through_version: i64) -> Result<(), StorageError> {
+    let mut statement = connection
+        .prepare("SELECT version, sha256 FROM threadline_schema_migrations ORDER BY version")
         .map_err(|_| StorageError::MigrationLedgerInvalid)?;
-
-    if ledger.0 != 1 || ledger.1.as_deref() != Some(MIGRATION_0001_SHA256.as_slice()) {
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .map_err(|_| StorageError::MigrationLedgerInvalid)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| StorageError::MigrationLedgerInvalid)?;
+    let expected = MIGRATIONS
+        .iter()
+        .filter(|(version, _, _)| *version <= through_version)
+        .map(|(version, _, digest)| (*version, digest.to_vec()))
+        .collect::<Vec<_>>();
+    if rows != expected {
         return Err(StorageError::MigrationLedgerInvalid);
     }
+    Ok(())
+}
 
-    let mut expected_schema = MIGRATION_0001_SQL
+fn verify_current_schema(connection: &Connection) -> Result<(), StorageError> {
+    if application_id(connection)? != APPLICATION_ID
+        || user_version(connection)? != LATEST_SCHEMA_VERSION
+    {
+        return Err(StorageError::ForeignDatabase);
+    }
+    verify_ledger(connection, LATEST_SCHEMA_VERSION)?;
+
+    let mut expected_schema = CURRENT_SCHEMA_SQL
         .split(';')
         .map(str::trim)
         .filter(|statement| !statement.is_empty())
