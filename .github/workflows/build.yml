@@ -292,8 +292,8 @@ jobs:
         working-directory: services
         run: go test -mod=readonly -race ./... -count=1
 
-  slice-a-e2e:
-    name: slice-a-e2e
+  slice-a-end-to-end:
+    name: slice-a-end-to-end
     needs: contracts
     if: always()
     runs-on: ubuntu-24.04

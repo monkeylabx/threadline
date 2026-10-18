@@ -13,6 +13,6 @@ stays hermetic:
 | `THREADLINE_E2E_CORE_BIN` | Path to a built `services/core` binary |
 | `THREADLINE_E2E_POSTGRES_DSN` | Database with migrations applied and `deploy/compose/slice-a-seed.sql` loaded; `psql` must be on `PATH` |
 
-CI runs it in the `slice-a-e2e` job of `.github/workflows/build.yml`. Output is
+CI runs it in the `slice-a-end-to-end` job of `.github/workflows/build.yml`. Output is
 counts, sequences and reason tokens only; tokens, DSNs and envelope bytes are
 never printed. The Task → Agent → approval → Artifact half of #260 is A13b.
