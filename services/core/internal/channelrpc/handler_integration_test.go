@@ -75,9 +75,9 @@ func TestGetChannelAuthorizesAndReadsInsideOneTransaction(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Fatalf("GetChannel() without credential = %v, want CodeUnauthenticated", err)
 	}
-	_, err = client.ListChannels(ctx, authorizedList("member-token"))
-	if connect.CodeOf(err) != connect.CodeUnimplemented {
-		t.Fatalf("ListChannels() = %v, want CodeUnimplemented", err)
+	listed, err := client.ListChannels(ctx, authorizedList("member-token"))
+	if err != nil || len(listed.Msg.GetChannels()) != 1 || listed.Msg.GetChannels()[0].GetChannelId() != rpcChannelID {
+		t.Fatalf("ListChannels() = %v %v, want the member's single channel", listed, err)
 	}
 	assertNoOpenTransactions(t, ctx, pool, databaseName)
 }
