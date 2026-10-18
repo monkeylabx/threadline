@@ -3381,8 +3381,13 @@ dependencies = [
 name = "threadline-desktop-host"
 version = "0.0.0"
 dependencies = [
+ "prost-types",
+ "serde",
  "tauri",
  "tauri-build",
+ "threadline-client-core",
+ "threadline-core-client",
+ "threadline-locald",
 ]
 
 [[package]]

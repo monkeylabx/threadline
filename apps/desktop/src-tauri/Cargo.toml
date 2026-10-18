@@ -9,7 +9,12 @@ publish.workspace = true
 tauri-build = { version = "=2.6.3", features = [] }
 
 [dependencies]
+prost-types.workspace = true
+serde = { version = "=1.0.229", features = ["derive"] }
 tauri = { version = "=2.11.5", features = [] }
+threadline-client-core = { path = "../../../crates/client-core" }
+threadline-core-client = { path = "../../../crates/core-client" }
+threadline-locald = { path = "../../../crates/locald" }
 
 [lints]
 workspace = true
