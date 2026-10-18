@@ -63,5 +63,11 @@
   "probe::launch::faults::windows_launch_creation_failure_preserves_job",
   "probe::launch::faults::windows_launch_membership_refusal_never_resumes",
   "probe::launch::faults::windows_launch_query_failure_never_resumes",
-  "probe::launch::faults::windows_launch_resume_failure_is_terminal"
+  "probe::launch::faults::windows_launch_resume_failure_is_terminal",
+  "probe::launch::tree::fixture::windows_tree_root_entry",
+  "probe::launch::tree::fixture::windows_tree_descendant_entry",
+  "probe::launch::tree::cases::windows_tree_root_exit_leaves_a_live_owned_descendant",
+  "probe::launch::tree::cases::windows_tree_failed_termination_retains_explicit_retry",
+  "probe::launch::tree::cases::windows_tree_handoff_rejects_invalid_handles",
+  "probe::launch::tree::admission::windows_tree_handoff_refuses_foreign_or_unverified_membership"
 ]

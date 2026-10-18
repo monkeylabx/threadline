@@ -106,3 +106,6 @@ impl Drop for Child<'_> {
             .expect("synthetic child termination/wait unavailable");
     }
 }
+
+#[path = "windows_tree_owner.rs"]
+mod tree;
