@@ -3,6 +3,7 @@ mod command;
 use super::{attributes::Attributes, job_api, JobError};
 use std::{
     mem::size_of,
+    os::windows::io::BorrowedHandle,
     ptr::{null, null_mut},
 };
 use windows_sys::Win32::{
@@ -12,7 +13,8 @@ use windows_sys::Win32::{
         Threading::{
             CreateProcessW, GetExitCodeProcess, ResumeThread, TerminateProcess,
             WaitForSingleObject, CREATE_NO_WINDOW, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT,
-            EXTENDED_STARTUPINFO_PRESENT, PROCESS_INFORMATION, STARTUPINFOEXW, STARTUPINFOW,
+            EXTENDED_STARTUPINFO_PRESENT, PROCESS_INFORMATION, STARTF_USESTDHANDLES,
+            STARTUPINFOEXW, STARTUPINFOW,
         },
     },
 };
@@ -33,10 +35,29 @@ impl Drop for Handles {
 }
 
 pub(super) fn create(attributes: &mut Attributes<'_>) -> Result<Handles, JobError> {
-    let mut input = command::Input::single()?;
+    create_input(attributes, command::Input::single()?)
+}
+
+pub(super) fn create_root(
+    attributes: &mut Attributes<'_>,
+    stdio: [BorrowedHandle<'_>; 3],
+) -> Result<Handles, JobError> {
+    create_input(attributes, command::Input::root(stdio)?)
+}
+
+fn create_input(
+    attributes: &mut Attributes<'_>,
+    mut input: command::Input<'_>,
+) -> Result<Handles, JobError> {
+    let inherit = input.stdio.is_some();
+    let stdio = input.raw_stdio();
     let startup = STARTUPINFOEXW {
         StartupInfo: STARTUPINFOW {
             cb: size_of::<STARTUPINFOEXW>() as u32,
+            dwFlags: if inherit { STARTF_USESTDHANDLES } else { 0 },
+            hStdInput: stdio[0],
+            hStdError: stdio[1],
+            hStdOutput: stdio[2],
             ..Default::default()
         },
         lpAttributeList: attributes.pointer(),
@@ -44,15 +65,15 @@ pub(super) fn create(attributes: &mut Attributes<'_>) -> Result<Handles, JobErro
     let mut info = PROCESS_INFORMATION::default();
     // SAFETY: explicit trusted self-image, writable UTF-16 command, double-NUL environment;
     // live initialized attribute/value buffers; matching extended structure size and flag.
-    // NULL security attributes and FALSE inheritance expose no owner/control handle.
-    #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #247")]
+    // Inheritance is disabled for W1; W2 allows only its three explicitly listed pipe/NUL handles.
+    #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exceptions in #247/#249")]
     let status = unsafe {
         CreateProcessW(
             input.application.as_ptr(),
             input.command.as_mut_ptr(),
             null(),
             null(),
-            0,
+            i32::from(inherit),
             CREATE_SUSPENDED
                 | EXTENDED_STARTUPINFO_PRESENT
                 | CREATE_UNICODE_ENVIRONMENT

@@ -61,7 +61,7 @@ function main() {
   const result = verifyExecution(readLog(process.argv[2]), required);
   console.log(JSON.stringify({ schema: 1, platform: process.platform, architecture: process.arch,
     osRelease: release(), node: process.version, commit: process.env.GITHUB_SHA ?? null,
-    windowsApi: "compile-and-link-only", windowsJobResources: "native-empty-job-probe", windowsJobLaunch: "native-suspended-membership-probe", containment: "NOT_RUN", goose: "NOT_RUN", ...result }));
+    windowsApi: "compile-and-link-only", windowsJobResources: "native-empty-job-probe", windowsJobLaunch: "native-suspended-membership-probe", windowsJobDescendants: "native-cooperative-tree-probe", containment: "NOT_RUN", goose: "NOT_RUN", ...result }));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

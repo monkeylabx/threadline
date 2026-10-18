@@ -8,17 +8,18 @@ const summary = (count) => `test result: ok. ${count} passed; 0 failed; 0 ignore
 const output = (names = required) => [...names.map((name) => `test ${name} ... ok`), summary(names.length)].join("\n");
 
 test("native baseline includes existing cases, API surface, Job resources and suspended launch", () => {
-  assert.equal(required.length, 65);
+  assert.equal(required.length, 70);
   assert.ok(required.includes("pinned_windows_job_api_surface_is_available"));
   assert.ok(required.includes("probe::cases::windows_job_profile_is_bounded_and_non_inheritable"));
   assert.ok(required.includes("probe::launch::cases::windows_launch_is_suspended_and_in_job_before_resume"));
+  assert.ok(required.includes("probe::launch::tree::cases::windows_tree_root_exit_leaves_a_live_owned_descendant"));
   assert.ok(required.includes("real_synthetic_process_exchanges_frames_and_reports_abnormal_eof"));
-  assert.deepEqual(verifyExecution(output(), required), { passed: 65, required: 65, cases: [...required].sort() });
+  assert.deepEqual(verifyExecution(output(), required), { passed: 70, required: 70, cases: [...required].sort() });
 });
 
 test("additional executed cases, empty unit suites and CRLF remain valid", () => {
   const log = `${summary(0)}\n${output([...required, "future::case"])}`.replaceAll("\n", "\r\n");
-  assert.equal(verifyExecution(log, required).passed, 66);
+  assert.equal(verifyExecution(log, required).passed, 71);
 });
 
 test("missing, duplicate, failed, ignored and malformed cases cannot pass", () => {
@@ -30,10 +31,10 @@ test("missing, duplicate, failed, ignored and malformed cases cannot pass", () =
 });
 
 test("zero, absent, malformed, filtered, ignored and inconsistent summaries fail", () => {
-  for (const log of [summary(0), "", "running 0 tests", output().replace(summary(65), ""),
-    output().replace(summary(65), "test result: FAILED"), output().replace("0 ignored", "1 ignored"),
+  for (const log of [summary(0), "", "running 0 tests", output().replace(summary(70), ""),
+    output().replace(summary(70), "test result: FAILED"), output().replace("0 ignored", "1 ignored"),
     output().replace("0 filtered out", "1 filtered out"), output().replace("0 failed", "1 failed"),
-    output().replace("0 measured", "1 measured"), output().replace("65 passed", "64 passed")]) {
+    output().replace("0 measured", "1 measured"), output().replace("70 passed", "69 passed")]) {
     assert.throws(() => verifyExecution(log, required));
   }
 });
@@ -44,6 +45,6 @@ test("invalid baselines and output byte overflow fail closed", () => {
   }
   const prefix = "x".repeat(1024 * 1024 - Buffer.byteLength(output()) - 1);
   assert.equal(Buffer.byteLength(`${prefix}\n${output()}`), 1024 * 1024);
-  assert.equal(verifyExecution(`${prefix}\n${output()}`, required).passed, 65);
+  assert.equal(verifyExecution(`${prefix}\n${output()}`, required).passed, 70);
   assert.throws(() => verifyExecution(`${"é".repeat(524289)}\n${output()}`, required), /Oversized/);
 });
