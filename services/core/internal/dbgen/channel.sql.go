@@ -119,6 +119,68 @@ func (q *Queries) GetChannel(ctx context.Context, arg GetChannelParams) (DomainC
 	return i, err
 }
 
+const listActorActiveChannels = `-- name: ListActorActiveChannels :many
+SELECT channels.tenant_id, channels.channel_id, channels.space_id, channels.name, channels.visibility,
+  channels.state, channels.e2ee_group_id, channels.created_at
+FROM domain.channel_memberships AS memberships
+JOIN domain.channels AS channels
+  ON channels.tenant_id = memberships.tenant_id
+  AND channels.channel_id = memberships.channel_id
+WHERE memberships.tenant_id = $1
+  AND memberships.actor_type = $2
+  AND memberships.actor_id = $3
+  AND memberships.left_at IS NULL
+  AND ($4::text IS NULL OR channels.space_id = $4::text)
+  AND channels.channel_id > $5
+ORDER BY channels.channel_id ASC
+LIMIT $6
+`
+
+type ListActorActiveChannelsParams struct {
+	TenantID       string
+	ActorType      int16
+	ActorID        string
+	SpaceID        *string
+	AfterChannelID string
+	PageLimit      int32
+}
+
+func (q *Queries) ListActorActiveChannels(ctx context.Context, arg ListActorActiveChannelsParams) ([]DomainChannel, error) {
+	rows, err := q.db.Query(ctx, listActorActiveChannels,
+		arg.TenantID,
+		arg.ActorType,
+		arg.ActorID,
+		arg.SpaceID,
+		arg.AfterChannelID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DomainChannel{}
+	for rows.Next() {
+		var i DomainChannel
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ChannelID,
+			&i.SpaceID,
+			&i.Name,
+			&i.Visibility,
+			&i.State,
+			&i.E2eeGroupID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateChannelNameState = `-- name: UpdateChannelNameState :one
 UPDATE domain.channels
 SET

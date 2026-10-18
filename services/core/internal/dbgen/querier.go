@@ -46,6 +46,7 @@ type Querier interface {
 	InsertSendCommand(ctx context.Context, arg InsertSendCommandParams) (InsertSendCommandRow, error)
 	InsertSyncCursor(ctx context.Context, arg InsertSyncCursorParams) (DomainSyncCursor, error)
 	ListActiveChannelMemberships(ctx context.Context, arg ListActiveChannelMembershipsParams) ([]DomainChannelMembership, error)
+	ListActorActiveChannels(ctx context.Context, arg ListActorActiveChannelsParams) ([]DomainChannel, error)
 	ListChannelEventsNewestFirst(ctx context.Context, arg ListChannelEventsNewestFirstParams) ([]DomainChannelEvent, error)
 	ListChannelEventsOldestFirst(ctx context.Context, arg ListChannelEventsOldestFirstParams) ([]DomainChannelEvent, error)
 	ListChannelMembershipHistory(ctx context.Context, arg ListChannelMembershipHistoryParams) ([]DomainChannelMembership, error)
