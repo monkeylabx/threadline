@@ -1,0 +1,20 @@
+{
+  "sessions": [
+    {
+      "token": "dev-session-lin-jia-laptop-0000000001",
+      "tenant_id": "tenant-dev",
+      "actor_type": "human",
+      "actor_id": "actor-lin-jia",
+      "device_id": "device-lin-jia-laptop",
+      "session_id": "session-lin-jia-laptop"
+    },
+    {
+      "token": "dev-session-meng-qing-laptop-000000001",
+      "tenant_id": "tenant-dev",
+      "actor_type": "human",
+      "actor_id": "actor-meng-qing",
+      "device_id": "device-meng-qing-laptop",
+      "session_id": "session-meng-qing-laptop"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "policy_id": "threadline.outbox.policy/v1",
+  "payload_hard_bytes": 262144,
+  "wire_hard_bytes": 327680,
+  "batch_size": 64,
+  "lease_ms": 30000,
+  "absolute_lifetime_ms": 300000,
+  "event_retry_ceiling": 8,
+  "transport_base_ms": 1000,
+  "transport_cap_ms": 60000,
+  "unknown_base_ms": 5000,
+  "unknown_cap_ms": 300000,
+  "event_base_ms": 5000,
+  "event_cap_ms": 300000,
+  "retention_days": 90,
+  "duplicate_window_ms": 120000
+}
