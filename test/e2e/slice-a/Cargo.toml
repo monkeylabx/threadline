@@ -1,0 +1,20 @@
+[package]
+name = "threadline-e2e-slice-a"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Core-in-the-loop end-to-end check of the plaintext Desktop loop (A13a)."
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+reqwest = { version = "=0.13.4", default-features = false, features = ["blocking"] }
+threadline-client-core = { path = "../../../crates/client-core" }
+threadline-core-client = { path = "../../../crates/core-client" }
+threadline-locald = { path = "../../../crates/locald" }
+
+[lints]
+workspace = true

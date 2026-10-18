@@ -3391,6 +3391,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "threadline-e2e-slice-a"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+ "threadline-client-core",
+ "threadline-core-client",
+ "threadline-locald",
+]
+
+[[package]]
 name = "threadline-locald"
 version = "0.0.0"
 dependencies = [

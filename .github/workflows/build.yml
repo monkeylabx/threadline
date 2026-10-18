@@ -292,6 +292,78 @@ jobs:
         working-directory: services
         run: go test -mod=readonly -race ./... -count=1
 
+  slice-a-end-to-end:
+    name: slice-a-end-to-end
+    needs: contracts
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: ${{ needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true' && 'postgres:16.4-alpine@sha256:5660c2cbfea50c7a9127d17dc4e48543eedd3d7a41a595a2dfa572471e37e64c' || '' }}
+        env:
+          POSTGRES_DB: threadline
+          POSTGRES_USER: threadline_postgres_dev
+          POSTGRES_PASSWORD: threadline_postgres_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username=threadline_postgres_dev --dbname=threadline"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      THREADLINE_E2E_POSTGRES_DSN: postgres://threadline_postgres_dev:threadline_postgres_dev@127.0.0.1:5432/threadline?sslmode=disable
+    steps:
+      - name: Require successful contract and documentation checks
+        if: needs.contracts.result != 'success'
+        run: exit 1
+      - name: Record documentation-only result
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only == 'true'
+        run: echo 'Documentation checks passed; Slice A end-to-end NOT RUN.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Check out source
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: 1.26.5
+          cache: false
+      - name: Install PostgreSQL 16 client
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-16
+      - name: Install pinned Atlas Community migration runner
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        run: |
+          curl --fail --silent --show-error --location \
+            --output "${RUNNER_TEMP}/atlas" \
+            https://release.ariga.io/atlas/atlas-community-linux-amd64-v1.3.0
+          printf '%s  %s\n' \
+            '10d7913e3dce43ab99b8d71534a4cbadaf11a16dc293adf3b91d10e83a0ac70b' \
+            "${RUNNER_TEMP}/atlas" | sha256sum --check
+          sudo install --mode 0755 "${RUNNER_TEMP}/atlas" /usr/local/bin/atlas
+          atlas version | grep -Fx 'atlas community version v1.3.0'
+      - name: Apply migrations and the Slice A dev seed
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        env:
+          THREADLINE_MIGRATION_URL: ${{ env.THREADLINE_E2E_POSTGRES_DSN }}
+        run: |
+          psql "${THREADLINE_E2E_POSTGRES_DSN}" --no-psqlrc --set ON_ERROR_STOP=1 --command 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
+          make -C db migration-apply
+          psql "${THREADLINE_E2E_POSTGRES_DSN}" --no-psqlrc --set ON_ERROR_STOP=1 --file deploy/compose/slice-a-seed.sql
+      - name: Build Core
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        working-directory: services
+        run: go build -mod=readonly -o "${RUNNER_TEMP}/threadline-core" ./core
+      - name: Run the two-Device plaintext loop against Core
+        if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
+        env:
+          THREADLINE_E2E_CORE_BIN: ${{ runner.temp }}/threadline-core
+        run: cargo test -p threadline-e2e-slice-a --locked -- --test-threads=1 --nocapture
+
   desktop:
     needs: contracts
     if: always()
