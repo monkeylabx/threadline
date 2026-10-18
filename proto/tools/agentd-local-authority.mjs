@@ -3,6 +3,7 @@ import { authorization } from "./agentd-local-binding.mjs";
 
 export function grantAuthority({ run }) {
   if (!run.grant) return "ERROR_CODE_GRANT_REVOKED";
+  if (typeof run.grantExpired !== "boolean") return "UNAVAILABLE";
   if (run.grantExpired) return "ERROR_CODE_GRANT_EXPIRED";
   return null;
 }

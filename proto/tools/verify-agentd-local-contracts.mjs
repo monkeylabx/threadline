@@ -15,10 +15,12 @@ const fixture = JSON.parse(raw);
 const wire = JSON.parse(wireRaw);
 const manifest = JSON.parse(readFileSync(join(fixtureRoot, "manifest.json"), "utf8"));
 const errors = [];
-const bindingTests = spawnSync(process.execPath, ["--test", join(root, "proto/tools/agentd-local-binding.test.mjs")], {
+const bindingTests = spawnSync(process.execPath, ["--test",
+  join(root, "proto/tools/agentd-local-binding.test.mjs"), join(root, "proto/tools/agentd-local-authority.test.mjs"),
+], {
   cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024,
 });
-check(bindingTests.status === 0, `binding ordering regression: ${bindingTests.stdout}${bindingTests.stderr}`);
+check(bindingTests.status === 0, `trusted authority regressions: ${bindingTests.stdout}${bindingTests.stderr}`);
 
 function check(condition, message) {
   if (!condition) errors.push(message);

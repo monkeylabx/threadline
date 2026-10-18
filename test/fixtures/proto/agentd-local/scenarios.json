@@ -126,6 +126,10 @@
     {"id": "output-grantExpired-denied", "operation": "output", "overrides": {"run": {"grantExpired": true}}, "expected": "DROP"},
     {"id": "approval-grantExpired-denied", "operation": "approval", "overrides": {"run": {"grantExpired": true}}, "expected": "DENY_PROTECTED_EFFECT"},
     {"id": "approval-route-denied", "operation": "approval", "overrides": {"run": {"route": false}}, "expected": "DENY_PROTECTED_EFFECT"},
-    {"id": "approval-budget-denied", "operation": "approval", "overrides": {"run": {"budget": false}}, "expected": "DENY_PROTECTED_EFFECT"}
+    {"id": "approval-budget-denied", "operation": "approval", "overrides": {"run": {"budget": false}}, "expected": "DENY_PROTECTED_EFFECT"},
+    {"id": "input-unavailable-grant-expiry", "operation": "input", "overrides": {"run": {"grantExpired": null}}, "expected": "UNAVAILABLE"},
+    {"id": "watch-unavailable-grant-expiry", "operation": "watch", "overrides": {"run": {"grantExpired": null}}, "expected": "UNAVAILABLE"},
+    {"id": "output-unavailable-grant-expiry", "operation": "output", "overrides": {"run": {"grantExpired": null}}, "expected": "DROP"},
+    {"id": "approval-unavailable-grant-expiry", "operation": "approval", "overrides": {"run": {"grantExpired": null}}, "expected": "DENY_PROTECTED_EFFECT"}
   ]
 }

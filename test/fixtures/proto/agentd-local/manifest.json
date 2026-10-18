@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "classification": "synthetic-no-secrets",
-  "scenariosSha256": "3b8bd0062ecae0b354d14138012a7d4efbfd2cb6577a0e92b900785aac08986a",
+  "scenariosSha256": "11c9e6ca934ca1b8482fc9dbfaff6e2a8b337ac2c55aec827caf3748dbdb08da",
   "wireSha256": "2834255ad179abbd4476e7737d4d1beeb193777d8054b0f7598b245c2def7376",
   "runtimeEvidence": "NOT RUN",
   "requiredCases": [
@@ -101,6 +101,10 @@
     "output-grantExpired-denied",
     "approval-grantExpired-denied",
     "approval-route-denied",
-    "approval-budget-denied"
+    "approval-budget-denied",
+    "input-unavailable-grant-expiry",
+    "watch-unavailable-grant-expiry",
+    "output-unavailable-grant-expiry",
+    "approval-unavailable-grant-expiry"
   ]
 }

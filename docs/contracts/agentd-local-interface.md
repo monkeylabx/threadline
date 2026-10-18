@@ -56,7 +56,7 @@ R1 admits only Runs supplied by current trusted dispatch fixtures; the first Tas
 
 The fake module can show a pending approval and accept a trusted synthetic Core decision in its harness, but cannot execute a protected effect. The actual Core decision-delivery path and exact-action checks below remain mandatory before real protected tools. A local stop receipt remains only a receipt; even the fake engine must distinguish cleanup verification from durable owner acknowledgement.
 
-Trusted dispatch supplies current grant expiry, approved route and remaining execution budget as well as owner/lease/fencing. Input and approval use the same execution-admission policy. An absent approved route returns gRPC `UNAVAILABLE`; no remaining budget returns `RESOURCE_EXHAUSTED`; neither lets UI input choose a model or endpoint. Watch needs a current grant, but does not acquire execution ownership or require a model route; authorized local stop remains available when effects are denied.
+Trusted dispatch supplies current grant expiry, approved route and remaining execution budget as well as owner/lease/fencing. Input and approval use the same execution-admission policy. Missing/unavailable grant-expiry evidence returns gRPC `UNAVAILABLE`, not a claim that the grant is unexpired. An absent approved route returns gRPC `UNAVAILABLE`; no remaining budget returns `RESOURCE_EXHAUSTED`; neither lets UI input choose a model or endpoint. Watch needs a current grant, but does not acquire execution ownership or require a model route; authorized local stop remains available when effects are denied.
 
 ## Input and activity semantics
 
