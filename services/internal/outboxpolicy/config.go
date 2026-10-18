@@ -1,6 +1,6 @@
-// Package outboxconfig parses the frozen Transactional Outbox deployment
+// Package outboxpolicy parses the frozen Transactional Outbox deployment
 // policy into a redacted, immutable Worker snapshot.
-package outboxconfig
+package outboxpolicy
 
 import (
 	"encoding/json"

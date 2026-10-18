@@ -1,4 +1,4 @@
-package outboxconfig
+package outboxpolicy
 
 import (
 	"encoding/hex"
