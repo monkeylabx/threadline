@@ -130,3 +130,14 @@ type DomainSpace struct {
 	Discoverable bool
 	CreatedAt    pgtype.Timestamptz
 }
+
+type DomainSyncCursor struct {
+	TenantID         string
+	DeviceID         string
+	ConversationKind int16
+	ConversationID   string
+	ActorType        int16
+	ActorID          string
+	LastAppliedSeq   int64
+	UpdatedAt        pgtype.Timestamptz
+}

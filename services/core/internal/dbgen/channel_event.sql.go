@@ -75,6 +75,39 @@ func (q *Queries) GetChannelEvent(ctx context.Context, arg GetChannelEventParams
 	return i, err
 }
 
+const getConversationSequenceHead = `-- name: GetConversationSequenceHead :one
+SELECT tenant_id, conversation_kind, conversation_id, last_seq
+FROM domain.conversation_sequence_heads
+WHERE tenant_id = $1
+  AND conversation_kind = $2
+  AND conversation_id = $3
+`
+
+type GetConversationSequenceHeadParams struct {
+	TenantID         string
+	ConversationKind int16
+	ConversationID   string
+}
+
+type GetConversationSequenceHeadRow struct {
+	TenantID         string
+	ConversationKind int16
+	ConversationID   string
+	LastSeq          int64
+}
+
+func (q *Queries) GetConversationSequenceHead(ctx context.Context, arg GetConversationSequenceHeadParams) (GetConversationSequenceHeadRow, error) {
+	row := q.db.QueryRow(ctx, getConversationSequenceHead, arg.TenantID, arg.ConversationKind, arg.ConversationID)
+	var i GetConversationSequenceHeadRow
+	err := row.Scan(
+		&i.TenantID,
+		&i.ConversationKind,
+		&i.ConversationID,
+		&i.LastSeq,
+	)
+	return i, err
+}
+
 const getSendCommandBinding = `-- name: GetSendCommandBinding :one
 SELECT
   commands.tenant_id,
