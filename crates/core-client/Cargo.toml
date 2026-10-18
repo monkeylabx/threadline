@@ -1,0 +1,21 @@
+[package]
+name = "threadline-core-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+prost.workspace = true
+prost-types.workspace = true
+reqwest = { version = "=0.13.4", default-features = false, features = ["blocking"] }
+serde_json = "=1.0.151"
+sha2 = "=0.10.9"
+threadline-client-proto = { path = "../client-proto" }
+threadline-locald = { path = "../locald" }
+
+[lints]
+workspace = true

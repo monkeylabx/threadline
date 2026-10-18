@@ -7,6 +7,7 @@ members = [
   "crates/client-ffi",
   "crates/client-proto",
   "crates/connectord",
+  "crates/core-client",
   "crates/locald",
 ]
 resolver = "2"
