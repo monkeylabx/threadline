@@ -351,6 +351,7 @@ jobs:
         env:
           THREADLINE_MIGRATION_URL: ${{ env.THREADLINE_E2E_POSTGRES_DSN }}
         run: |
+          psql "${THREADLINE_E2E_POSTGRES_DSN}" --no-psqlrc --set ON_ERROR_STOP=1 --command 'CREATE EXTENSION IF NOT EXISTS pgcrypto'
           make -C db migration-apply
           psql "${THREADLINE_E2E_POSTGRES_DSN}" --no-psqlrc --set ON_ERROR_STOP=1 --file deploy/compose/slice-a-seed.sql
       - name: Build Core
