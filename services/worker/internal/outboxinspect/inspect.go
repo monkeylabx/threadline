@@ -11,7 +11,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 
-	"github.com/monkeylabx/threadline/services/worker/internal/outboxconfig"
+	"github.com/monkeylabx/threadline/services/internal/outboxpolicy"
 	"github.com/monkeylabx/threadline/services/worker/internal/outboxpublish"
 )
 
@@ -38,7 +38,7 @@ type Inspector struct {
 	manager manager
 	domain  string
 	mapping outboxpublish.Mapping
-	policy  outboxconfig.Snapshot
+	policy  outboxpolicy.Snapshot
 }
 
 func (*Inspector) String() string   { return "<redacted-outbox-inspector>" }
@@ -54,7 +54,7 @@ func New(
 	broker jetstream.JetStream,
 	domain string,
 	mapping outboxpublish.Mapping,
-	policy outboxconfig.Snapshot,
+	policy outboxpolicy.Snapshot,
 ) (*Inspector, error) {
 	if connection == nil || nilLike(broker) || !validDomain(domain) || !mapping.Valid() || !policy.Valid() {
 		return nil, inspectError(ErrorInvalidInput)
@@ -72,7 +72,7 @@ func newInspector(
 	manager manager,
 	domain string,
 	mapping outboxpublish.Mapping,
-	policy outboxconfig.Snapshot,
+	policy outboxpolicy.Snapshot,
 ) (*Inspector, error) {
 	if nilLike(server) || nilLike(manager) || !validDomain(domain) || !mapping.Valid() || !policy.Valid() {
 		return nil, inspectError(ErrorInvalidInput)
