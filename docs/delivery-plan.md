@@ -10,6 +10,8 @@
 
 2026-09-29 Agent 交互简化决策：Desktop 界面经 Tauri 宿主通过本地业务 IPC 调用 `agentd` 的任务接口；仅 `agentd`→Goose 使用 ACP，见 [ADR-0007](./adr/0007-agentd-task-interface.md) 和 [Draft Profile](./architecture/agentd-task-interface.md)。不建设 ACP 转发层或对外 ACP 入口；IM/Task/权限/审批/发布业务契约保持 Threadline 所有。本地接口和运行证据仍为 NOT RUN，原估算、范围和 Gate 状态不变。
 
+2026-10-18 范围顺序决策：Product Owner 在 [#252](https://github.com/monkeylabx/threadline/issues/252) 选择先交付去加密的 Desktop 闭环（Slice A），E2EE、真机 Mobile、部署/恢复、Model Control 路由与生产身份延后到后续切片，见 [Scope §7.1](./acceptance/scope.md) 与 [ADR-0008 提案](./adr/0008-plaintext-first-slice.md)。原 M2 定义被 Slice A 取代，M2 及其后日期待重排；原 2937 人日估算与 GA 日期不再是当前承诺。M0/G0 HOLD、#24/#41 NOT RUN、#148 needs-info 不变。工作拆分为 #252 下的 A0–A14 子 Issue。
+
 计划起点：2026-07-27
 
 基准 GA：2027-10-29
@@ -407,7 +409,7 @@ Monorepo 使用 `pnpm workspace + Cargo workspace + Go workspace + SwiftPM + Gra
 | --- | --- | --- | --- |
 | M0 架构、Crypto 与 Native Bridge Gate | W1-W4 | 2026-08-21 | Scope、ADR、Threat Model、Proto 骨架、FFI/E2EE 互操作证据 |
 | M1 工程基础 | W5-W8 | 2026-09-18 | Monorepo、CI、OIDC、Key Package 骨架、Client Core、私有开发栈 |
-| M2 首个产品垂直切片 | W9-W16 | 2026-11-13 | Desktop E2EE 消息、离线 Outbox、本地 Agent、审批与 Artifact 闭环 |
+| M2 首个产品垂直切片 | W9-W16 | ~~2026-11-13~~ 待重排 | 2026-10-18 起由 Slice A（去加密 Desktop 闭环，#252）取代；E2EE 版本闭环移至后续切片 |
 | M3 Collaboration Alpha | W17-W24 | 2027-01-08 | DM、Thread、Reaction、File、Local Search；iOS/Android E2EE 消息 Alpha |
 | M4 Agent Team Beta | W25-W34 | 2027-03-19 | Runtime、Context、Connector、Approval、Artifact、Model Route；Mobile Task 控制 |
 | M5 Private Deployment Beta | W35-W43 | 2027-05-21 | Admin、Recovery、Audit、Helm、Backup、Upgrade、Air-gap 和企业分发 |

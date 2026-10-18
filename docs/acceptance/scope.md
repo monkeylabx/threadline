@@ -1,6 +1,6 @@
 # Threadline Private Enterprise v1.0 Scope Freeze
 
-状态：Frozen 1.1
+状态：Frozen 1.2（Slice A 增补，见 §7.1）
 
 Gate：G0 / M0
 
@@ -162,6 +162,34 @@ Desktop 先完成首个完整垂直切片；iOS 与 Android 基础工程、Rust 
 
 首个闭环在 Desktop 完成。Mobile 同期建立原生壳、Rust FFI 与消息基础，随后接入消息、Run 观察、审批
 和中断。
+
+### 7.1 Slice A：去加密 Desktop 闭环（2026-10-18 增补）
+
+Product Owner 于 2026-10-18 在 [#252](https://github.com/monkeylabx/threadline/issues/252) 决定：第一个集成版本先交付
+**去加密的 Desktop 闭环**，作为上述七步的前置切片。v1 产品承诺不变，变化的只是交付顺序。决策依据与备选方案见
+[ADR-0008（proposed）](../adr/0008-plaintext-first-slice.md)。
+
+Slice A 的验收目标，在单机 Compose 开发栈上：
+
+1. 两个 Desktop 客户端用开发态静态 Session 登录，在同一 Channel 明文收发消息。
+2. 断网时消息进入本地 Outbox；重连或重启后按序补发；重复重试只产生一个逻辑事件；服务端按 Channel 排序并提供游标补洞。
+3. 一条消息转为 Task；本地 `agentd` 以路由策略文件指定的合成模型端点运行一轮，不在代码中出现模型名。
+4. 审批以会话内弹层呈现并提交到现有 Approval 契约；Artifact 回到 Task Thread。
+5. `agentd` 或模型端点离线时，IM 收发、Outbox 与 Sync 不受影响。
+
+Slice A 明确延后、不得被宣称已覆盖的能力：
+
+| 延后能力 | 恢复条件 |
+| --- | --- |
+| 消息与附件 E2EE、企业 KMS/HSM 恢复 | ADR-0003/0004 正式接受、生产 Crypto Provider 准入（#191 矩阵）、独立实现复核 |
+| 真机 iOS/Android | #24/#41 真机证据从 NOT RUN 变为 PASS |
+| Helm、离线安装包、备份恢复、升级回滚 | Slice A 演示通过后另行拆分 P12 任务 |
+| Model Control 发现与评估路由 | Slice A 内只允许可发现的路由策略文件指向固定开发端点 |
+| 生产身份（OIDC、设备证明、Session 存储） | #192/#200 契约进入实现；Slice A 的静态验证器在代码、配置和文档中标注 NOT PRODUCTION |
+
+本增补触发第 10 节“改变 E2EE 边界”条目的程序性要求：ADR-0003/0004 的接受时点与里程碑表必须重排（见
+`docs/delivery-plan.md` 2026-10-18 增补），不得静默修改；Slice A 的明文路径只存在于开发栈，不构成服务端明文产品形态，
+服务端存储的 Envelope 载荷在 Slice A 中仍是客户端提交的不透明字节。
 
 ## 8. 明确非目标
 
