@@ -1,18 +1,9 @@
-/**
- * Shell root. A7 (#265) fills the two panes; this task only establishes the
- * landmark, the token-driven surface and the test seam.
- */
-export function App() {
-  return (
-    <main
-      aria-label="Threadline"
-      style={{
-        minHeight: "100vh",
-        background: "var(--tl-color-canvas)",
-        color: "var(--tl-color-text-primary)",
-      }}
-    >
-      <h1 style={{ fontSize: "14px", fontWeight: 700, margin: "16px" }}>Threadline</h1>
-    </main>
-  );
+import { FixtureRepository, type Repository } from "./repository.ts";
+import { Shell } from "./shell/Shell.tsx";
+
+const fixtures: Repository = new FixtureRepository();
+
+/** Shell root. A8 swaps the fixture repository for the locald bridge. */
+export function App({ repository = fixtures }: { readonly repository?: Repository }) {
+  return <Shell repository={repository} />;
 }
