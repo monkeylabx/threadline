@@ -140,3 +140,16 @@ is disabled and the child environment contains only SystemRoot.
 This is single-root test evidence, not a production launcher or cleanup receipt.
 Descendant/crash/leaked-handle experiments, hostile handle/broker and resource
 isolation, StopDriver/recovery and Goose admission remain unimplemented here.
+
+### W2: cooperative descendant lifetime probe
+
+The private Windows fixture now starts a fixed root with only allowlisted pipe/NUL
+stdio. The root creates one ordinary descendant and retains its handle until the
+trusted harness pulls a wait/query-only duplicate and acknowledges it. No Job or
+owner-process handle is passed to the root; no PID lookup is used. Native tests
+observe root exit while its descendant is still live, reject direct termination
+through the limited duplicate, then terminate the owned Job, wait for exit99,
+release all process references and query zero active processes. Failed termination
+retains the reference for an explicit retry. This is cooperative test evidence;
+zero accounting is not sealed containment or a production cleanup receipt.
+Supervisor-crash/leaked-handle and hostile-worker isolation remain future work.

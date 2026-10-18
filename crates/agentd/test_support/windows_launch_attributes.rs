@@ -1,16 +1,22 @@
 use super::{job_api, Job, JobError};
-use std::{mem::size_of, ptr::null_mut};
+use std::{
+    mem::size_of,
+    os::windows::io::{AsRawHandle, BorrowedHandle},
+    ptr::null_mut,
+};
 use windows_sys::Win32::{
     Foundation::{GetLastError, ERROR_INSUFFICIENT_BUFFER, HANDLE},
     System::Threading::{
         DeleteProcThreadAttributeList, InitializeProcThreadAttributeList,
-        UpdateProcThreadAttribute, LPPROC_THREAD_ATTRIBUTE_LIST, PROC_THREAD_ATTRIBUTE_JOB_LIST,
+        UpdateProcThreadAttribute, LPPROC_THREAD_ATTRIBUTE_LIST, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+        PROC_THREAD_ATTRIBUTE_JOB_LIST,
     },
 };
 
 pub(super) struct Attributes<'job> {
     storage: Vec<u128>,
     jobs: Box<[HANDLE; 1]>,
+    inherited: Option<Box<[HANDLE; 3]>>,
     _owner: &'job Job,
 }
 
@@ -20,7 +26,7 @@ impl<'job> Attributes<'job> {
         let mut size = 0;
         // SAFETY: NULL list is the documented sizing probe; size is writable.
         #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #247")]
-        let status = unsafe { InitializeProcThreadAttributeList(null_mut(), 1, 0, &mut size) };
+        let status = unsafe { InitializeProcThreadAttributeList(null_mut(), 2, 0, &mut size) };
         // SAFETY: same-thread error observation immediately after the sizing probe.
         #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #247")]
         let error = unsafe { GetLastError() };
@@ -31,12 +37,13 @@ impl<'job> Attributes<'job> {
         // SAFETY: 16-byte-aligned storage covers the exact reported byte count.
         #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #247")]
         let status = unsafe {
-            InitializeProcThreadAttributeList(storage.as_mut_ptr().cast(), 1, 0, &mut size)
+            InitializeProcThreadAttributeList(storage.as_mut_ptr().cast(), 2, 0, &mut size)
         };
         job_api::checked(status)?;
         let mut list = Self {
             storage,
             jobs: Box::new([handle]),
+            inherited: None,
             _owner: job,
         };
         // SAFETY: initialized list; boxed handle array stays pinned until list destruction.
@@ -55,6 +62,29 @@ impl<'job> Attributes<'job> {
         };
         job_api::checked(status)?;
         Ok(list)
+    }
+
+    pub(super) fn inherit(&mut self, handles: [BorrowedHandle<'_>; 3]) -> Result<(), JobError> {
+        if self.inherited.is_some() {
+            return Err(JobError::Rejected);
+        }
+        self.inherited = Some(Box::new(handles.map(|handle| handle.as_raw_handle())));
+        let values = self.inherited.as_ref().ok_or(JobError::Rejected)?.as_ptr();
+        // SAFETY: initialized list with reserved capacity; boxed values stay pinned until Delete.
+        // Trusted root setup retains the three borrowed pipe/NUL resources through creation.
+        #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #249")]
+        let status = unsafe {
+            UpdateProcThreadAttribute(
+                self.pointer(),
+                0,
+                PROC_THREAD_ATTRIBUTE_HANDLE_LIST as usize,
+                values.cast(),
+                size_of::<[HANDLE; 3]>(),
+                null_mut(),
+                std::ptr::null(),
+            )
+        };
+        job_api::checked(status)
     }
 
     pub(super) fn pointer(&mut self) -> LPPROC_THREAD_ATTRIBUTE_LIST {
