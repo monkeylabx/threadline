@@ -112,15 +112,21 @@ func addListFixtures(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	if err != nil {
 		t.Fatal("begin list fixture transaction failed")
 	}
-	statements := []string{
-		`INSERT INTO domain.spaces (tenant_id, space_id, display_name, discoverable) VALUES ($1, $2, 'Other Space Synthetic', TRUE)`,
-		`INSERT INTO domain.channels (tenant_id, channel_id, space_id, name, visibility, state, e2ee_group_id) VALUES
+	statements := []struct {
+		query string
+		args  []any
+	}{
+		{`INSERT INTO domain.spaces (tenant_id, space_id, display_name, discoverable) VALUES ($1, $2, 'Other Space Synthetic', TRUE)`,
+			[]any{rpcTenantID, rpcOtherSpaceID}},
+		{`INSERT INTO domain.channels (tenant_id, channel_id, space_id, name, visibility, state, e2ee_group_id) VALUES
 		  ($1, $3, $2, 'Second Channel Synthetic', 2, 1, 'group-channelrpc-second-synthetic'),
 		  ($1, $4, $2, 'Denied Channel Synthetic', 2, 1, 'group-channelrpc-denied-synthetic')`,
-		`INSERT INTO domain.channel_memberships (tenant_id, channel_id, actor_type, actor_id, role) VALUES ($1, $3, 1, $5, 3), ($1, $4, 1, $5, 3)`,
+			[]any{rpcTenantID, rpcOtherSpaceID, rpcSecondChannelID, rpcDeniedChannelID}},
+		{`INSERT INTO domain.channel_memberships (tenant_id, channel_id, actor_type, actor_id, role) VALUES ($1, $2, 1, $4, 3), ($1, $3, 1, $4, 3)`,
+			[]any{rpcTenantID, rpcSecondChannelID, rpcDeniedChannelID, rpcMemberActorID}},
 	}
 	for _, statement := range statements {
-		if _, err := tx.Exec(ctx, statement, rpcTenantID, rpcOtherSpaceID, rpcSecondChannelID, rpcDeniedChannelID, rpcMemberActorID); err != nil {
+		if _, err := tx.Exec(ctx, statement.query, statement.args...); err != nil {
 			_ = tx.Rollback(ctx)
 			t.Fatalf("create list fixtures failed: %v", err)
 		}
