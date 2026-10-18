@@ -50,6 +50,22 @@ type DomainChannel struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type DomainChannelEvent struct {
+	TenantID        string
+	EventID         string
+	ChannelID       *string
+	DmID            *string
+	ChannelSeq      int64
+	SenderActorType int16
+	SenderActorID   string
+	SenderDeviceID  string
+	IdempotencyKey  string
+	Category        int16
+	Envelope        []byte
+	ContentHash     []byte
+	CommittedAt     pgtype.Timestamptz
+}
+
 type DomainChannelMembership struct {
 	IntervalID int64
 	TenantID   string
