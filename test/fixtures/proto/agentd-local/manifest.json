@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "classification": "synthetic-no-secrets",
-  "scenariosSha256": "11c9e6ca934ca1b8482fc9dbfaff6e2a8b337ac2c55aec827caf3748dbdb08da",
+  "scenariosSha256": "57b72f4f8fac7e5aeb2de2477fd63c7ae2d7f1d7233c924c52bd5ebdf4130f8f",
   "wireSha256": "2834255ad179abbd4476e7737d4d1beeb193777d8054b0f7598b245c2def7376",
   "runtimeEvidence": "NOT RUN",
   "requiredCases": [
@@ -105,6 +105,16 @@
     "input-unavailable-grant-expiry",
     "watch-unavailable-grant-expiry",
     "output-unavailable-grant-expiry",
-    "approval-unavailable-grant-expiry"
+    "approval-unavailable-grant-expiry",
+    "input-absent-window-denied",
+    "watch-absent-window-denied",
+    "stop-absent-window-denied",
+    "output-absent-window-denied",
+    "approval-absent-window-denied",
+    "input-empty-window-denied",
+    "watch-empty-window-denied",
+    "stop-empty-window-denied",
+    "output-empty-window-denied",
+    "approval-empty-window-denied"
   ]
 }

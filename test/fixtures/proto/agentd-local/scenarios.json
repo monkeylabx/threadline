@@ -130,6 +130,16 @@
     {"id": "input-unavailable-grant-expiry", "operation": "input", "overrides": {"run": {"grantExpired": null}}, "expected": "UNAVAILABLE"},
     {"id": "watch-unavailable-grant-expiry", "operation": "watch", "overrides": {"run": {"grantExpired": null}}, "expected": "UNAVAILABLE"},
     {"id": "output-unavailable-grant-expiry", "operation": "output", "overrides": {"run": {"grantExpired": null}}, "expected": "DROP"},
-    {"id": "approval-unavailable-grant-expiry", "operation": "approval", "overrides": {"run": {"grantExpired": null}}, "expected": "DENY_PROTECTED_EFFECT"}
+    {"id": "approval-unavailable-grant-expiry", "operation": "approval", "overrides": {"run": {"grantExpired": null}}, "expected": "DENY_PROTECTED_EFFECT"},
+    {"id": "input-absent-window-denied", "operation": "input", "overrides": {"principal": {"window": null}, "binding": {"window": null}}, "expected": "UNAUTHENTICATED"},
+    {"id": "watch-absent-window-denied", "operation": "watch", "overrides": {"principal": {"window": null}, "binding": {"window": null}}, "expected": "UNAUTHENTICATED"},
+    {"id": "stop-absent-window-denied", "operation": "stop", "overrides": {"principal": {"window": null}, "binding": {"window": null}}, "expected": "UNAUTHENTICATED"},
+    {"id": "output-absent-window-denied", "operation": "output", "overrides": {"principal": {"window": null}, "binding": {"window": null}}, "expected": "DROP"},
+    {"id": "approval-absent-window-denied", "operation": "approval", "overrides": {"principal": {"window": null}, "binding": {"window": null}}, "expected": "DENY_PROTECTED_EFFECT"},
+    {"id": "input-empty-window-denied", "operation": "input", "overrides": {"principal": {"window": ""}, "binding": {"window": ""}}, "expected": "UNAUTHENTICATED"},
+    {"id": "watch-empty-window-denied", "operation": "watch", "overrides": {"principal": {"window": ""}, "binding": {"window": ""}}, "expected": "UNAUTHENTICATED"},
+    {"id": "stop-empty-window-denied", "operation": "stop", "overrides": {"principal": {"window": ""}, "binding": {"window": ""}}, "expected": "UNAUTHENTICATED"},
+    {"id": "output-empty-window-denied", "operation": "output", "overrides": {"principal": {"window": ""}, "binding": {"window": ""}}, "expected": "DROP"},
+    {"id": "approval-empty-window-denied", "operation": "approval", "overrides": {"principal": {"window": ""}, "binding": {"window": ""}}, "expected": "DENY_PROTECTED_EFFECT"}
   ]
 }

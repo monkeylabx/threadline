@@ -10,11 +10,23 @@ test("untrusted bootstrap is refused before any Run fact is read", () => {
   for (const failure of failures) {
     const { peerAuthenticated = true, ...principal } = failure;
     const facts = {
-      principal: { present: true, active: true, unexpired: true, session: "session-a", ...principal },
-      binding: { peerAuthenticated, session: "session-a" },
+      principal: { present: true, active: true, unexpired: true, session: "session-a", window: "window-a", ...principal },
+      binding: { peerAuthenticated, session: "session-a", window: "window-a" },
       get run() { assert.fail("unauthenticated caller reached Run facts"); },
     };
     assert.equal(authorization(facts, "control"), "UNAUTHENTICATED");
+  }
+});
+
+test("two absent window identities never establish a trusted binding", () => {
+  for (const window of [undefined, null, ""]) {
+    const facts = {
+      principal: { present: true, active: true, unexpired: true, session: "session-a", window },
+      binding: { peerAuthenticated: true, session: "session-a", window },
+      get run() { assert.fail("absent window identity reached Run facts"); },
+    };
+    assert.equal(authorization(facts, "control"), "UNAUTHENTICATED");
+    assert.equal(authorization(facts, "observe"), "UNAUTHENTICATED");
   }
 });
 

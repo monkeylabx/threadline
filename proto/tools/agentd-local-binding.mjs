@@ -2,7 +2,8 @@
 function authenticated({ principal, binding }) {
   return principal.present === true && principal.active === true && principal.unexpired === true
     && binding.peerAuthenticated === true
-    && typeof principal.session === "string" && principal.session.length > 0;
+    && typeof principal.session === "string" && principal.session.length > 0
+    && typeof principal.window === "string" && principal.window.length > 0;
 }
 
 export function authorization(facts, role) {
