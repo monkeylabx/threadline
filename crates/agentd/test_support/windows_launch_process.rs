@@ -1,8 +1,8 @@
-use super::{attributes::Attributes, job_api, JobError, CHILD};
+#[path = "windows_launch_command.rs"]
+mod command;
+use super::{attributes::Attributes, job_api, JobError};
 use std::{
-    ffi::OsString,
     mem::size_of,
-    os::windows::ffi::OsStrExt,
     ptr::{null, null_mut},
 };
 use windows_sys::Win32::{
@@ -33,15 +33,7 @@ impl Drop for Handles {
 }
 
 pub(super) fn create(attributes: &mut Attributes<'_>) -> Result<Handles, JobError> {
-    let image = std::env::current_exe().map_err(|_| JobError::Unavailable)?;
-    let application: Vec<u16> = image.as_os_str().encode_wide().chain([0]).collect();
-    let mut arguments = OsString::from("\"");
-    arguments.push(image);
-    arguments.push(format!("\" --exact {CHILD} --quiet --test-threads=1"));
-    let mut command: Vec<u16> = arguments.encode_wide().chain([0]).collect();
-    let mut environment = OsString::from("SystemRoot=");
-    environment.push(std::env::var_os("SystemRoot").ok_or(JobError::Unavailable)?);
-    let environment: Vec<u16> = environment.encode_wide().chain([0, 0]).collect();
+    let mut input = command::Input::single()?;
     let startup = STARTUPINFOEXW {
         StartupInfo: STARTUPINFOW {
             cb: size_of::<STARTUPINFOEXW>() as u32,
@@ -56,8 +48,8 @@ pub(super) fn create(attributes: &mut Attributes<'_>) -> Result<Handles, JobErro
     #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #247")]
     let status = unsafe {
         CreateProcessW(
-            application.as_ptr(),
-            command.as_mut_ptr(),
+            input.application.as_ptr(),
+            input.command.as_mut_ptr(),
             null(),
             null(),
             0,
@@ -65,7 +57,7 @@ pub(super) fn create(attributes: &mut Attributes<'_>) -> Result<Handles, JobErro
                 | EXTENDED_STARTUPINFO_PRESENT
                 | CREATE_UNICODE_ENVIRONMENT
                 | CREATE_NO_WINDOW,
-            environment.as_ptr().cast(),
+            input.environment.as_ptr().cast(),
             null(),
             &startup.StartupInfo,
             &mut info,
