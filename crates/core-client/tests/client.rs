@@ -64,6 +64,12 @@ fn list_channels_follows_page_tokens_until_a_short_page() {
         first.path,
         "/threadline.channel.v1.ChannelService/ListChannels"
     );
+    assert_eq!(first.header("content-type"), Some("application/proto"));
+    assert_eq!(first.header("connect-protocol-version"), Some("1"));
+    assert_eq!(
+        first.header("authorization"),
+        Some(&*format!("Bearer {TOKEN}"))
+    );
     let second_request =
         channelv1::ListChannelsRequest::decode(second.body.as_slice()).expect("request");
     assert_eq!(second_request.page.expect("page").page_token, "b");
