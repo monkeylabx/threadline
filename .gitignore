@@ -16,6 +16,8 @@ build/
 coverage/
 target/
 apps/desktop/src-tauri/gen/
+# Vite output consumed by the Tauri host; built by `pnpm --filter @threadline/desktop build`.
+apps/desktop/web/
 
 # Local Agent configuration and caches are workstation state, not product or
 # build inputs. Keep the shared AGENTS.md instructions, but never commit a

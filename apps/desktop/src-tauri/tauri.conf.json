@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "identifier": "com.threadline.desktop",
   "build": {
+    "beforeDevCommand": "pnpm --filter @threadline/desktop dev",
+    "beforeBuildCommand": "pnpm --filter @threadline/desktop build",
+    "devUrl": "http://localhost:1420",
     "frontendDist": "../web"
   },
   "app": {
