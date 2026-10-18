@@ -8,11 +8,16 @@ use threadline_client_core::storage::{
 use zeroize::Zeroizing;
 
 const EXPECTED_APPLICATION_ID: i64 = 1_414_285_646;
-const EXPECTED_SCHEMA_VERSION: i64 = 1;
+const EXPECTED_SCHEMA_VERSION: i64 = 2;
 const MIGRATION_0001_SHA256: [u8; 32] = [
     0x61, 0x16, 0xaa, 0xca, 0xec, 0x95, 0x84, 0x15, 0xb7, 0x73, 0xbd, 0xd1, 0xe2, 0xf9, 0xe3, 0x4d,
     0x7d, 0x9f, 0x55, 0xf3, 0x0d, 0xef, 0x8a, 0x5b, 0x8d, 0x9a, 0xce, 0x11, 0xbf, 0x63, 0x37, 0x43,
 ];
+const MIGRATION_0002_SHA256: [u8; 32] = [
+    0x30, 0x54, 0xe3, 0x47, 0x8e, 0x49, 0x64, 0xdf, 0xa6, 0x5a, 0x65, 0xcf, 0x8d, 0x41, 0x1b, 0x96,
+    0x89, 0x0c, 0x21, 0xd1, 0x01, 0x17, 0x9b, 0x1d, 0x26, 0xa9, 0xf8, 0xa9, 0xc2, 0x6e, 0x5e, 0x3b,
+];
+const MIGRATION_0001_SQL: &str = include_str!("../src/storage/migrations/0001.sql");
 
 #[test]
 fn create_and_reopen_preserve_application_version_and_ledger_invariants() {
@@ -30,18 +35,96 @@ fn create_and_reopen_preserve_application_version_and_ledger_invariants() {
         EXPECTED_SCHEMA_VERSION
     );
     assert_eq!(
-        connection
-            .query_row(
-                "SELECT version, sha256 FROM threadline_schema_migrations",
-                [],
-                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?)),
-            )
-            .expect("read migration ledger"),
-        (EXPECTED_SCHEMA_VERSION, MIGRATION_0001_SHA256.to_vec())
+        read_ledger(&connection),
+        vec![
+            (1, MIGRATION_0001_SHA256.to_vec()),
+            (2, MIGRATION_0002_SHA256.to_vec()),
+        ]
     );
     drop(connection);
 
     fixture.open();
+}
+
+#[test]
+fn version_one_database_upgrades_in_place_and_keeps_pending_rows_in_order() {
+    let fixture = DatabaseFixture::create();
+    let connection = fixture.open_empty_keyed_fixture();
+    connection
+        .execute_batch(MIGRATION_0001_SQL)
+        .expect("apply the version-one schema");
+    connection
+        .execute(
+            "INSERT INTO threadline_schema_migrations (version, sha256) VALUES (1, ?1)",
+            [MIGRATION_0001_SHA256.as_slice()],
+        )
+        .expect("record the version-one ledger");
+    connection
+        .execute_batch(
+            "INSERT INTO outbox_events (tenant_id, conversation_kind, conversation_id, event_id, idempotency_key, envelope_bytes)
+             VALUES ('tenant-a', 1, 'channel-a', 'evt-b', 'idem-b', x'02'), ('tenant-a', 1, 'channel-a', 'evt-a', 'idem-a', x'01');",
+        )
+        .expect("seed version-one pending rows");
+    connection
+        .pragma_update(None, "application_id", EXPECTED_APPLICATION_ID)
+        .expect("set application id");
+    connection
+        .pragma_update(None, "user_version", 1)
+        .expect("set version one");
+    drop(connection);
+
+    let database = fixture.open();
+    let channel = ConversationRef::channel("channel-a").expect("valid channel");
+    let pending = database
+        .list_pending_outbox("tenant-a", channel)
+        .expect("list upgraded pending rows");
+    assert_eq!(pending.len(), 2);
+    assert_eq!(pending[0].event_id, "evt-a");
+    assert_eq!(pending[0].enqueue_sequence, 1);
+    assert_eq!(pending[1].event_id, "evt-b");
+    assert_eq!(pending[1].enqueue_sequence, 2);
+    drop(database);
+
+    let connection = fixture.open_for_fixture_inspection();
+    assert_eq!(
+        pragma_i64(&connection, "user_version"),
+        EXPECTED_SCHEMA_VERSION
+    );
+    assert_eq!(read_ledger(&connection).len(), 2);
+}
+
+#[test]
+fn second_migration_checksum_drift_fails_closed() {
+    let fixture = DatabaseFixture::create();
+    drop(fixture.open());
+    let connection = fixture.open_for_fixture_inspection();
+    connection
+        .execute(
+            "UPDATE threadline_schema_migrations SET sha256 = ?1 WHERE version = 2",
+            [[0x5A_u8; 32].as_slice()],
+        )
+        .expect("inject second ledger checksum drift");
+    drop(connection);
+    let before = fixture.database_family_state();
+
+    assert_eq!(
+        rejected_open(&fixture),
+        StorageError::MigrationLedgerInvalid
+    );
+    assert!(fixture.database_family_matches(&before));
+}
+
+fn read_ledger(connection: &Connection) -> Vec<(i64, Vec<u8>)> {
+    let mut statement = connection
+        .prepare("SELECT version, sha256 FROM threadline_schema_migrations ORDER BY version")
+        .expect("prepare ledger read");
+    statement
+        .query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .expect("read migration ledger")
+        .collect::<Result<Vec<_>, _>>()
+        .expect("collect migration ledger")
 }
 
 #[test]

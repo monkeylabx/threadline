@@ -29,8 +29,12 @@ impl<'value> ConversationRef<'value> {
         Ok(Self { kind, id })
     }
 
-    fn kind_code(self) -> i64 {
+    pub(super) fn kind_code(self) -> i64 {
         self.kind as i64
+    }
+
+    pub(super) fn id(self) -> &'value str {
+        self.id
     }
 }
 
@@ -157,12 +161,19 @@ impl EncryptedDatabase {
         validate_text(event.idempotency_key)?;
         validate_bytes(event.envelope_bytes)?;
 
-        self.connection
+        // The enqueue sequence is assigned under the write lock so replay order
+        // is the order the user sent, even across process restarts.
+        let transaction = self
+            .connection
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|_| StorageError::Database)?;
+        transaction
             .execute(
                 "INSERT INTO outbox_events (
                     tenant_id, conversation_kind, conversation_id, event_id,
-                    idempotency_key, envelope_bytes
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    idempotency_key, envelope_bytes, enqueue_sequence
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+                    (SELECT COALESCE(MAX(enqueue_sequence), 0) + 1 FROM outbox_events))",
                 (
                     event.tenant_id,
                     event.conversation.kind_code(),
@@ -173,7 +184,7 @@ impl EncryptedDatabase {
                 ),
             )
             .map_err(map_write_error)?;
-        Ok(())
+        transaction.commit().map_err(|_| StorageError::Database)
     }
 
     pub fn load_outbox_event(
@@ -312,7 +323,7 @@ impl EncryptedDatabase {
     }
 }
 
-fn validate_text(value: &str) -> Result<(), StorageError> {
+pub(super) fn validate_text(value: &str) -> Result<(), StorageError> {
     if value.is_empty() {
         Err(StorageError::InvalidInput)
     } else {
@@ -320,7 +331,7 @@ fn validate_text(value: &str) -> Result<(), StorageError> {
     }
 }
 
-fn validate_bytes(value: &[u8]) -> Result<(), StorageError> {
+pub(super) fn validate_bytes(value: &[u8]) -> Result<(), StorageError> {
     if value.is_empty() {
         Err(StorageError::InvalidInput)
     } else {
@@ -328,12 +339,12 @@ fn validate_bytes(value: &[u8]) -> Result<(), StorageError> {
     }
 }
 
-fn decode_sequence(value: &[u8]) -> Result<u64, StorageError> {
+pub(super) fn decode_sequence(value: &[u8]) -> Result<u64, StorageError> {
     let bytes: [u8; 8] = value.try_into().map_err(|_| StorageError::Database)?;
     Ok(u64::from_be_bytes(bytes))
 }
 
-fn map_write_error(error: rusqlite::Error) -> StorageError {
+pub(super) fn map_write_error(error: rusqlite::Error) -> StorageError {
     if error.sqlite_error_code() == Some(ErrorCode::ConstraintViolation) {
         StorageError::Conflict
     } else {
