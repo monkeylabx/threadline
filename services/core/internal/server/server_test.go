@@ -13,6 +13,8 @@ import (
 
 	channelv1 "github.com/monkeylabx/threadline/services/gen/threadline/channel/v1"
 	"github.com/monkeylabx/threadline/services/gen/threadline/channel/v1/channelv1connect"
+	messagev1 "github.com/monkeylabx/threadline/services/gen/threadline/message/v1"
+	"github.com/monkeylabx/threadline/services/gen/threadline/message/v1/messagev1connect"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
 
@@ -55,10 +57,11 @@ func syntheticSessions() map[string]rpcmiddleware.VerifiedSession {
 
 func TestNewHandlerRequiresEveryDependency(t *testing.T) {
 	t.Parallel()
-	complete := Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Verifier: RejectAllVerifier{}}
+	complete := Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Messages: messagev1connect.UnimplementedMessageServiceHandler{}, Verifier: RejectAllVerifier{}}
 	cases := map[string]func(Dependencies) Dependencies{
 		"no pinger":   func(d Dependencies) Dependencies { d.Pinger = nil; return d },
 		"no channels": func(d Dependencies) Dependencies { d.Channels = nil; return d },
+		"no messages": func(d Dependencies) Dependencies { d.Messages = nil; return d },
 		"no verifier": func(d Dependencies) Dependencies { d.Verifier = nil; return d },
 	}
 	for name, remove := range cases {
@@ -77,7 +80,7 @@ func TestNewHandlerRequiresEveryDependency(t *testing.T) {
 func TestHandlerComposesHealthAndAuthenticatedChannels(t *testing.T) {
 	t.Parallel()
 	handler, err := NewHandler(Dependencies{
-		Pinger: fakePinger{}, Channels: stubChannels{}, Verifier: fakeVerifier{sessions: syntheticSessions()},
+		Pinger: fakePinger{}, Channels: stubChannels{}, Messages: messagev1connect.UnimplementedMessageServiceHandler{}, Verifier: fakeVerifier{sessions: syntheticSessions()},
 	})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
@@ -105,6 +108,17 @@ func TestHandlerComposesHealthAndAuthenticatedChannels(t *testing.T) {
 		t.Fatalf("GetChannel() with credential = %v %v, want echoed channel", response, err)
 	}
 
+	messages := messagev1connect.NewMessageServiceClient(httpServer.Client(), httpServer.URL)
+	_, err = messages.SendEvent(ctx, connect.NewRequest(&messagev1.SendEventRequest{}))
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("SendEvent() without credential = %v, want CodeUnauthenticated", err)
+	}
+	authorizedSend := connect.NewRequest(&messagev1.SendEventRequest{})
+	authorizedSend.Header().Set("Authorization", "Bearer good-token")
+	if _, err = messages.SendEvent(ctx, authorizedSend); connect.CodeOf(err) != connect.CodeUnimplemented {
+		t.Fatalf("SendEvent() on the placeholder handler = %v, want CodeUnimplemented", err)
+	}
+
 	unimplemented := connect.NewRequest(&channelv1.ListChannelsRequest{})
 	unimplemented.Header().Set("Authorization", "Bearer good-token")
 	_, err = client.ListChannels(ctx, unimplemented)
@@ -115,7 +129,7 @@ func TestHandlerComposesHealthAndAuthenticatedChannels(t *testing.T) {
 
 func TestRejectAllVerifierFailsClosedThroughTheInterceptor(t *testing.T) {
 	t.Parallel()
-	handler, err := NewHandler(Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Verifier: RejectAllVerifier{}})
+	handler, err := NewHandler(Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Messages: messagev1connect.UnimplementedMessageServiceHandler{}, Verifier: RejectAllVerifier{}})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -136,7 +150,7 @@ func TestServeListenerStopsWhenContextEnds(t *testing.T) {
 	if err != nil {
 		t.Fatal("listen on ephemeral port failed")
 	}
-	handler, err := NewHandler(Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Verifier: RejectAllVerifier{}})
+	handler, err := NewHandler(Dependencies{Pinger: fakePinger{}, Channels: stubChannels{}, Messages: messagev1connect.UnimplementedMessageServiceHandler{}, Verifier: RejectAllVerifier{}})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
