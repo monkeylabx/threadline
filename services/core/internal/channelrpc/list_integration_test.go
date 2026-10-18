@@ -51,21 +51,26 @@ func TestListChannelsReturnsReadableMembershipsInOrder(t *testing.T) {
 		t.Fatalf("listed channel = %v, want the same mapping as GetChannel", all.Msg.GetChannels()[1])
 	}
 
-	paged, err := client.ListChannels(ctx, listRequest("member-token", &channelv1.ListChannelsRequest{Page: &typev1.PageRequest{PageSize: 1}}))
-	if err != nil {
-		t.Fatalf("ListChannels(page 1) error = %v", err)
+	// Page size 1 walks the memberships in channel_id order: the ACL-denied
+	// Channel sorts first and yields an empty page whose token still advances,
+	// then the two readable Channels, then the end of the listing.
+	token := ""
+	for index, want := range []struct {
+		ids   []string
+		token string
+	}{
+		{nil, rpcDeniedChannelID},
+		{[]string{rpcSecondChannelID}, rpcSecondChannelID},
+		{[]string{rpcChannelID}, rpcChannelID},
+		{nil, ""},
+	} {
+		page, err := client.ListChannels(ctx, listRequest("member-token", &channelv1.ListChannelsRequest{Page: &typev1.PageRequest{PageSize: 1, PageToken: token}}))
+		if err != nil {
+			t.Fatalf("ListChannels(page %d) error = %v", index+1, err)
+		}
+		assertChannelIDs(t, page.Msg, want.ids, want.token)
+		token = page.Msg.GetPage().GetNextPageToken()
 	}
-	assertChannelIDs(t, paged.Msg, []string{rpcSecondChannelID}, rpcSecondChannelID)
-	next, err := client.ListChannels(ctx, listRequest("member-token", &channelv1.ListChannelsRequest{Page: &typev1.PageRequest{PageSize: 1, PageToken: paged.Msg.GetPage().GetNextPageToken()}}))
-	if err != nil {
-		t.Fatalf("ListChannels(page 2) error = %v", err)
-	}
-	assertChannelIDs(t, next.Msg, []string{rpcChannelID}, rpcChannelID)
-	last, err := client.ListChannels(ctx, listRequest("member-token", &channelv1.ListChannelsRequest{Page: &typev1.PageRequest{PageSize: 1, PageToken: next.Msg.GetPage().GetNextPageToken()}}))
-	if err != nil {
-		t.Fatalf("ListChannels(page 3) error = %v", err)
-	}
-	assertChannelIDs(t, last.Msg, nil, "")
 
 	scoped, err := client.ListChannels(ctx, listRequest("member-token", &channelv1.ListChannelsRequest{SpaceId: rpcOtherSpaceID}))
 	if err != nil {
