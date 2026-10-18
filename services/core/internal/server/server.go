@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/monkeylabx/threadline/services/gen/threadline/channel/v1/channelv1connect"
+	"github.com/monkeylabx/threadline/services/gen/threadline/message/v1/messagev1connect"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
 
@@ -23,6 +24,7 @@ const (
 type Dependencies struct {
 	Pinger   Pinger
 	Channels channelv1connect.ChannelServiceHandler
+	Messages messagev1connect.MessageServiceHandler
 	Verifier rpcmiddleware.SessionVerifier
 }
 
@@ -30,13 +32,14 @@ type Dependencies struct {
 // authentication interceptor. Unary procedures work over HTTP/1.1; the first
 // streaming procedure registered here must add h2c.
 func NewHandler(deps Dependencies) (http.Handler, error) {
-	if deps.Pinger == nil || deps.Channels == nil || deps.Verifier == nil {
-		return nil, errors.New("core server: pinger, channel handler and session verifier are required")
+	if deps.Pinger == nil || deps.Channels == nil || deps.Messages == nil || deps.Verifier == nil {
+		return nil, errors.New("core server: pinger, channel and message handlers and session verifier are required")
 	}
 	authenticated := connect.WithInterceptors(rpcmiddleware.NewAuthenticationInterceptor(deps.Verifier))
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", healthHandler(deps.Pinger))
 	mux.Handle(channelv1connect.NewChannelServiceHandler(deps.Channels, authenticated))
+	mux.Handle(messagev1connect.NewMessageServiceHandler(deps.Messages, authenticated))
 	return mux, nil
 }
 
