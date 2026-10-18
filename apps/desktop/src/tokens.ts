@@ -15,9 +15,9 @@ export function tokenCustomProperties(scheme: ColorScheme): Record<string, strin
   return properties;
 }
 
-/** Applies one scheme's properties to an element (normally `document.documentElement`). */
+/** Applies one scheme's colors plus the scale properties to an element (normally `document.documentElement`). */
 export function applyTokens(target: HTMLElement, scheme: ColorScheme): void {
-  for (const [property, value] of Object.entries(tokenCustomProperties(scheme))) {
+  for (const [property, value] of Object.entries({ ...scaleCustomProperties(), ...tokenCustomProperties(scheme) })) {
     target.style.setProperty(property, value);
   }
   target.dataset["tlScheme"] = scheme;
@@ -33,4 +33,22 @@ export function preferredScheme(matches: (query: string) => boolean): ColorSchem
 
 function camelToKebab(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+/** Spacing, radius and type scale as CSS custom properties; values are rem. */
+export function scaleCustomProperties(): Record<string, string> {
+  const properties: Record<string, string> = {};
+  for (const [name, value] of Object.entries(threadlineTokens.space)) {
+    properties[`--tl-space-${name}`] = `${value}rem`;
+  }
+  for (const [name, value] of Object.entries(threadlineTokens.radius)) {
+    properties[`--tl-radius-${name}`] = name === "full" ? `${value}px` : `${value}rem`;
+  }
+  for (const [name, style] of Object.entries(threadlineTokens.typography)) {
+    const kebab = camelToKebab(name);
+    properties[`--tl-font-${kebab}-size`] = `${style.webRem}rem`;
+    properties[`--tl-font-${kebab}-line`] = `${style.lineHeight}`;
+    properties[`--tl-font-${kebab}-weight`] = `${style.weight}`;
+  }
+  return properties;
 }

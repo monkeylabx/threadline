@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App.tsx";
+import "./shell/shell.css";
 import { applyTokens, preferredScheme } from "./tokens.ts";
 
 const root = document.getElementById("root");
