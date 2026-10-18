@@ -1,6 +1,7 @@
 package syncrpc
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -15,9 +16,11 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/monkeylabx/threadline/services/core/internal/authorization"
 	"github.com/monkeylabx/threadline/services/core/internal/authorization/aclstore"
+	messagev1 "github.com/monkeylabx/threadline/services/gen/threadline/message/v1"
 	syncv1 "github.com/monkeylabx/threadline/services/gen/threadline/sync/v1"
 	"github.com/monkeylabx/threadline/services/gen/threadline/sync/v1/syncv1connect"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
@@ -216,4 +219,73 @@ func openSyncDatabase(t *testing.T) (context.Context, *pgxpool.Pool, string) {
 		}
 	}
 	return ctx, pool, databaseName
+}
+
+func TestSyncEventsReturnsContiguousBatchesPerCursor(t *testing.T) {
+	ctx, pool, databaseName := openSyncDatabase(t)
+	createSyncFixtures(t, ctx, pool)
+	insertSyncEvents(t, ctx, pool, 1, 2)
+	handler, err := New(pool)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	verifier := fakeVerifier{sessions: map[string]rpcmiddleware.VerifiedSession{
+		"laptop-token":   readerSession(testTenantID, testActorID, testDeviceID),
+		"outsider-token": readerSession(testTenantID, outsiderID, "device-sync-outsider-synthetic"),
+	}}
+	mux := http.NewServeMux()
+	mux.Handle(syncv1connect.NewSyncServiceHandler(handler, connect.WithInterceptors(rpcmiddleware.NewAuthenticationInterceptor(verifier))))
+	httpServer := httptest.NewServer(mux)
+	t.Cleanup(httpServer.Close)
+	client := syncv1connect.NewSyncServiceClient(httpServer.Client(), httpServer.URL)
+
+	all, err := client.SyncEvents(ctx, authorized("laptop-token", &syncv1.SyncEventsRequest{Cursors: []*syncv1.SyncCursor{channelCursor(testChannelID, 0)}}))
+	if err != nil || len(all.Msg.GetBatches()) != 1 || len(all.Msg.GetCursorRejections()) != 0 {
+		t.Fatalf("SyncEvents(from 0) = %v %v, want one batch", all, err)
+	}
+	batch := all.Msg.GetBatches()[0]
+	if len(batch.GetEvents()) != 2 || batch.GetNextSeq() != 2 || batch.GetHasMore() ||
+		batch.GetEvents()[0].GetServerCommit().GetChannelSeq() != 1 || batch.GetEvents()[0].GetEventId() != "event-sync-1-synthetic" {
+		t.Fatalf("batch = %v, want events 1,2 with next_seq 2 and no more", batch)
+	}
+	limited, err := client.SyncEvents(ctx, authorized("laptop-token", &syncv1.SyncEventsRequest{Cursors: []*syncv1.SyncCursor{channelCursor(testChannelID, 0)}, MaxEvents: 1}))
+	if err != nil || len(limited.Msg.GetBatches()) != 1 || len(limited.Msg.GetBatches()[0].GetEvents()) != 1 ||
+		limited.Msg.GetBatches()[0].GetNextSeq() != 1 || !limited.Msg.GetBatches()[0].GetHasMore() {
+		t.Fatalf("SyncEvents(max 1) = %v %v, want one event with has_more", limited, err)
+	}
+	caughtUp, err := client.SyncEvents(ctx, authorized("laptop-token", &syncv1.SyncEventsRequest{Cursors: []*syncv1.SyncCursor{channelCursor(testChannelID, 2)}}))
+	if err != nil || len(caughtUp.Msg.GetBatches()) != 0 {
+		t.Fatalf("SyncEvents(from 2) = %v %v, want no batch", caughtUp, err)
+	}
+	mixed, err := client.SyncEvents(ctx, authorized("outsider-token", &syncv1.SyncEventsRequest{Cursors: []*syncv1.SyncCursor{channelCursor(testChannelID, 0)}}))
+	if err != nil || len(mixed.Msg.GetBatches()) != 0 || len(mixed.Msg.GetCursorRejections()) != 1 || mixed.Msg.GetCursorRejections()[0].GetError().GetReason() != "read_unavailable" {
+		t.Fatalf("SyncEvents(outsider) = %v %v, want one read_unavailable rejection", mixed, err)
+	}
+	if _, err := client.SyncEvents(ctx, connect.NewRequest(&syncv1.SyncEventsRequest{Cursors: []*syncv1.SyncCursor{channelCursor(testChannelID, 0)}})); connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Fatalf("SyncEvents() without credential = %v, want CodeUnauthenticated", err)
+	}
+	assertNoOpenTransactions(t, ctx, pool, databaseName)
+}
+
+// insertSyncEvents stores opaque envelopes at the given sequences for the
+// fixture Channel; the head row already says last_seq 2.
+func insertSyncEvents(t *testing.T, ctx context.Context, pool *pgxpool.Pool, sequences ...int64) {
+	t.Helper()
+	for _, sequence := range sequences {
+		id := fmt.Sprintf("event-sync-%d-synthetic", sequence)
+		encoded, err := proto.MarshalOptions{Deterministic: true}.Marshal(&messagev1.ChannelEventEnvelope{
+			EventId: id, TenantId: testTenantID,
+			Conversation: &messagev1.ChannelEventEnvelope_ChannelId{ChannelId: testChannelID},
+			Body:         &messagev1.ChannelEventEnvelope_ApplicationCiphertext{ApplicationCiphertext: []byte("body-synthetic")},
+		})
+		if err != nil {
+			t.Fatal("marshal fixture envelope failed")
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO domain.channel_events (tenant_id, event_id, channel_id, channel_seq, sender_actor_type, sender_actor_id,
+			sender_device_id, idempotency_key, category, envelope, content_hash)
+			VALUES ($1, $2, $3, $4, 1, $5, $6, $7, 1, $8, $9)`,
+			testTenantID, id, testChannelID, sequence, testActorID, testDeviceID, "key-"+id, encoded, bytes.Repeat([]byte{0x11}, 32)); err != nil {
+			t.Fatalf("insert fixture event %d failed: %v", sequence, err)
+		}
+	}
 }
