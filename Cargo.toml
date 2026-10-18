@@ -9,6 +9,7 @@ members = [
   "crates/connectord",
   "crates/core-client",
   "crates/locald",
+  "test/e2e/slice-a",
 ]
 resolver = "2"
 
