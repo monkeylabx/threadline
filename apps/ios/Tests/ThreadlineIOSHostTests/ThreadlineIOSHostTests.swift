@@ -30,21 +30,45 @@ final class ThreadlineIOSHostTests: XCTestCase {
         XCTAssertEqual(ThreadlineIOSHostSkeleton.bridgeContractVersion, 1)
     }
 
-    func testAsyncRequestReturnsCopiedDataOnMainQueueWithoutBlockingCaller() throws {
+    /// Regression for #209. The caller must get control back before the native
+    /// worker leaves the pending phase. A wall-clock bound cannot prove that on a
+    /// loaded CI simulator, so the worker is held pending far longer than any
+    /// plausible call overhead and the phase itself is observed after return.
+    func testStartRequestReturnsBeforeBackgroundWorkCommits() throws {
+        let client = try ThreadlineClient()
+        let completed = expectation(description: "held request completed")
+        let result = LockedBox<Result<ThreadlineRequestResult, ThreadlineBridgeStatus>?>(nil)
+
+        let request = try client.startRequest(
+            fault: .delayed,
+            delayMilliseconds: 10_000
+        ) { outcome in
+            result.update { $0 = outcome }
+            completed.fulfill()
+        }
+        XCTAssertFalse(
+            try request.isCommitted(),
+            "startRequest must return while the worker is still pending"
+        )
+
+        XCTAssertEqual(request.cancel(), .ok)
+        wait(for: [completed], timeout: 3)
+        XCTAssertEqual(result.read(), .failure(.canceled))
+
+        request.release()
+        client.release()
+    }
+
+    func testCompletedRequestDeliversCopiedDataOnMainQueue() throws {
         let client = try ThreadlineClient()
         let completed = expectation(description: "request completed")
         let result = LockedBox<Result<ThreadlineRequestResult, ThreadlineBridgeStatus>?>(nil)
 
-        let startedAt = ContinuousClock.now
-        let request = try client.startRequest(
-            fault: .delayed,
-            delayMilliseconds: 200
-        ) { outcome in
+        let request = try client.startRequest { outcome in
             XCTAssertTrue(Thread.isMainThread)
             result.update { $0 = outcome }
             completed.fulfill()
         }
-        XCTAssertLessThan(startedAt.duration(to: .now), .milliseconds(100))
 
         wait(for: [completed], timeout: 3)
         let completedResult = try result.read()!.get()
