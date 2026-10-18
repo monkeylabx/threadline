@@ -32,14 +32,17 @@ are synthetic; nothing here is a production identity.
      psql -U threadline_postgres_dev -d threadline < deploy/compose/slice-a-seed.sql
    ```
 
-3. **Run Core with the dev session verifier** (NOT PRODUCTION):
+3. **Run Core with the dev session verifier** (NOT PRODUCTION). Without the
+   Outbox policy file `SendEvent` fails closed with `NOT_DURABLE`; the dev
+   policy is the frozen v1 default document.
 
    ```sh
    export THREADLINE_CORE_LISTEN_ADDRESS=127.0.0.1:8080
    export THREADLINE_CORE_POSTGRES_DSN='postgres://threadline_postgres_dev:threadline-postgres-dev-only@127.0.0.1:5432/threadline?sslmode=disable'
+   export THREADLINE_OUTBOX_POLICY_FILE="$PWD/deploy/compose/outbox-policy.json"
    export THREADLINE_DEV_SESSIONS_ENABLED=1
    export THREADLINE_DEV_SESSION_FIXTURES="$PWD/deploy/compose/dev-sessions.json"
-   go run ./services/core
+   (cd services && go run ./core)
    ```
 
 4. **Launch two Desktop instances**, one per Device. Each needs the full set of
