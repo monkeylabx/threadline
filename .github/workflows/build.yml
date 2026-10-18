@@ -285,6 +285,7 @@ jobs:
           make -C db authorization-current-test
           make -C db transactional-outbox-test
           make -C db transactional-outbox-worker-ops-test
+          make -C db channel-event-test
       - name: Test all PostgreSQL-backed Go stores
         if: needs.contracts.result == 'success' && needs.contracts.outputs.docs_only != 'true'
         working-directory: services
