@@ -13,6 +13,7 @@ sql:
       - migrations/000008_transactional_outbox.up.sql
       - migrations/000009_transactional_outbox_worker_ops.up.sql
       - migrations/000010_audit_event.up.sql
+      - migrations/000011_channel_event.up.sql
     queries:
       - queries/core
     gen:
@@ -36,6 +37,7 @@ sql:
       - migrations/000008_transactional_outbox.up.sql
       - migrations/000009_transactional_outbox_worker_ops.up.sql
       - migrations/000010_audit_event.up.sql
+      - migrations/000011_channel_event.up.sql
     queries:
       - queries/worker
     gen:

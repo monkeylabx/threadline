@@ -9,8 +9,10 @@ directory/lifecycle metadata plus Direct Message identity and immutable
 participant rows. Migration `000006` adds the application-level Channel
 Membership lifecycle. Migration `000007` adds immutable, versioned Resource ACL
 snapshots and an atomic current head for Space and Channel resources. Migration
-`000008` adds the Transactional Outbox persistence foundation. This directory
-does not yet define Message, Session, Device, key, or recovery tables.
+`000008` adds the Transactional Outbox persistence foundation. Migration `000011`
+adds conversation sequence heads, immutable channel events and send-command
+bindings for Slice A. This directory does not yet define Session, Device, key,
+or recovery tables.
 
 ## Migration rules
 
@@ -497,6 +499,41 @@ THREADLINE_TEST_POSTGRES_DSN='<operator-supplied maintenance DSN>' \
 
 All fixtures are synthetic and contain no production identifiers, credentials,
 raw claim tokens, message plaintext, keys, prompts, or user data.
+
+## Channel event persistence
+
+Migration `000011` adds the Slice A message storage from the
+[message commit contract](../docs/contracts/message-commit-transaction.md):
+
+- `domain.conversation_sequence_heads` allocates `channel_seq` per
+  `(tenant_id, conversation_kind, conversation_id)` with `1 = channel`,
+  `2 = direct message`. The head is a row updated inside the caller's
+  transaction, so a rolled-back send leaves no gap; a trigger allows only
+  `last_seq + 1` advances, forbids identity changes and deletion. The frozen
+  bound is `bigint`: at `9223372036854775807` allocation fails without writes,
+  and the Proto `uint64` range above that is deliberately not represented.
+- `domain.channel_events` stores the complete submitted envelope bytes with
+  `server_commit` absent as opaque `bytea` (1–262144 bytes), the sender
+  actor/device, idempotency key, category and 32-byte content hash. Exactly one
+  of `channel_id`/`dm_id` is set, each with a foreign key; sequence uniqueness is
+  per conversation; the sender must be a Member. Rows are immutable.
+- `domain.send_commands` binds `(tenant_id, sender_device_id, idempotency_key)`
+  permanently to one event; the four-column foreign key keeps the binding equal
+  to the event's own sender/key. Rows are immutable. There is no device table
+  yet, so `sender_device_id` is text without a foreign key until the Session and
+  Device contracts land.
+
+The Core query surface (`queries/core/channel_event.sql`) can lock, insert and
+advance a head, insert an event and its binding, read a binding with its event,
+and page a channel oldest-first or newest-first by half-open sequence bound. It
+exposes no generic update or delete.
+
+Run the synthetic constraint and `up -> down -> up` matrix against PostgreSQL 16.4:
+
+```text
+PGHOST=127.0.0.1 PGPORT=5432 PGUSER=threadline_postgres_dev \
+  make -C db channel-event-test
+```
 
 ## Query generation
 

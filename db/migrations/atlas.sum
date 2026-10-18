@@ -1,4 +1,4 @@
-h1:bZ9YHtm7upK/swk9q5JsheyDFB9K47jmDWkPZs9iHLU=
+h1:QFd1ImvOgMGU4x1+n4CQhXv/VYp2XGPeVobBm3k408s=
 000001_core_foundation.up.sql h1:I17zZJuRbZh/IFlXaAcLgsBOIw7MbWPYvaFJtC0Qg9Y=
 000002_organization.up.sql h1:4+pHhCI9uU4Tc+yEI8h6bJL5RnoxTu6cCEoAXEZMXgY=
 000003_member.up.sql h1:sd0JE4btWpn/Pl+LQjHWO6kpABEmvFd1P0ymM7yMvbw=
@@ -9,3 +9,4 @@ h1:bZ9YHtm7upK/swk9q5JsheyDFB9K47jmDWkPZs9iHLU=
 000008_transactional_outbox.up.sql h1:t6eoFdgBWaY5bC3TE8TNEPdPe/vVqItdgbR+JvE+d24=
 000009_transactional_outbox_worker_ops.up.sql h1:v2UxvPTQzRg3pCiY/zyRbeHSwzOPdWRwVojYz3/A3GA=
 000010_audit_event.up.sql h1:8jKk3SqGQYPkzBumWUjVn9Lb+w0G9eq1FJNqW859Osw=
+000011_channel_event.up.sql h1:XcJM1PyDFzkDeSfyUIE+y1BdMD811Y2SJKo6kk+IzMA=
