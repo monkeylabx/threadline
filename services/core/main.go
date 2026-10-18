@@ -95,7 +95,6 @@ func loadProducer() *outboxstore.Producer {
 	return producer
 }
 
-
 // loadVerifier returns the NOT PRODUCTION dev session verifier only when the
 // operator sets THREADLINE_DEV_SESSIONS_ENABLED=1 and a readable, valid
 // fixture file; otherwise every credential fails closed. Paths, documents and
