@@ -126,3 +126,17 @@ symbol fixture, while containment and Goose remain NOT_RUN.
 Creation-time JOB_LIST with suspended launch, descendant cleanup, supervisor
 crashes, leaked-handle negative experiments and StopDriver integration remain
 separate follow-ups under the [containment profile](../../docs/architecture/worker-containment-profile.md).
+
+### W1: private suspended launch probe
+
+The Windows-only test target also launches its own exact cooperative fixture case
+with creation-time `PROC_THREAD_ATTRIBUTE_JOB_LIST` and `CREATE_SUSPENDED`.
+The owner retains the Job and exact process/thread references, verifies membership
+before its one latched resume attempt, and requires native prior suspend count 1.
+The fixture exits 42 only after resume. Refusal/failure prevents another resume;
+a pending wait retains explicit bounded termination/wait capability. Inheritance
+is disabled and the child environment contains only SystemRoot.
+
+This is single-root test evidence, not a production launcher or cleanup receipt.
+Descendant/crash/leaked-handle experiments, hostile handle/broker and resource
+isolation, StopDriver/recovery and Goose admission remain unimplemented here.

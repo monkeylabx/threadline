@@ -88,7 +88,7 @@ pub(super) fn inspect(handle: HANDLE) -> Result<JobProfile, JobError> {
 }
 
 pub(super) fn close(handle: HANDLE) -> Result<(), JobError> {
-    // SAFETY: exclusive fresh-job reference, not externally closable; owner clears only on success.
+    // SAFETY: exclusive fixture-created job/process/thread reference; owner clears only on success.
     #[expect(unsafe_code, reason = "Fixture-only Win32 FFI exception in #245")]
     let status = unsafe { CloseHandle(handle) };
     checked(status)

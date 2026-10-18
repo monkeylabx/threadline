@@ -55,5 +55,13 @@
   "validation::rejects_callbacks_unsupported_updates_and_malformed_content",
   "validation::rejects_foreign_ids_errors_and_bad_terminal_results",
   "validation::rejects_unsupported_updates_and_callbacks",
-  "validation::transport_failures_discard_partial_output_and_forbid_retry"
+  "validation::transport_failures_discard_partial_output_and_forbid_retry",
+  "probe::launch::cases::windows_launch_fixture_entry",
+  "probe::launch::cases::windows_launch_is_suspended_and_in_job_before_resume",
+  "probe::launch::cases::windows_launch_rejects_a_closed_job",
+  "probe::launch::cases::windows_launch_pending_wait_retains_explicit_stop",
+  "probe::launch::faults::windows_launch_creation_failure_preserves_job",
+  "probe::launch::faults::windows_launch_membership_refusal_never_resumes",
+  "probe::launch::faults::windows_launch_query_failure_never_resumes",
+  "probe::launch::faults::windows_launch_resume_failure_is_terminal"
 ]
