@@ -30,5 +30,6 @@ test("token custom properties come from the shared design tokens, not literals",
 test("high contrast wins over dark when both are preferred", () => {
   expect(preferredScheme(() => false)).toBe("light");
   expect(preferredScheme((query) => query.includes("dark"))).toBe("dark");
-  expect(preferredScheme(() => true)).toBe("highContrastLight");
+  expect(preferredScheme((query) => query.includes("contrast"))).toBe("highContrastLight");
+  expect(preferredScheme(() => true)).toBe("highContrastDark");
 });

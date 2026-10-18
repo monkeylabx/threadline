@@ -25,10 +25,11 @@ export function applyTokens(target: HTMLElement, scheme: ColorScheme): void {
 
 /** Picks the scheme from the platform preferences; high contrast wins over dark. */
 export function preferredScheme(matches: (query: string) => boolean): ColorScheme {
+  const dark = matches("(prefers-color-scheme: dark)");
   if (matches("(prefers-contrast: more)")) {
-    return "highContrastLight";
+    return dark ? "highContrastDark" : "highContrastLight";
   }
-  return matches("(prefers-color-scheme: dark)") ? "dark" : "light";
+  return dark ? "dark" : "light";
 }
 
 function camelToKebab(value: string): string {
