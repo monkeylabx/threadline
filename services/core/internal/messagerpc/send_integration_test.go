@@ -161,9 +161,10 @@ func createMessageFixtures(t *testing.T, ctx context.Context, pool *pgxpool.Pool
 	_, err = aclstore.ReplaceCurrent(ctx, tx, aclstore.Replacement{
 		Resource:      authorization.ResourceRef{TenantID: testTenantID, Kind: authorization.ResourceKindChannel, ID: testChannelID},
 		DefaultEffect: authorization.ACLEffectDeny,
-		Entries: []authorization.ACLEntry{{
-			Actor: authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: testActorID}, Action: authorization.ActionChannelPublish, Effect: authorization.ACLEffectAllow,
-		}},
+		Entries: []authorization.ACLEntry{
+			{Actor: authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: testActorID}, Action: authorization.ActionChannelPublish, Effect: authorization.ACLEffectAllow},
+			{Actor: authorization.ActorRef{Type: rpcmiddleware.ActorTypeHuman, ID: testActorID}, Action: authorization.ActionChannelRead, Effect: authorization.ACLEffectAllow},
+		},
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
