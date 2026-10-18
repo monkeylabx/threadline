@@ -3,13 +3,14 @@ use super::{api, pipes, process, reader, Job, JobError};
 use api::Reference;
 use std::io::{PipeWriter, Write};
 // Field order is intentional: root termination/wait closes its reply writer before reader teardown.
-struct Startup<'job> {
-    root: Child<'job>,
+pub(super) struct Startup<'job> {
+    pub(super) root: Child<'job>,
     reader: reader::Reader,
     ack: PipeWriter,
+    pub(super) descendant: Option<Reference>,
 }
 impl<'job> Startup<'job> {
-    fn new(job: &'job Job) -> Result<Self, JobError> {
+    pub(super) fn new(job: &'job Job) -> Result<Self, JobError> {
         let (ends, reply, ack) = pipes::RootEnds::create()?;
         let root = Child::create_with(job, |attributes| {
             attributes.inherit(ends.handles())?;
@@ -20,24 +21,50 @@ impl<'job> Startup<'job> {
             root,
             reader: reader::Reader::start(reply),
             ack,
+            descendant: None,
         })
     }
 
     fn connect(&mut self) -> Result<Reference, JobError> {
+        self.connect_with(self.root.job, process::member, |ack| {
+            ack.write_all(&[1]).map_err(|_| JobError::Unavailable)
+        })
+    }
+
+    pub(super) fn connect_with(
+        &mut self,
+        expected: &Job,
+        member: impl FnOnce(
+            windows_sys::Win32::Foundation::HANDLE,
+            windows_sys::Win32::Foundation::HANDLE,
+        ) -> Result<bool, JobError>,
+        acknowledge: impl FnOnce(&mut PipeWriter) -> Result<(), JobError>,
+    ) -> Result<Reference, JobError> {
         self.root.resume()?;
         let value = self.reader.receive()?;
-        let copy = Reference(api::duplicate(self.root.handles.process, value)?);
-        let job = self.root.job.handle.ok_or(JobError::Rejected)?.as_ptr();
-        if !process::member(copy.0, job)? {
-            return Err(JobError::Rejected);
-        }
-        self.ack
-            .write_all(&[1])
-            .map_err(|_| JobError::Unavailable)?;
+        self.descendant = Some(Reference(api::duplicate(self.root.handles.process, value)?));
+        self.verify(expected, member)?;
+        acknowledge(&mut self.ack)?;
         if self.root.wait(10_000)? != 42 {
             return Err(JobError::Unavailable);
         }
-        Ok(copy)
+        self.descendant.take().ok_or(JobError::Rejected)
+    }
+
+    fn verify(
+        &self,
+        expected: &Job,
+        member: impl FnOnce(
+            windows_sys::Win32::Foundation::HANDLE,
+            windows_sys::Win32::Foundation::HANDLE,
+        ) -> Result<bool, JobError>,
+    ) -> Result<(), JobError> {
+        let process = self.descendant.as_ref().ok_or(JobError::Rejected)?.0;
+        let job = expected.handle.ok_or(JobError::Rejected)?.as_ptr();
+        if !member(process, job)? {
+            return Err(JobError::Rejected);
+        }
+        Ok(())
     }
 }
 

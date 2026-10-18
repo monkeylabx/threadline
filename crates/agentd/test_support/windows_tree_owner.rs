@@ -1,3 +1,5 @@
+#[path = "windows_tree_admission.rs"]
+mod admission;
 #[path = "windows_tree_api.rs"]
 mod api;
 #[path = "windows_tree_cases.rs"]

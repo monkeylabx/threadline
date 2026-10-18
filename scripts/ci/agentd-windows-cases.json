@@ -68,5 +68,6 @@
   "probe::launch::tree::fixture::windows_tree_descendant_entry",
   "probe::launch::tree::cases::windows_tree_root_exit_leaves_a_live_owned_descendant",
   "probe::launch::tree::cases::windows_tree_failed_termination_retains_explicit_retry",
-  "probe::launch::tree::cases::windows_tree_handoff_rejects_invalid_handles"
+  "probe::launch::tree::cases::windows_tree_handoff_rejects_invalid_handles",
+  "probe::launch::tree::admission::windows_tree_handoff_refuses_foreign_or_unverified_membership"
 ]
