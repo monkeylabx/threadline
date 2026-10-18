@@ -41,7 +41,7 @@ export THREADLINE_MIGRATION_URL
 atlas_run apply
 
 revision_count=$(psql_test --tuples-only --no-align --command='SELECT count(*) FROM atlas_schema_revisions.atlas_schema_revisions')
-test "$revision_count" = "11" || atlas_test_fail "migration ledger does not contain all eleven revisions"
+test "$revision_count" = "12" || atlas_test_fail "migration ledger does not contain all twelve revisions"
 
 atlas_run apply
 second_revision_count=$(psql_test --tuples-only --no-align --command='SELECT count(*) FROM atlas_schema_revisions.atlas_schema_revisions')
