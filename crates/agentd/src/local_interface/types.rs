@@ -34,6 +34,7 @@ pub struct RunAuthority<'a> {
     pub actor: &'a str,
     pub device: &'a str,
     pub control: bool,
+    pub observe: bool,
     pub owner: bool,
     pub lease: bool,
     pub fencing: bool,
@@ -90,6 +91,8 @@ pub enum InputError {
     PayloadTooLarge,
     RunInputOutcomeUncertain,
     IdempotencyConflict,
+    CursorInvalid,
+    SequenceGap,
 }
 
 impl fmt::Display for InputError {

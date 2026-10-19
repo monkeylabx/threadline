@@ -1,3 +1,4 @@
+mod activity;
 mod authority;
 mod contract;
 mod fixtures;

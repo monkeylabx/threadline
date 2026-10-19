@@ -4,6 +4,8 @@ use serde_json::{json, Value};
 
 // Declarative mapping of the canonical C1 status labels, not runtime policy.
 const ERRORS: &[(&str, Error)] = &[
+    ("ERROR_CODE_CURSOR_INVALID", Error::CursorInvalid),
+    ("ERROR_CODE_SEQUENCE_GAP", Error::SequenceGap),
     ("UNAUTHENTICATED", Error::Unauthenticated),
     ("PERMISSION_DENIED", Error::PermissionDenied),
     ("ERROR_CODE_TENANT_MISMATCH", Error::TenantMismatch),
