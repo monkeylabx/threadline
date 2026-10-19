@@ -3330,7 +3330,9 @@ dependencies = [
 name = "threadline-agentd"
 version = "0.0.0"
 dependencies = [
+ "prost",
  "serde_json",
+ "threadline-client-proto",
  "tokio",
  "windows-sys 0.61.2",
 ]
