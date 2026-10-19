@@ -1,4 +1,4 @@
-use super::{observer, Activity, AuthoritySource, Error, Principal, Request};
+use super::{observer, stream_id, Activity, AuthoritySource, Error, Principal, Request};
 use prost::Message;
 use std::fmt;
 
@@ -29,7 +29,7 @@ impl Watch {
             identity: identity(principal).map(str::to_owned),
             run_id: activity.buffer.run_id.clone(),
             incarnation: activity.incarnation.clone(),
-            stream_id: format!("{}:{serial:016x}", activity.incarnation),
+            stream_id: stream_id(&activity.incarnation, &activity.buffer.run_id, serial),
             after: activity.buffer.floor() - 1,
             ready: true,
             closed: false,

@@ -154,3 +154,21 @@ fn identity_is_checked_before_lookup_and_incarnation_is_scoped() {
         Some(Error::CursorInvalid)
     );
 }
+
+#[test]
+fn stream_ids_do_not_alias_across_runs_or_delimiter_boundaries() {
+    let mut source = Source::base();
+    let mut issued = Vec::new();
+    for (incarnation, run) in [("i", "a:b"), ("i:a", "b"), ("i", "b")] {
+        source.facts["run"]["id"] = json!(run);
+        let mut activity = Activity::new(run.into(), incarnation.into()).expect("scope");
+        let request = Request {
+            run_id: run.into(),
+            ..first()
+        };
+        let mut watch = activity.watch(&source, &request).expect("watch");
+        let id = ready(&mut watch, &source, &activity).0;
+        assert!(!issued.contains(&id));
+        issued.push(id);
+    }
+}

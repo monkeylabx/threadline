@@ -28,8 +28,9 @@ impl Activity {
         if !valid_id(&run_id) || !valid_id(&incarnation) {
             return Err(Error::InvalidArgument);
         }
+        let template = stream_id(&incarnation, &run_id, 0);
         Ok(Self {
-            buffer: Buffer::new(run_id, format!("{incarnation}:{:016x}", 0)),
+            buffer: Buffer::new(run_id, template),
             incarnation,
             serial: 0,
         })
@@ -67,6 +68,14 @@ impl Activity {
 
 fn valid_id(value: &str) -> bool {
     !value.is_empty() && value.len() <= 128 && value.bytes().all(|b| b.is_ascii_graphic())
+}
+
+fn stream_id(incarnation: &str, run: &str, serial: u64) -> String {
+    format!(
+        "{}:{incarnation}{}:{run}:{serial:016x}",
+        incarnation.len(),
+        run.len()
+    )
 }
 
 fn observer<'a>(source: &'a dyn AuthoritySource, run_id: &str) -> Result<Principal<'a>, Error> {
