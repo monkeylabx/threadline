@@ -1,6 +1,7 @@
 //! Local worker primitives only; this library does not admit or launch a runtime.
 
 pub mod acp;
+pub mod local_interface;
 
 mod stop;
 mod stop_driver;
