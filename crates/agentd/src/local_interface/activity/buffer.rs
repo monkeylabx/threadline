@@ -55,11 +55,10 @@ impl Buffer {
     }
 
     fn push(&mut self, input: &str, view: View) -> Result<(), Error> {
-        let sequence = self
-            .head
-            .checked_add(1)
-            .filter(|n| *n < u64::MAX)
-            .ok_or(Error::ResourceExhausted)?;
+        if self.head >= u64::MAX - 1 {
+            return Err(Error::ResourceExhausted);
+        }
+        let sequence = self.head + 1;
         let frame = Frame {
             run_id: self.run_id.clone(),
             stream_id: self.stream_template.clone(),
