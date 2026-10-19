@@ -1,6 +1,6 @@
 mod activity;
-mod authority;
+pub(super) mod authority;
 mod contract;
-mod fixtures;
+pub(super) mod fixtures;
 mod lifecycle;
 mod policy;
