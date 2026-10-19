@@ -1,6 +1,6 @@
 use super::{binding, AuthoritySource, GrantState, InputError as Error, RunAuthority};
 
-fn grant(state: GrantState) -> Result<(), Error> {
+pub(super) fn grant(state: GrantState) -> Result<(), Error> {
     match state {
         GrantState::Current => Ok(()),
         GrantState::Revoked => Err(Error::GrantRevoked),

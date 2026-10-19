@@ -29,10 +29,10 @@ fn lookup_error(error: LookupError) -> Error {
     }
 }
 
-pub(super) fn controlled_run<'a>(
+pub(super) fn authorized_run<'a>(
     source: &'a dyn AuthoritySource,
     run_id: &str,
-) -> Result<RunAuthority<'a>, Error> {
+) -> Result<(Principal<'a>, RunAuthority<'a>), Error> {
     let principal = principal(source)?;
     if run_id.is_empty() {
         return Err(Error::PermissionDenied);
@@ -44,7 +44,18 @@ pub(super) fn controlled_run<'a>(
     if principal.tenant != run.tenant {
         return Err(Error::TenantMismatch);
     }
-    if principal.actor != run.actor || principal.device != run.device || !run.control {
+    if principal.actor != run.actor || principal.device != run.device {
+        return Err(Error::PermissionDenied);
+    }
+    Ok((principal, run))
+}
+
+pub(super) fn controlled_run<'a>(
+    source: &'a dyn AuthoritySource,
+    run_id: &str,
+) -> Result<RunAuthority<'a>, Error> {
+    let (_, run) = authorized_run(source, run_id)?;
+    if !run.control {
         return Err(Error::PermissionDenied);
     }
     Ok(run)

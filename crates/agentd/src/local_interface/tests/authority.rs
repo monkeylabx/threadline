@@ -80,6 +80,7 @@ impl AuthoritySource for Source {
             actor: string(run, "authorizedActor"),
             device: string(run, "authorizedDevice"),
             control: flag(run, "control"),
+            observe: flag(run, "observe"),
             owner: flag(run, "owner"),
             lease: flag(run, "lease"),
             fencing: flag(run, "fencing"),
