@@ -1,3 +1,4 @@
+use crate::local_interface::EffectFence;
 use crate::{ContainmentState, StopDriver, StopError};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
@@ -11,8 +12,8 @@ pub struct State {
 
 impl State {
     // Trusted synthetic Core allow; no protected operation exists in this fake.
-    pub fn allow_pending(&mut self) -> bool {
-        if !self.pending_approval || !self.queued {
+    pub fn allow_pending(&mut self, fence: &EffectFence) -> bool {
+        if fence.closed() || !self.pending_approval || !self.queued {
             return false;
         }
         self.pending_approval = false;
@@ -80,8 +81,10 @@ impl StopDriver for Driver {
 #[test]
 fn synthetic_allow_has_an_observable_effect_only_while_pending() {
     let driver = Driver::default();
+    let owner = super::flow::owner();
+    let fence = owner.effect_fence();
     let mut state = driver.state.borrow_mut();
-    assert!(state.allow_pending());
-    assert!(!state.allow_pending());
+    assert!(state.allow_pending(&fence));
+    assert!(!state.allow_pending(&fence));
     assert_eq!(state.synthetic_effects, 1);
 }

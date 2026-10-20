@@ -37,6 +37,7 @@ impl<'a, D: StopDriver> Shutdown<'a, D> {
     /// Trusted revocation/terminal notification; not callable from serialized UI fields.
     /// Fencing survives dropping this handle or a subsequently restored Grant/lease.
     pub fn invalidate(&mut self) -> StopReport {
+        self.run.effects.close();
         let receipt = self.worker.request_stop();
         self.run.intake.clear();
         self.run.pending = None;

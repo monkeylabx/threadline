@@ -29,6 +29,7 @@ async fn denied(source: Source, error: Error) {
     );
     assert!(state.borrow().calls.is_empty());
     drop(shutdown);
+    assert!(!owner.effect_fence().closed());
     assert_eq!(view::text(&mut owner, &trusted), "preserved");
     let (result, bytes) = io::drive_reply(&mut owner, &trusted, &io::valid()).await;
     assert_eq!(result, Ok(()));

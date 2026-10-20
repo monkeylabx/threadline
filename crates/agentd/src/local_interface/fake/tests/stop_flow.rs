@@ -74,6 +74,7 @@ fn turn_activity_stop_cleanup_and_exact_core_ack_are_distinct() {
             .expect("queued intake");
         let driver = Driver::default();
         let state = driver.state.clone();
+        let fence = owner.effect_fence();
         let mut core = Core::default();
         let mut shutdown = Shutdown::new(&mut owner, driver);
         assert!(!shutdown.poll().requested);
@@ -84,6 +85,8 @@ fn turn_activity_stop_cleanup_and_exact_core_ack_are_distinct() {
         let receipt = shutdown.request(&source).expect("stop receipt");
         assert!(receipt.requested);
         assert!(!receipt.cleanup_confirmed());
+        assert!(!state.borrow_mut().allow_pending(&fence));
+        assert_eq!(state.borrow().synthetic_effects, 0);
         assert_eq!(shutdown.request(&source), Ok(receipt));
         assert!(state.borrow().calls.is_empty());
         assert_eq!(
@@ -93,7 +96,7 @@ fn turn_activity_stop_cleanup_and_exact_core_ack_are_distinct() {
         let cleaned = shutdown.poll();
         assert!(cleaned.cleanup_confirmed());
         assert!(!state.borrow().queued && !state.borrow().pending_approval);
-        assert!(!state.borrow_mut().allow_pending());
+        assert!(!state.borrow_mut().allow_pending(&fence));
         assert_eq!(state.borrow().synthetic_effects, 0);
         assert_eq!(
             state.borrow().calls,

@@ -10,7 +10,7 @@ mod intake;
 mod types;
 
 pub use activity::{Activity, ActivityUpdate, Watch};
-pub use fake::{CleanupConclusion, FakeRun, OwnerReceipt, OwnerReporter, Shutdown};
+pub use fake::{CleanupConclusion, EffectFence, FakeRun, OwnerReceipt, OwnerReporter, Shutdown};
 pub use intake::Intake;
 pub use types::{
     AuthoritySource, GrantState, InputError, InputReceipt, LookupError, Principal, RunAuthority,

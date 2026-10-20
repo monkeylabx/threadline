@@ -29,12 +29,13 @@ fn trusted_revocation_or_terminal_clears_content_and_fences_late_approval() {
             revoked.forbid_lookup = true;
             let driver = Driver::default();
             let state = driver.state.clone();
+            let fence = owner.effect_fence();
             let mut shutdown = Shutdown::new(&mut owner, driver);
             assert!(shutdown.invalidate().requested); // Trusted notification, not a UI call.
             assert_eq!(shutdown.request(&revoked), Err(Error::Unauthenticated));
             assert!(shutdown.poll().cleanup_confirmed());
             assert!(!state.borrow().queued && !state.borrow().pending_approval);
-            assert!(!state.borrow_mut().allow_pending());
+            assert!(!state.borrow_mut().allow_pending(&fence));
             assert_eq!(state.borrow().synthetic_effects, 0);
             drop(shutdown);
             fenced(&mut owner).await; // Fresh authority/late allow cannot revive it.
@@ -63,6 +64,7 @@ fn recovery_imports_no_old_context_and_retry_requires_fresh_core_run() {
         let frame = Frame::decode(ready.as_slice()).expect("canonical frame");
         let mut recovered =
             FakeRun::recover("run-a".into(), "new-incarnation".into()).expect("recovered");
+        assert!(recovered.effect_fence().closed());
         assert_eq!(
             watch.next(&source, recovered.activity()),
             Err(Error::CursorInvalid)

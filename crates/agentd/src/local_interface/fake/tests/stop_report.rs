@@ -23,9 +23,12 @@ fn cleanup_failure_reports_failure_and_retry_never_reopens_dispatch() {
             ..Driver::default()
         };
         let state = driver.state.clone();
+        let fence = owner.effect_fence();
         let mut shutdown = Shutdown::new(&mut owner, driver);
         shutdown.request(&source).expect("receipt");
         assert!(!shutdown.poll().cleanup_confirmed());
+        assert!(!state.borrow_mut().allow_pending(&fence));
+        assert_eq!(state.borrow().synthetic_effects, 0);
         let mut core = Core::default();
         assert_eq!(shutdown.report(&source, &mut core), Err(Error::Unavailable));
         core.available = true;
