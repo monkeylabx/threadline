@@ -5,7 +5,7 @@ use crate::local_interface::{
 };
 use serde_json::json;
 
-fn owner() -> FakeRun {
+pub(super) fn owner() -> FakeRun {
     FakeRun::new("run-a".into(), "incarnation-a".into()).expect("trusted fake Run")
 }
 

@@ -7,10 +7,16 @@ use threadline_client_proto::threadline::local_agent::v1::WatchRunActivityReques
 
 mod attempt;
 mod drive;
+mod effect_fence;
 mod pipe;
+mod shutdown;
+pub use effect_fence::EffectFence;
+pub use shutdown::{CleanupConclusion, OwnerReceipt, OwnerReporter, Shutdown};
 
 /// NOT PRODUCTION: one dispatched demonstration Run, with no process or listener.
 pub struct FakeRun {
+    run_id: String,
+    effects: EffectFence,
     intake: Intake,
     activity: Activity,
     pending: Option<RunInput>,
@@ -20,9 +26,25 @@ impl FakeRun {
     pub fn new(run_id: String, incarnation: String) -> Result<Self, Error> {
         Ok(Self {
             activity: Activity::new(run_id.clone(), incarnation)?,
-            intake: Intake::new(run_id),
+            intake: Intake::new(run_id.clone()),
+            run_id,
+            effects: EffectFence::new(),
             pending: None,
         })
+    }
+
+    /// Trusted dispatch of a known unreconciled Run after restart, never a UI choice.
+    /// Fresh Core Run dispatch must use a new Run ID; no old state is imported here.
+    pub fn recover(run_id: String, incarnation: String) -> Result<Self, Error> {
+        let mut run = Self::new(run_id, incarnation)?;
+        run.intake.mark_uncertain();
+        run.effects.close();
+        Ok(run)
+    }
+
+    /// Bind queued synthetic decisions to this exact Run's irreversible fence.
+    pub fn effect_fence(&self) -> EffectFence {
+        self.effects.clone()
     }
 
     /// The receipt precedes dispatch; duplicate/conflicting bytes cannot replace pending input.

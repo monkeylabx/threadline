@@ -41,6 +41,8 @@ fn failed_setup_partial_turn_and_cancelled_result_never_publish_or_replay() {
             let (result, bytes) = io::drive_reply(&mut owner, &source, &io::valid()).await;
             assert_eq!(result, Err(Error::InvalidStateTransition));
             assert!(bytes.is_empty());
+            super::stop_flow::verify_stop(&mut owner, &source);
+            uncertain(&mut owner, &source);
         }
     });
 }
@@ -91,6 +93,8 @@ fn dropped_or_timed_out_polled_exchange_latches_uncertainty() {
             let mut bytes = Vec::new();
             capture.read_to_end(&mut bytes).await.expect("outbound EOF");
             wire::assert_turn(&bytes, "original");
+            uncertain(&mut owner, &source);
+            super::stop_flow::verify_stop(&mut owner, &source);
             uncertain(&mut owner, &source);
         }
     });

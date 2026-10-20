@@ -1,8 +1,14 @@
 use std::future::Future;
 
+mod cleanup_driver;
+mod core;
 mod flow;
 mod io;
 mod lifecycle;
+mod restart;
+mod stop_auth;
+mod stop_flow;
+mod stop_report;
 mod view;
 mod wire;
 
