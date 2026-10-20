@@ -14,22 +14,7 @@ ACP's default builtin selection includes developer unless its configured enabled
 
 The eight default-enabled platform extensions are analyze, apps, extensionmanager, scheduler, summon, developer, tom and skills. Each disabled entry must deserialize as an extension, including `type: platform`, `name`, and `enabled: false`; malformed entries are skipped. [Platform defaults](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/agents/platform_extensions/mod.rs), [extension configuration parser](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/config/extensions.rs).
 
-Minimal restricted `config/config.yaml` under the isolated root:
-
-```yaml
-GOOSE_MODE: approve
-GOOSE_DISABLE_KEYRING: true
-GOOSE_DISABLE_SESSION_NAMING: true
-extensions:
-  analyze: {type: platform, name: analyze, enabled: false}
-  apps: {type: platform, name: apps, enabled: false}
-  extensionmanager: {type: platform, name: extensionmanager, enabled: false}
-  scheduler: {type: platform, name: scheduler, enabled: false}
-  summon: {type: platform, name: summon, enabled: false}
-  developer: {type: platform, name: developer, enabled: false}
-  tom: {type: platform, name: tom, enabled: false}
-  skills: {type: platform, name: skills, enabled: false}
-```
+The executable [probe policy](../../crates/agentd/test_support/goose_probe_policy.py) writes the isolated `config/config.yaml` with these disabled platform extensions, `GOOSE_MODE: approve`, and session naming disabled. The separate developer control uses `auto` only with synthetic commands; it is not the restricted configuration.
 
 ## Synthetic provider and protocol
 
@@ -46,5 +31,3 @@ Developer exposes the unprefixed tool `shell`; its argument object requires `com
 After responding to `session/new`, Goose unconditionally sends standard `session/update` notifications for usage and available commands; only custom Goose notifications depend on client metadata. Threadline's current R1 text-only prompt reader rejects these setup updates. A bounded probe observer can record them, but that does not establish compatibility with the production adapter. [Dispatch order](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/acp/server/dispatch.rs#L42), [setup notifications](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/acp/response_builder.rs#L483).
 
 `session/cancel` cancels the active-run token. The developer shell responds by killing and waiting for its direct child; that path does not enumerate or seal descendants. These source paths do not prove background-child cleanup. Real probe observations must distinguish ACP cancellation, direct-child reaping, known-child exit, and the stronger `SealedAndEmpty` contract. [ACP cancellation](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/acp/server.rs#L2411), [shell cancellation](https://github.com/aaif-goose/goose/blob/302b60806639ea9f0ae8f053f49f8bf0e88b26f4/crates/goose/src/agents/platform_extensions/developer/shell.rs#L557), [Threadline containment contract](worker-containment-profile.md).
-
-No source claim here admits a real worker to production, authorizes user files, or establishes protection against malicious runtimes, detached descendants, dynamic extensions, crash recovery or other operating systems.

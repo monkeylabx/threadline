@@ -71,9 +71,33 @@ class PolicyTests(unittest.TestCase):
 
 
 class ObserverTests(unittest.TestCase):
+    def test_failed_setup_reaps_started_worker_and_closes_allocated_resources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            child, selector = Mock(), Mock()
+            selector.__enter__ = Mock(return_value=selector)
+            selector.__exit__ = Mock(return_value=False)
+            selector.register.side_effect = OSError("synthetic registration failure")
+            with patch.object(rpc.subprocess, "Popen", return_value=child), \
+                    patch.object(rpc.selectors, "DefaultSelector", return_value=selector), \
+                    patch.object(rpc.os, "killpg") as kill:
+                with self.assertRaisesRegex(OSError, "registration"):
+                    Worker(["synthetic"], {}, Path(directory))
+                kill.assert_called_once_with(child.pid, rpc.signal.SIGKILL)
+                child.wait.assert_called_once_with(timeout=10)
+                child.stdin.close.assert_called_once()
+                child.stdout.close.assert_called_once()
+                selector.__exit__.assert_called_once()
+
+    def test_failed_group_stop_falls_back_without_claiming_success(self):
+        child = Mock()
+        with patch.object(rpc.os, "killpg", side_effect=PermissionError("denied")):
+            with self.assertRaises(PermissionError):
+                rpc.terminate(child)
+        child.kill.assert_called_once()
+
     def test_frame_read_enforces_size_eof_deadline_and_json(self):
         worker = Worker.__new__(Worker)
-        worker.buffer, worker.frames = b"", []
+        worker.buffer = b""
         worker.selector, worker.child = Mock(), Mock()
         worker.selector.select.return_value = ["ready"]
         with patch.object(rpc.time, "monotonic", return_value=0):

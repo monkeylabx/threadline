@@ -5,7 +5,6 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 BINARY_SHA256 = "b7a38f3ff1e2d48b34b6550f84cf4104f3f7d797429e1231d1255d0501d47702"
-ARCHIVE_SHA256 = "7674b0124aab685c71f8782fb7e65bac100c736ce3de0c9d3bf46ba07910e412"
 EXTENSIONS = ("analyze", "apps", "extensionmanager", "scheduler", "summon",
               "tom", "skills", "developer")
 

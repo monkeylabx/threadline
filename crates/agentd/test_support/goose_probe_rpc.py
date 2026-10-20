@@ -5,18 +5,34 @@ import selectors
 import signal
 import subprocess
 import time
+from contextlib import ExitStack
+
+
+def terminate(child):
+    try:
+        os.killpg(child.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return  # Still discharge the retained root wait; no sealed-boundary claim.
+    except OSError:
+        child.kill()
+        raise  # Direct-child fallback cannot turn group failure into success.
 
 
 class Worker:
     def __init__(self, command, env, work):
-        self.log = (work / "stderr.log").open("wb")
-        self.child = subprocess.Popen(command, env=env, cwd=work, start_new_session=True,
-                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                      stderr=self.log)
         self.buffer = b""
-        self.frames = []
-        self.selector = selectors.DefaultSelector()
-        self.selector.register(self.child.stdout, selectors.EVENT_READ)
+        with ExitStack() as rollback:
+            self.log = rollback.enter_context((work / "stderr.log").open("wb"))
+            self.selector = rollback.enter_context(selectors.DefaultSelector())
+            self.child = subprocess.Popen(command, env=env, cwd=work, start_new_session=True,
+                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                          stderr=self.log)
+            rollback.callback(self.child.stdin.close)
+            rollback.callback(self.child.stdout.close)
+            rollback.callback(self.child.wait, timeout=10)
+            rollback.callback(terminate, self.child)
+            self.selector.register(self.child.stdout, selectors.EVENT_READ)
+            rollback.pop_all()  # Ownership transfers to this fully initialized Worker.
 
     def send(self, method, params, request_id=None):
         frame = {"jsonrpc": "2.0", "method": method, "params": params}
@@ -37,7 +53,6 @@ class Worker:
                 raise ValueError("ACP frame budget exceeded")
         line, self.buffer = self.buffer.split(b"\n", 1)
         frame = json.loads(line)
-        self.frames.append(frame)
         return frame
 
     def response(self, request_id):
@@ -72,10 +87,10 @@ class Worker:
     def close(self):
         # Experimental same-group cleanup, explicitly not SealedAndEmpty.
         try:
-            os.killpg(self.child.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass  # An already absent group is followed by the retained child wait.
-        return self.finish()
+            terminate(self.child)
+        finally:
+            status = self.finish()
+        return status
 
     def finish(self):
         try:

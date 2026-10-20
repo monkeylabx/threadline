@@ -18,7 +18,6 @@ def completion(body, command):
 
 class Endpoint:
     def __init__(self, route):
-        self.route = route
         self.command = None
         self.requests = []
         owner = self
@@ -64,7 +63,6 @@ class Endpoint:
                 self.wfile.write(b"data: [DONE]\n\n")
 
         self.server = HTTPServer(("127.0.0.1", urlsplit(route["endpoint"]).port), Handler)
-        self.server.timeout = 10
         self.thread = Thread(target=self.server.serve_forever, daemon=True)
 
     def __enter__(self):

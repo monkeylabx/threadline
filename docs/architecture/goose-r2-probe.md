@@ -3,8 +3,6 @@
 Issue: [#258](https://github.com/monkeylabx/threadline/issues/258). Evidence date: 2026-10-20.
 This is an opt-in synthetic experiment, not production worker admission.
 
-## Result
-
 Host: macOS 26.4, Darwin 25.4.0, arm64. Official Goose 1.52.0, Python 3.9.6,
 Rust 1.97.1. The checked-in [receipt](goose-r2-macos-receipt.json) records this run.
 The [pinned-source audit](goose-r2-source-audit.md) explains configuration and protocol behavior.
@@ -52,18 +50,13 @@ python3 crates/agentd/test_support/goose_probe.py \
   --output "$probe_artifacts/result" --agentd-example target/debug/examples/goose_probe
 ```
 
-Archive pin: `7674b0124aab685c71f8782fb7e65bac100c736ce3de0c9d3bf46ba07910e412`.
-Extracted executable pin, checked before launch:
+Extracted executable SHA-256, checked before launch:
 `b7a38f3ff1e2d48b34b6550f84cf4104f3f7d797429e1231d1255d0501d47702`.
-Archive identity comes from the [official release API](https://api.github.com/repos/aaif-goose/goose/releases/tags/v1.52.0);
-the executable digest was measured from that verified archive. Signing/notarization was not assessed.
+Measured from the verified official archive; signing/notarization was not assessed.
 
-The routing file supplies endpoint, model and fake credential; non-loopback origins
-and real credentials are rejected. Each case gets fresh configuration, an empty cwd,
-`GOOSE_PATH_ROOT`, cleared inherited environment and explicit loopback proxy bypass.
-Eight default extensions are disabled. Developer is enabled in `auto` only for the
-separate synthetic cancellation controls, whose commands write task-only markers.
-The child profile denies default access: content reads are limited to system runtime
+The routing file supplies endpoint, model and fake credential. The isolated configuration
+and proxy boundary follow the source audit above. The child profile denies default access:
+content reads are limited to system runtime
 paths, the exact binary and its workspace; writes stay in that workspace plus `/dev/null`.
 File metadata, root-directory reads, Mach lookup, process operations and child-only
 signals support bootstrap/cancellation. The exact public SSL config is readable for
