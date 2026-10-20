@@ -71,6 +71,7 @@ class PolicyTests(unittest.TestCase):
 
 
 class ObserverTests(unittest.TestCase):
+    @patch.object(rpc.signal, "SIGKILL", 9, create=True)
     def test_failed_setup_reaps_started_worker_and_closes_allocated_resources(self):
         with tempfile.TemporaryDirectory() as directory:
             child, selector = Mock(), Mock()
@@ -79,7 +80,7 @@ class ObserverTests(unittest.TestCase):
             selector.register.side_effect = OSError("synthetic registration failure")
             with patch.object(rpc.subprocess, "Popen", return_value=child), \
                     patch.object(rpc.selectors, "DefaultSelector", return_value=selector), \
-                    patch.object(rpc.os, "killpg") as kill:
+                    patch.object(rpc.os, "killpg", create=True) as kill:
                 with self.assertRaisesRegex(OSError, "registration"):
                     Worker(["synthetic"], {}, Path(directory))
                 kill.assert_called_once_with(child.pid, rpc.signal.SIGKILL)
@@ -88,9 +89,10 @@ class ObserverTests(unittest.TestCase):
                 child.stdout.close.assert_called_once()
                 selector.__exit__.assert_called_once()
 
+    @patch.object(rpc.signal, "SIGKILL", 9, create=True)
     def test_failed_group_stop_falls_back_without_claiming_success(self):
         child = Mock()
-        with patch.object(rpc.os, "killpg", side_effect=PermissionError("denied")):
+        with patch.object(rpc.os, "killpg", side_effect=PermissionError("denied"), create=True):
             with self.assertRaises(PermissionError):
                 rpc.terminate(child)
         child.kill.assert_called_once()

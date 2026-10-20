@@ -2,8 +2,6 @@
 
 Issue: #258. Reviewed: 2026-10-20. Scope: source and release metadata; runtime results belong to the probe receipt. No real credentials or worker execution were used for this audit.
 
-## Artifact identity
-
 The official `v1.52.0` tag resolves to commit `302b60806639ea9f0ae8f053f49f8bf0e88b26f4`. The release API identifies `goose-aarch64-apple-darwin.tar.gz` as 88,128,790 bytes with SHA-256 `7674b0124aab685c71f8782fb7e65bac100c736ce3de0c9d3bf46ba07910e412`. This pins the archive; the extracted executable needs its own digest. The `.tar.bz2` asset has a different digest and must not be checked against the gzip pin. [Tag API](https://api.github.com/repos/aaif-goose/goose/git/ref/tags/v1.52.0), [release API](https://api.github.com/repos/aaif-goose/goose/releases/tags/v1.52.0).
 
 ## Configuration boundary
