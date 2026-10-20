@@ -14,7 +14,7 @@ struct Record {
 }
 
 /// Volatile demo intake for one dispatched Run, not a source of Run authority.
-/// Engine dispatch, transport and durable Core outcomes belong to later R1 steps.
+/// Engine dispatch, transport and durable Core outcomes remain outside this intake.
 pub struct Intake {
     run_id: String,
     receipts: Vec<Record>,

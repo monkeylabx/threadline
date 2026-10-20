@@ -56,6 +56,7 @@ pub trait AuthoritySource {
     fn run(&self, run_id: &str) -> Result<RunAuthority<'_>, LookupError>;
 }
 
+#[derive(Clone)]
 pub struct RunInput {
     pub run_id: String,
     pub input_id: String,
