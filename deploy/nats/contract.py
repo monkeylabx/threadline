@@ -78,7 +78,13 @@ def validate_config(config: dict[str, Any]) -> None:
     if not isinstance(users, list) or len(users) != 3:
         raise ContractError("the worker account must enumerate exactly three principals")
 
-    user = _exact_keys(users[0], {"user", "password", "permissions"}, "worker principal")
+    password = validate_worker(users[0])
+    validate_platform(users, password)
+    validate_realtime(users, password)
+
+
+def validate_worker(principal: Any) -> str:
+    user = _exact_keys(principal, {"user", "password", "permissions"}, "worker principal")
     if user["user"] != WORKER_USER:
         raise ContractError("worker principal changed")
     password = user["password"]
@@ -97,8 +103,7 @@ def validate_config(config: dict[str, Any]) -> None:
         "subscribe deny",
     )
 
-    validate_platform(users, password)
-    validate_realtime(users, password)
+    return password
 
 
 def validate_platform(users: list, password: str) -> None:

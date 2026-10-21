@@ -63,6 +63,16 @@ class NATSAccountContractTest(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "bcrypt"):
             validate_config(changed)
 
+    def test_rejects_platform_and_realtime_identity_or_permission_drift(self) -> None:
+        for index in (1, 2):
+            for key, value in (("user", "foreign"), ("password", "foreign"),
+                               ("permissions", {}), ("permissions", {"publish": {"allow": [">"]}})):
+                changed = copy.deepcopy(self.config)
+                changed["accounts"]["THREADLINE_WORKER"]["users"][index][key] = value
+                with self.subTest(index=index, key=key), self.assertRaises(ContractError):
+                    validate_config(changed)
+
+
 
 class NATSDeploymentContractTest(unittest.TestCase):
     def test_compose_mounts_the_reviewed_config_read_only(self) -> None:
