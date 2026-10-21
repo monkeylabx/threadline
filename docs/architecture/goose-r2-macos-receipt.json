@@ -6,7 +6,10 @@
   "strict_agentd": {
     "initialized": true,
     "session_created": true,
-    "turn": "Err(UnexpectedMessage)"
+    "stop_reason": "end_turn",
+    "text_bytes": 24,
+    "text_matches": true,
+    "advertised_tools": []
   },
   "restricted": {
     "mode": "approve",
