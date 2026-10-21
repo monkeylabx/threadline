@@ -3,6 +3,10 @@ mod acp_support;
 mod fixtures;
 #[path = "acp_turn/lifecycle.rs"]
 mod lifecycle;
+#[path = "acp_turn/passive.rs"]
+mod passive;
+#[path = "acp_turn/passive_shapes.rs"]
+mod passive_shapes;
 #[path = "acp_turn/validation.rs"]
 mod validation;
 

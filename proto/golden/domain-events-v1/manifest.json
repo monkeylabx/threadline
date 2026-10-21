@@ -1,0 +1,6 @@
+{
+  "classification": "synthetic-protocol-compatibility-no-secrets",
+  "canaryUtf8": "threadline-domain-event-v1",
+  "sha256": "7f910aec886fe564f0543876cd87620fbcc78a4abcce8198f294324023c0eb37",
+  "sourceSha256": "db6dd29325cf5310bcbc5879323774e296d88729bed7d4b2795970c6cd457412"
+}

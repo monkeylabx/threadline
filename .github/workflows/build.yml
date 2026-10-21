@@ -141,6 +141,7 @@ jobs:
         run: |
           python3 deploy/nats/contract_test.py
           python3 deploy/nats/probe_test.py
+          python3 deploy/nats/provision_test.py
           docker run --rm --pull always \
             --volume "${GITHUB_WORKSPACE}/deploy/nats/nats-server.conf:/etc/nats/nats-server.conf:ro" \
             --entrypoint nats-server \
@@ -170,6 +171,8 @@ jobs:
             sleep 0.2
           done
           test "${ready}" -eq 1
+          python3 deploy/nats/provision.py --port 14222
+          python3 deploy/nats/provision.py --port 14222
           worker_user="$(awk '$1 == "NATS_WORKER_USER" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
           worker_password="$(awk '$1 == "NATS_WORKER_PASSWORD" && $2 == "?=" {print $3}' deploy/compose/Makefile)"
           test -n "${worker_user}" && test -n "${worker_password}"

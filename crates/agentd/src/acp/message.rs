@@ -3,7 +3,10 @@ use serde_json::{Map, Value};
 use std::fmt;
 
 /// Opaque internal data. Debug deliberately omits the worker payload.
-pub struct RpcMessage(Value);
+pub struct RpcMessage {
+    value: Value,
+    frame_bytes: usize,
+}
 
 impl RpcMessage {
     pub fn new(value: Value) -> Result<Self, TransportError> {
@@ -16,11 +19,23 @@ impl RpcMessage {
         } else {
             validate_response(object)?;
         }
-        Ok(Self(value))
+        Ok(Self {
+            value,
+            frame_bytes: 0,
+        })
+    }
+
+    pub(super) fn with_frame_bytes(mut self, bytes: usize) -> Self {
+        self.frame_bytes = bytes;
+        self
+    }
+
+    pub(super) fn frame_bytes(&self) -> usize {
+        self.frame_bytes
     }
 
     pub fn value(&self) -> &Value {
-        &self.0
+        &self.value
     }
 }
 

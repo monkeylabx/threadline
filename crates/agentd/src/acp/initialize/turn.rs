@@ -2,6 +2,7 @@ use super::{Initialization, Phase, RpcMessage};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
 
+mod passive;
 mod payload;
 mod result;
 use payload::{request, TextTurn, MAX_UPDATES};
@@ -38,7 +39,7 @@ impl<R: AsyncRead + Unpin, W: AsyncWrite + Unpin> Initialization<R, W> {
         let mut turn = TextTurn::new(session);
         for _ in 0..=MAX_UPDATES {
             let message = self.reader.receive().await.map_err(TurnError::Transport)?;
-            if let Some(result) = turn.accept(message.value())? {
+            if let Some(result) = turn.accept(&message)? {
                 return Ok(result);
             }
         }

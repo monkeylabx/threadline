@@ -21,6 +21,8 @@ from probe import (
 )
 
 
+from permissions import WORKER_PUBLISH
+
 PROBE = Path(__file__).with_name("probe.py")
 
 
@@ -30,7 +32,7 @@ EXPECTED_INFO = {
         "account": "THREADLINE_WORKER",
         "permissions": {
             "publish": {
-                "allow": ["threadline.domain.events.v1", "$SYS.REQ.USER.INFO"],
+                "allow": WORKER_PUBLISH,
                 "deny": ["_INBOX.threadline.worker.>"],
             },
             "subscribe": {

@@ -14,7 +14,7 @@ pub(super) async fn read<R: AsyncBufRead + Unpin>(
     if bytes.last() == Some(&b'\n') {
         bytes.pop();
         let value = serde_json::from_slice(&bytes).map_err(|_| TransportError::Malformed)?;
-        return RpcMessage::new(value);
+        return RpcMessage::new(value).map(|message| message.with_frame_bytes(bytes.len() + 1));
     }
     match bytes.len() {
         0 => Err(TransportError::Closed),
