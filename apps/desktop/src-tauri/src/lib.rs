@@ -5,13 +5,14 @@
 //! stays on fixtures, so the IM is usable while Core is offline.
 
 mod commands;
-mod config;
-mod dto;
-mod session;
+pub mod config;
+pub mod dto;
+mod notification;
+pub mod session;
 #[cfg(test)]
 mod session_tests;
 
-use std::sync::Mutex;
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 
 use session::Session;
 use threadline_core_client::CoreClient;
@@ -19,7 +20,8 @@ use threadline_core_client::CoreClient;
 /// Window-scoped state. `None` means the host runs without a configured
 /// Device session.
 pub struct HostState {
-    session: Mutex<Option<Session<CoreClient>>>,
+    session: Arc<Mutex<Option<Session<CoreClient>>>>,
+    waiting: Arc<AtomicBool>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,7 +42,8 @@ pub fn run() {
     };
     tauri::Builder::default()
         .manage(HostState {
-            session: Mutex::new(session),
+            session: Arc::new(Mutex::new(session)),
+            waiting: Arc::new(AtomicBool::new(false)),
         })
         .invoke_handler(tauri::generate_handler![
             commands::session_info,
@@ -48,6 +51,7 @@ pub fn run() {
             commands::list_messages,
             commands::send_message,
             commands::sync_channel,
+            commands::wait_channel,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run the Threadline desktop host");

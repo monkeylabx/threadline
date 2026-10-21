@@ -1,11 +1,5 @@
-/**
- * LocaldRepository talks to the Tauri host's window-scoped commands. The host
- * owns the encrypted store, the Core client and every secret; this class only
- * maps DTOs onto the shell's Repository and drives sync explicitly: once after
- * each send and on a bounded poll while a channel is open. Push arrives with
- * A5 (#255); until then the poll is the only way another Device's messages
- * show up.
- */
+/** Display DTO adapter; the host owns every secret and durable message fact. */
+import { ChannelWatch, type WatchOptions } from "./channel-watch.ts";
 import type { Channel, ConnectionState, Message, MessageState, Repository } from "../repository.ts";
 
 export type Invoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
@@ -34,14 +28,10 @@ export interface SyncReportDto {
   readonly applied: number;
   readonly has_more: boolean;
   readonly online: boolean;
+  readonly realtime_woke?: boolean;
 }
 
-export interface LocaldRepositoryOptions {
-  /** Poll interval while a channel is open; 0 disables polling (tests). */
-  readonly pollMs?: number;
-  readonly setTimer?: (callback: () => void, ms: number) => unknown;
-  readonly clearTimer?: (handle: unknown) => void;
-}
+export type LocaldRepositoryOptions = WatchOptions;
 
 const UNREADABLE_BODY = "（此消息无法显示）";
 
@@ -50,19 +40,14 @@ export class LocaldRepository implements Repository {
   private readonly connectionListeners = new Set<(state: ConnectionState) => void>();
   private readonly messageListeners = new Set<(channelId: string) => void>();
   private readonly commits = new Map<string, (message: Message) => void>();
-  private readonly pollMs: number;
-  private readonly setTimer: (callback: () => void, ms: number) => unknown;
-  private readonly clearTimer: (handle: unknown) => void;
-  private pollHandle: unknown = null;
-  private polledChannel: string | null = null;
+  private readonly watcher: ChannelWatch;
 
   constructor(
     private readonly invoke: Invoke,
     options: LocaldRepositoryOptions = {},
   ) {
-    this.pollMs = options.pollMs ?? 4000;
-    this.setTimer = options.setTimer ?? ((callback, ms) => setTimeout(callback, ms));
-    this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
+    this.watcher = new ChannelWatch((channel, current) =>
+      this.sync(channel, options.realtime ? "wait_channel" : "sync_channel", current), options);
   }
 
   async listChannels(): Promise<readonly Channel[]> {
@@ -72,7 +57,7 @@ export class LocaldRepository implements Repository {
 
   /** Lists the channel and makes it the polled channel. */
   async listMessages(channelId: string): Promise<readonly Message[]> {
-    this.watch(channelId);
+    this.watcher.select(channelId);
     const messages = await this.invoke<readonly MessageDto[]>("list_messages", { channelId });
     return messages.map(toMessage);
   }
@@ -90,27 +75,28 @@ export class LocaldRepository implements Repository {
   }
 
   /** Replays pending sends and pulls new history; resolves pending commits. */
-  async sync(channelId: string): Promise<SyncReportDto | null> {
-    let report: SyncReportDto;
+  async sync(channelId: string, command = "sync_channel", current = () => true): Promise<SyncReportDto | null> {
     try {
-      report = await this.invoke<SyncReportDto>("sync_channel", { channelId });
-    } catch {
-      this.setConnection("offline");
+      const report = await this.invoke<SyncReportDto>(command, { channelId });
+      if (!current()) return null;
+      this.setConnection(report.online ? "online" : "offline");
+      if (report.committed + report.deduplicated + report.applied > 0) {
+        const messages = await this.invoke<readonly MessageDto[]>("list_messages", { channelId });
+        if (!current()) return null;
+        for (const dto of messages) {
+          const resolve = dto.state === "committed" ? this.commits.get(dto.event_id) : undefined;
+          if (resolve) {
+            resolve(toMessage(dto));
+            this.commits.delete(dto.event_id);
+          }
+        }
+        for (const listener of this.messageListeners) listener(channelId);
+      }
+      return report;
+    } catch (error) {
+      if (current()) this.setConnection(error === "denied" ? "online" : "offline");
       return null;
     }
-    this.setConnection(report.online ? "online" : "offline");
-    if (report.committed + report.deduplicated + report.applied > 0) {
-      const messages = await this.invoke<readonly MessageDto[]>("list_messages", { channelId });
-      for (const dto of messages) {
-        const resolve = dto.state === "committed" ? this.commits.get(dto.event_id) : undefined;
-        if (resolve) {
-          resolve(toMessage(dto));
-          this.commits.delete(dto.event_id);
-        }
-      }
-      for (const listener of this.messageListeners) listener(channelId);
-    }
-    return report;
   }
 
   connectionState(): ConnectionState {
@@ -129,22 +115,7 @@ export class LocaldRepository implements Repository {
 
   /** Stops the poll; call when the window closes or the repository is swapped. */
   dispose(): void {
-    if (this.pollHandle !== null) this.clearTimer(this.pollHandle);
-    this.pollHandle = null;
-    this.polledChannel = null;
-  }
-
-  private watch(channelId: string): void {
-    if (this.polledChannel === channelId || this.pollMs <= 0) return;
-    this.dispose();
-    this.polledChannel = channelId;
-    const tick = () => {
-      if (this.polledChannel !== channelId) return;
-      void this.sync(channelId).finally(() => {
-        if (this.polledChannel === channelId) this.pollHandle = this.setTimer(tick, this.pollMs);
-      });
-    };
-    this.pollHandle = this.setTimer(tick, this.pollMs);
+    this.watcher.dispose();
   }
 
   private setConnection(state: ConnectionState): void {

@@ -8,6 +8,7 @@ use threadline_core_client::envelope::{DecodedMessage, EnvelopeError};
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct SessionInfo {
     pub core_url: String,
+    pub realtime_enabled: bool,
     pub tenant_id: String,
     pub actor_id: String,
     pub device_id: String,
@@ -92,6 +93,7 @@ pub struct SyncReportDto {
     pub applied: u32,
     pub has_more: bool,
     pub online: bool,
+    pub realtime_woke: bool,
 }
 
 /// Stable, secret-free failure codes for the renderer.

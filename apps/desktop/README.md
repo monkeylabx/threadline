@@ -76,7 +76,15 @@ are synthetic; nothing here is a production identity.
    port is already taken, or build once and run `tauri build --no-bundle`
    binaries instead.
 
-5. **Exercise the loop**: send from A, it appears in B within one poll (4 s).
+5. **Enable realtime**: start Worker and Realtime using their service READMEs,
+   then set `THREADLINE_DESKTOP_REALTIME_URL=http://127.0.0.1:8082` for both
+   Desktop instances. Core commands and Realtime use separate endpoints.
+   Without this optional variable, the existing4s polling remains available.
+
+6. **Exercise the loop**: send from A; B wakes through StreamEvents, then syncs
+   canonical history into its own encrypted local store. The bounded wait releases
+   the store lock; reconnect always uses its persisted applied cursor. Failed or
+   idle notifications fall back to Core reconciliation with4s retry backoff.
    Stop Core: sends stay `发送中…` and the offline banner shows. Start Core:
    pending items commit once, in order, with no duplicates. The scripted version
    of this check is A13 (#260).
@@ -86,3 +94,13 @@ are synthetic; nothing here is a production identity.
 Only display DTOs: channel ids and names, message text, author ids, states and
 timestamps. The dev token, the database key and raw envelope bytes never leave
 the host process.
+
+## Process-boundary acceptance peer
+
+`cargo build -p threadline-desktop-host --example realtime_peer --locked` builds
+an opt-in stdin/stdout peer using the exact Desktop Session and encrypted store.
+It needs the same explicit Device variables (including Realtime URL). Commands:
+`send <synthetic text>`, `sync`, `wait`, `state`, `check <synthetic text>`.
+Receipts contain only counts, online/wake flags and applied sequence, no credentials
+or message text. This validates host behavior; native window rendering is a
+separate UI check. Stop the process before reopening the same Device store.

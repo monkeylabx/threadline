@@ -25,6 +25,7 @@ pub enum ConfigError {
 
 pub struct HostConfig {
     pub core_url: String,
+    pub realtime_url: Option<String>,
     pub dev_token: String,
     pub tenant_id: String,
     pub actor_id: String,
@@ -54,7 +55,9 @@ impl HostConfig {
             .iter()
             .map(|name| lookup(name).filter(|value| !value.trim().is_empty()))
             .collect();
-        if values.iter().all(Option::is_none) {
+        let realtime_url =
+            lookup("THREADLINE_DESKTOP_REALTIME_URL").filter(|value| !value.trim().is_empty());
+        if values.iter().all(Option::is_none) && realtime_url.is_none() {
             return Ok(None);
         }
         let mut required = ALL.iter().zip(values).map(|(name, value)| {
@@ -72,6 +75,7 @@ impl HostConfig {
         let db_key = parse_key(&next()?)?;
         Ok(Some(Self {
             core_url,
+            realtime_url,
             dev_token,
             tenant_id,
             actor_id,
@@ -156,6 +160,26 @@ mod tests {
         assert_eq!(
             HostConfig::from_env(lookup(&values)).err(),
             Some(ConfigError::Missing("THREADLINE_DESKTOP_DEVICE_ID"))
+        );
+    }
+
+    #[test]
+    fn optional_realtime_is_host_only_and_requires_a_complete_session() {
+        let mut values = complete();
+        values.push((
+            "THREADLINE_DESKTOP_REALTIME_URL",
+            "http://127.0.0.1:8082".into(),
+        ));
+        let config = HostConfig::from_env(lookup(&values)).unwrap().unwrap();
+        assert_eq!(
+            config.realtime_url.as_deref(),
+            Some("http://127.0.0.1:8082")
+        );
+        assert_eq!(
+            HostConfig::from_env(|name| (name == "THREADLINE_DESKTOP_REALTIME_URL")
+                .then(|| "http://127.0.0.1:8082".into()))
+            .err(),
+            Some(ConfigError::Missing("THREADLINE_DESKTOP_CORE_URL"))
         );
     }
 
