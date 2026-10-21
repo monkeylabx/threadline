@@ -146,3 +146,16 @@ func TestInvalidRequestsAndCapacityFailBeforeSubscription(t *testing.T) {
 		t.Fatal("nil source accepted")
 	}
 }
+
+func TestUnavailableBrokerReleasesSlotBeforeAnyCoreRead(t *testing.T) {
+	handler, _ := New(coreFunc(func(context.Context, *connect.Request[syncv1.SyncEventsRequest]) (*connect.Response[syncv1.SyncEventsResponse], error) {
+		t.Error("unavailable broker reached Core")
+		return nil, nil
+	}), NATS{})
+	if err := handler.serve(context.Background(), streamRequest(), nil); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatal("unavailable broker accepted")
+	}
+	if len(handler.slots) != 0 {
+		t.Fatal("failed subscription leaked stream slot")
+	}
+}
