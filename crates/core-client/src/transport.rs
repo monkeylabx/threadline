@@ -30,7 +30,7 @@ pub enum ConnectCode {
 }
 
 impl ConnectCode {
-    fn parse(value: &str) -> Self {
+    pub(crate) fn parse(value: &str) -> Self {
         match value {
             "canceled" => Self::Canceled,
             "invalid_argument" => Self::InvalidArgument,
@@ -139,7 +139,7 @@ fn parse_error_code(body: &[u8]) -> ConnectCode {
 }
 
 /// RFC 7235 token68: the same grammar Core's bearer reader enforces.
-fn valid_token68(value: &str) -> bool {
+pub(crate) fn valid_token68(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 4096
         && value
