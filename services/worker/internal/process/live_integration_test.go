@@ -33,28 +33,7 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	}
 	tenant := seedLiveEvent(t, ctx, pool)
 
-	connection, err := nats.Connect(broker, nats.UserInfo("threadline_realtime_dev", "threadline-worker-dev-only"))
-	if err != nil {
-		t.Fatal("fixture observer unavailable")
-	}
-	defer connection.Close()
-	var observed atomic.Int32
-	subscription, err := connection.Subscribe(mapping.Subject, func(message *nats.Msg) {
-		if bytes.Contains(message.Data, []byte(tenant)) {
-			observed.Add(1)
-		}
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := subscription.Unsubscribe(); err != nil {
-			t.Error("observer cleanup failed")
-		}
-	}()
-	if err := connection.FlushWithContext(ctx); err != nil {
-		t.Fatal(err)
-	}
+	observed := observeLiveEvent(t, ctx, broker, tenant)
 
 	config := Config{address: "127.0.0.1:0", dsn: dsn, broker: broker, user: "threadline_worker_dev", password: "threadline-worker-dev-only", owner: tenant, policyFile: "../../../../deploy/compose/outbox-policy.json"}
 	for pass := 0; pass < 2; pass++ {
@@ -74,11 +53,45 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	if observed.Load() != 1 {
 		t.Fatal("expected exactly one publication of this test Event across restart")
 	}
+	assertOneAttempt(t, ctx, pool, tenant)
+
+}
+
+func assertOneAttempt(t *testing.T, ctx context.Context, pool *pgxpool.Pool, tenant string) {
+	t.Helper()
 	var attempts int
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM domain.outbox_delivery_attempts WHERE tenant_id=$1", tenant).Scan(&attempts); err != nil || attempts != 1 {
 		t.Fatal("acknowledged Event was reclaimed")
 	}
 
+}
+
+func observeLiveEvent(t *testing.T, ctx context.Context, broker, tenant string) *atomic.Int32 {
+	t.Helper()
+	connection, err := nats.Connect(broker, nats.UserInfo("threadline_realtime_dev", "threadline-worker-dev-only"))
+	if err != nil {
+		t.Fatal("fixture observer unavailable")
+	}
+	t.Cleanup(connection.Close)
+	var observed atomic.Int32
+	subscription, err := connection.Subscribe(mapping.Subject, func(message *nats.Msg) {
+		if bytes.Contains(message.Data, []byte(tenant)) {
+			observed.Add(1)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := subscription.Unsubscribe(); err != nil {
+			t.Error("observer cleanup failed")
+		}
+	})
+	if err := connection.FlushWithContext(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	return &observed
 }
 
 func seedLiveEvent(t *testing.T, ctx context.Context, pool *pgxpool.Pool) string {

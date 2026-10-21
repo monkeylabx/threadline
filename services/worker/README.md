@@ -22,9 +22,5 @@ NATS fixture from `deploy/nats`. Then set `THREADLINE_TEST_WORKER_DSN` and
 `go test ./worker/internal/process -count=1 -cover`. The test asserts real delivery
 and no republish after restart. Remove the disposable database after testing.
 
-For real outage/recovery evidence, additionally set `THREADLINE_PG_BIN`,
-`THREADLINE_TEST_NATS_BINARY` (2.10.20), `THREADLINE_TEST_WORKER_BIN` and run
-`python3 services/worker/testdata/outage_probe.py` from the repo root. It requires
-no unrelated pending work, starts its own NATS, proves three failed attempts
-open the circuit while liveness stays 200, then restarts NATS and verifies all
-five rows deliver without restarting Worker. It removes its own child processes.
+The real outage/recovery probe and full-chain receipts are tracked in
+[QA #339](https://github.com/monkeylabx/threadline/issues/339).
