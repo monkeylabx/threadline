@@ -122,12 +122,11 @@ fn configured_host(
         db_key: [9; 32],
     })
     .unwrap();
-    let app = tauri::test::mock_builder()
+    tauri::test::mock_builder()
         .manage(HostState {
             session: Arc::new(Mutex::new(Some(session))),
             waiting: Arc::new(AtomicBool::new(false)),
         })
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
-        .unwrap();
-    app
+        .unwrap()
 }
