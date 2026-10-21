@@ -12,6 +12,9 @@ the same `provision.py` twice before the non-mutating permission probe. No new
 container or unpinned download is needed. Kind mirrors the account configuration;
 a Kind provisioning Job is outside this Slice A Compose task.
 
+Realtime uses `threadline_realtime_dev` with the same public dev-only password.
+It may subscribe only to the exact Event subject and cannot publish any subject.
+
 The Go connection **must** set
 `nats.CustomInboxPrefix("_INBOX.threadline.worker")`. The default random inbox
 is deliberately unauthorized. Startup inspection must use the same authenticated
