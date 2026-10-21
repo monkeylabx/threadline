@@ -16,5 +16,9 @@ threadline-client-core = { path = "../../../crates/client-core" }
 threadline-core-client = { path = "../../../crates/core-client" }
 threadline-locald = { path = "../../../crates/locald" }
 
+[dev-dependencies]
+# Exercise the actual command adapters without an OS window server.
+tauri = { version = "=2.11.5", features = ["test"] }
+
 [lints]
 workspace = true

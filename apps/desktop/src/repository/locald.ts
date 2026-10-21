@@ -76,27 +76,25 @@ export class LocaldRepository implements Repository {
 
   /** Replays pending sends and pulls new history; resolves pending commits. */
   async sync(channelId: string, command = "sync_channel", current = () => true): Promise<SyncReportDto | null> {
-    try {
-      const report = await this.invoke<SyncReportDto>(command, { channelId });
-      if (!current()) return null;
-      this.setConnection(report.online ? "online" : "offline");
-      if (report.committed + report.deduplicated + report.applied > 0) {
-        const messages = await this.invoke<readonly MessageDto[]>("list_messages", { channelId });
-        if (!current()) return null;
-        for (const dto of messages) {
-          const resolve = dto.state === "committed" ? this.commits.get(dto.event_id) : undefined;
-          if (resolve) {
-            resolve(toMessage(dto));
-            this.commits.delete(dto.event_id);
-          }
-        }
-        for (const listener of this.messageListeners) listener(channelId);
-      }
-      return report;
-    } catch (error) {
-      if (current()) this.setConnection(error === "denied" ? "online" : "offline");
+    const result = await hostResult<SyncReportDto>(this.invoke, command, channelId);
+    if (!current()) return null;
+    if (!result.ok) {
+      this.setConnection(result.error === "denied" ? "online" : "offline");
       return null;
     }
+    const report = result.value;
+    this.setConnection(report.online ? "online" : "offline");
+    if (report.committed + report.deduplicated + report.applied > 0) {
+      const messages = await hostResult<readonly MessageDto[]>(this.invoke, "list_messages", channelId);
+      if (!current()) return null;
+      if (!messages.ok) {
+        this.setConnection(messages.error === "denied" ? "online" : "offline");
+        return null;
+      }
+      settleCommits(messages.value, this.commits);
+      for (const listener of this.messageListeners) listener(channelId);
+    }
+    return report;
   }
 
   connectionState(): ConnectionState {
@@ -142,4 +140,23 @@ export function formatClock(unixMs: number | null): string {
   if (unixMs === null) return "";
   const date = new Date(unixMs);
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function settleCommits(messages: readonly MessageDto[], commits: Map<string, (message: Message) => void>): void {
+  for (const dto of messages) {
+    const resolve = dto.state === "committed" ? commits.get(dto.event_id) : undefined;
+    if (resolve) {
+      resolve(toMessage(dto));
+      commits.delete(dto.event_id);
+    }
+  }
+}
+
+/** Only IPC failures are classified; projection/subscriber failures must surface. */
+async function hostResult<T>(invoke: Invoke, command: string, channelId: string): Promise<{ ok: true; value: T } | { ok: false; error: unknown }> {
+  try {
+    return { ok: true, value: await invoke<T>(command, { channelId }) };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }

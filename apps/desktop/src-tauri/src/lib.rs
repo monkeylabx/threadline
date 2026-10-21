@@ -4,6 +4,8 @@
 //! boundary. Without configuration the host still starts and the renderer
 //! stays on fixtures, so the IM is usable while Core is offline.
 
+#[cfg(test)]
+mod bridge_integration_tests;
 mod commands;
 pub mod config;
 pub mod dto;

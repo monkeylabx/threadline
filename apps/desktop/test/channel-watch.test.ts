@@ -91,3 +91,29 @@ test("authorization denial is distinct from a transport outage", async () => {
   expect(repository.connectionState()).toBe("online");
   repository.dispose();
 });
+
+test("healthy notifications with failed Core pulls back off instead of looping", async () => {
+  const timer = clock();
+  let calls = 0;
+  const watch = new ChannelWatch(async () => {
+    calls += 1;
+    return { realtime_woke: true, online: false, applied: 0 };
+  }, { ...timer, realtime: true });
+  watch.select("a");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    timer.run(); await flush();
+    expect([...timer.jobs.values()][0]?.ms).toBe(4000);
+  }
+  expect(calls).toBe(3);
+  watch.dispose();
+});
+
+test("subscriber exceptions surface without rewriting network connectivity", async () => {
+  const invoke: Invoke = async <T>(command: string): Promise<T> => (command === "sync_channel"
+    ? { committed: 0, deduplicated: 0, applied: 1, online: true } : []) as T;
+  const repository = new LocaldRepository(invoke, { pollMs: 0 });
+  repository.onMessagesChange(() => { throw new Error("subscriber bug"); });
+  await expect(repository.sync("a")).rejects.toThrow("subscriber bug");
+  expect(repository.connectionState()).toBe("online");
+  repository.dispose();
+});
