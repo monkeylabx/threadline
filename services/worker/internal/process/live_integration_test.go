@@ -30,19 +30,8 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	if !strings.HasPrefix(pool.Config().ConnConfig.Database, "threadline_worker_process_test_") {
 		t.Fatal("refusing non-disposable database")
 	}
-	tenant := fmt.Sprintf("worker-live-%d", time.Now().UnixNano())
-	seed, err := os.ReadFile("../../testdata/event.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, statement := range strings.Split(string(seed), ";") {
-		if strings.TrimSpace(statement) == "" {
-			continue
-		}
-		if _, err := pool.Exec(ctx, statement, tenant); err != nil {
-			t.Fatal("fixture insert failed:", err)
-		}
-	}
+	tenant := seedLiveEvent(t, ctx, pool)
+
 	connection, err := nats.Connect(broker, nats.UserInfo("threadline_platform_dev", "threadline-worker-dev-only"), nats.CustomInboxPrefix("_INBOX.threadline.platform"))
 	if err != nil {
 		t.Fatal("fixture broker unavailable")
@@ -82,6 +71,24 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	if after.State.Msgs != before.State.Msgs+1 {
 		t.Fatal("expected exactly one real broker message across restart")
 	}
+}
+
+func seedLiveEvent(t *testing.T, ctx context.Context, pool *pgxpool.Pool) string {
+	t.Helper()
+	tenant := fmt.Sprintf("worker-live-%d", time.Now().UnixNano())
+	seed, err := os.ReadFile("../../testdata/event.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range strings.Split(string(seed), ";") {
+		if strings.TrimSpace(statement) == "" {
+			continue
+		}
+		if _, err := pool.Exec(ctx, statement, tenant); err != nil {
+			t.Fatal("fixture insert failed:", err)
+		}
+	}
+	return tenant
 }
 
 func waitDelivered(t *testing.T, ctx context.Context, pool *pgxpool.Pool, tenant string) {
