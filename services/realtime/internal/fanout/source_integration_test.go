@@ -22,16 +22,9 @@ func TestLiveBrokerFanoutAuthorizationAndSubscriptionCleanup(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	reader, err := nats.Connect(address, nats.UserInfo("threadline_realtime_dev", "threadline-worker-dev-only"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer reader.Close()
-	publisher, err := nats.Connect(address, nats.UserInfo("threadline_worker_dev", "threadline-worker-dev-only"), nats.CustomInboxPrefix("_INBOX.threadline.worker"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer publisher.Close()
+	reader := liveConnection(t, address, "threadline_realtime_dev")
+	publisher := liveConnection(t, address, "threadline_worker_dev")
+
 	sequence, started, core := liveCore()
 
 	handler, err := New(core, NATS{Connection: reader})
@@ -46,6 +39,28 @@ func TestLiveBrokerFanoutAuthorizationAndSubscriptionCleanup(t *testing.T) {
 	for index := 0; index < 2; index++ {
 		go receiveOnce(ctx, client, received)
 	}
+	awaitSubscribers(t, ctx, started)
+	sequence.Store(1)
+	publishLiveHint(t, ctx, publisher)
+	assertLiveReceipts(t, ctx, received)
+
+	assertOutsiderDenied(t, ctx, client)
+
+	waitSubscriptionsClosed(t, ctx, reader)
+}
+
+func liveConnection(t *testing.T, address, user string) *nats.Conn {
+	t.Helper()
+	connection, err := nats.Connect(address, nats.UserInfo(user, "threadline-worker-dev-only"), nats.CustomInboxPrefix("_INBOX.threadline.worker"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(connection.Close)
+	return connection
+}
+
+func awaitSubscribers(t *testing.T, ctx context.Context, started <-chan struct{}) {
+	t.Helper()
 	for index := 0; index < 2; index++ {
 		select {
 		case <-started:
@@ -53,7 +68,10 @@ func TestLiveBrokerFanoutAuthorizationAndSubscriptionCleanup(t *testing.T) {
 			t.Fatal("subscribers did not start")
 		}
 	}
-	sequence.Store(1)
+}
+
+func publishLiveHint(t *testing.T, ctx context.Context, publisher *nats.Conn) {
+	t.Helper()
 	js, err := jetstream.New(publisher)
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +80,10 @@ func TestLiveBrokerFanoutAuthorizationAndSubscriptionCleanup(t *testing.T) {
 	if err != nil || ack.Stream != "THREADLINE_DOMAIN_EVENTS_V1" {
 		t.Fatal("real event publish failed")
 	}
+}
+
+func assertLiveReceipts(t *testing.T, ctx context.Context, received <-chan uint64) {
+	t.Helper()
 	for index := 0; index < 2; index++ {
 		select {
 		case seq := <-received:
@@ -72,9 +94,6 @@ func TestLiveBrokerFanoutAuthorizationAndSubscriptionCleanup(t *testing.T) {
 			t.Fatal("fan-out timed out")
 		}
 	}
-	assertOutsiderDenied(t, ctx, client)
-
-	waitSubscriptionsClosed(t, ctx, reader)
 }
 
 func assertOutsiderDenied(t *testing.T, ctx context.Context, client syncv1connect.SyncServiceClient) {
