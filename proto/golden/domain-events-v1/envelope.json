@@ -1,0 +1,10 @@
+{
+  "envelopeVersion": 1,
+  "tenantId": "t",
+  "eventId": "e",
+  "eventType": "channel.message.committed",
+  "schemaVersion": 1,
+  "occurredAt": "2026-10-18T00:00:00Z",
+  "payload": "AP+A",
+  "outboxEntryId": "1"
+}
