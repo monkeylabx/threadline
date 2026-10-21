@@ -12,6 +12,7 @@ import goose_probe_policy as policy
 import goose_probe_rpc as rpc
 from goose_probe_endpoint import completion
 from goose_probe_rpc import Worker
+from goose_probe_strict_cases import StrictProbeTests
 
 
 def route():

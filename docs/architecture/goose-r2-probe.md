@@ -1,11 +1,10 @@
 # R2: pinned Goose on macOS
 
-Issue: [#258](https://github.com/monkeylabx/threadline/issues/258). Evidence date: 2026-10-20.
-This is an opt-in synthetic experiment, not production worker admission.
-
-Host: macOS 26.4, Darwin 25.4.0, arm64. Official Goose 1.52.0, Python 3.9.6,
-Rust 1.97.1. The checked-in [receipt](goose-r2-macos-receipt.json) records this run.
-The [pinned-source audit](goose-r2-source-audit.md) explains configuration and protocol behavior.
+Issue: [#258](https://github.com/monkeylabx/threadline/issues/258). Full rerun: 2026-10-21 after #327.
+This opt-in synthetic experiment does not grant production worker admission.
+Host: macOS 26.4/Darwin 25.4.0 arm64; Goose 1.52.0, Python 3.9.6, Rust 1.97.1.
+Baseline: latest `main` at rerun start, `8245be362c0414fad3a5f28877eb201e60ff3098`, merged into the #258 branch without rewriting delivered commits.
+The [receipt](goose-r2-macos-receipt.json) records this run; the [pinned-source audit](goose-r2-source-audit.md) explains configuration and protocol behavior.
 
 | Check | Observed result |
 | --- | --- |
@@ -15,23 +14,17 @@ The [pinned-source audit](goose-r2-source-audit.md) explains configuration and p
 | Foreground ACP cancel | Child observed live before cancellation, absent afterward; completion marker absent after five seconds. |
 | Background ACP cancel | Child remained live after `cancelled`; completion marker appeared within five seconds. The #210 leak reproduces. |
 | Background owner stop | After `cancelled`, owner killed the retained worker's process group and waited for root exit (`-9`). Known fixture child was absent and its completion marker remained absent after five seconds. |
-| Current strict agentd API | Initialize/session creation succeeded; text turn returned `UnexpectedMessage` on Goose setup updates. Real Goose compatibility remains incomplete. |
+| Strict agentd API | Initialize/session creation succeeded; exact 24-byte `synthetic probe complete` and `end_turn` asserted; zero advertised model tools. |
 
-**Conclusion:** this configuration can omit builtin tools and reject a forced
-unadvertised call. ACP cancellation alone does not clean up background work.
-The owner-stop experiment covers an ordinary inherited process group only.
-It does not establish `SealedAndEmpty`, detached/`setsid` containment, descendant
-reaping, crash cleanup or protection against a hostile worker. PID observations
-are corroboration for known fixtures, never recovery identities or global proof.
-The [containment profile](worker-containment-profile.md) remains unsatisfied on macOS.
+All five scenarios actually ran. Recording the known background leak lets the investigation finish; it is a cleanup failure, not a containment pass.
+Owner stop covers an ordinary inherited process group, without proving `SealedAndEmpty`, detached/`setsid` containment, descendant reaping, crash cleanup or hostile-worker protection.
+PID observations corroborate known fixtures; they are never recovery identities or global proof. The [containment profile](worker-containment-profile.md) remains unsatisfied on macOS.
 No Core terminal result, Connector access, real credential or user document was used.
 
 ## Reproduce
 
-Run from the repository root on macOS arm64, with Cargo and Python 3 available.
-The local port must be unused. No global Goose installation/config change is needed.
-Use an environment that permits creating the nested Seatbelt sandbox; failure aborts
-without an unrestricted fallback. Normal CI does not download or run Goose.
+Run from the repository root on macOS arm64 with Cargo, Python 3 and an unused local port.
+The environment must permit nested Seatbelt sandbox creation; failure aborts without unrestricted fallback. Normal CI does not download or run Goose.
 
 ```sh
 set -eu
@@ -44,33 +37,23 @@ tar -xzf "$probe_artifacts/goose.tar.gz" -C "$probe_artifacts" ./goose
 cat > "$probe_artifacts/routing.json" <<'JSON'
 {"synthetic":true,"endpoint":"http://127.0.0.1:48991","credential":"synthetic-probe-only","model":"threadline-synthetic-fixture"}
 JSON
-cargo build -p threadline-agentd --example goose_probe --locked
+cargo build -p threadline-agentd --example goose_passive_probe --locked
 python3 crates/agentd/test_support/goose_probe.py \
   --binary "$probe_artifacts/goose" --policy "$probe_artifacts/routing.json" \
-  --output "$probe_artifacts/result" --agentd-example target/debug/examples/goose_probe
+  --output "$probe_artifacts/result" --agentd-example target/debug/examples/goose_passive_probe
 ```
 
-Extracted executable SHA-256, checked before launch:
-`b7a38f3ff1e2d48b34b6550f84cf4104f3f7d797429e1231d1255d0501d47702`.
-Measured from the verified official archive; signing/notarization was not assessed.
-
-The routing file supplies endpoint, model and fake credential. The isolated configuration
-and proxy boundary follow the source audit above. The child profile denies default access:
-content reads are limited to system runtime
-paths, the exact binary and its workspace; writes stay in that workspace plus `/dev/null`.
-File metadata, root-directory reads, Mach lookup, process operations and child-only
-signals support bootstrap/cancellation. The exact public SSL config is readable for
-the curl control. These allowances are not an audited production sandbox.
-
-The Rust example exercises the existing agentd ACP API. A separate bounded test-only
-observer records Goose updates for the remaining probes; it rejects permission/tool
-callbacks and adds no product protocol capability. Temporary config, synthetic-only
-Goose logs and the redacted receipt stay under the chosen output directory.
+Extracted executable SHA-256, checked before launch: `b7a38f3ff1e2d48b34b6550f84cf4104f3f7d797429e1231d1255d0501d47702`.
+Measured from the verified official archive; signing/notarization was not assessed. The routing file supplies endpoint, model and fake credential.
+The isolated configuration/proxy boundary follows the source audit. Child content reads are limited to system runtime paths, the exact binary and workspace; writes stay in the workspace plus `/dev/null`.
+Metadata/root-directory reads, Mach lookup, process operations and child-only signals support bootstrap/cancellation; curl may read the exact public SSL config. These allowances are not an audited production sandbox.
+The #327 Rust example fails unless exact text and typed `EndTurn` match. The full runner rejects incorrect/missing evidence, nonzero exit, missing endpoint traffic or advertised tools.
+A separate bounded test-only observer records restricted-tool/cleanup cases, rejects callbacks and adds no product protocol capability. Synthetic logs/config/markers stay under the output directory.
 
 ## Verification and next boundary
 
-Hermetic checks: `python3 -m unittest discover -s crates/agentd/test_support -p test_goose_probe.py -v`.
-Rust: `cargo test -p threadline-agentd --all-targets --locked`, Clippy with `-D warnings`, and formatting.
-The real probe is a separate explicit integration check. Next work must define the
-permitted Goose setup-update contract and implement independently observed macOS
-containment before treating a real worker as a trusted production Run participant.
+Hermetic: `python3 -m unittest discover -s crates/agentd/test_support -p test_goose_probe.py -v` (13 passed).
+Rust: `cargo test -p threadline-agentd --all-targets --locked` (98 passed, including the Python wrapper); Clippy with `-D warnings`, formatting and diff checks passed.
+The real probe is explicitly separate from hermetic CI. Its receipt records strict text, tool restrictions, shell denial, sandbox controls, foreground cancel and ordinary owner stop passing; ACP-only background cleanup fails.
+#327's [bounded passive-update profile](goose-passive-acp-profile.md) resolves the former `UnexpectedMessage` text failure; its narrower allowlist remains in force.
+Next work must prove macOS containment before protected Run admission. These results establish neither Core completion nor #259 business-loop acceptance.

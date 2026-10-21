@@ -82,17 +82,27 @@ def restricted(root, binary, route, endpoint):
         worker.close()
 
 
+def validate_strict_result(result):
+    expected = {"initialized": True, "session_created": True, "text_matches": True,
+                "text_bytes": 24, "stop_reason": "end_turn"}
+    require(result == expected, "agentd strict probe did not prove the expected bounded text")
+
+
 def strict_agentd(root, binary, route, endpoint, example):
     work = root / "strict"
     command = launch(work, binary, route)
     endpoint.command = None
+    endpoint.requests.clear()
     worker = Worker([str(example), str(work)] + command, environment(work, route), work)
     try:
         result = worker.receive(time.monotonic() + 90)
         status = worker.finish()
         worker = None
         require(status == 0, "agentd strict probe process failed")
-        return result
+        validate_strict_result(result)
+        require(endpoint.requests, "strict turn never reached the synthetic endpoint")
+        require(all(not r["tools"] for r in endpoint.requests), "strict turn advertised tools")
+        return dict(result, advertised_tools=[])
     finally:
         if worker is not None:
             worker.close()
