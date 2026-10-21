@@ -34,7 +34,7 @@ class NATSAccountContractTest(unittest.TestCase):
         changed["accounts"]["THREADLINE_WORKER"]["users"].append(
             copy.deepcopy(changed["accounts"]["THREADLINE_WORKER"]["users"][0])
         )
-        with self.assertRaisesRegex(ContractError, "exactly two"):
+        with self.assertRaisesRegex(ContractError, "exactly three"):
             validate_config(changed)
 
     def test_rejects_broader_subscription_permissions(self) -> None:
@@ -62,6 +62,16 @@ class NATSAccountContractTest(unittest.TestCase):
         changed["accounts"]["THREADLINE_WORKER"]["users"][0]["password"] = "secret"
         with self.assertRaisesRegex(ContractError, "bcrypt"):
             validate_config(changed)
+
+    def test_rejects_platform_and_realtime_identity_or_permission_drift(self) -> None:
+        for index in (1, 2):
+            for key, value in (("user", "foreign"), ("password", "foreign"),
+                               ("permissions", {}), ("permissions", {"publish": {"allow": [">"]}})):
+                changed = copy.deepcopy(self.config)
+                changed["accounts"]["THREADLINE_WORKER"]["users"][index][key] = value
+                with self.subTest(index=index, key=key), self.assertRaises(ContractError):
+                    validate_config(changed)
+
 
 
 class NATSDeploymentContractTest(unittest.TestCase):
