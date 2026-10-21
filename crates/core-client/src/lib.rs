@@ -8,6 +8,7 @@
 //! opaque to the transport; the Slice A plaintext codec is `envelope`.
 
 pub mod envelope;
+pub mod realtime;
 mod rpc;
 mod server;
 mod transport;
