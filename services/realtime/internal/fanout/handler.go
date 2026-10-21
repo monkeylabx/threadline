@@ -49,11 +49,7 @@ func (h *Handler) serve(ctx context.Context, request *connect.Request[syncv1.Str
 	if err != nil {
 		return failure(connect.CodeUnavailable, "broker unavailable")
 	}
-	defer func() {
-		if err := release(); err != nil && result == nil {
-			result = failure(connect.CodeUnavailable, "subscription cleanup failed")
-		}
-	}()
+	defer releaseStream(release, &result)
 	poll := time.NewTicker(2 * time.Second)
 	defer poll.Stop()
 	for {
@@ -66,6 +62,12 @@ func (h *Handler) serve(ctx context.Context, request *connect.Request[syncv1.Str
 		case <-signals:
 		case <-poll.C:
 		}
+	}
+}
+
+func releaseStream(release func() error, result *error) {
+	if err := release(); err != nil && *result == nil {
+		*result = failure(connect.CodeUnavailable, "subscription cleanup failed")
 	}
 }
 

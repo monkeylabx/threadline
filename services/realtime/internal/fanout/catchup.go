@@ -16,28 +16,40 @@ func (h *Handler) catchUp(ctx context.Context, credential string, cursor *syncv1
 		if err != nil {
 			return failure(connect.CodeOf(err), "Core sync unavailable")
 		}
-		if response == nil || response.Msg == nil {
-			return failure(connect.CodeUnavailable, "Core sync unavailable")
+		batch, err := coreBatch(response, cursor)
+		if err != nil {
+			return err
 		}
-		if len(response.Msg.GetCursorRejections()) > 0 {
-			return failure(connect.CodePermissionDenied, "cursor unavailable")
-		}
-		batches := response.Msg.GetBatches()
-		if len(batches) == 0 {
+		if batch == nil {
 			return nil
 		}
-		if len(batches) != 1 || !validBatch(batches[0], cursor) {
-			return failure(connect.CodeDataLoss, "invalid Core batch")
-		}
-		if err := send(&syncv1.StreamEventsResponse{Batch: batches[0]}); err != nil {
+
+		if err := send(&syncv1.StreamEventsResponse{Batch: batch}); err != nil {
 			return failure(connect.CodeCanceled, "stream delivery ended")
 		}
-		cursor.LastAppliedSeq = batches[0].GetNextSeq()
-		if !batches[0].GetHasMore() {
+		cursor.LastAppliedSeq = batch.GetNextSeq()
+		if !batch.GetHasMore() {
 			return nil
 		}
 	}
 	return failure(connect.CodeResourceExhausted, "catch-up limit; reconnect with applied cursor")
+}
+
+func coreBatch(response *connect.Response[syncv1.SyncEventsResponse], cursor *syncv1.SyncCursor) (*syncv1.EventBatch, error) {
+	if response == nil || response.Msg == nil {
+		return nil, failure(connect.CodeUnavailable, "Core sync unavailable")
+	}
+	if len(response.Msg.GetCursorRejections()) > 0 {
+		return nil, failure(connect.CodePermissionDenied, "cursor unavailable")
+	}
+	batches := response.Msg.GetBatches()
+	if len(batches) == 0 {
+		return nil, nil
+	}
+	if len(batches) != 1 || !validBatch(batches[0], cursor) {
+		return nil, failure(connect.CodeDataLoss, "invalid Core batch")
+	}
+	return batches[0], nil
 }
 
 func validBatch(batch *syncv1.EventBatch, cursor *syncv1.SyncCursor) bool {
