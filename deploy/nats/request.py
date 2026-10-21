@@ -28,23 +28,33 @@ def response(client: NATSClient, inbox: str) -> dict:
         line = client._read_line()
         if line.startswith((b"+OK", b"INFO ", b"PONG")):
             continue
-        parts = line.split()
-        if len(parts) != 4 or parts[:3] != [b"MSG", inbox.encode(), b"1"]:
-            raise ProbeError("invalid platform reply")
-        try:
-            size = int(parts[3])
-        except ValueError as error:
-            raise ProbeError("invalid platform size") from error
-        if size < 0 or size > MAX_PAYLOAD:
-            raise ProbeError("invalid platform size")
-        payload = client.reader.read(size)
-        if len(payload) != size or client.reader.read(2) != b"\r\n":
-            raise ProbeError("truncated platform reply")
-        try:
-            value = json.loads(payload)
-        except (ValueError, UnicodeError) as error:
-            raise ProbeError("invalid platform JSON") from error
-        if not isinstance(value, dict):
-            raise ProbeError("invalid platform object")
-        return value
+        size = reply_size(line, inbox)
+        return reply_object(client, size)
+
     raise ProbeError("platform reply budget exceeded")
+
+
+def reply_size(line: bytes, inbox: str) -> int:
+    parts = line.split()
+    if len(parts) != 4 or parts[:3] != [b"MSG", inbox.encode(), b"1"]:
+        raise ProbeError("invalid platform reply")
+    try:
+        size = int(parts[3])
+    except ValueError as error:
+        raise ProbeError("invalid platform size") from error
+    if size < 0 or size > MAX_PAYLOAD:
+        raise ProbeError("invalid platform size")
+    return size
+
+
+def reply_object(client: NATSClient, size: int) -> dict:
+    payload = client.reader.read(size)
+    if len(payload) != size or client.reader.read(2) != b"\r\n":
+        raise ProbeError("truncated platform reply")
+    try:
+        value = json.loads(payload)
+    except (ValueError, UnicodeError) as error:
+        raise ProbeError("invalid platform JSON") from error
+    if not isinstance(value, dict):
+        raise ProbeError("invalid platform object")
+    return value

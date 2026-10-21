@@ -26,13 +26,26 @@ func LoadConfig(get func(string) string) (Config, error) {
 	if _, _, err := net.SplitHostPort(c.address); err != nil {
 		return Config{}, errors.New("invalid worker listen address")
 	}
-	u, err := url.Parse(c.broker)
-	if err != nil || u.Scheme != "nats" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+	if !validBrokerAddress(c.broker) {
 		return Config{}, errors.New("invalid worker broker address")
 	}
-	if c.dsn == "" || c.user == "" || c.password == "" || c.policyFile == "" ||
-		c.owner == "" || len(c.owner) > 128 || strings.TrimSpace(c.owner) != c.owner {
+	if !completeConfig(c) {
 		return Config{}, errors.New("incomplete worker configuration")
 	}
+
 	return c, nil
+}
+
+func validBrokerAddress(value string) bool {
+	u, err := url.Parse(value)
+	return err == nil && u.Scheme == "nats" && u.Host != "" && u.User == nil && u.RawQuery == "" && u.Fragment == ""
+}
+
+func completeConfig(c Config) bool {
+	for _, value := range []string{c.dsn, c.user, c.password, c.policyFile, c.owner} {
+		if value == "" {
+			return false
+		}
+	}
+	return len(c.owner) <= 128 && strings.TrimSpace(c.owner) == c.owner
 }

@@ -96,12 +96,20 @@ func validHintField(number protowire.Number, kind protowire.Type, wire []byte) b
 	}
 	switch number {
 	case 6:
-		var stamp timestamppb.Timestamp
-		return len(value) <= 64 && proto.Unmarshal(value, &stamp) == nil && stamp.CheckValid() == nil
+		return validHintTimestamp(value)
 	case 7:
 		return len(value) <= 262144
 	default:
-		text := string(value)
-		return text != "" && utf8.Valid(value) && strings.TrimSpace(text) == text && !strings.ContainsFunc(text, unicode.IsControl)
+		return validHintIdentity(value)
 	}
+}
+
+func validHintTimestamp(value []byte) bool {
+	var stamp timestamppb.Timestamp
+	return len(value) <= 64 && proto.Unmarshal(value, &stamp) == nil && stamp.CheckValid() == nil
+}
+
+func validHintIdentity(value []byte) bool {
+	text := string(value)
+	return text != "" && utf8.Valid(value) && strings.TrimSpace(text) == text && !strings.ContainsFunc(text, unicode.IsControl)
 }
