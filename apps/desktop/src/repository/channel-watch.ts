@@ -16,7 +16,7 @@ export class ChannelWatch {
   private readonly clearTimer: NonNullable<WatchOptions["clearTimer"]>;
 
   constructor(
-    private readonly update: (channel: string, current: () => boolean) => Promise<{ readonly realtime_woke?: boolean } | null>,
+    private readonly update: (channel: string, current: () => boolean) => Promise<{ readonly realtime_woke?: boolean; readonly online?: boolean; readonly applied?: number } | null>,
     private readonly options: WatchOptions,
   ) {
     this.delay = options.pollMs ?? 4000;
@@ -50,7 +50,7 @@ export class ChannelWatch {
     this.running = true;
     try {
       const report = await this.update(channel, () => this.generation === generation);
-      if (this.channel !== null) this.schedule(report?.realtime_woke ? 0 : this.delay);
+      if (this.channel !== null) this.schedule(report?.realtime_woke && report.online && (report.applied ?? 0) > 0 ? 0 : this.delay);
     } finally {
       this.running = false;
     }
