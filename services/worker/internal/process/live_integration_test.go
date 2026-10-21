@@ -1,16 +1,17 @@
 package process
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 )
 
 // This test requires an explicitly disposable migrated database and the #329
@@ -30,36 +31,10 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	if !strings.HasPrefix(pool.Config().ConnConfig.Database, "threadline_worker_process_test_") {
 		t.Fatal("refusing non-disposable database")
 	}
-	tenant := fmt.Sprintf("worker-live-%d", time.Now().UnixNano())
-	seed, err := os.ReadFile("../../testdata/event.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, statement := range strings.Split(string(seed), ";") {
-		if strings.TrimSpace(statement) == "" {
-			continue
-		}
-		if _, err := pool.Exec(ctx, statement, tenant); err != nil {
-			t.Fatal("fixture insert failed:", err)
-		}
-	}
-	connection, err := nats.Connect(broker, nats.UserInfo("threadline_platform_dev", "threadline-worker-dev-only"), nats.CustomInboxPrefix("_INBOX.threadline.platform"))
-	if err != nil {
-		t.Fatal("fixture broker unavailable")
-	}
-	defer connection.Close()
-	js, err := jetstream.New(connection)
-	if err != nil {
-		t.Fatal(err)
-	}
-	stream, err := js.Stream(ctx, mapping.Stream)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := stream.Info(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	tenant := seedLiveEvent(t, ctx, pool)
+
+	observed := observeLiveEvent(t, ctx, broker, tenant)
+
 	config := Config{address: "127.0.0.1:0", dsn: dsn, broker: broker, user: "threadline_worker_dev", password: "threadline-worker-dev-only", owner: tenant, policyFile: "../../../../deploy/compose/outbox-policy.json"}
 	for pass := 0; pass < 2; pass++ {
 		runCtx, stop := context.WithCancel(ctx)
@@ -75,13 +50,66 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	after, err := stream.Info(ctx)
+	if observed.Load() != 1 {
+		t.Fatal("expected exactly one publication of this test Event across restart")
+	}
+	assertOneAttempt(t, ctx, pool, tenant)
+
+}
+
+func assertOneAttempt(t *testing.T, ctx context.Context, pool *pgxpool.Pool, tenant string) {
+	t.Helper()
+	var attempts int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM domain.outbox_delivery_attempts WHERE tenant_id=$1", tenant).Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatal("acknowledged Event was reclaimed")
+	}
+
+}
+
+func observeLiveEvent(t *testing.T, ctx context.Context, broker, tenant string) *atomic.Int32 {
+	t.Helper()
+	connection, err := nats.Connect(broker, nats.UserInfo("threadline_realtime_dev", "threadline-worker-dev-only"))
+	if err != nil {
+		t.Fatal("fixture observer unavailable")
+	}
+	t.Cleanup(connection.Close)
+	var observed atomic.Int32
+	subscription, err := connection.Subscribe(mapping.Subject, func(message *nats.Msg) {
+		if bytes.Contains(message.Data, []byte(tenant)) {
+			observed.Add(1)
+		}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.State.Msgs != before.State.Msgs+1 {
-		t.Fatal("expected exactly one real broker message across restart")
+	t.Cleanup(func() {
+		if err := subscription.Unsubscribe(); err != nil {
+			t.Error("observer cleanup failed")
+		}
+	})
+	if err := connection.FlushWithContext(ctx); err != nil {
+		t.Fatal(err)
 	}
+
+	return &observed
+}
+
+func seedLiveEvent(t *testing.T, ctx context.Context, pool *pgxpool.Pool) string {
+	t.Helper()
+	tenant := fmt.Sprintf("worker-live-%d", time.Now().UnixNano())
+	seed, err := os.ReadFile("../../testdata/event.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range strings.Split(string(seed), ";") {
+		if strings.TrimSpace(statement) == "" {
+			continue
+		}
+		if _, err := pool.Exec(ctx, statement, tenant); err != nil {
+			t.Fatal("fixture insert failed:", err)
+		}
+	}
+	return tenant
 }
 
 func waitDelivered(t *testing.T, ctx context.Context, pool *pgxpool.Pool, tenant string) {

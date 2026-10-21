@@ -21,3 +21,6 @@ NATS fixture from `deploy/nats`. Then set `THREADLINE_TEST_WORKER_DSN` and
 `THREADLINE_TEST_WORKER_NATS_URL` and run
 `go test ./worker/internal/process -count=1 -cover`. The test asserts real delivery
 and no republish after restart. Remove the disposable database after testing.
+
+The real outage/recovery probe and full-chain receipts are tracked in
+[QA #339](https://github.com/monkeylabx/threadline/issues/339).
