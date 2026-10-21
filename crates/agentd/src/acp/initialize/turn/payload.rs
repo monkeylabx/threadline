@@ -4,6 +4,7 @@ use std::time::Duration;
 
 const PROMPT_ID: i64 = 3;
 const MAX_TEXT_BYTES: usize = 65_536;
+const MAX_TURN_BYTES: usize = 131_072;
 pub(super) const MAX_UPDATES: usize = 64;
 
 pub(super) fn request(
@@ -28,6 +29,7 @@ pub(super) struct TextTurn<'a> {
     session: &'a str,
     text: String,
     updates: usize,
+    bytes: usize,
 }
 
 impl<'a> TextTurn<'a> {
@@ -36,13 +38,27 @@ impl<'a> TextTurn<'a> {
             session,
             text: String::new(),
             updates: 0,
+            bytes: 0,
         }
     }
 
-    pub(super) fn accept(&mut self, message: &Value) -> Result<Option<TurnResult>, TurnError> {
+    pub(super) fn accept(&mut self, frame: &RpcMessage) -> Result<Option<TurnResult>, TurnError> {
+        self.bytes += frame.frame_bytes();
+        if self.bytes > MAX_TURN_BYTES {
+            return Err(TurnError::LimitExceeded);
+        }
+        let message = frame.value();
         if message.get("method").is_some() {
-            let text = chunk(message, self.session)?;
-            self.append(text)?;
+            let update = update(message, self.session)?;
+            if self.updates >= MAX_UPDATES {
+                return Err(TurnError::LimitExceeded);
+            }
+            self.updates += 1;
+            if update.get("sessionUpdate").and_then(Value::as_str) == Some("agent_message_chunk") {
+                self.append(chunk(update)?)?;
+            } else {
+                super::passive::validate(update, frame.frame_bytes())?;
+            }
             return Ok(None);
         }
         let stop_reason = finish(message)?;
@@ -53,19 +69,15 @@ impl<'a> TextTurn<'a> {
     }
 
     fn append(&mut self, text: &str) -> Result<(), TurnError> {
-        if text.len() > 8192
-            || self.text.len() + text.len() > MAX_TEXT_BYTES
-            || self.updates >= MAX_UPDATES
-        {
+        if text.len() > 8192 || self.text.len() + text.len() > MAX_TEXT_BYTES {
             return Err(TurnError::LimitExceeded);
         }
-        self.updates += 1;
         self.text.push_str(text);
         Ok(())
     }
 }
 
-fn chunk<'a>(message: &'a Value, session: &str) -> Result<&'a str, TurnError> {
+fn update<'a>(message: &'a Value, session: &str) -> Result<&'a Value, TurnError> {
     if message.get("method").and_then(Value::as_str) != Some("session/update")
         || message.get("id").is_some()
     {
@@ -78,13 +90,14 @@ fn chunk<'a>(message: &'a Value, session: &str) -> Result<&'a str, TurnError> {
     if params.get("sessionId").and_then(Value::as_str) != Some(session) {
         return Err(TurnError::UnexpectedMessage);
     }
-    let update = params
+    params
         .get("update")
         .and_then(Value::as_object)
         .ok_or(TurnError::MalformedPayload)?;
-    if update.get("sessionUpdate").and_then(Value::as_str) != Some("agent_message_chunk") {
-        return Err(TurnError::UnexpectedMessage);
-    }
+    Ok(&params["update"])
+}
+
+fn chunk(update: &Value) -> Result<&str, TurnError> {
     let content = update
         .get("content")
         .and_then(Value::as_object)
