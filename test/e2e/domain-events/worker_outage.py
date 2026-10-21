@@ -8,8 +8,8 @@ NATS=os.environ.get('THREADLINE_TEST_NATS_BINARY','')
 WORKER=os.environ.get('THREADLINE_TEST_WORKER_BIN','')
 
 def sql(statement):
-    try:return subprocess.check_output([PSQL,'-XAt',DSN,'-v','ON_ERROR_STOP=1','-c',statement],text=True,stderr=subprocess.PIPE).strip()
-    except (OSError,subprocess.CalledProcessError):raise RuntimeError('fixture database operation failed') from None
+    try:return subprocess.check_output([PSQL,'-XAt',DSN,'-v','ON_ERROR_STOP=1','-c',statement],text=True,stderr=subprocess.PIPE,timeout=5).strip()
+    except (OSError,subprocess.SubprocessError):raise RuntimeError('fixture database operation failed') from None
 
 def port():
     with socket.socket() as listener:
@@ -36,7 +36,10 @@ def connected(number):
 def stop(process):
     if process.poll() is None:
         process.terminate()
-        process.wait(timeout=10)
+        try:process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
 
 def start(stack,command,env,log):
     process=subprocess.Popen(command,env=env,stdout=log,stderr=log)
@@ -44,7 +47,7 @@ def start(stack,command,env,log):
     return process
 
 def prepare(directory,stack):
-    if subprocess.check_output([NATS,'--version'],text=True).strip()!='nats-server: v2.10.20':
+    if subprocess.check_output([NATS,'--version'],text=True,timeout=5).strip()!='nats-server: v2.10.20':
         raise ValueError('pinned NATS 2.10.20 required')
     source=pathlib.Path(os.environ.get('THREADLINE_TEST_NATS_CONFIG',str(ROOT/'deploy/nats/nats-server.conf')))
     config=json.loads(source.read_text())
@@ -57,7 +60,7 @@ def prepare(directory,stack):
     command=[NATS,'-c',str(config_file)]
     broker=start(stack,command,None,log)
     wait(lambda:connected(broker_port),5)
-    subprocess.run([os.sys.executable,str(ROOT/'deploy/nats/provision.py'),'--port',str(broker_port)],check=True,stdout=log)
+    subprocess.run([os.sys.executable,str(ROOT/'deploy/nats/provision.py'),'--port',str(broker_port)],check=True,stdout=log,timeout=15)
     env={**os.environ,'THREADLINE_WORKER_POSTGRES_DSN':DSN,'THREADLINE_WORKER_NATS_URL':f'nats://127.0.0.1:{broker_port}',
          'THREADLINE_NATS_WORKER_USER':'threadline_worker_dev','THREADLINE_NATS_WORKER_PASSWORD':'threadline-worker-dev-only',
          'THREADLINE_OUTBOX_POLICY_FILE':str(ROOT/'deploy/compose/outbox-policy.json'),

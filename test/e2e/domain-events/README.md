@@ -30,3 +30,8 @@ Outage asserts three attempts then stopped claims with liveness 200/readiness
 asserts two authorized stream clients, exact Send retry deduplication, an
 authenticated nonmember denial, cursor-1 reconnect receiving only seq-2, and
 two durable delivered Events. Output is bounded receipts, never payloads/tokens.
+
+Hermetic timeout/redaction/cleanup regressions:
+`python3 -m unittest discover -s test/e2e/domain-events -p 'test_*.py'`.
+SQL/version subprocesses have 5-second deadlines; provisioning has 15 seconds.
+Cleanup escalates terminate → 10-second wait → kill → 5-second reap.
