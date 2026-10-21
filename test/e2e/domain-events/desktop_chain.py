@@ -55,12 +55,17 @@ def exercise(directory,stack):
     print('PASS Desktop two-way push: A-to-B and B-to-A wake through Realtime; message equality verified',flush=True)
     environment=Environment(directory,stack,broker,backend)
     second=reopened_receiver(environment,first,second)
+    baseline=real_chain.subscriptions(ports[2])
+    second.write('wait')
+    fixture.wait(lambda:real_chain.subscriptions(ports[2])>baseline,10)
     backend.realtime.stop()
+    assert second.read()=='SYNC 0 true false'
+    assert second.command('state')=='STATE 3 0 3'
     assert first.command('send during-gateway-outage')=='QUEUED'
     assert first.command('sync').startswith('SYNC 1 true')
     backend.realtime.restart()
     assert second.command('wait')=='SYNC 1 true true'
-    print('PASS Desktop gateway disconnect: resumed local cursor3 at seq4',flush=True)
+    print('PASS Desktop interrupted stream: Core stays usable; cursor3 preserved; reconnect resumes seq4',flush=True)
     first=offline_restart(environment,first,second)
     push(second,first,'after-recovery',ports[2])
     assert first.command('state')==second.command('state')=='STATE 6 0 6'

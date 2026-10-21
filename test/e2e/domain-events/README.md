@@ -49,7 +49,7 @@ python3 test/e2e/domain-events/desktop_chain.py
 Use a fresh migrated/seeded disposable database. Two independently keyed Device
 stores exchange messages through actual Desktop Session/Core/Worker/NATS/Realtime.
 The receipts prove real StreamEvents wakes in both directions, receiver restart
-from cursor2, Gateway restart at cursor3, offline pending persistence across
+from cursor2, interrupted receiver stream while Core stays usable, Gateway restart at cursor3, offline pending persistence across
 sender restart, one delivery after recovery, and matching contiguous1..6 histories.
 No4s polling driver is used by the process scenario. All child receipts have
 35s deadlines/256-byte bounds and cooperative shutdown followed by bounded kill.
