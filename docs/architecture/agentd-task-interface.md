@@ -43,13 +43,13 @@ UI disconnection cancels pending UI approval interactions but does not imply wor
 
 ## Bounded successors and evidence
 
-Each row is a separate task of at most two agent days. OS-specific production containment/signing follow separately; root manifests/lockfiles remain Integration-owned. No implementation scenario below has run.
+Each row is a separate task of at most two agent days. OS-specific production containment/signing follow separately; root manifests/lockfiles remain Integration-owned. These planned tasks do not certify the production scenarios below; bounded R2 evidence is linked separately.
 
 | Task | Owner and output | Acceptance |
 | --- | --- | --- |
 | C1 Local Run interface and fixtures | Contracts: reuse Task/Run/Approval types; specify trusted bootstrap/window binding, minimal local commands/activity, errors, bounds, idempotency, sequencing and cancellation convergence. | Reviewed contract and independent fixtures; no new ACP server or parallel business state machine. **NOT RUN** |
 | R1 Rust supervisor with fake worker | Runtime: implement the admitted local interface and one internal ACP Client in `crates/agentd/`; use trusted binding fixtures and a fake engine, without credentials or user files. | Planned `cargo test -p threadline-agentd --locked` plus independent local-interface/stdio scenarios created with the task. Requires C1 and separate workspace integration. **NOT RUN** |
-| R2 Pinned Goose probe | Runtime: substitute the pinned Goose process with a synthetic model endpoint on one specified Desktop OS; enforce restrictive tools and verify descendant cleanup. | Binary hash, launch/sandbox policy, scoped storage and reproducible probe; remaining OS evidence follows separately. Requires R1 and reviewed containment inputs. **NOT RUN** |
+| R2 Pinned Goose probe | Runtime: substitute the pinned Goose process with a synthetic model endpoint on one specified Desktop OS; enforce restrictive tools and verify descendant cleanup. | [macOS probe and receipt](goose-r2-probe.md): restricted tools verified; ACP background leak reproduced; ordinary owner-group stop observed. Bounded strict ACP text interoperability verified after #327; sealed containment remains incomplete. |
 | D1 Desktop task bridge | Desktop: render the same Run input/activity/approval/cancellation fixtures through typed, window-scoped commands. No ACP parser or engine API in the UI. | Exact bridge test command defined before claim; multi-window, denial, reconnect and IM isolation cases. Requires C1/R1. **NOT RUN** |
 
 | Scenario | Required result | Evidence |
