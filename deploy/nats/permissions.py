@@ -8,3 +8,9 @@ PROVISION_USER = "threadline_platform_dev"
 PROVISION_PASSWORD = "threadline-worker-dev-only"  # Public dev fixture only.
 PROVISION_INBOX = "_INBOX.threadline.platform.>"
 PROVISION_PUBLISH = [f"$JS.API.STREAM.CREATE.{STREAM}", f"$JS.API.STREAM.INFO.{STREAM}"]
+
+REALTIME_USER = "threadline_realtime_dev"
+REALTIME_PERMISSIONS = {
+    "publish": {"deny": [">"]},
+    "subscribe": {"allow": [SUBJECT], "deny": ["$SYS.>"]},
+}
