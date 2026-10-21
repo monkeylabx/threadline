@@ -1,0 +1,15 @@
+{
+  "os": "macOS-26.4-arm64-arm-64bit",
+  "binary_sha256": "b7a38f3ff1e2d48b34b6550f84cf4104f3f7d797429e1231d1255d0501d47702",
+  "strict_agentd": {
+    "initialized": true,
+    "session_created": true,
+    "stop_reason": "end_turn",
+    "text_bytes": 24,
+    "text_matches": true
+  },
+  "advertised_tools": [],
+  "production_admitted": false,
+  "containment": "NOT PROVEN",
+  "probe_support_commit": "a81e835"
+}

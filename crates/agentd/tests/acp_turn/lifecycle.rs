@@ -44,7 +44,15 @@ fn cancellation_after_accepted_text_discards_the_partial_turn() {
         };
         use threadline_agentd::acp::{stdio, Initialization};
         let exhausted = Arc::new(AtomicBool::new(false));
-        let bytes = format!("{READY}{}", stream(&[chunk("private-partial")])).into_bytes();
+        let bytes = format!(
+            "{READY}{}",
+            stream(&[
+                super::passive::usage(),
+                chunk("private-partial"),
+                super::passive::info(serde_json::Value::Null)
+            ])
+        )
+        .into_bytes();
         let input = PendingAfter {
             bytes,
             position: 0,
@@ -105,7 +113,7 @@ fn total_deadline_includes_send_and_all_updates() {
                 .expect("prompt");
             assert_wire(&peer.wire, "a");
             peer.input
-                .write_all(stream(&[chunk("partial")]).as_bytes())
+                .write_all(stream(&[chunk("partial"), super::passive::usage()]).as_bytes())
                 .await
                 .expect("update");
             tokio::time::sleep(Duration::from_secs(6)).await;
