@@ -88,7 +88,8 @@ def main():
         raise ValueError('explicit disposable database required')
     if not all((fixture.NATS,fixture.WORKER,os.environ.get('THREADLINE_PG_BIN'),os.environ.get('THREADLINE_TEST_CORE_BIN'),os.environ.get('THREADLINE_TEST_REALTIME_BIN'))):
         raise ValueError('explicit test binaries required')
-    if not fixture.sql('SHOW server_version').startswith('16.4'):
+    version=fixture.sql('SHOW server_version')
+    if version!='16.4' and not version.startswith('16.4.'):
         raise ValueError('pinned PostgreSQL 16.4 required')
     if fixture.sql("SELECT count(*) FROM domain.domain_events WHERE tenant_id='tenant-dev'")!='0':
         raise ValueError('fresh Slice A seeded fixture required')

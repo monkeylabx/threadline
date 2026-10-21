@@ -44,7 +44,7 @@ def start(stack,command,env,log):
     return process
 
 def prepare(directory,stack):
-    if 'v2.10.20' not in subprocess.check_output([NATS,'--version'],text=True):
+    if subprocess.check_output([NATS,'--version'],text=True).strip()!='nats-server: v2.10.20':
         raise ValueError('pinned NATS 2.10.20 required')
     source=pathlib.Path(os.environ.get('THREADLINE_TEST_NATS_CONFIG',str(ROOT/'deploy/nats/nats-server.conf')))
     config=json.loads(source.read_text())
@@ -91,7 +91,8 @@ def main():
         raise ValueError('explicit disposable Worker database required')
     if not NATS or not WORKER or not os.environ.get('THREADLINE_PG_BIN'):
         raise ValueError('explicit test binaries required')
-    if not sql('SHOW server_version').startswith('16.4'):
+    version=sql('SHOW server_version')
+    if version!='16.4' and not version.startswith('16.4.'):
         raise ValueError('pinned PostgreSQL 16.4 required')
     if sql("SELECT count(*) FROM domain.transactional_outbox WHERE delivery_state!='delivered'")!='0':
         raise ValueError('fixture has unrelated pending work; use a fresh database')
