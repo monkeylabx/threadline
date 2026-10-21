@@ -57,3 +57,41 @@ func TestHintAcceptsOnlyRegisteredBoundedEnvelope(t *testing.T) {
 		}
 	}
 }
+
+func TestHintRejectsWrongWireTypesAndAcceptsOpaqueLimit(t *testing.T) {
+	for _, tag := range []protowire.Number{1, 2} {
+		fields := hintFields()
+		delete(fields, tag)
+		var wrong []byte
+		if tag == 1 {
+			wrong = []byte{10, 1, 1}
+		} else {
+			wrong = []byte{16, 1}
+		}
+		if messageHint(append(wrong, hintBytes(fields)...)) {
+			t.Fatal("wrong field wire type accepted")
+		}
+	}
+	for _, size := range []int{0, 262144} {
+		fields := hintFields()
+		fields[7] = protowire.AppendBytes(nil, make([]byte, size))
+		if !messageHint(hintBytes(fields)) {
+			t.Fatal("valid opaque payload rejected")
+		}
+	}
+	fields := hintFields()
+	fields[8] = protowire.AppendVarint(nil, uint64(1)<<63)
+	if messageHint(hintBytes(fields)) {
+		t.Fatal("diagnostic int64 overflow accepted")
+	}
+	fields = hintFields()
+	fields[6] = protowire.AppendBytes(nil, make([]byte, 65))
+	if messageHint(hintBytes(fields)) {
+		t.Fatal("oversized Timestamp accepted")
+	}
+	fields = hintFields()
+	fields[6] = protowire.AppendBytes(nil, protowire.AppendVarint([]byte{8}, uint64(1)<<62))
+	if messageHint(hintBytes(fields)) {
+		t.Fatal("out-of-range Timestamp accepted")
+	}
+}
