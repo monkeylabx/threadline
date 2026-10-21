@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// Cross-workload domain Event transport; never an authorization credential.
+package threadline.outbox.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// DomainEventEnvelope carries immutable facts from the transactional Outbox.
+// Payload interpretation belongs to the registered event_type/schema_version.
+// Consumers deduplicate by (tenant_id, event_id), not by outbox_entry_id.
+message DomainEventEnvelope {
+  // Required; exactly 1 for this transport version. Zero is invalid.
+  uint32 envelope_version = 1;
+  string tenant_id = 2;
+  string event_id = 3;
+  string event_type = 4;
+  // Required positive registered Event schema version, independent of transport.
+  uint32 schema_version = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+  // Opaque bytes copied unchanged, including an empty payload when registered.
+  bytes payload = 7;
+  // Positive database Entry identity for diagnostics only; never dedup authority.
+  int64 outbox_entry_id = 8;
+
+  // Synthetic unknown-field compatibility canary; never a product field.
+  reserved 50000;
+}

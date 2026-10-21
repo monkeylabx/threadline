@@ -306,6 +306,7 @@ for (const testPath of [
   join(protoRoot, "tools", "export-codegen-install.test.mjs"),
   join(protoRoot, "tools", "create-codegen-bundle-spec.test.mjs"),
   join(protoRoot, "tools", "codegen-bootstrap.test.mjs"),
+  join(protoRoot, "tools", "verify-domain-event-contract.mjs"),
   goldenTestPath, messageSyncTestPath, authorizationContractTestPath, capabilityGrantContractTestPath,
   auditRetentionContractTestPath, cryptoContractTestPath, localAgentContractTestPath, cryptoSemanticFixtureTestPath,
 ]) {
