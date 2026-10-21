@@ -1,16 +1,17 @@
 package process
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 )
 
 // This test requires an explicitly disposable migrated database and the #329
@@ -32,23 +33,29 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 	}
 	tenant := seedLiveEvent(t, ctx, pool)
 
-	connection, err := nats.Connect(broker, nats.UserInfo("threadline_platform_dev", "threadline-worker-dev-only"), nats.CustomInboxPrefix("_INBOX.threadline.platform"))
+	connection, err := nats.Connect(broker, nats.UserInfo("threadline_realtime_dev", "threadline-worker-dev-only"))
 	if err != nil {
-		t.Fatal("fixture broker unavailable")
+		t.Fatal("fixture observer unavailable")
 	}
 	defer connection.Close()
-	js, err := jetstream.New(connection)
+	var observed atomic.Int32
+	subscription, err := connection.Subscribe(mapping.Subject, func(message *nats.Msg) {
+		if bytes.Contains(message.Data, []byte(tenant)) {
+			observed.Add(1)
+		}
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := js.Stream(ctx, mapping.Stream)
-	if err != nil {
+	defer func() {
+		if err := subscription.Unsubscribe(); err != nil {
+			t.Error("observer cleanup failed")
+		}
+	}()
+	if err := connection.FlushWithContext(ctx); err != nil {
 		t.Fatal(err)
 	}
-	before, err := stream.Info(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+
 	config := Config{address: "127.0.0.1:0", dsn: dsn, broker: broker, user: "threadline_worker_dev", password: "threadline-worker-dev-only", owner: tenant, policyFile: "../../../../deploy/compose/outbox-policy.json"}
 	for pass := 0; pass < 2; pass++ {
 		runCtx, stop := context.WithCancel(ctx)
@@ -64,13 +71,14 @@ func TestLiveProcessPublishesOnceAcrossRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	after, err := stream.Info(ctx)
-	if err != nil {
-		t.Fatal(err)
+	if observed.Load() != 1 {
+		t.Fatal("expected exactly one publication of this test Event across restart")
 	}
-	if after.State.Msgs != before.State.Msgs+1 {
-		t.Fatal("expected exactly one real broker message across restart")
+	var attempts int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM domain.outbox_delivery_attempts WHERE tenant_id=$1", tenant).Scan(&attempts); err != nil || attempts != 1 {
+		t.Fatal("acknowledged Event was reclaimed")
 	}
+
 }
 
 func seedLiveEvent(t *testing.T, ctx context.Context, pool *pgxpool.Pool) string {
