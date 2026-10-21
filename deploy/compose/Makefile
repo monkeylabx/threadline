@@ -107,6 +107,7 @@ load-images: check
 
 up: check-images config verify-nats-config
 	@$(COMPOSE) $(ARGS) up --detach --wait --pull never
+	@python3 "$(CURDIR)/../nats/provision.py" --port "$${THREADLINE_DEV_NATS_PORT:-4222}"
 	@$(MAKE) verify-nats-worker
 
 down: check-tools

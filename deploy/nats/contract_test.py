@@ -34,7 +34,7 @@ class NATSAccountContractTest(unittest.TestCase):
         changed["accounts"]["THREADLINE_WORKER"]["users"].append(
             copy.deepcopy(changed["accounts"]["THREADLINE_WORKER"]["users"][0])
         )
-        with self.assertRaisesRegex(ContractError, "exactly one"):
+        with self.assertRaisesRegex(ContractError, "exactly two"):
             validate_config(changed)
 
     def test_rejects_broader_subscription_permissions(self) -> None:

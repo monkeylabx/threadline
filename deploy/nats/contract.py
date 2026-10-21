@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Iterable, List, Tuple
 
 
+from permissions import WORKER_PUBLISH, PROVISION_USER, PROVISION_INBOX, PROVISION_PUBLISH
+
 SYSTEM_ACCOUNT = "SYS"
 WORKER_ACCOUNT = "THREADLINE_WORKER"
 WORKER_USER = "threadline_worker_dev"
@@ -73,8 +75,8 @@ def validate_config(config: dict[str, Any]) -> None:
     if worker["jetstream"] is not True:
         raise ContractError("JetStream must be enabled for the worker account")
     users = worker["users"]
-    if not isinstance(users, list) or len(users) != 1:
-        raise ContractError("the worker account must enumerate exactly one principal")
+    if not isinstance(users, list) or len(users) != 2:
+        raise ContractError("the worker account must enumerate exactly two principals")
 
     user = _exact_keys(users[0], {"user", "password", "permissions"}, "worker principal")
     if user["user"] != WORKER_USER:
@@ -86,7 +88,7 @@ def validate_config(config: dict[str, Any]) -> None:
     permissions = _exact_keys(user["permissions"], {"publish", "subscribe"}, "permissions")
     publish = _exact_keys(permissions["publish"], {"allow", "deny"}, "publish permissions")
     subscribe = _exact_keys(permissions["subscribe"], {"allow", "deny"}, "subscribe permissions")
-    _exact_subjects(publish["allow"], [BUSINESS_SUBJECT, USER_INFO_SUBJECT], "publish allow")
+    _exact_subjects(publish["allow"], WORKER_PUBLISH, "publish allow")
     _exact_subjects(publish["deny"], [WORKER_INBOX], "publish deny")
     _exact_subjects(subscribe["allow"], [WORKER_INBOX], "subscribe allow")
     _exact_subjects(
@@ -94,6 +96,20 @@ def validate_config(config: dict[str, Any]) -> None:
         [USER_INFO_SUBJECT, "$SYS.REQ.USER.*.INFO"],
         "subscribe deny",
     )
+
+    validate_platform(users, password)
+
+
+def validate_platform(users: list, password: str) -> None:
+    platform = _exact_keys(users[1], {"user", "password", "permissions"}, "platform principal")
+    if platform["user"] != PROVISION_USER or platform["password"] != password:
+        raise ContractError("platform dev identity changed")
+    expected = {
+        "publish": {"allow": PROVISION_PUBLISH, "deny": [PROVISION_INBOX]},
+        "subscribe": {"allow": [PROVISION_INBOX], "deny": [USER_INFO_SUBJECT, "$SYS.REQ.USER.*.INFO"]},
+    }
+    if platform["permissions"] != expected:
+        raise ContractError("platform permissions changed")
 
 
 def verify_file(path: Path) -> None:
