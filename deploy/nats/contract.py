@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterable, List, Tuple
 
 
-from permissions import WORKER_PUBLISH, PROVISION_USER, PROVISION_INBOX, PROVISION_PUBLISH
+from permissions import WORKER_PUBLISH, PROVISION_USER, PROVISION_INBOX, PROVISION_PUBLISH, REALTIME_USER, REALTIME_PERMISSIONS
 
 SYSTEM_ACCOUNT = "SYS"
 WORKER_ACCOUNT = "THREADLINE_WORKER"
@@ -75,10 +75,16 @@ def validate_config(config: dict[str, Any]) -> None:
     if worker["jetstream"] is not True:
         raise ContractError("JetStream must be enabled for the worker account")
     users = worker["users"]
-    if not isinstance(users, list) or len(users) != 2:
-        raise ContractError("the worker account must enumerate exactly two principals")
+    if not isinstance(users, list) or len(users) != 3:
+        raise ContractError("the worker account must enumerate exactly three principals")
 
-    user = _exact_keys(users[0], {"user", "password", "permissions"}, "worker principal")
+    password = validate_worker(users[0])
+    validate_platform(users, password)
+    validate_realtime(users, password)
+
+
+def validate_worker(principal: Any) -> str:
+    user = _exact_keys(principal, {"user", "password", "permissions"}, "worker principal")
     if user["user"] != WORKER_USER:
         raise ContractError("worker principal changed")
     password = user["password"]
@@ -97,7 +103,7 @@ def validate_config(config: dict[str, Any]) -> None:
         "subscribe deny",
     )
 
-    validate_platform(users, password)
+    return password
 
 
 def validate_platform(users: list, password: str) -> None:
@@ -114,3 +120,11 @@ def validate_platform(users: list, password: str) -> None:
 
 def verify_file(path: Path) -> None:
     validate_config(load_config(path))
+
+
+def validate_realtime(users: list, password: str) -> None:
+    reader = _exact_keys(users[2], {"user", "password", "permissions"}, "realtime principal")
+    if reader["user"] != REALTIME_USER or reader["password"] != password:
+        raise ContractError("realtime dev identity changed")
+    if reader["permissions"] != REALTIME_PERMISSIONS:
+        raise ContractError("realtime permissions changed")

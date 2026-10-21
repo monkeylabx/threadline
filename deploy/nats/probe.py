@@ -21,7 +21,7 @@ from contract import (
 )
 
 
-from permissions import WORKER_PUBLISH
+from permissions import WORKER_PUBLISH, REALTIME_USER
 
 MAX_LINE = 64 * 1024
 MAX_PAYLOAD = 1024 * 1024
@@ -295,9 +295,19 @@ def run(host: str, port: int, monitor_url: str, timeout: float, user: str, passw
         with NATSClient(host, port, timeout, user, password) as client:
             client.expect_publish_denied(subject)
 
+    check_realtime_permissions(host, port, timeout, password)
+
     after = jetstream_signature(read_jsz(monitor_url, timeout))
     if after != before:
         raise ProbeError("JetStream state changed during the permission probe")
+
+
+def check_realtime_permissions(host: str, port: int, timeout: float, password: str) -> None:
+    with NATSClient(host, port, timeout, REALTIME_USER, password) as client:
+        client.expect_publish_denied(BUSINESS_SUBJECT)
+    for subject in (">", "$SYS.>", "threadline.foreign.events.v1"):
+        with NATSClient(host, port, timeout, REALTIME_USER, password) as client:
+            client.expect_subscription_denied(subject)
 
 
 def main() -> int:
