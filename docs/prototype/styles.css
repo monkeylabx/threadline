@@ -1439,13 +1439,14 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 }
 
 /* V34 — a single workspace sidebar, conversation, and on-demand detail sheets. */
-.slack-shell-v14.v34-two-pane { grid-template-columns: var(--v22-context-width,240px) minmax(0,1fr); grid-template-rows: 44px minmax(0,1fr); }
-.v34-two-pane .v17-global-topbar { grid-column: 1 / -1; grid-template-columns: 196px minmax(0,1fr) 96px; background: #fafbfa; }
-.v34-two-pane .v19-window-controls { width: 62px; }
+.slack-shell-v14.v34-two-pane { grid-template-columns: var(--v22-context-width,240px) minmax(0,1fr); grid-template-rows: 52px minmax(0,1fr); }
+.slack-shell-v14.v34-two-pane .v14-global-topbar.v17-global-topbar { grid-column: 1 / -1; grid-template-columns: 72px minmax(0,1fr) 72px; gap: 0; padding-inline: 16px; background: #fafbfa; }
+.v34-two-pane .v19-window-controls { width: auto; gap: 8px; }
+.v34-two-pane .v19-window-controls i { width: 12px; height: 12px; }
 .v34-two-pane .v19-window-tools { gap: 0; }
-.v34-two-pane .v19-window-tools > button { width: 27px; }
-.v34-two-pane .v14-global-search { border-color: #e1e6e3; box-shadow: none; }
-.v34-two-pane .v14-global-search input { font-size: 11px; }
+.v34-two-pane .v14-global-search-wrap { grid-column: 2; width: min(480px,100%); }
+.v34-two-pane .v14-global-search { height: 30px; border-color: #e1e6e3; border-radius: 7px; box-shadow: none; }
+.v34-two-pane .v14-global-search input { font-size: 12px; }
 .v34-two-pane .v14-context-sidebar { grid-column: 1; grid-row: 2; position: relative; display: flex; flex-direction: column; padding: 0; background: #f3f5f4; border-right: 1px solid #e3e8e5; container: none; }
 .v34-two-pane .v14-context-sidebar > .v19-rail-enterprise { flex-shrink: 0; width: auto; align-self: stretch; margin: 0; padding: 17px 16px 14px; }
 .v34-two-pane .v19-rail-enterprise > .v18-enterprise { display: flex; justify-content: flex-start; gap: 9px; width: 100%; height: 32px; }

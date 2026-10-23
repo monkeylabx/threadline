@@ -28,7 +28,7 @@
         window.location.replace(`./mobile/index.html?${mobileParams}`);
       })();
     </script>
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=34-topbar" />
   </head>
   <body>
     <svg class="svg-sprite" aria-hidden="true">
@@ -355,14 +355,10 @@
           <!-- PROTOTYPE #183 V4 — three disposable ways to keep IM reachable during deep Agent work. -->
           <section class="im-agent-prototype im-agent-variant-a" data-im-agent-variant="A" aria-labelledby="v14-work-title" hidden>
             <div class="im-agent-stage slack-shell-v14 v34-two-pane" data-v14-shell data-v14-app="messages">
-              <header class="v14-global-topbar v17-global-topbar">
+              <header class="v14-global-topbar v17-global-topbar" aria-label="窗口工具栏">
                 <div class="v19-window-tools">
-                  <span class="v19-window-controls" title="原生窗口控制预留区 · 原型示意" aria-label="原生窗口控制预留区，原型示意"><i></i><i></i><i></i></span>
-                  <button class="v18-list-toggle" data-v20-nav-toggle aria-expanded="true" aria-controls="v18-context-sidebar" title="收起侧栏" aria-label="收起侧栏"><svg><use href="#i-sidebar"></use></svg></button>
-                  <button data-v19-back disabled title="后退" aria-label="后退"><svg class="v19-back"><use href="#i-arrow"></use></svg></button>
-                  <button data-v19-forward disabled title="前进" aria-label="前进"><svg><use href="#i-arrow"></use></svg></button>
-                  <button data-v19-history-toggle title="最近访问" aria-label="最近访问" aria-expanded="false" aria-controls="v19-history"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></button>
-                  <div class="v19-history-menu" id="v19-history" data-v19-history hidden><strong>最近访问</strong><div data-v19-history-items></div><small>仅记录本次预览访问的栏目</small></div>
+                  <span class="v19-window-controls" role="img" title="原生窗口控制预留区 · 原型示意" aria-label="macOS 红黄绿窗口控制，原型示意"><i></i><i></i><i></i></span>
+
                 </div>
                 <div class="v14-global-search-wrap">
                   <label class="v14-global-search"><svg><use href="#i-search"></use></svg><input data-v14-search type="search" placeholder="搜索消息、频道、工作或成员" aria-label="全局搜索" /><kbd>⌘ K</kbd></label>
@@ -374,7 +370,6 @@
                     <button data-v14-search-item data-result-app="messages"><svg><use href="#i-users"></use></svg><div><b>孟青</b><small>组织成员</small></div></button>
                   </div>
                 </div>
-                <button class="v14-runtime-status" aria-label="Runtime 在线"><i></i><span>Runtime 在线</span></button>
               </header>
               <aside class="v14-context-sidebar" id="v18-context-sidebar" aria-label="工作空间导航">
                 <div class="v22-sidebar-resizer" data-v22-resizer role="separator" tabindex="0" aria-label="调整侧栏宽度" aria-orientation="vertical" aria-controls="v18-context-sidebar" aria-valuemin="208" aria-valuemax="320" aria-valuenow="240" title="拖动调整侧栏宽度 · 双击恢复默认 · 左右键微调"></div>
@@ -801,6 +796,6 @@ RUN   TestLeaseRecoveryAfterCrash</pre></div></article>
       </section>
     </div>
     <script src="./entry-route.js?v=34"></script>
-    <script src="./app.js?v=34"></script>
+    <script src="./app.js?v=34-topbar"></script>
   </body>
 </html>

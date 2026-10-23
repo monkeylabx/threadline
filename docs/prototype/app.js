@@ -609,51 +609,19 @@ if (imAgentPrototypeEnabled) {
     row.title = row.dataset.navSignal;
     row.setAttribute("aria-label", row.dataset.navSignal);
   });
-  const v20NavToggle = document.querySelector("[data-v20-nav-toggle]");
   const v17OrgMenuToggle = document.querySelector("[data-v17-org-menu-toggle]");
   const v17OrgMenu = document.querySelector("[data-v17-org-menu]");
   const v18ProfileToggle = document.querySelector("[data-v18-profile-toggle]");
   const v18ProfileMenu = document.querySelector("[data-v18-profile-menu]");
-  const v19HistoryToggle = document.querySelector("[data-v19-history-toggle]");
-  const v19HistoryMenu = document.querySelector("[data-v19-history]");
-  const v19Back = document.querySelector("[data-v19-back]");
-  const v19Forward = document.querySelector("[data-v19-forward]");
-  const v19Visits = [v14Shell.dataset.v14App];
-  let v19VisitIndex = 0;
-  const renderV19History = () => {
-    v19Back.disabled = v19VisitIndex === 0;
-    v19Forward.disabled = v19VisitIndex === v19Visits.length - 1;
-    const labels = { messages: "消息", work: "私人工作", attention: "需要处理" };
-    const items = document.querySelector("[data-v19-history-items]");
-    items.replaceChildren();
-    v19Visits.forEach((app, index) => {
-      const button = document.createElement("button");
-      button.textContent = labels[app];
-      if (index === v19VisitIndex) button.setAttribute("aria-current", "page");
-      button.addEventListener("click", () => {
-        v19VisitIndex = index;
-        setV14App(app, false);
-        v19HistoryToggle.focus();
-      });
-      items.prepend(button);
-    });
-  };
   const closeV18Menus = () => {
     v17OrgMenu.hidden = true;
     v17OrgMenuToggle.setAttribute("aria-expanded", "false");
     v18ProfileMenu.hidden = true;
     v18ProfileToggle.setAttribute("aria-expanded", "false");
-    v19HistoryMenu.hidden = true;
-    v19HistoryToggle.setAttribute("aria-expanded", "false");
   };
   const v14Search = document.querySelector("[data-v14-search]");
   const v14SearchResults = document.querySelector("[data-v14-search-results]");
-  const setV14App = (app, recordVisit = true) => {
-    if (recordVisit && v19Visits[v19VisitIndex] !== app) {
-      v19Visits.splice(v19VisitIndex + 1);
-      v19Visits.push(app);
-      v19VisitIndex = v19Visits.length - 1;
-    }
+  const setV14App = (app) => {
     v14Shell.dataset.v14App = app;
     document.querySelectorAll("[data-v14-app-button]").forEach((button) => {
       const current = button.dataset.v14AppButton === app;
@@ -665,23 +633,7 @@ if (imAgentPrototypeEnabled) {
     document.querySelectorAll("[data-v14-content]").forEach((panel) => { panel.hidden = panel.dataset.v14Content !== app; });
     v14SearchResults.hidden = true;
     closeV18Menus();
-    renderV19History();
   };
-  renderV19History();
-  v19Back.addEventListener("click", () => {
-    if (v19VisitIndex > 0) setV14App(v19Visits[--v19VisitIndex], false);
-  });
-  v19Forward.addEventListener("click", () => {
-    if (v19VisitIndex < v19Visits.length - 1) setV14App(v19Visits[++v19VisitIndex], false);
-  });
-  v19HistoryToggle.addEventListener("click", () => {
-    const open = v19HistoryMenu.hidden;
-    closeV18Menus();
-    v14SearchResults.hidden = true;
-    v19HistoryMenu.hidden = !open;
-    v19HistoryToggle.setAttribute("aria-expanded", String(open));
-  });
-
   const contextPane = { element: document.querySelector("[data-v22-resizer]"), preferred: 240, initial: 240, min: 208, max: 320, css: "--v22-context-width" };
   document.querySelectorAll(".v14-context-list > button").forEach(row => {
     if (!row.title) row.title = [...row.querySelectorAll("div > b, div > strong, div > small, div:not(:has(*)), i")].map(part => part.textContent.trim()).join(" · ");
@@ -740,21 +692,6 @@ if (imAgentPrototypeEnabled) {
   new ResizeObserver(applyPaneWidths).observe(v14Shell);
   applyPaneWidths();
 
-  const setV20NavCompact = (compact) => {
-    v14Shell.classList.toggle("is-sidebar-hidden", compact);
-    document.querySelector("#v18-context-sidebar").inert = compact;
-    applyPaneWidths();
-    closeV18Menus();
-    v20NavToggle.setAttribute("aria-expanded", String(!compact));
-    v20NavToggle.setAttribute("aria-label", compact ? "展开侧栏" : "收起侧栏");
-    v20NavToggle.title = compact ? "展开侧栏" : "收起侧栏";
-  };
-
-  v20NavToggle.addEventListener("click", (event) => {
-    setV20NavCompact(!v14Shell.classList.contains("is-sidebar-hidden"));
-    if (event.detail) event.currentTarget.blur();
-  });
-
   v17OrgMenuToggle?.addEventListener("click", (event) => {
     const open = v17OrgMenu.hidden;
     closeV18Menus();
@@ -781,11 +718,11 @@ if (imAgentPrototypeEnabled) {
     v18ProfileToggle.setAttribute("aria-label", `林嘉 · ${dnd ? "勿扰中" : "在线"} · 个人菜单`);
   });
   document.addEventListener("click", event => {
-    if (!event.target.closest(".v17-org-control, .v18-personal, .v19-window-tools")) closeV18Menus();
+    if (!event.target.closest(".v17-org-control, .v18-personal")) closeV18Menus();
   });
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
-    const opener = !v17OrgMenu.hidden ? v17OrgMenuToggle : !v18ProfileMenu.hidden ? v18ProfileToggle : !v19HistoryMenu.hidden ? v19HistoryToggle : null;
+    const opener = !v17OrgMenu.hidden ? v17OrgMenuToggle : !v18ProfileMenu.hidden ? v18ProfileToggle : null;
     closeV18Menus();
     opener?.focus();
   });
