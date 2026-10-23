@@ -35,3 +35,13 @@ change policy.
 The light palette follows the accepted source-of-truth HTML prototype (#358 / #359): neutral surfaces and blue emphasis. `chrome` is the window toolbar, `surfaceHover` is the navigation hover surface, `selection` is the current navigation background, and `unread` is its notification foreground. Use `accent` on `selection`; use `radius.control` for the search field and `radius.xl` for rounded navigation. All roles are available in every mode. Existing dark and high-contrast values are preserved; new roles in those modes reuse their corresponding semantic surfaces and notification colors.
 
 Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar text and unread indicators in addition to the existing content/action pairs. Consumers use these shared names rather than copying prototype hex values. Native window controls remain platform-owned.
+
+## V34 navigation refinement (#393)
+
+`navigationSurface` separates the rounded sidebar from the neutral window surface and white conversation. Light navigation uses the prototype's pale gray-blue; light accent/hover use its softer blue. Desktop consumes these roles directly. Other modes retain their existing palette, with navigation mapped to `surface`. Primary, secondary, muted and unread navigation foregrounds are verified in every mode.
+
+`navigationAccent` keeps the sidebar's selected controls at the user's previous vivid blue (#245BDB in light mode), independent of the softer conversation accent. Other modes reuse their existing accent. Both navigation and selection contrast pairs are verified at the unchanged4.5 threshold.
+
+The selected light navigation background is the softer gray-blue #EAF0F8. Conversation surfaces and emphasis remain unchanged. Existing muted navigation text contrast remains above 4.5.
+
+`navigationControlSurface` gives each navigation logo and the profile area a visible background separate from the softer sidebar. Light mode uses #DCE6F7; other modes reuse their existing elevated surface. Use primary/secondary text or navigationAccent on this surface; all three pairs keep the 4.5 contrast gate. This role does not change hover or selection colors.
