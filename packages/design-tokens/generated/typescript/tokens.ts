@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: 7f4c7da9312a6a0c5ffc923fc399ab19b4fd0824013bef821b6b7d07ae0f9942). Do not edit.
+// Generated from src/tokens.json (SHA-256: f304acc4493b447635991b41585b0a5ce30c5aa5cbc15d8632a6d90545d3a3b2). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -28,7 +28,7 @@ export const threadlineTokens = {
       "surfaceHover": "#ECEFF3",
       "selection": "#E5EDFF",
       "unread": "#B82F38",
-      "navigationSurface": "#E1EAF8",
+      "navigationSurface": "#EAF0F8",
       "navigationAccent": "#245BDB"
     },
     "dark": {
