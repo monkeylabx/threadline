@@ -45,6 +45,7 @@ export function MessagingLayout(props: LayoutProps) {
 }
 
 function SidebarResize({ width, onChange }: { readonly width: number; readonly onChange: (width: number) => void }) {
+  const drag = useRef<{ readonly x: number; readonly width: number } | null>(null);
   const change = (value: number) => onChange(Math.max(208, Math.min(320, value)));
   return <div className="tl-sidebar-resizer" role="separator" tabIndex={0} aria-label="调整侧栏宽度"
     aria-orientation="vertical" aria-controls="tl-sidebar-pane" aria-valuemin={208} aria-valuemax={320} aria-valuenow={width}
@@ -55,10 +56,14 @@ function SidebarResize({ width, onChange }: { readonly width: number; readonly o
       event.preventDefault();
       change(next);
     }}
-    onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+    onPointerDown={(event) => {
+      drag.current = { x: event.clientX, width };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }}
+    onLostPointerCapture={() => { drag.current = null; }}
     onPointerMove={(event) => {
-      const pane = event.currentTarget.parentElement;
-      if (!pane || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-      change(event.clientX - pane.getBoundingClientRect().left);
+      const origin = drag.current;
+      if (!origin || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+      change(origin.width + event.clientX - origin.x);
     }} />;
 }

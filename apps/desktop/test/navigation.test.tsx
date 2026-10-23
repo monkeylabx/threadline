@@ -92,9 +92,26 @@ test("pointer resizing requires capture and clamps to the accepted range", async
   Object.assign(separator, { setPointerCapture: () => { captured = true; }, hasPointerCapture: () => captured });
   fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 400 }));
   expect(separator.getAttribute("aria-valuenow")).toBe("240");
-  fireEvent.pointerDown(separator);
+  fireEvent(separator, new MouseEvent("pointerdown", { bubbles: true, clientX: 240 }));
   fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 400 }));
   expect(separator.getAttribute("aria-valuenow")).toBe("320");
   fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 100 }));
   expect(separator.getAttribute("aria-valuenow")).toBe("208");
+});
+
+
+test("pointer movement preserves its delta when the navigation panel has outer insets", async () => {
+  await openShell();
+  const separator = screen.getByRole("separator");
+  const pane = separator.parentElement;
+  if (!pane) throw new Error("missing navigation pane");
+  Object.assign(pane, { getBoundingClientRect: () => new DOMRect(16, 104, 208, 540) });
+  let captured = false;
+  Object.assign(separator, { setPointerCapture: () => { captured = true; }, hasPointerCapture: () => captured });
+  fireEvent(separator, new MouseEvent("pointerdown", { bubbles: true, clientX: 228 }));
+  fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 238 }));
+  expect(separator.getAttribute("aria-valuenow")).toBe("250");
+  fireEvent.lostPointerCapture(separator);
+  fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 300 }));
+  expect(separator.getAttribute("aria-valuenow")).toBe("250");
 });
