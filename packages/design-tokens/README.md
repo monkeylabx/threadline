@@ -45,3 +45,11 @@ Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar
 The selected light navigation background is the softer gray-blue #EAF0F8. Conversation surfaces and emphasis remain unchanged. Existing muted navigation text contrast remains above 4.5.
 
 `navigationControlSurface` gives each navigation logo and the profile area a visible background separate from the softer sidebar. Light mode uses #DCE6F7; other modes reuse their existing elevated surface. Use primary/secondary text or navigationAccent on this surface; all three pairs keep the 4.5 contrast gate. This role does not change hover or selection colors.
+
+## Shared control states (#399)
+
+Use the [interaction contract](../../docs/design/interaction-states.md) and
+`src/interaction.css` for all hover, pressed, selected/open and disabled colors.
+`generated/css/colors.css` and the prototype's generated CSS are deterministic
+outputs of the same command. Colors stay in tokens.json; no consumer derives a
+nearby shade. A selected resting control remains selected after pointer exit.

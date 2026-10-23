@@ -1,0 +1,50 @@
+/* Generated from packages/design-tokens/src/interaction.css. Do not edit. */
+/* Shared state policy. Colors belong to src/tokens.json. */
+:where([data-tl-interaction-scope]) :where(button, [role="button"]) {
+  --tl-control-rest: transparent;
+  --tl-control-rest-text: var(--tl-color-text-secondary);
+  --tl-control-hover: var(--tl-color-control-hover-surface);
+  --tl-control-pressed: var(--tl-color-control-pressed-surface);
+  --tl-control-hover-text: var(--tl-color-text-primary);
+  --tl-control-pressed-text: var(--tl-color-text-primary);
+  --tl-control-background: var(--tl-control-rest);
+  --tl-control-foreground: var(--tl-control-rest-text);
+}
+:where([data-tl-interaction-scope]) :where([data-tl-control="tinted"]) {
+  --tl-control-rest: var(--tl-color-navigation-control-surface);
+}
+:where([data-tl-interaction-scope]) :where([data-tl-control="primary"]) {
+  --tl-control-rest: var(--tl-color-accent);
+  --tl-control-rest-text: var(--tl-color-on-accent);
+  --tl-control-hover: var(--tl-color-accent-hover);
+  --tl-control-pressed: var(--tl-color-action-pressed);
+  --tl-control-hover-text: var(--tl-color-on-accent);
+  --tl-control-pressed-text: var(--tl-color-on-accent);
+}
+:where([data-tl-interaction-scope]) :where([data-tl-control="danger"]) {
+  --tl-control-rest-text: var(--tl-color-danger);
+  --tl-control-hover: var(--tl-color-danger-subtle);
+  --tl-control-pressed: var(--tl-color-danger);
+  --tl-control-hover-text: var(--tl-color-danger);
+  --tl-control-pressed-text: var(--tl-color-on-accent);
+}
+:where([data-tl-interaction-scope]) :where(.is-current, .is-active, [aria-current="true"], [aria-current="page"], [aria-selected="true"], [aria-pressed="true"], [aria-expanded="true"]) {
+  --tl-control-background: var(--tl-color-control-selected-surface);
+  --tl-control-foreground: var(--tl-color-control-selected-text);
+  --tl-control-hover: var(--tl-color-control-selected-hover-surface);
+  --tl-control-pressed: var(--tl-color-control-selected-pressed-surface);
+  --tl-control-hover-text: var(--tl-color-control-selected-text);
+  --tl-control-pressed-text: var(--tl-color-control-selected-text);
+}
+:where([data-tl-interaction-scope]) :where(button, [role="button"]):hover {
+  --tl-control-background: var(--tl-control-hover);
+  --tl-control-foreground: var(--tl-control-hover-text);
+}
+:where([data-tl-interaction-scope]) :where(button, [role="button"]):active {
+  --tl-control-background: var(--tl-control-pressed);
+  --tl-control-foreground: var(--tl-control-pressed-text);
+}
+:where([data-tl-interaction-scope]) :where(:disabled, [aria-disabled="true"]) {
+  --tl-control-background: var(--tl-color-control-disabled-surface);
+  --tl-control-foreground: var(--tl-color-text-muted);
+}
