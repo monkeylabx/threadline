@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "evidence": "Synthetic authored subprojection values only; not Protobuf frames or executed policy.",
+  "profileId": "tl-slice-a-dev-authored",
+  "authoredFormatVersion": 1,
+  "domainHex": "7468726561646c696e652e617574686f7265642d6669656c642f3100",
+  "unsignedIntegerEncoding": "u32-big-endian",
+  "payloadEncoding": "strict UTF-8; exact bytes; no normalization",
+  "vectors": [
+    {"id":"ascii-title","slot":1,"present":true,"text":"Task","payloadHex":"5461736b","payloadBase64":"VGFzaw==","payloadBytes":4,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100010100000017746c2d736c6963652d612d6465762d617574686f7265640000000100000001000000045461736b"},
+    {"id":"chinese-goal","slot":2,"present":true,"text":"目标","payloadHex":"e79baee6a087","payloadBase64":"55uu5qCH","payloadBytes":6,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100020100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000200000006e79baee6a087"},
+    {"id":"emoji-justification","slot":3,"present":true,"text":"Approve ✅","payloadHex":"417070726f766520e29c85","payloadBase64":"QXBwcm92ZSDinIU=","payloadBytes":11,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100030100000017746c2d736c6963652d612d6465762d617574686f72656400000001000000030000000b417070726f766520e29c85"},
+    {"id":"note-empty","slot":4,"present":true,"text":"","payloadHex":"","payloadBase64":"","payloadBytes":0,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000400000000"},
+    {"id":"note-absent","slot":4,"present":false,"text":null,"payloadHex":null,"payloadBase64":null,"payloadBytes":null,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f31000400"},
+    {"id":"note-nfc","slot":4,"present":true,"text":"é","payloadHex":"c3a9","payloadBase64":"w6k=","payloadBytes":2,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000400000002c3a9"},
+    {"id":"note-nfd","slot":4,"present":true,"text":"é","payloadHex":"65cc81","payloadBase64":"ZcyB","payloadBytes":3,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f72656400000001000000040000000365cc81"},
+    {"id":"note-lf","slot":4,"present":true,"text":"a\nb","payloadHex":"610a62","payloadBase64":"YQpi","payloadBytes":3,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000400000003610a62"},
+    {"id":"note-crlf","slot":4,"present":true,"text":"a\r\nb","payloadHex":"610d0a62","payloadBase64":"YQ0KYg==","payloadBytes":4,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000400000004610d0a62"},
+    {"id":"note-controls","slot":4,"present":true,"text":"﻿\u0000","payloadHex":"efbbbf00","payloadBase64":"77u/AA==","payloadBytes":4,"projectionHex":"7468726561646c696e652e617574686f7265642d6669656c642f3100040100000017746c2d736c6963652d612d6465762d617574686f726564000000010000000400000004efbbbf00"}
+  ]
+}
