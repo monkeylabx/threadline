@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: e30dd97e010b73a7ed257c7624ca9cab99ad86157f6371d09788af85b6300799). Do not edit.
+// Generated from src/tokens.json (SHA-256: f304acc4493b447635991b41585b0a5ce30c5aa5cbc15d8632a6d90545d3a3b2). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -28,7 +28,8 @@ export const threadlineTokens = {
       "surfaceHover": "#ECEFF3",
       "selection": "#E5EDFF",
       "unread": "#B82F38",
-      "navigationSurface": "#EAF0F8"
+      "navigationSurface": "#EAF0F8",
+      "navigationAccent": "#245BDB"
     },
     "dark": {
       "canvas": "#101713",
@@ -56,7 +57,8 @@ export const threadlineTokens = {
       "surfaceHover": "#1E2A25",
       "selection": "#213E34",
       "unread": "#F09A91",
-      "navigationSurface": "#17211D"
+      "navigationSurface": "#17211D",
+      "navigationAccent": "#6FC6AB"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -84,7 +86,8 @@ export const threadlineTokens = {
       "surfaceHover": "#FFFFFF",
       "selection": "#D6F5EA",
       "unread": "#7A1710",
-      "navigationSurface": "#FFFFFF"
+      "navigationSurface": "#FFFFFF",
+      "navigationAccent": "#004C3E"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -112,7 +115,8 @@ export const threadlineTokens = {
       "surfaceHover": "#0D0D0D",
       "selection": "#123E31",
       "unread": "#FF9E95",
-      "navigationSurface": "#000000"
+      "navigationSurface": "#000000",
+      "navigationAccent": "#73F2C6"
     }
   },
   "typography": {
@@ -305,6 +309,16 @@ export const threadlineTokens = {
       {
         "foreground": "unread",
         "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "selection",
         "minimum": 4.5
       }
     ]
