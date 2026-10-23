@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: dcb6a9609bebf64ca0d8c4328a691f4ebfaff537defb53323a96b0c3026ea3d9). Do not edit.
+// Generated from src/tokens.json (SHA-256: 765aa00df1599bf80e1820091747dc6484752e1395d5e846860e0aae5ae9dddd). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -11,8 +11,8 @@ export const threadlineTokens = {
       "textMuted": "#626A75",
       "border": "#E4E6E9",
       "borderStrong": "#D5D9DF",
-      "accent": "#245BDB",
-      "accentHover": "#1456F0",
+      "accent": "#4467B8",
+      "accentHover": "#365DA9",
       "accentSubtle": "#EAF0FF",
       "onAccent": "#FFFFFF",
       "info": "#2D5F8C",
@@ -27,7 +27,18 @@ export const threadlineTokens = {
       "chrome": "#FAFBFC",
       "surfaceHover": "#ECEFF3",
       "selection": "#E5EDFF",
-      "unread": "#B82F38"
+      "unread": "#B82F38",
+      "navigationSurface": "#EAF0F8",
+      "navigationAccent": "#245BDB",
+      "navigationControlSurface": "#DCE6F7",
+      "controlHoverSurface": "#D7E4F8",
+      "controlPressedSurface": "#C9DAF3",
+      "controlSelectedSurface": "#DCE7FF",
+      "controlSelectedHoverSurface": "#D0DFF8",
+      "controlSelectedPressedSurface": "#C2D5F4",
+      "controlSelectedText": "#204FA8",
+      "controlDisabledSurface": "#E9EDF3",
+      "actionPressed": "#2C4F91"
     },
     "dark": {
       "canvas": "#101713",
@@ -54,7 +65,18 @@ export const threadlineTokens = {
       "chrome": "#17211D",
       "surfaceHover": "#1E2A25",
       "selection": "#213E34",
-      "unread": "#F09A91"
+      "unread": "#F09A91",
+      "navigationSurface": "#17211D",
+      "navigationAccent": "#6FC6AB",
+      "navigationControlSurface": "#1E2A25",
+      "controlHoverSurface": "#24362D",
+      "controlPressedSurface": "#304A3C",
+      "controlSelectedSurface": "#213E34",
+      "controlSelectedHoverSurface": "#2A4A3E",
+      "controlSelectedPressedSurface": "#315446",
+      "controlSelectedText": "#8AD7BE",
+      "controlDisabledSurface": "#1E2A25",
+      "actionPressed": "#8AD7BE"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -81,7 +103,18 @@ export const threadlineTokens = {
       "chrome": "#FFFFFF",
       "surfaceHover": "#FFFFFF",
       "selection": "#D6F5EA",
-      "unread": "#7A1710"
+      "unread": "#7A1710",
+      "navigationSurface": "#FFFFFF",
+      "navigationAccent": "#004C3E",
+      "navigationControlSurface": "#FFFFFF",
+      "controlHoverSurface": "#E5EDE9",
+      "controlPressedSurface": "#D0E3D9",
+      "controlSelectedSurface": "#D6F5EA",
+      "controlSelectedHoverSurface": "#C4EBDD",
+      "controlSelectedPressedSurface": "#ACE0CC",
+      "controlSelectedText": "#004C3E",
+      "controlDisabledSurface": "#FFFFFF",
+      "actionPressed": "#00382E"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -108,7 +141,18 @@ export const threadlineTokens = {
       "chrome": "#000000",
       "surfaceHover": "#0D0D0D",
       "selection": "#123E31",
-      "unread": "#FF9E95"
+      "unread": "#FF9E95",
+      "navigationSurface": "#000000",
+      "navigationAccent": "#73F2C6",
+      "navigationControlSurface": "#0D0D0D",
+      "controlHoverSurface": "#19241E",
+      "controlPressedSurface": "#263C30",
+      "controlSelectedSurface": "#123E31",
+      "controlSelectedHoverSurface": "#194A3A",
+      "controlSelectedPressedSurface": "#215B46",
+      "controlSelectedText": "#A4FFDF",
+      "controlDisabledSurface": "#0D0D0D",
+      "actionPressed": "#A4FFDF"
     }
   },
   "typography": {
@@ -281,6 +325,91 @@ export const threadlineTokens = {
       {
         "foreground": "unread",
         "background": "surface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textSecondary",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textMuted",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "unread",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "selection",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textSecondary",
+        "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "controlHoverSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "controlPressedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedHoverSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedPressedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textMuted",
+        "background": "controlDisabledSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "onAccent",
+        "background": "actionPressed",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "onAccent",
+        "background": "danger",
         "minimum": 4.5
       }
     ]
