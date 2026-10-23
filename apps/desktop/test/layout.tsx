@@ -28,9 +28,10 @@ function violations(checks: readonly Check[]) {
 function viewportChecks(shell: HTMLElement, composer: HTMLElement): readonly Check[] {
   const height = document.documentElement.clientHeight;
   const input = composer.getBoundingClientRect();
+  const panel = composer.closest(".tl-workspace")?.getBoundingClientRect();
   return [
     [Math.abs(shell.getBoundingClientRect().height - height) <= 1, "shell must fill viewport"],
-    [Math.abs(input.bottom - height) <= 1, "composer must remain at viewport bottom"],
+    [panel !== undefined && Math.abs(input.bottom - panel.bottom) <= 1, "composer must remain at conversation bottom"],
     [input.top >= height / 2, "composer moved into upper half"],
     [document.documentElement.scrollHeight <= height + 1, "document must not scroll"],
   ];
@@ -80,7 +81,7 @@ function checkLayout() {
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);
   }
   const errors = violations(checks);
-  return `${errors.length ? "FAIL" : "PASS"} ${scenario}: ${errors.join("; ") || "composer at bottom; timeline flexes; viewport contained"}`;
+  return `${errors.length ? "FAIL" : "PASS"} ${scenario}: ${errors.join("; ") || "composer at conversation bottom; timeline flexes; viewport contained"}`;
 }
 
 function LayoutFixture() {
