@@ -133,20 +133,7 @@ fn configured_host(
 
 #[test]
 fn channel_directory_preserves_real_core_failure_categories() {
-    let cases = [
-        ("permission_denied", HostError::Denied),
-        ("unauthenticated", HostError::Denied),
-        ("invalid_argument", HostError::InvalidInput),
-        ("not_found", HostError::InvalidInput),
-        ("failed_precondition", HostError::InvalidInput),
-        ("already_exists", HostError::InvalidInput),
-        ("unknown", HostError::InvalidInput),
-        ("unavailable", HostError::Unavailable),
-        ("deadline_exceeded", HostError::Unavailable),
-        ("resource_exhausted", HostError::Unavailable),
-        ("internal", HostError::Unavailable),
-        ("canceled", HostError::Unavailable),
-    ];
+    let cases = directory_failures();
     let mut replies: Vec<_> = cases
         .iter()
         .map(|(code, _)| {
@@ -193,4 +180,21 @@ fn channel_directory_preserves_real_core_failure_categories() {
     worker.join().unwrap();
     drop(app);
     std::fs::remove_dir_all(directory).unwrap();
+}
+
+fn directory_failures() -> [(&'static str, HostError); 12] {
+    [
+        ("permission_denied", HostError::Denied),
+        ("unauthenticated", HostError::Denied),
+        ("invalid_argument", HostError::InvalidInput),
+        ("not_found", HostError::InvalidInput),
+        ("failed_precondition", HostError::InvalidInput),
+        ("already_exists", HostError::InvalidInput),
+        ("unknown", HostError::InvalidInput),
+        ("unavailable", HostError::Unavailable),
+        ("deadline_exceeded", HostError::Unavailable),
+        ("resource_exhausted", HostError::Unavailable),
+        ("internal", HostError::Unavailable),
+        ("canceled", HostError::Unavailable),
+    ]
 }
