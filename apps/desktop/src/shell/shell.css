@@ -23,7 +23,7 @@ button:disabled { cursor: default; }
 .tl-search input { width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; font-size: var(--tl-font-caption-size); }
 .tl-search kbd { flex-shrink: 0; font-size: var(--tl-font-caption-size); }
 .tl-sidebar-pane { position: relative; grid-column: 1; grid-row: 2; min-height: 0; min-width: 0; margin: 0 var(--tl-space-md) var(--tl-space-md); }
-.tl-sidebar { height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: var(--tl-color-canvas); border: 0; border-radius: var(--tl-radius-xl); }
+.tl-sidebar { height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: var(--tl-color-navigation-surface); border: 0; border-radius: var(--tl-radius-xl); }
 .tl-sidebar-resizer { position: absolute; top: 0; right: -7px; bottom: 0; width: 6px; z-index: 1; cursor: col-resize; touch-action: none; }
 .tl-sidebar-resizer:hover, .tl-sidebar-resizer:focus-visible { background: var(--tl-color-accent-subtle); }
 .tl-sidebar-head { flex-shrink: 0; display: flex; align-items: center; gap: var(--tl-space-md); padding: var(--tl-space-xl); }
