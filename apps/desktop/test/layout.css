@@ -3,3 +3,5 @@
 .layout-controls output { display: block; overflow-wrap: anywhere; }
 /* Mutation reproduces the original implicit placement when the banner is absent. */
 [data-layout-legacy="true"] .tl-workspace > * { grid-area: auto; }
+
+html:has([data-layout-text-scale="true"]) { font-size: 200%; }

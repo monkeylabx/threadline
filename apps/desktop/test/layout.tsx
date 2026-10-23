@@ -46,20 +46,35 @@ function canScroll(timeline: HTMLElement) {
 function timelineChecks(timeline: HTMLElement, composer: HTMLElement): readonly Check[] {
   const list = timeline.getBoundingClientRect();
   const overflow = timeline.scrollHeight > timeline.clientHeight + 1;
+  const scaled = document.querySelector('[data-layout-text-scale="true"]') !== null;
   return [
     [Math.abs(list.bottom - composer.getBoundingClientRect().top) <= 1, "timeline must precede composer"],
     [list.height > 1, "timeline needs flexible space"],
-    [scenario === "long" ? overflow : !overflow, "history overflow must stay in timeline"],
-    [scenario !== "long" || canScroll(timeline), "long timeline must be independently scrollable"],
+    [scenario === "long" ? overflow : scaled || !overflow, "history overflow must stay in timeline"],
+    [!overflow || canScroll(timeline), "long timeline must be independently scrollable"],
   ];
 }
+function textReflowChecks(): readonly Check[] {
+  const heading = document.querySelector<HTMLElement>(".tl-workspace-header");
+  const title = heading?.querySelector<HTMLElement>("div");
+  const search = document.querySelector<HTMLElement>(".tl-search");
+  const field = search?.querySelector<HTMLInputElement>("input");
+  if (!heading || !title || !search || !field) return [[false, "text fixture is not ready"]];
+  const titleBox = title.getBoundingClientRect(), headerBox = heading.getBoundingClientRect();
+  const inputBox = field.getBoundingClientRect(), searchBox = search.getBoundingClientRect();
+  return [
+    [titleBox.top >= headerBox.top - 1 && titleBox.bottom <= headerBox.bottom + 1, "conversation title must reflow within its heading"],
+    [inputBox.top >= searchBox.top - 1 && inputBox.bottom <= searchBox.bottom + 1, "search text must fit within its container"],
+  ];
+}
+
 /** Checks real geometry in a browser; the mutation control proves a red result. */
 function checkLayout() {
   const shell = document.querySelector<HTMLElement>(".tl-shell");
   const timeline = document.querySelector<HTMLElement>(".tl-timeline");
   const composer = document.querySelector<HTMLElement>(".tl-composer");
   if (!shell || !timeline || !composer) return "FAIL fixture is not ready";
-  const checks = [...viewportChecks(shell, composer), ...timelineChecks(timeline, composer)];
+  const checks = [...viewportChecks(shell, composer), ...timelineChecks(timeline, composer), ...textReflowChecks()];
   if (scenario === "offline") {
     const banner = document.querySelector<HTMLElement>(".tl-banner");
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);
@@ -71,11 +86,13 @@ function checkLayout() {
 function LayoutFixture() {
   const [report, setReport] = useState("选择场景后运行布局验收");
   const [legacy, setLegacy] = useState(false);
-  return <div data-layout-legacy={legacy}>
+  const [largeText, setLargeText] = useState(false);
+  return <div data-layout-legacy={legacy} data-layout-text-scale={largeText}>
     <Shell repository={repository} />
     <aside className="layout-controls" aria-label="布局验收控制">
       <nav aria-label="验收场景">{["empty", "short", "long", "offline"].map((name) => <a key={name} href={`?scenario=${name}`}>{name}</a>)}</nav>
       <label><input type="checkbox" checked={legacy} onChange={(event) => setLegacy(event.target.checked)} />模拟旧版网格缺陷</label>
+      <label><input type="checkbox" checked={largeText} onChange={(event) => setLargeText(event.target.checked)} />2 倍文字</label>
       <button type="button" onClick={() => setReport(checkLayout())}>运行布局验收</button>
       <output aria-live="polite">{report}</output>
     </aside>
