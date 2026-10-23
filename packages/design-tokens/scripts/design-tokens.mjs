@@ -383,6 +383,7 @@ async function renderedOutputs() {
     [resolve(packageRoot, "generated/css/colors.css"), css],
     [resolve(prototypeRoot, "colors.css"), css],
     [resolve(prototypeRoot, "interaction.css"), `/* Generated from packages/design-tokens/src/interaction.css. Do not edit. */\n${policy}`],
+    [resolve(prototypeRoot, "interaction-states.html"), `<!-- Generated QA fixture. Do not edit. -->\n${await readFile(resolve(packageRoot, "test/interaction-states.html"), "utf8")}`],
     [outputPaths.typescript, renderTypeScript(tokens, digest)],
     [outputPaths.swift, renderSwift(tokens, digest)],
     [outputPaths.kotlin, renderKotlin(tokens, digest)],

@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- QA fixture: shared CSS cascade, no service or product actions. -->
+<html lang="en"><meta charset="utf-8"><title>Shared interaction state regression</title>
+<link rel="stylesheet" href="./colors.css"><link rel="stylesheet" href="./interaction.css">
+<style>
+body { font-family: system-ui; padding: 24px; }
+button, .reference { padding: 12px; margin: 12px; border-radius: 12px; border: 0; }
+[data-tl-interaction-scope] button { background: var(--tl-control-background); color: var(--tl-control-foreground); }
+#disabled-reference { background: var(--tl-color-control-disabled-surface); color: var(--tl-color-text-muted); }
+</style>
+<main data-tl-interaction-scope>
+<button id="normal">Normal</button><button id="selected" aria-pressed="true">Selected</button>
+<button id="native-disabled" disabled>Native disabled</button>
+<button id="aria-disabled" aria-disabled="true" data-tl-control="primary">Aria disabled</button>
+<button id="disabled-selected" disabled aria-pressed="true">Disabled selected</button>
+<div id="disabled-reference" class="reference">Expected disabled palette</div>
+<p>Regression: hover native disabled and aria-disabled; hold Space on aria-disabled. Their computed foreground/background must always match the reference. Selection persists after pointer exit.</p>
+</main></html>
