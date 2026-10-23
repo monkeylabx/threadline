@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
 import { FixtureRepository } from "../src/repository.ts";
 import { Shell } from "../src/shell/Shell.tsx";
@@ -23,25 +23,28 @@ test("channel search filters navigation without replacing the open conversation"
   expect(screen.getByText("没有匹配的频道")).toBeTruthy();
 });
 
-test("history traverses visited channels and a new selection replaces forward history", async () => {
+test("the toolbar contains search and leaves native window controls to the host", async () => {
   await openShell();
-  const back = screen.getByRole("button", { name: "后退" });
-  const forward = screen.getByRole("button", { name: "前进" });
-  expect(back.hasAttribute("disabled")).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: /客户端体验/ }));
-  await screen.findByRole("heading", { name: "客户端体验" });
-  fireEvent.click(back);
-  await screen.findByRole("heading", { name: "产品研发" });
-  fireEvent.click(forward);
-  await screen.findByRole("heading", { name: "客户端体验" });
-  fireEvent.click(back);
-  await screen.findByRole("heading", { name: "产品研发" });
-  fireEvent.click(screen.getByRole("button", { name: /安全与合规/ }));
-  await screen.findByRole("heading", { name: "安全与合规" });
-  expect(forward.hasAttribute("disabled")).toBe(true);
+  const toolbar = screen.getByRole("group", { name: "窗口工具栏" });
+  expect(toolbar.querySelectorAll("button")).toHaveLength(0);
+  expect(toolbar.querySelector("input[type=search]")).toBe(screen.getByRole("searchbox", { name: "搜索频道" }));
+  expect(screen.queryByRole("button", { name: /后退|前进|收起侧栏|展开侧栏/ })).toBeNull();
+  expect(screen.getByRole("heading", { name: "产品研发" }).closest(".tl-topbar")).toBeNull();
 });
 
-test("sidebar can collapse and resize within V34 bounds without losing selection", async () => {
+test("application entries are named icon-only controls with honest unavailable states", async () => {
+  await openShell();
+  for (const name of ["消息", "工作", "待办"]) {
+    const button = screen.getByRole("button", { name });
+    expect(button.textContent).toBe("");
+    expect(button.querySelector("svg")).toBeTruthy();
+    expect(button.getAttribute("title")).toBeTruthy();
+    expect(button.hasAttribute("disabled")).toBe(name !== "消息");
+  }
+  expect(screen.getByRole("button", { name: "消息" }).getAttribute("aria-pressed")).toBe("true");
+});
+
+test("sidebar resizes within V34 bounds without losing selection", async () => {
   await openShell();
   const separator = screen.getByRole("separator", { name: "调整侧栏宽度" });
   expect(separator.getAttribute("aria-valuenow")).toBe("240");
@@ -51,13 +54,7 @@ test("sidebar can collapse and resize within V34 bounds without losing selection
   expect(separator.getAttribute("aria-valuenow")).toBe("208");
   fireEvent.doubleClick(separator);
   expect(separator.getAttribute("aria-valuenow")).toBe("240");
-  fireEvent.click(screen.getByRole("button", { name: "收起侧栏" }));
-  expect(screen.queryByRole("navigation", { name: "频道导航" })).toBeNull();
-  const restore = screen.getByRole("button", { name: "展开侧栏" });
-  await act(async () => restore.focus());
-  fireEvent.click(restore);
   expect(screen.getByRole("button", { name: "产品研发" }).getAttribute("aria-current")).toBe("true");
-  expect(document.activeElement).toBe(restore);
 });
 
 test("IME confirmation does not send a draft", async () => {

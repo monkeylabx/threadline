@@ -54,15 +54,17 @@ describe("two-pane shell", () => {
   test("the offline banner appears and disappears with connectivity", async () => {
     const repository = await renderShell();
     expect(screen.queryByRole("status", { name: "" })).toBeTruthy();
-    expect(screen.queryByText(/已离线/)).toBeNull();
+    expect(screen.queryByText(/^已离线。/)).toBeNull();
     await act(async () => {
       repository.setConnection("offline");
     });
-    expect(screen.getByText(/已离线/)).toBeTruthy();
+    expect(screen.getByText(/^已离线。/)).toBeTruthy();
+    expect(screen.getByText("消息连接已离线")).toBeTruthy();
     await act(async () => {
       repository.setConnection("online");
     });
-    expect(screen.queryByText(/已离线/)).toBeNull();
+    expect(screen.queryByText(/^已离线。/)).toBeNull();
+    expect(screen.getByText("消息连接正常")).toBeTruthy();
   });
 
   test("an empty draft cannot be sent and Enter submits while Shift+Enter does not", async () => {
