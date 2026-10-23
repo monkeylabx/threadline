@@ -104,3 +104,7 @@ It needs the same explicit Device variables (including Realtime URL). Commands:
 Receipts contain only counts, online/wake flags and applied sequence, no credentials
 or message text. This validates host behavior; native window rendering is a
 separate UI check. Stop the process before reopening the same Device store.
+
+## V34 messaging surface
+
+The running message page follows `docs/prototype/index.html`: compact toolbar, one resizable/collapsible sidebar, channel search/history and a bottom composer. Work, attention, conversation creation and attachment controls stay unavailable until their backend capabilities are connected. Authorized channel/message content comes from the configured Repository; the UI does not populate prototype conversations or invent member counts.

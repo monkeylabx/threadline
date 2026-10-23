@@ -18,7 +18,7 @@ describe("two-pane shell", () => {
     await renderShell();
     expect(screen.getByRole("main", { name: "Threadline" })).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "频道导航" });
-    const buttons = within(nav).getAllByRole("button");
+    const buttons = within(nav).getAllByRole("button").filter((button) => button.classList.contains("tl-channel"));
     expect(buttons.map((button) => button.textContent)).toEqual(["#产品研发", "#客户端体验4", "#安全与合规"]);
     expect(buttons[0]?.getAttribute("aria-current")).toBe("true");
     expect(await screen.findAllByTestId("message")).toHaveLength(3);
