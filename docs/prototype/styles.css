@@ -1442,7 +1442,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .slack-shell-v14.v34-two-pane {
   --ink: #1f2329; --muted: #5a626e; --subtle: #626a75;
   --line: #e4e6e9; --line-strong: #d5d9df;
-  --green: #4a6fc2; --green-strong: #365da9; --green-soft: #eaf0ff;
+  --green: #4467b8; --green-strong: #365da9; --green-soft: #eaf0ff;
   --v34-chrome: #f5f6f7; --v34-sidebar: #f5f6f7; --v34-navigation: #eaf0f8;
   --v34-selected: #e5edff; --v34-hover: #eceff3; --v34-icon: #727b88;
   color: var(--ink); background: var(--v34-sidebar); grid-template-columns: var(--v22-context-width,240px) minmax(0,1fr); grid-template-rows: 52px minmax(0,1fr); }
