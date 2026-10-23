@@ -97,6 +97,7 @@ impl TempStore {
         )
         .expect("open");
         let info = SessionInfo {
+            realtime_enabled: false,
             core_url: "http://127.0.0.1:1".to_owned(),
             tenant_id: "tenant-synthetic".to_owned(),
             actor_id: "actor-synthetic".to_owned(),
@@ -208,4 +209,63 @@ fn empty_text_and_bad_channel_are_rejected_before_queueing() {
     assert!(session.send(CHANNEL, "").is_err());
     assert!(session.send(" padded", "x").is_err());
     assert!(states(&session).is_empty());
+}
+
+#[test]
+fn notification_wait_releases_store_and_reconnect_uses_only_applied_cursor() {
+    use std::sync::Mutex;
+    let (_store, session) = TempStore::session("notify");
+    let shared = Mutex::new(Some(session));
+    let first = shared
+        .lock()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .applied_position(CHANNEL)
+        .unwrap();
+    assert_eq!(first.after_sequence, 0);
+    let report = crate::notification::reconcile(&shared, CHANNEL, || {
+        let mut guard = shared
+            .try_lock()
+            .expect("network wait must not hold store lock");
+        guard
+            .as_mut()
+            .unwrap()
+            .send(CHANNEL, "queued during wait")
+            .unwrap();
+        Ok(true)
+    })
+    .unwrap();
+    assert_eq!((report.applied, report.realtime_woke), (1, true));
+    let guard = shared.lock().unwrap();
+    let session = guard.as_ref().unwrap();
+    assert_eq!(session.applied_position(CHANNEL).unwrap().after_sequence, 1);
+    assert_eq!(first.after_sequence, 0);
+    assert_eq!(states(session).len(), 1);
+}
+
+#[test]
+fn failed_notifications_still_reconcile_and_offline_queue_is_preserved() {
+    use std::sync::Mutex;
+    use threadline_core_client::ClientError;
+    let (_store, mut session) = TempStore::session("notify-failure");
+    session.server.mode = Mode::Unreachable;
+    session.send(CHANNEL, "offline pending").unwrap();
+    let shared = Mutex::new(Some(session));
+    let report =
+        crate::notification::reconcile(&shared, CHANNEL, || Err(ClientError::Transport)).unwrap();
+    assert!(!report.online && !report.realtime_woke);
+    let mut guard = shared.lock().unwrap();
+    let session = guard.as_mut().unwrap();
+    assert_eq!(session.applied_position(CHANNEL).unwrap().after_sequence, 0);
+    assert_eq!(states(session)[0].1, MessageState::Pending);
+    session.server.mode = Mode::Online;
+    drop(guard);
+    let recovered = crate::notification::reconcile(&shared, CHANNEL, || Ok(false)).unwrap();
+    assert_eq!((recovered.online, recovered.committed), (true, 1));
+    let empty: Mutex<Option<Session<FakeServer>>> = Mutex::new(None);
+    assert_eq!(
+        crate::notification::reconcile(&empty, CHANNEL, || Ok(false)),
+        Err(crate::dto::HostError::NoSession)
+    );
 }

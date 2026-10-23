@@ -18,9 +18,9 @@ export function App({ repository }: { readonly repository?: Repository }) {
   useEffect(() => {
     if (chosen !== null) return;
     let cancelled = false;
-    invoke<unknown>("session_info")
+    invoke<{ readonly realtime_enabled?: boolean } | null>("session_info")
       .then((info) => {
-        if (!cancelled) setChosen(info ? new LocaldRepository(invoke) : fixtures);
+        if (!cancelled) setChosen(info ? new LocaldRepository(invoke, { realtime: info.realtime_enabled === true }) : fixtures);
       })
       .catch(() => {
         if (!cancelled) setChosen(fixtures);
@@ -28,6 +28,10 @@ export function App({ repository }: { readonly repository?: Repository }) {
     return () => {
       cancelled = true;
     };
+  }, [chosen]);
+
+  useEffect(() => () => {
+    if (chosen instanceof LocaldRepository) chosen.dispose();
   }, [chosen]);
 
   return chosen === null ? null : <Shell repository={chosen} />;

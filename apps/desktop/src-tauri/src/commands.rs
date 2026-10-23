@@ -1,5 +1,5 @@
 //! Tauri commands: thin, window-scoped adapters over `Session`. Each locks the
-//! session for one bounded operation; none of them starts background work.
+//! session for one bounded operation; stream waiting releases the store lock and stays bounded.
 
 use tauri::State;
 use threadline_core_client::CoreClient;
@@ -51,4 +51,22 @@ pub fn sync_channel(
     channel_id: String,
 ) -> Result<SyncReportDto, HostError> {
     with_session(&state, |session| session.sync(&channel_id))
+}
+
+/// One bounded wait followed by authoritative sync from the persisted cursor.
+/// Network waits run off Tauri's event loop and never hold the SQLite lock.
+#[tauri::command]
+pub async fn wait_channel(
+    state: State<'_, HostState>,
+    channel_id: String,
+) -> Result<SyncReportDto, HostError> {
+    let (client, position) = with_session(&state, |session| session.realtime_request(&channel_id))?;
+    let permit = crate::notification::Permit::acquire(state.waiting.clone())?;
+    let shared = state.session.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _permit = permit;
+        crate::notification::reconcile(&shared, &channel_id, || client.wait(&position))
+    })
+    .await
+    .map_err(|_| HostError::Unavailable)?
 }

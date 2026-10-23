@@ -10,6 +10,7 @@ use std::{
 use prost_types::Timestamp;
 use threadline_client_core::storage::{DatabaseKey, StorageError};
 use threadline_core_client::envelope::{self, PlaintextMessage};
+use threadline_core_client::realtime::{ChannelPosition, RealtimeClient};
 use threadline_core_client::{CoreClient, Endpoint};
 use threadline_locald::{DeviceIdentity, Locald, LocaldError, Server};
 
@@ -25,12 +26,24 @@ pub struct Session<S: Server> {
     pub(crate) server: S,
     info: SessionInfo,
     sequence: AtomicU64,
+    realtime: Option<RealtimeClient>,
 }
 
 impl Session<CoreClient> {
     /// Opens the encrypted store under `data_dir` and binds the Core client.
     /// No network call happens here; the renderer drives sync explicitly.
     pub fn connect(config: HostConfig) -> Result<Self, HostError> {
+        let realtime = config
+            .realtime_url
+            .as_ref()
+            .map(|url| {
+                RealtimeClient::new(Endpoint {
+                    base_url: url.clone(),
+                    bearer_token: config.dev_token.clone(),
+                })
+            })
+            .transpose()
+            .map_err(|_| HostError::InvalidInput)?;
         let client = CoreClient::new(Endpoint {
             base_url: config.core_url.clone(),
             bearer_token: config.dev_token.clone(),
@@ -46,11 +59,14 @@ impl Session<CoreClient> {
             Locald::open(config.data_dir.join(STORE_FILE), key, identity).map_err(map_locald)?;
         let info = SessionInfo {
             core_url: config.core_url,
+            realtime_enabled: realtime.is_some(),
             tenant_id: config.tenant_id,
             actor_id: config.actor_id,
             device_id: config.device_id,
         };
-        Ok(Self::with_server(locald, client, info))
+        let mut session = Self::with_server(locald, client, info);
+        session.realtime = realtime;
+        Ok(session)
     }
 
     pub fn channels(&self) -> Result<Vec<ChannelDto>, HostError> {
@@ -75,11 +91,29 @@ impl<S: Server> Session<S> {
             server,
             info,
             sequence: AtomicU64::new(0),
+            realtime: None,
         }
     }
 
     pub fn info(&self) -> &SessionInfo {
         &self.info
+    }
+
+    /// Snapshot the durable cursor, then wait without holding the store lock.
+    pub fn realtime_request(
+        &self,
+        channel_id: &str,
+    ) -> Result<(RealtimeClient, ChannelPosition), HostError> {
+        let client = self.realtime.clone().ok_or(HostError::InvalidInput)?;
+        Ok((client, self.applied_position(channel_id)?))
+    }
+
+    pub fn applied_position(&self, channel_id: &str) -> Result<ChannelPosition, HostError> {
+        Ok(ChannelPosition {
+            tenant_id: self.info.tenant_id.clone(),
+            channel_id: channel_id.to_owned(),
+            after_sequence: self.locald.cursor(channel_id).map_err(map_locald)?,
+        })
     }
 
     /// Committed history in sequence order followed by pending items in
