@@ -108,3 +108,5 @@ separate UI check. Stop the process before reopening the same Device store.
 ## V34 messaging surface
 
 The running message page follows `docs/prototype/index.html`: compact toolbar, one resizable/collapsible sidebar, channel search/history and a bottom composer. Work, attention, conversation creation and attachment controls stay unavailable until their backend capabilities are connected. Authorized channel/message content comes from the configured Repository; the UI does not populate prototype conversations or invent member counts.
+
+Browser layout regression (opt-in integration): run `corepack pnpm --filter @threadline/desktop dev --host 127.0.0.1`, open `http://127.0.0.1:1420/test/layout.html`, choose each of `empty`, `short`, `long`, `offline` and click “运行布局验收”. All must report PASS. The legacy-grid checkbox must turn the empty scenario FAIL, proving the original defect is detected. Long history checks both contained overflow and actual independent scrolling. This fixture has no IPC/native credentials, is absent from the production Vite entry and is not part of headless CI; it requires a real browser, not jsdom.
