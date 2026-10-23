@@ -160,6 +160,11 @@ fn channel_directory_preserves_real_core_failure_categories() {
         .collect();
     replies.push(response("application/proto", &[0xff, 0xff, 0xff]));
     replies.push(response("application/proto", &[]));
+    // ListChannelsResponse.channels[0]: channel_id="c", name="n" (proto fields1/4).
+    replies.push(response(
+        "application/proto",
+        &[10, 6, 10, 1, b'c', 34, 1, b'n'],
+    ));
     let (core, worker) = server(replies);
     let directory = std::env::temp_dir().join(format!(
         "threadline-directory-integration-{}",
@@ -179,6 +184,12 @@ fn channel_directory_preserves_real_core_failure_categories() {
         Err(HostError::InvalidInput)
     );
     assert!(commands::list_channels(app.state()).unwrap().is_empty());
+    let channels = commands::list_channels(app.state()).unwrap();
+    assert_eq!(
+        (channels[0].channel_id.as_str(), channels[0].name.as_str()),
+        ("c", "n")
+    );
+    assert_eq!(channels.len(), 1);
     worker.join().unwrap();
     drop(app);
     std::fs::remove_dir_all(directory).unwrap();
