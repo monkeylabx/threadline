@@ -35,3 +35,25 @@ Hermetic timeout/redaction/cleanup regressions:
 `python3 -m unittest discover -s test/e2e/domain-events -p 'test_*.py'`.
 SQL/version subprocesses have 5-second deadlines; provisioning has 15 seconds.
 Cleanup escalates terminate → 10-second wait → kill → 5-second reap.
+
+## Two Desktop host processes (#344)
+
+Build `cargo build -p threadline-desktop-host --example realtime_peer --locked`
+from the integrated Desktop branch. In addition to the binary/database variables
+above, set `THREADLINE_TEST_DESKTOP_PEER_BIN` to that absolute executable path:
+
+```sh
+python3 test/e2e/domain-events/desktop_chain.py
+```
+
+Use a fresh migrated/seeded disposable database. Two independently keyed Device
+stores exchange messages through actual Desktop Session/Core/Worker/NATS/Realtime.
+The receipts prove real StreamEvents wakes in both directions, receiver restart
+from cursor2, interrupted receiver stream while Core stays usable, Gateway restart at cursor3, offline pending persistence across
+sender restart, one delivery after recovery, and matching contiguous1..6 histories.
+No4s polling driver is used by the process scenario. All child receipts have
+35s deadlines/256-byte bounds and cooperative shutdown followed by bounded kill.
+`test_desktop_peer.py` adds5 hermetic receipt/cleanup regressions.
+
+The peer uses the production Desktop Session path; native window rendering and
+user interaction must be recorded separately. No GUI PASS is inferred here.
