@@ -1,19 +1,19 @@
-// Generated from src/tokens.json (SHA-256: 03dc33ef3d4dfa9b654d6c21b3a8fa14be5577fcaf702230a4654c4f9c1ffc81). Do not edit.
+// Generated from src/tokens.json (SHA-256: dcb6a9609bebf64ca0d8c4328a691f4ebfaff537defb53323a96b0c3026ea3d9). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
     "light": {
       "canvas": "#FFFFFF",
-      "surface": "#F5F7F5",
+      "surface": "#F5F6F7",
       "surfaceElevated": "#FFFFFF",
-      "textPrimary": "#17211D",
-      "textSecondary": "#53605B",
-      "textMuted": "#68736E",
-      "border": "#DCE2DF",
-      "borderStrong": "#C8D0CC",
-      "accent": "#1D705E",
-      "accentHover": "#125B49",
-      "accentSubtle": "#E2F1EB",
+      "textPrimary": "#1F2329",
+      "textSecondary": "#5A626E",
+      "textMuted": "#626A75",
+      "border": "#E4E6E9",
+      "borderStrong": "#D5D9DF",
+      "accent": "#245BDB",
+      "accentHover": "#1456F0",
+      "accentSubtle": "#EAF0FF",
       "onAccent": "#FFFFFF",
       "info": "#2D5F8C",
       "infoSubtle": "#E8F0F7",
@@ -23,7 +23,11 @@ export const threadlineTokens = {
       "dangerSubtle": "#F8E9E7",
       "rail": "#173D35",
       "onRail": "#FFFFFF",
-      "focusRing": "#005FCC"
+      "focusRing": "#1456F0",
+      "chrome": "#FAFBFC",
+      "surfaceHover": "#ECEFF3",
+      "selection": "#E5EDFF",
+      "unread": "#B82F38"
     },
     "dark": {
       "canvas": "#101713",
@@ -46,7 +50,11 @@ export const threadlineTokens = {
       "dangerSubtle": "#422522",
       "rail": "#0B2721",
       "onRail": "#F4F7F5",
-      "focusRing": "#82B8FF"
+      "focusRing": "#82B8FF",
+      "chrome": "#17211D",
+      "surfaceHover": "#1E2A25",
+      "selection": "#213E34",
+      "unread": "#F09A91"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -69,7 +77,11 @@ export const threadlineTokens = {
       "dangerSubtle": "#FFE3E0",
       "rail": "#000000",
       "onRail": "#FFFFFF",
-      "focusRing": "#005FCC"
+      "focusRing": "#005FCC",
+      "chrome": "#FFFFFF",
+      "surfaceHover": "#FFFFFF",
+      "selection": "#D6F5EA",
+      "unread": "#7A1710"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -92,7 +104,11 @@ export const threadlineTokens = {
       "dangerSubtle": "#501A16",
       "rail": "#000000",
       "onRail": "#FFFFFF",
-      "focusRing": "#A8D1FF"
+      "focusRing": "#A8D1FF",
+      "chrome": "#000000",
+      "surfaceHover": "#0D0D0D",
+      "selection": "#123E31",
+      "unread": "#FF9E95"
     }
   },
   "typography": {
@@ -163,6 +179,7 @@ export const threadlineTokens = {
     "sm": 0.25,
     "md": 0.375,
     "lg": 0.5,
+    "control": 0.625,
     "xl": 0.75,
     "full": 9999
   },
@@ -245,6 +262,26 @@ export const threadlineTokens = {
         "foreground": "focusRing",
         "background": "canvas",
         "minimum": 3
+      },
+      {
+        "foreground": "accent",
+        "background": "selection",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textSecondary",
+        "background": "chrome",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textMuted",
+        "background": "surface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "unread",
+        "background": "surface",
+        "minimum": 4.5
       }
     ]
   }
