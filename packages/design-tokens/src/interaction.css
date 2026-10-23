@@ -35,11 +35,11 @@
   --tl-control-hover-text: var(--tl-color-control-selected-text);
   --tl-control-pressed-text: var(--tl-color-control-selected-text);
 }
-:where([data-tl-interaction-scope]) :where(button, [role="button"]):hover {
+:where([data-tl-interaction-scope]) :where(button:hover, [role="button"]:hover) {
   --tl-control-background: var(--tl-control-hover);
   --tl-control-foreground: var(--tl-control-hover-text);
 }
-:where([data-tl-interaction-scope]) :where(button, [role="button"]):active {
+:where([data-tl-interaction-scope]) :where(button:active, [role="button"]:active) {
   --tl-control-background: var(--tl-control-pressed);
   --tl-control-foreground: var(--tl-control-pressed-text);
 }
