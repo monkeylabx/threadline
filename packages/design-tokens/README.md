@@ -35,3 +35,7 @@ change policy.
 The light palette follows the accepted source-of-truth HTML prototype (#358 / #359): neutral surfaces and blue emphasis. `chrome` is the window toolbar, `surfaceHover` is the navigation hover surface, `selection` is the current navigation background, and `unread` is its notification foreground. Use `accent` on `selection`; use `radius.control` for the search field and `radius.xl` for rounded navigation. All roles are available in every mode. Existing dark and high-contrast values are preserved; new roles in those modes reuse their corresponding semantic surfaces and notification colors.
 
 Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar text and unread indicators in addition to the existing content/action pairs. Consumers use these shared names rather than copying prototype hex values. Native window controls remain platform-owned.
+
+## V34 navigation refinement (#393)
+
+`navigationSurface` separates the rounded sidebar from the neutral window surface and white conversation. Light navigation uses the prototype's pale gray-blue; light accent/hover use its softer blue. Desktop consumes these roles directly. Other modes retain their existing palette, with navigation mapped to `surface`. Primary, secondary, muted and unread navigation foregrounds are verified in every mode.
