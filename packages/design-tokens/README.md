@@ -43,3 +43,5 @@ Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar
 `navigationAccent` keeps the sidebar's selected controls at the user's previous vivid blue (#245BDB in light mode), independent of the softer conversation accent. Other modes reuse their existing accent. Both navigation and selection contrast pairs are verified at the unchanged4.5 threshold.
 
 The selected light navigation background is the softer gray-blue #EAF0F8. Conversation surfaces and emphasis remain unchanged. Existing muted navigation text contrast remains above 4.5.
+
+`navigationControlSurface` gives each navigation logo and the profile area a visible background separate from the softer sidebar. Light mode uses #DCE6F7; other modes reuse their existing elevated surface. Use primary/secondary text or navigationAccent on this surface; all three pairs keep the 4.5 contrast gate. This role does not change hover or selection colors.
