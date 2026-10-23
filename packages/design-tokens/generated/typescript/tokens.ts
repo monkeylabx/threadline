@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: dcb6a9609bebf64ca0d8c4328a691f4ebfaff537defb53323a96b0c3026ea3d9). Do not edit.
+// Generated from src/tokens.json (SHA-256: e30dd97e010b73a7ed257c7624ca9cab99ad86157f6371d09788af85b6300799). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -11,8 +11,8 @@ export const threadlineTokens = {
       "textMuted": "#626A75",
       "border": "#E4E6E9",
       "borderStrong": "#D5D9DF",
-      "accent": "#245BDB",
-      "accentHover": "#1456F0",
+      "accent": "#4467B8",
+      "accentHover": "#365DA9",
       "accentSubtle": "#EAF0FF",
       "onAccent": "#FFFFFF",
       "info": "#2D5F8C",
@@ -27,7 +27,8 @@ export const threadlineTokens = {
       "chrome": "#FAFBFC",
       "surfaceHover": "#ECEFF3",
       "selection": "#E5EDFF",
-      "unread": "#B82F38"
+      "unread": "#B82F38",
+      "navigationSurface": "#EAF0F8"
     },
     "dark": {
       "canvas": "#101713",
@@ -54,7 +55,8 @@ export const threadlineTokens = {
       "chrome": "#17211D",
       "surfaceHover": "#1E2A25",
       "selection": "#213E34",
-      "unread": "#F09A91"
+      "unread": "#F09A91",
+      "navigationSurface": "#17211D"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -81,7 +83,8 @@ export const threadlineTokens = {
       "chrome": "#FFFFFF",
       "surfaceHover": "#FFFFFF",
       "selection": "#D6F5EA",
-      "unread": "#7A1710"
+      "unread": "#7A1710",
+      "navigationSurface": "#FFFFFF"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -108,7 +111,8 @@ export const threadlineTokens = {
       "chrome": "#000000",
       "surfaceHover": "#0D0D0D",
       "selection": "#123E31",
-      "unread": "#FF9E95"
+      "unread": "#FF9E95",
+      "navigationSurface": "#000000"
     }
   },
   "typography": {
@@ -281,6 +285,26 @@ export const threadlineTokens = {
       {
         "foreground": "unread",
         "background": "surface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textSecondary",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textMuted",
+        "background": "navigationSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "unread",
+        "background": "navigationSurface",
         "minimum": 4.5
       }
     ]
