@@ -1,0 +1,13 @@
+/* Product geometry stays local; every state value comes from shared policy. */
+.slack-shell-v14.v34-two-pane[data-tl-interaction-scope] :is(button, [role="button"]),
+.slack-shell-v14.v34-two-pane[data-tl-interaction-scope] :is(button, [role="button"]):is(:hover, :active, :disabled, .is-current, .is-active, [aria-expanded="true"], [aria-current="true"], [aria-pressed="true"]),
+.v34-detail-sheet[data-tl-interaction-scope] :is(button, [role="button"]),
+.v34-detail-sheet[data-tl-interaction-scope] :is(button, [role="button"]):is(:hover, :active, :disabled) {
+  background: var(--tl-control-background);
+  color: var(--tl-control-foreground);
+  opacity: 1;
+}
+[data-tl-interaction-scope] button:focus-visible {
+  outline: 2px solid var(--tl-color-focus-ring);
+  outline-offset: 2px;
+}
