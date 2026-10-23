@@ -39,3 +39,5 @@ Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar
 ## V34 navigation refinement (#393)
 
 `navigationSurface` separates the rounded sidebar from the neutral window surface and white conversation. Light navigation uses the prototype's pale gray-blue; light accent/hover use its softer blue. Desktop consumes these roles directly. Other modes retain their existing palette, with navigation mapped to `surface`. Primary, secondary, muted and unread navigation foregrounds are verified in every mode.
+
+`navigationAccent` keeps the sidebar's selected controls at the user's previous vivid blue (#245BDB in light mode), independent of the softer conversation accent. Other modes reuse their existing accent. Both navigation and selection contrast pairs are verified at the unchanged4.5 threshold.
