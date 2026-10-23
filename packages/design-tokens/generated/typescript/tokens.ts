@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: f304acc4493b447635991b41585b0a5ce30c5aa5cbc15d8632a6d90545d3a3b2). Do not edit.
+// Generated from src/tokens.json (SHA-256: 04ba7e20f20a6aefee5b340f19a498f29ea3ebf3c920dd5803e7d558c6b54d90). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -29,7 +29,8 @@ export const threadlineTokens = {
       "selection": "#E5EDFF",
       "unread": "#B82F38",
       "navigationSurface": "#EAF0F8",
-      "navigationAccent": "#245BDB"
+      "navigationAccent": "#245BDB",
+      "navigationControlSurface": "#DCE6F7"
     },
     "dark": {
       "canvas": "#101713",
@@ -58,7 +59,8 @@ export const threadlineTokens = {
       "selection": "#213E34",
       "unread": "#F09A91",
       "navigationSurface": "#17211D",
-      "navigationAccent": "#6FC6AB"
+      "navigationAccent": "#6FC6AB",
+      "navigationControlSurface": "#1E2A25"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -87,7 +89,8 @@ export const threadlineTokens = {
       "selection": "#D6F5EA",
       "unread": "#7A1710",
       "navigationSurface": "#FFFFFF",
-      "navigationAccent": "#004C3E"
+      "navigationAccent": "#004C3E",
+      "navigationControlSurface": "#FFFFFF"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -116,7 +119,8 @@ export const threadlineTokens = {
       "selection": "#123E31",
       "unread": "#FF9E95",
       "navigationSurface": "#000000",
-      "navigationAccent": "#73F2C6"
+      "navigationAccent": "#73F2C6",
+      "navigationControlSurface": "#0D0D0D"
     }
   },
   "typography": {
@@ -319,6 +323,21 @@ export const threadlineTokens = {
       {
         "foreground": "navigationAccent",
         "background": "selection",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textSecondary",
+        "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "navigationAccent",
+        "background": "navigationControlSurface",
         "minimum": 4.5
       }
     ]
