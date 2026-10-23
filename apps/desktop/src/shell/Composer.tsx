@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Icon } from "./Icon.tsx";
 
 interface ComposerProps {
   readonly channelName: string;
@@ -28,13 +29,16 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
           disabled={disabled}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
               event.preventDefault();
               submit();
             }
           }}
         />
-        <button type="submit" className="tl-send" disabled={disabled || draft.trim() === ""}>发送</button>
+        <div className="tl-composer-toolbar">
+          <button type="button" disabled aria-label="添加附件" title="附件上传尚未接入"><Icon name="clip" /></button><span>消息</span>
+          <button type="submit" data-tl-control="primary" className="tl-send" aria-label="发送" disabled={disabled || draft.trim() === ""}><Icon name="send" /></button>
+        </div>
       </form>
     </div>
   );

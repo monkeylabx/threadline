@@ -9,6 +9,7 @@ interface TimelineProps {
 export function Timeline({ channelName, messages }: TimelineProps) {
   return (
     <section className="tl-timeline" aria-label={`${channelName} 频道消息`}>
+      {messages.length === 0 ? <p className="tl-empty-conversation">还没有消息，从这里开始会话</p> : null}
       <ol>
         {messages.map((message) => (
           <li key={message.eventId} className="tl-message" data-state={message.state} data-testid="message">

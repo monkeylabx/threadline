@@ -18,7 +18,7 @@ describe("two-pane shell", () => {
     await renderShell();
     expect(screen.getByRole("main", { name: "Threadline" })).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "频道导航" });
-    const buttons = within(nav).getAllByRole("button");
+    const buttons = within(nav).getAllByRole("button").filter((button) => button.classList.contains("tl-channel"));
     expect(buttons.map((button) => button.textContent)).toEqual(["#产品研发", "#客户端体验4", "#安全与合规"]);
     expect(buttons[0]?.getAttribute("aria-current")).toBe("true");
     expect(await screen.findAllByTestId("message")).toHaveLength(3);
@@ -54,15 +54,17 @@ describe("two-pane shell", () => {
   test("the offline banner appears and disappears with connectivity", async () => {
     const repository = await renderShell();
     expect(screen.queryByRole("status", { name: "" })).toBeTruthy();
-    expect(screen.queryByText(/已离线/)).toBeNull();
+    expect(screen.queryByText(/^已离线。/)).toBeNull();
     await act(async () => {
       repository.setConnection("offline");
     });
-    expect(screen.getByText(/已离线/)).toBeTruthy();
+    expect(screen.getByText(/^已离线。/)).toBeTruthy();
+    expect(screen.getByText("消息连接已离线")).toBeTruthy();
     await act(async () => {
       repository.setConnection("online");
     });
-    expect(screen.queryByText(/已离线/)).toBeNull();
+    expect(screen.queryByText(/^已离线。/)).toBeNull();
+    expect(screen.getByText("消息连接正常")).toBeTruthy();
   });
 
   test("an empty draft cannot be sent and Enter submits while Shift+Enter does not", async () => {

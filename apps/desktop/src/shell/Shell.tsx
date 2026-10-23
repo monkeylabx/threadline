@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { Channel, ConnectionState, Message, Repository } from "../repository.ts";
 import { Composer } from "./Composer.tsx";
 import { OfflineBanner } from "./OfflineBanner.tsx";
-import { Sidebar } from "./Sidebar.tsx";
+import { MessagingLayout } from "./MessagingLayout.tsx";
 import { Timeline } from "./Timeline.tsx";
 
 interface ShellProps {
@@ -66,23 +66,28 @@ export function Shell({ repository, organization = "北辰科技" }: ShellProps)
   };
 
   return (
-    <main className="tl-shell" aria-label="Threadline">
-      <Sidebar organization={organization} channels={channels} selectedChannelId={selectedId} onSelect={setSelectedId} />
+    <MessagingLayout organization={organization} channels={channels} selectedId={selectedId} onSelect={setSelectedId} connection={connection}>
       <section className="tl-workspace" aria-label="当前会话">
-        <header className="tl-workspace-header">
-          <span aria-hidden="true">#</span>
+        <ConversationHeading selected={selected} />
+        <OfflineBanner state={connection} />
+        <Timeline channelName={selected?.name ?? ""} messages={messages} />
+        <Composer channelName={selected?.name ?? ""} disabled={selected === null} onSend={send} />
+      </section>
+    </MessagingLayout>
+  );
+}
+
+function ConversationHeading({ selected }: { readonly selected: Channel | null }) {
+  return (
+    <header className="tl-workspace-header">
+  <span aria-hidden="true">#</span>
           <div>
             <h1>{selected?.name ?? "选择一个频道"}</h1>
-            {selected ? <small>{`${selected.memberCount} 位成员`}</small> : null}
+            {selected ? <small>{selected.memberCount > 0 ? `${selected.memberCount} 位成员` : "频道"}</small> : null}
           </div>
           <span role="status" aria-live="polite" className="tl-visually-hidden">
             {selected ? `已打开 ${selected.name}` : ""}
           </span>
         </header>
-        <OfflineBanner state={connection} />
-        <Timeline channelName={selected?.name ?? ""} messages={messages} />
-        <Composer channelName={selected?.name ?? ""} disabled={selected === null} onSend={send} />
-      </section>
-    </main>
   );
 }

@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Minimum capability for the empty T009 desktop host.",
-  "windows": ["main"],
-  "permissions": ["core:default"]
+  "description": "Window-scoped messaging and native titlebar dragging.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
 }
