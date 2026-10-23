@@ -37,7 +37,7 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
         />
         <div className="tl-composer-toolbar">
           <button type="button" disabled aria-label="添加附件" title="附件上传尚未接入"><Icon name="clip" /></button><span>消息</span>
-          <button type="submit" className="tl-send" aria-label="发送" disabled={disabled || draft.trim() === ""}><Icon name="send" /></button>
+          <button type="submit" data-tl-control="primary" className="tl-send" aria-label="发送" disabled={disabled || draft.trim() === ""}><Icon name="send" /></button>
         </div>
       </form>
     </div>

@@ -19,7 +19,7 @@ export function MessagingLayout(props: LayoutProps) {
   const search = useRef<HTMLInputElement>(null);
   const channels = props.channels.filter((channel) => channel.name.includes(query.trim()));
   return (
-    <main className="tl-shell" aria-label="Threadline"
+    <main className="tl-shell" aria-label="Threadline" data-tl-interaction-scope
       style={{ "--tl-sidebar-width": `${width}px` } as CSSProperties}
       onKeyDown={(event) => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {

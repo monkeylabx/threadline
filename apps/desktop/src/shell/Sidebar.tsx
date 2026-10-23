@@ -49,8 +49,8 @@ export function Sidebar({ organization, channels, selectedChannelId, onSelect, c
 /** Icon labels remain available even when their backend feature is unavailable. */
 function ApplicationNavigation() {
   return <div className="tl-app-switch" role="group" aria-label="应用">
-    <button type="button" aria-label="消息" title="消息" aria-pressed="true"><Icon name="message" /></button>
-    <button type="button" aria-label="工作" disabled title="Agent 工作将在任务接入后开放"><Icon name="work" /></button>
-    <button type="button" aria-label="待办" disabled title="审批待办将在任务接入后开放"><Icon name="check" /></button>
+    <button type="button" data-tl-control="tinted" aria-label="消息" title="消息" aria-pressed="true"><Icon name="message" /></button>
+    <button type="button" data-tl-control="tinted" aria-label="工作" disabled title="Agent 工作将在任务接入后开放"><Icon name="work" /></button>
+    <button type="button" data-tl-control="tinted" aria-label="待办" disabled title="审批待办将在任务接入后开放"><Icon name="check" /></button>
   </div>;
 }
