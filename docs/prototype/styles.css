@@ -1443,7 +1443,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
   --ink: #1f2329; --muted: #5a626e; --subtle: #626a75;
   --line: #e4e6e9; --line-strong: #d5d9df;
   --green: #4467b8; --green-strong: #365da9; --green-soft: #eaf0ff;
-  --v34-chrome: #f5f6f7; --v34-sidebar: #f5f6f7; --v34-navigation: #eaf0f8; --v34-navigation-accent: #245bdb; --v34-group: var(--green-soft);
+  --v34-chrome: #f5f6f7; --v34-sidebar: #f5f6f7; --v34-navigation: #eaf0f8; --v34-navigation-accent: #245bdb; --v34-group: var(--green-soft); --v34-control: #dce6f7;
   --v34-selected: #e5edff; --v34-hover: #eceff3; --v34-icon: #727b88;
   color: var(--ink); background: var(--v34-sidebar); grid-template-columns: var(--v22-context-width,240px) minmax(0,1fr); grid-template-rows: 52px minmax(0,1fr); }
 .slack-shell-v14.v34-two-pane .v14-global-topbar.v17-global-topbar { grid-column: 1 / -1; grid-template-columns: 72px minmax(0,1fr) 72px; gap: 0; padding-inline: 16px; border: 0; background: var(--v34-chrome); }
@@ -1456,12 +1456,12 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v14-context-sidebar { grid-column: 1; grid-row: 2; position: relative; display: flex; flex-direction: column; margin: 0 8px 8px; padding: 0; border-radius: 12px; background: var(--v34-navigation); border: 0; container: none; }
 .v34-two-pane .v14-context-sidebar > .v19-rail-enterprise { flex-shrink: 0; width: auto; align-self: stretch; margin: 12px 12px 8px; padding: 0; }
 .v34-two-pane .v19-rail-enterprise > .v18-enterprise { display: flex; justify-content: flex-start; gap: 8px; width: 100%; min-height: 44px; height: auto; padding: 8px; border-radius: 12px; background: var(--v34-group); }
-.v34-two-pane .v18-enterprise-logo { width: 29px; height: 29px; border-radius: 10px; font-size: 12px; background: #e8edf5; color: #526786; }
+.v34-two-pane .v18-enterprise-logo { width: 29px; height: 29px; border-radius: 10px; font-size: 12px; background: var(--v34-control); color: var(--v34-navigation-accent); }
 .v34-two-pane .v18-enterprise strong { flex: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; font-size: 13px; color: var(--ink); }
 .v34-two-pane .v19-rail-enterprise .v17-org-menu { top: calc(100% + 8px); left: 0; }
-.v34-two-pane .v19-rail-enterprise > .v18-enterprise:hover { background: var(--v34-hover); }
+.v34-two-pane .v19-rail-enterprise > .v18-enterprise:hover { background: #e5ece8; }
 .v34-two-pane .v14-app-rail { flex-shrink: 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 0 12px 16px; padding: 0; border: 0; background: transparent; }
-.slack-shell-v14.v34-two-pane .v14-app-rail > button { justify-self: center; width: 40px; height: 40px; min-height: 40px; display: grid; grid-template-columns: 1fr; place-items: center; align-content: center; gap: 0; padding: 0; border-radius: 12px; color: var(--muted); background: var(--v34-group); }
+.slack-shell-v14.v34-two-pane .v14-app-rail > button { justify-self: center; width: 40px; height: 40px; min-height: 40px; display: grid; grid-template-columns: 1fr; place-items: center; align-content: center; gap: 0; padding: 0; border-radius: 12px; color: var(--muted); background: var(--v34-control); }
 .slack-shell-v14.v34-two-pane .v14-app-rail > button.is-current { background: var(--v34-selected); color: var(--v34-navigation-accent); box-shadow: none; }
 .slack-shell-v14.v34-two-pane .v14-app-rail > button > .nav-icon-frame, .slack-shell-v14.v34-two-pane .v14-app-rail > button.is-current > .nav-icon-frame { width: 22px; height: 22px; background: transparent; border-radius: 0; }
 .v34-two-pane .v14-app-rail svg { width: 21px; height: 21px; stroke-width: 1.8; }
@@ -1484,10 +1484,10 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v14-context-sidebar > section > footer span { font-size: 10px; }
 .v34-two-pane .context-icon-frame > b { background: transparent; font-size: 17px; color: var(--v34-icon); }
 .slack-shell-v14.v34-two-pane .v18-personal { position: relative; flex-shrink: 0; align-self: stretch; margin: 12px; padding: 0; border: 0; }
-.v34-two-pane .v18-profile-button { display: flex; align-items: center; width: 100%; min-height: 44px; height: auto; padding: 8px; gap: 8px; border-radius: 12px; text-align: left; background: var(--v34-group); }
-.v34-two-pane .v18-profile-button .avatar { width: 27px; height: 27px; border-radius: 9px; background: #e8edf5; color: #526786; }
+.v34-two-pane .v18-profile-button { display: flex; align-items: center; width: 100%; min-height: 44px; height: auto; padding: 8px; gap: 8px; border-radius: 12px; text-align: left; background: var(--v34-control); }
+.v34-two-pane .v18-profile-button .avatar { width: 27px; height: 27px; border-radius: 9px; background: var(--green-soft); color: var(--v34-navigation-accent); }
 .v34-two-pane .v34-profile-name { display: grid; gap: 2px; font-size: 12px; }
-.v34-two-pane .v34-profile-name small { color: var(--subtle); font-size: 10px; }
+.v34-two-pane .v34-profile-name small { color: var(--muted); font-size: 10px; }
 .v34-two-pane .v18-profile-button > i { position: static; width: 6px; height: 6px; margin-left: auto; border: 0; }
 .v34-two-pane .v18-profile-menu { left: 0; bottom: 52px; width: 215px; }
 .v34-two-pane .v14-content-area { grid-column: 2; grid-row: 2; margin: 0 8px 8px 0; overflow: hidden; border-radius: 12px; background: white; }

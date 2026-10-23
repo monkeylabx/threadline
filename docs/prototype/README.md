@@ -76,7 +76,7 @@ V33 确认仅覆盖桌面信息架构；原生窗口、移动端同等交互和�
 
 创建任务弹窗使用 `?screen=channel&modal=task`。
 
-V34 左侧整块面板采用较淡的浅灰蓝 #EAF0F8，12px 圆角、8px 外侧留白，选中强调色为 #245BDB；右侧会话保留白色、柔和强调蓝 #4467B8 / #365DA9，Agent 头像使用浅蓝底与深蓝字。共享 Token 的 navigationSurface / navigationAccent 与 conversation accent 分别控制两侧，避免相互影响。 公司入口与底部用户信息各用一块 accentSubtle 淡蓝背景；三个导航图标分别有独立淡蓝底色、12px 圆角与间距，不给整排加背景。选中项保留 selection 蓝色；不增加分隔线、描边或阴影。
+V34 左侧整块面板采用较淡的浅灰蓝 #EAF0F8，12px 圆角、8px 外侧留白，选中强调色为 #245BDB；右侧会话保留白色、柔和强调蓝 #4467B8 / #365DA9，Agent 头像使用浅蓝底与深蓝字。共享 Token 的 navigationSurface / navigationAccent 与 conversation accent 分别控制两侧，避免相互影响。 公司入口保留淡蓝轻背景，Logo 使用更明确的 navigationControlSurface #DCE6F7；三个导航图标分别有独立的同色底、12px 圆角与间距，整排透明。底部用户区采用同一背景，头像另有较浅底色；深色文字保持对比度。选中项和原有 hover 色不变，不增加分隔线、描边或阴影。
 
 ## 已有演示交互（不代表生产实现）
 
