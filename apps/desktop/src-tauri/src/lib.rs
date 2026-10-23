@@ -6,6 +6,7 @@
 
 #[cfg(test)]
 mod bridge_integration_tests;
+mod channel_directory;
 mod commands;
 pub mod config;
 pub mod dto;
