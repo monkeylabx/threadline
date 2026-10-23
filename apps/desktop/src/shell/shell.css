@@ -27,13 +27,13 @@ button:disabled { cursor: default; }
 .tl-sidebar-resizer { position: absolute; top: 0; right: -7px; bottom: 0; width: 6px; z-index: 1; cursor: col-resize; touch-action: none; }
 .tl-sidebar-resizer:hover, .tl-sidebar-resizer:focus-visible { background: var(--tl-color-accent-subtle); }
 .tl-sidebar-head { flex-shrink: 0; display: flex; align-items: center; gap: var(--tl-space-md); padding: var(--tl-space-xl); }
-.tl-enterprise-logo { width: 29px; height: 29px; display: grid; place-items: center; border-radius: var(--tl-radius-lg); background: var(--tl-color-accent-subtle); color: var(--tl-color-accent); font-size: var(--tl-font-caption-size); }
+.tl-enterprise-logo { width: 29px; height: 29px; display: grid; place-items: center; border-radius: var(--tl-radius-lg); background: var(--tl-color-accent-subtle); color: var(--tl-color-navigation-accent); font-size: var(--tl-font-caption-size); }
 .tl-sidebar-head strong { flex: 1; font-size: var(--tl-font-label-size); }
 .tl-sidebar-head > span:last-child { color: var(--tl-color-text-muted); }
 .tl-app-switch { display: grid; grid-template-columns: repeat(3, 40px); gap: var(--tl-space-md); margin: 0 var(--tl-space-xl) var(--tl-space-xl); }
 .tl-app-switch button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--tl-radius-xl); background: transparent; color: var(--tl-color-text-secondary); }
 .tl-app-switch button:not(:disabled):hover { background: var(--tl-color-surface-hover); }
-.tl-app-switch button[aria-pressed="true"] { background: var(--tl-color-selection); color: var(--tl-color-accent); }
+.tl-app-switch button[aria-pressed="true"] { background: var(--tl-color-selection); color: var(--tl-color-navigation-accent); }
 .tl-app-switch button:disabled { color: var(--tl-color-text-muted); }
 .tl-conversations-title { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--tl-space-xl) var(--tl-space-md); font-size: var(--tl-font-caption-size); }
 .tl-conversations-title button { border: 0; background: transparent; padding: var(--tl-space-xs); color: var(--tl-color-text-muted); }
@@ -43,14 +43,14 @@ button:disabled { cursor: default; }
 .tl-sidebar-section ul { list-style: none; margin: 0; padding: 0; }
 .tl-channel { width: 100%; min-height: 39px; display: flex; align-items: center; gap: var(--tl-space-md); margin-bottom: var(--tl-space-xxs); padding: var(--tl-space-md); border: 0; border-radius: var(--tl-radius-xl); background: transparent; color: var(--tl-color-text-secondary); text-align: left; font-size: var(--tl-font-caption-size); }
 .tl-channel:hover { background: var(--tl-color-surface-hover); }
-.tl-channel[aria-current="true"] { background: var(--tl-color-selection); color: var(--tl-color-accent); font-weight: 600; }
+.tl-channel[aria-current="true"] { background: var(--tl-color-selection); color: var(--tl-color-navigation-accent); font-weight: 600; }
 .tl-channel[aria-current="true"] .tl-hash { color: inherit; }
 .tl-hash { width: 23px; flex: 0 0 23px; text-align: center; color: var(--tl-color-text-muted); font-size: var(--tl-font-body-size); }
 .tl-name { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tl-unread { color: var(--tl-color-unread); font-size: var(--tl-font-caption-size); }
 .tl-no-channels { padding: 0 var(--tl-space-md); color: var(--tl-color-text-muted); font-size: var(--tl-font-caption-size); }
 .tl-device-profile { display: flex; align-items: center; gap: var(--tl-space-md); margin: auto var(--tl-space-lg) 0; padding: var(--tl-space-lg) var(--tl-space-xs); border: 0; }
-.tl-device-profile .tl-avatar { width: 27px; height: 27px; flex-basis: 27px; border-radius: var(--tl-radius-lg); }
+.tl-device-profile .tl-avatar { width: 27px; height: 27px; flex-basis: 27px; border-radius: var(--tl-radius-lg); color: var(--tl-color-navigation-accent); }
 .tl-device-profile strong, .tl-device-profile small { display: block; font-size: var(--tl-font-caption-size); }
 .tl-device-profile small { color: var(--tl-color-text-muted); font-weight: 400; }
 .tl-workspace { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(58px, auto) auto minmax(0, 1fr) auto; grid-template-areas: "heading" "banner" "timeline" "composer"; margin: 0 var(--tl-space-md) var(--tl-space-md) 0; overflow: hidden; border-radius: var(--tl-radius-xl); background: var(--tl-color-canvas); }
