@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: 04ba7e20f20a6aefee5b340f19a498f29ea3ebf3c920dd5803e7d558c6b54d90). Do not edit.
+// Generated from src/tokens.json (SHA-256: 765aa00df1599bf80e1820091747dc6484752e1395d5e846860e0aae5ae9dddd). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -30,7 +30,15 @@ export const threadlineTokens = {
       "unread": "#B82F38",
       "navigationSurface": "#EAF0F8",
       "navigationAccent": "#245BDB",
-      "navigationControlSurface": "#DCE6F7"
+      "navigationControlSurface": "#DCE6F7",
+      "controlHoverSurface": "#D7E4F8",
+      "controlPressedSurface": "#C9DAF3",
+      "controlSelectedSurface": "#DCE7FF",
+      "controlSelectedHoverSurface": "#D0DFF8",
+      "controlSelectedPressedSurface": "#C2D5F4",
+      "controlSelectedText": "#204FA8",
+      "controlDisabledSurface": "#E9EDF3",
+      "actionPressed": "#2C4F91"
     },
     "dark": {
       "canvas": "#101713",
@@ -60,7 +68,15 @@ export const threadlineTokens = {
       "unread": "#F09A91",
       "navigationSurface": "#17211D",
       "navigationAccent": "#6FC6AB",
-      "navigationControlSurface": "#1E2A25"
+      "navigationControlSurface": "#1E2A25",
+      "controlHoverSurface": "#24362D",
+      "controlPressedSurface": "#304A3C",
+      "controlSelectedSurface": "#213E34",
+      "controlSelectedHoverSurface": "#2A4A3E",
+      "controlSelectedPressedSurface": "#315446",
+      "controlSelectedText": "#8AD7BE",
+      "controlDisabledSurface": "#1E2A25",
+      "actionPressed": "#8AD7BE"
     },
     "highContrastLight": {
       "canvas": "#FFFFFF",
@@ -90,7 +106,15 @@ export const threadlineTokens = {
       "unread": "#7A1710",
       "navigationSurface": "#FFFFFF",
       "navigationAccent": "#004C3E",
-      "navigationControlSurface": "#FFFFFF"
+      "navigationControlSurface": "#FFFFFF",
+      "controlHoverSurface": "#E5EDE9",
+      "controlPressedSurface": "#D0E3D9",
+      "controlSelectedSurface": "#D6F5EA",
+      "controlSelectedHoverSurface": "#C4EBDD",
+      "controlSelectedPressedSurface": "#ACE0CC",
+      "controlSelectedText": "#004C3E",
+      "controlDisabledSurface": "#FFFFFF",
+      "actionPressed": "#00382E"
     },
     "highContrastDark": {
       "canvas": "#000000",
@@ -120,7 +144,15 @@ export const threadlineTokens = {
       "unread": "#FF9E95",
       "navigationSurface": "#000000",
       "navigationAccent": "#73F2C6",
-      "navigationControlSurface": "#0D0D0D"
+      "navigationControlSurface": "#0D0D0D",
+      "controlHoverSurface": "#19241E",
+      "controlPressedSurface": "#263C30",
+      "controlSelectedSurface": "#123E31",
+      "controlSelectedHoverSurface": "#194A3A",
+      "controlSelectedPressedSurface": "#215B46",
+      "controlSelectedText": "#A4FFDF",
+      "controlDisabledSurface": "#0D0D0D",
+      "actionPressed": "#A4FFDF"
     }
   },
   "typography": {
@@ -338,6 +370,46 @@ export const threadlineTokens = {
       {
         "foreground": "navigationAccent",
         "background": "navigationControlSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "controlHoverSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textPrimary",
+        "background": "controlPressedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedHoverSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "controlSelectedText",
+        "background": "controlSelectedPressedSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "textMuted",
+        "background": "controlDisabledSurface",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "onAccent",
+        "background": "actionPressed",
+        "minimum": 4.5
+      },
+      {
+        "foreground": "onAccent",
+        "background": "danger",
         "minimum": 4.5
       }
     ]
