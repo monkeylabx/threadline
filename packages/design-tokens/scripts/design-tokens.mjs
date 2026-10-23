@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { renderCssColors } from "./render-css.mjs";
+
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -7,6 +9,8 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourcePath = resolve(packageRoot, "src/tokens.json");
+const policyPath = resolve(packageRoot, "src/interaction.css");
+const prototypeRoot = resolve(packageRoot, "../../docs/prototype/generated");
 const schemaPath = resolve(packageRoot, "schema/design-tokens.schema.json");
 const outputPaths = {
   typescript: resolve(packageRoot, "generated/typescript/tokens.ts"),
@@ -14,6 +18,7 @@ const outputPaths = {
   kotlin: resolve(packageRoot, "generated/kotlin/ThreadlineTokens.kt"),
 };
 const examplePaths = [
+  policyPath,
   resolve(packageRoot, "examples/typescript.ts"),
   resolve(packageRoot, "examples/swift.swift"),
   resolve(packageRoot, "examples/kotlin.kt"),
@@ -372,7 +377,13 @@ async function loadInputs() {
 
 async function renderedOutputs() {
   const { tokens, digest } = await loadInputs();
+  const policy = await readFile(policyPath, "utf8");
+  const css = renderCssColors(tokens, digest);
   return new Map([
+    [resolve(packageRoot, "generated/css/colors.css"), css],
+    [resolve(prototypeRoot, "colors.css"), css],
+    [resolve(prototypeRoot, "interaction.css"), `/* Generated from packages/design-tokens/src/interaction.css. Do not edit. */\n${policy}`],
+    [resolve(prototypeRoot, "interaction-states.html"), `<!-- Generated QA fixture. Do not edit. -->\n${await readFile(resolve(packageRoot, "test/interaction-states.html"), "utf8")}`],
     [outputPaths.typescript, renderTypeScript(tokens, digest)],
     [outputPaths.swift, renderSwift(tokens, digest)],
     [outputPaths.kotlin, renderKotlin(tokens, digest)],
