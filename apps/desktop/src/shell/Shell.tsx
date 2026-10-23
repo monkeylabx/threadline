@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { Channel, ConnectionState, Message, Repository } from "../repository.ts";
+import { useChannelDirectory, type DirectoryStatus } from "./channel-directory.ts";
 import { Composer } from "./Composer.tsx";
 import { OfflineBanner } from "./OfflineBanner.tsx";
 import { MessagingLayout } from "./MessagingLayout.tsx";
@@ -17,43 +18,36 @@ interface ShellProps {
  * fixtures for locald without touching the panes.
  */
 export function Shell({ repository, organization = "北辰科技" }: ShellProps) {
-  const [channels, setChannels] = useState<readonly Channel[]>([]);
+  const directory = useChannelDirectory(repository);
+  const channels = directory.channels;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<readonly Message[]>([]);
   const [connection, setConnection] = useState<ConnectionState>(repository.connectionState());
 
+  useEffect(() => repository.onConnectionChange(setConnection), [repository]);
   useEffect(() => {
-    let cancelled = false;
-    void repository.listChannels().then((list) => {
-      if (cancelled) return;
-      setChannels(list);
-      setSelectedId((current) => current ?? list[0]?.channelId ?? null);
-    });
-    return repository.onConnectionChange((state) => {
-      cancelled = cancelled || false;
-      setConnection(state);
-    });
-  }, [repository]);
+    setSelectedId(channels[0]?.channelId ?? null);
+  }, [channels]);
+  const selected = channels.find((channel) => channel.channelId === selectedId) ?? null;
+  const activeChannel = selected?.channelId ?? null;
 
   useEffect(() => {
-    if (selectedId === null) return;
+    if (activeChannel === null) return;
     let cancelled = false;
     const refresh = () => {
-      void repository.listMessages(selectedId).then((list) => {
+      void repository.listMessages(activeChannel).then((list) => {
         if (!cancelled) setMessages(list);
       });
     };
     refresh();
     const unsubscribe = repository.onMessagesChange((channelId) => {
-      if (channelId === selectedId) refresh();
+      if (channelId === activeChannel) refresh();
     });
     return () => {
       cancelled = true;
       unsubscribe();
     };
-  }, [repository, selectedId]);
-
-  const selected = channels.find((channel) => channel.channelId === selectedId) ?? null;
+  }, [repository, activeChannel]);
 
   const send = (body: string) => {
     if (selected === null) return;
@@ -66,11 +60,11 @@ export function Shell({ repository, organization = "北辰科技" }: ShellProps)
   };
 
   return (
-    <MessagingLayout organization={organization} channels={channels} selectedId={selectedId} onSelect={setSelectedId} connection={connection}>
+    <MessagingLayout organization={organization} channels={channels} selectedId={selectedId} onSelect={setSelectedId} connection={directory.status === "retrying" ? "offline" : connection}>
       <section className="tl-workspace" aria-label="当前会话">
         <ConversationHeading selected={selected} />
-        <OfflineBanner state={connection} />
-        <Timeline channelName={selected?.name ?? ""} messages={messages} />
+        <DirectoryBanner status={directory.status} connection={connection} />
+        <Timeline channelName={selected?.name ?? ""} messages={selected ? messages : []} />
         <Composer channelName={selected?.name ?? ""} disabled={selected === null} onSend={send} />
       </section>
     </MessagingLayout>
@@ -90,4 +84,14 @@ function ConversationHeading({ selected }: { readonly selected: Channel | null }
           </span>
         </header>
   );
+}
+
+function DirectoryBanner({ status, connection }: { readonly status: DirectoryStatus; readonly connection: ConnectionState }) {
+  const labels: Partial<Record<DirectoryStatus, string>> = {
+    retrying: "暂时无法载入频道，恢复连接后会自动重试。",
+    denied: "没有访问频道的权限。",
+    failed: "频道加载失败，请重新打开窗口后重试。",
+  };
+  const label = labels[status];
+  return label ? <div className="tl-banner" role="status">{label}</div> : <OfflineBanner state={connection} />;
 }
