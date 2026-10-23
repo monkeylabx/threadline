@@ -1443,7 +1443,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
   --ink: #1f2329; --muted: #5a626e; --subtle: #626a75;
   --line: #e4e6e9; --line-strong: #d5d9df;
   --green: #4467b8; --green-strong: #365da9; --green-soft: #eaf0ff;
-  --v34-chrome: #f5f6f7; --v34-sidebar: #f5f6f7; --v34-navigation: #e1eaf8; --v34-navigation-accent: #245bdb;
+  --v34-chrome: #f5f6f7; --v34-sidebar: #f5f6f7; --v34-navigation: #eaf0f8; --v34-navigation-accent: #245bdb;
   --v34-selected: #e5edff; --v34-hover: #eceff3; --v34-icon: #727b88;
   color: var(--ink); background: var(--v34-sidebar); grid-template-columns: var(--v22-context-width,240px) minmax(0,1fr); grid-template-rows: 52px minmax(0,1fr); }
 .slack-shell-v14.v34-two-pane .v14-global-topbar.v17-global-topbar { grid-column: 1 / -1; grid-template-columns: 72px minmax(0,1fr) 72px; gap: 0; padding-inline: 16px; border: 0; background: var(--v34-chrome); }
