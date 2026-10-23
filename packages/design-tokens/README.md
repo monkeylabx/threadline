@@ -29,3 +29,9 @@ generated output. Generated files are never edited directly.
 
 See [the token contract](../../docs/design/tokens.md) for platform rules and
 change policy.
+
+## Approved V34 palette (2026-10-23)
+
+The light palette follows the accepted source-of-truth HTML prototype (#358 / #359): neutral surfaces and blue emphasis. `chrome` is the window toolbar, `surfaceHover` is the navigation hover surface, `selection` is the current navigation background, and `unread` is its notification foreground. Use `accent` on `selection`; use `radius.control` for the search field and `radius.xl` for rounded navigation. All roles are available in every mode. Existing dark and high-contrast values are preserved; new roles in those modes reuse their corresponding semantic surfaces and notification colors.
+
+Declared contrast pairs cover selected navigation, toolbar labels, muted sidebar text and unread indicators in addition to the existing content/action pairs. Consumers use these shared names rather than copying prototype hex values. Native window controls remain platform-owned.
