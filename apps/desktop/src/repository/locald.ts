@@ -1,4 +1,5 @@
 /** Display DTO adapter; the host owns every secret and durable message fact. */
+import { loadAuthorizedChannels } from "./channel-directory.ts";
 import { ChannelWatch, type WatchOptions } from "./channel-watch.ts";
 import type { Channel, ConnectionState, Message, MessageState, Repository } from "../repository.ts";
 
@@ -51,8 +52,7 @@ export class LocaldRepository implements Repository {
   }
 
   async listChannels(): Promise<readonly Channel[]> {
-    const channels = await this.invoke<readonly ChannelDto[]>("list_channels");
-    return channels.map((channel) => ({ channelId: channel.channel_id, name: channel.name, memberCount: 0, unread: 0 }));
+    return loadAuthorizedChannels(this.invoke);
   }
 
   /** Lists the channel and makes it the polled channel. */

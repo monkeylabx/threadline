@@ -70,17 +70,7 @@ impl Session<CoreClient> {
     }
 
     pub fn channels(&self) -> Result<Vec<ChannelDto>, HostError> {
-        let channels = self
-            .server
-            .list_channels()
-            .map_err(|_| HostError::Unavailable)?;
-        Ok(channels
-            .into_iter()
-            .map(|channel| ChannelDto {
-                channel_id: channel.channel_id,
-                name: channel.name,
-            })
-            .collect())
+        crate::channel_directory::load(&self.server)
     }
 }
 

@@ -130,3 +130,71 @@ fn configured_host(
         .build(tauri::test::mock_context(tauri::test::noop_assets()))
         .unwrap()
 }
+
+#[test]
+fn channel_directory_preserves_real_core_failure_categories() {
+    let cases = directory_failures();
+    let mut replies: Vec<_> = cases
+        .iter()
+        .map(|(code, _)| {
+            let body = format!("{{\"code\":\"{code}\"}}");
+            let reply = response("application/json", body.as_bytes());
+            String::from_utf8(reply)
+                .unwrap()
+                .replace("200 OK", "400 Bad Request")
+                .into_bytes()
+        })
+        .collect();
+    replies.push(response("application/proto", &[0xff, 0xff, 0xff]));
+    replies.push(response("application/proto", &[]));
+    // ListChannelsResponse.channels[0]: channel_id="c", name="n" (proto fields1/4).
+    replies.push(response(
+        "application/proto",
+        &[10, 6, 10, 1, b'c', 34, 1, b'n'],
+    ));
+    let (core, worker) = server(replies);
+    let directory = std::env::temp_dir().join(format!(
+        "threadline-directory-integration-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let app = configured_host(core.clone(), core, &directory);
+    for (code, expected) in cases {
+        assert_eq!(
+            commands::list_channels(app.state()),
+            Err(expected),
+            "{code}"
+        );
+    }
+    assert_eq!(
+        commands::list_channels(app.state()),
+        Err(HostError::InvalidInput)
+    );
+    assert!(commands::list_channels(app.state()).unwrap().is_empty());
+    let channels = commands::list_channels(app.state()).unwrap();
+    assert_eq!(
+        (channels[0].channel_id.as_str(), channels[0].name.as_str()),
+        ("c", "n")
+    );
+    assert_eq!(channels.len(), 1);
+    worker.join().unwrap();
+    drop(app);
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+fn directory_failures() -> [(&'static str, HostError); 12] {
+    [
+        ("permission_denied", HostError::Denied),
+        ("unauthenticated", HostError::Denied),
+        ("invalid_argument", HostError::InvalidInput),
+        ("not_found", HostError::InvalidInput),
+        ("failed_precondition", HostError::InvalidInput),
+        ("already_exists", HostError::InvalidInput),
+        ("unknown", HostError::InvalidInput),
+        ("unavailable", HostError::Unavailable),
+        ("deadline_exceeded", HostError::Unavailable),
+        ("resource_exhausted", HostError::Unavailable),
+        ("internal", HostError::Unavailable),
+        ("canceled", HostError::Unavailable),
+    ]
+}
