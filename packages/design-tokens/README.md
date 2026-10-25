@@ -83,3 +83,12 @@ identity role.
 13sp) is the V34 size for message bodies and the company name. It scales with
 browser zoom, Dynamic Type and font scale like every other role. The prototype's
 10px metadata stays on `caption`: the verifier keeps a 12px/12sp floor.
+
+## Content-driven composer field (#422)
+
+`space.composerFieldMin` (2.6875rem, one caption line) is the resting message
+field and `space.composerFieldMax` (10.125rem, eight caption lines) is its cap.
+Consumers size the field from its content between the two and scroll only past
+the cap, so an empty composer no longer reserves blank lines. The resting group
+is 78px and the largest 197px at a 16px root; `test/composer.test.mjs` derives
+both bounds from the caption role and the input inset.

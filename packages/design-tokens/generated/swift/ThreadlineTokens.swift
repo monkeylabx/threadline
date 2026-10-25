@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit.
+// Generated from src/tokens.json (SHA-256: 20394858975d49f5413eb3e72a0086e2442c4da55c41b004897e2f8f2a067242). Do not edit.
 public enum ThreadlineTokens {
   public struct TypographyToken: Sendable {
     public let webRem: Double
@@ -94,8 +94,9 @@ public enum ThreadlineTokens {
     public static let _2Xl = 1.5
     public static let composerControl = 1.625
     public static let _3Xl = 2
+    public static let composerFieldMin = 2.6875
     public static let _4Xl = 3
-    public static let composerFieldMin = 3.9375
+    public static let composerFieldMax = 10.125
   }
   public enum Radius {
     public static let none = 0
@@ -121,7 +122,7 @@ public enum ThreadlineTokens {
     public static let standard = 180
     public static let slow = 260
   }
-  public static let space: [String: Double] = ["none": 0, "xxs": 0.125, "composerFieldGap": 0.1875, "xs": 0.25, "sm": 0.375, "md": 0.5, "composerToolbarInset": 0.625, "lg": 0.75, "composerInputInset": 0.8125, "composerIconWidth": 0.8125, "xl": 1, "composerIconHeight": 1.125, "composerOuterInset": 1.25, "2xl": 1.5, "composerControl": 1.625, "3xl": 2, "4xl": 3, "composerFieldMin": 3.9375]
+  public static let space: [String: Double] = ["none": 0, "xxs": 0.125, "composerFieldGap": 0.1875, "xs": 0.25, "sm": 0.375, "md": 0.5, "composerToolbarInset": 0.625, "lg": 0.75, "composerInputInset": 0.8125, "composerIconWidth": 0.8125, "xl": 1, "composerIconHeight": 1.125, "composerOuterInset": 1.25, "2xl": 1.5, "composerControl": 1.625, "3xl": 2, "composerFieldMin": 2.6875, "4xl": 3, "composerFieldMax": 10.125]
   public static let radius: [String: Double] = ["none": 0, "sm": 0.25, "composerTool": 0.3125, "md": 0.375, "lg": 0.5, "composerSend": 0.5625, "control": 0.625, "xl": 0.75, "full": 9999]
   public static let layer: [String: Int] = ["base": 0, "sticky": 100, "overlay": 400, "modal": 600, "toast": 800]
   public static let motionDurationMs: [String: Int] = ["instant": 0, "fast": 120, "standard": 180, "slow": 260]

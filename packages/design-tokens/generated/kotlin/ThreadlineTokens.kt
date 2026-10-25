@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit.
+// Generated from src/tokens.json (SHA-256: 20394858975d49f5413eb3e72a0086e2442c4da55c41b004897e2f8f2a067242). Do not edit.
 object ThreadlineTokens {
     data class TypographyToken(
         val webRem: Double,
@@ -94,8 +94,9 @@ object ThreadlineTokens {
         const val _2Xl = 1.5
         const val composerControl = 1.625
         const val _3Xl = 2.0
+        const val composerFieldMin = 2.6875
         const val _4Xl = 3.0
-        const val composerFieldMin = 3.9375
+        const val composerFieldMax = 10.125
     }
     object Radius {
         const val none = 0.0
@@ -121,7 +122,7 @@ object ThreadlineTokens {
         const val standard = 180
         const val slow = 260
     }
-    val space: Map<String, Double> = mapOf("none" to 0.0, "xxs" to 0.125, "composerFieldGap" to 0.1875, "xs" to 0.25, "sm" to 0.375, "md" to 0.5, "composerToolbarInset" to 0.625, "lg" to 0.75, "composerInputInset" to 0.8125, "composerIconWidth" to 0.8125, "xl" to 1.0, "composerIconHeight" to 1.125, "composerOuterInset" to 1.25, "2xl" to 1.5, "composerControl" to 1.625, "3xl" to 2.0, "4xl" to 3.0, "composerFieldMin" to 3.9375)
+    val space: Map<String, Double> = mapOf("none" to 0.0, "xxs" to 0.125, "composerFieldGap" to 0.1875, "xs" to 0.25, "sm" to 0.375, "md" to 0.5, "composerToolbarInset" to 0.625, "lg" to 0.75, "composerInputInset" to 0.8125, "composerIconWidth" to 0.8125, "xl" to 1.0, "composerIconHeight" to 1.125, "composerOuterInset" to 1.25, "2xl" to 1.5, "composerControl" to 1.625, "3xl" to 2.0, "composerFieldMin" to 2.6875, "4xl" to 3.0, "composerFieldMax" to 10.125)
     val radius: Map<String, Double> = mapOf("none" to 0.0, "sm" to 0.25, "composerTool" to 0.3125, "md" to 0.375, "lg" to 0.5, "composerSend" to 0.5625, "control" to 0.625, "xl" to 0.75, "full" to 9999.0)
     val layer: Map<String, Int> = mapOf("base" to 0, "sticky" to 100, "overlay" to 400, "modal" to 600, "toast" to 800)
     val motionDurationMs: Map<String, Int> = mapOf("instant" to 0, "fast" to 120, "standard" to 180, "slow" to 260)
