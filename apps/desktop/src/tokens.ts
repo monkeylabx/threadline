@@ -40,10 +40,10 @@ function camelToKebab(value: string): string {
 export function scaleCustomProperties(): Record<string, string> {
   const properties: Record<string, string> = {};
   for (const [name, value] of Object.entries(threadlineTokens.space)) {
-    properties[`--tl-space-${name}`] = `${value}rem`;
+    properties[`--tl-space-${camelToKebab(name)}`] = `${value}rem`;
   }
   for (const [name, value] of Object.entries(threadlineTokens.radius)) {
-    properties[`--tl-radius-${name}`] = name === "full" ? `${value}px` : `${value}rem`;
+    properties[`--tl-radius-${camelToKebab(name)}`] = name === "full" ? `${value}px` : `${value}rem`;
   }
   for (const [name, style] of Object.entries(threadlineTokens.typography)) {
     const kebab = camelToKebab(name);
