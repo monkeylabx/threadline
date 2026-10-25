@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: 9194399b6e19e3485d1803ef1c9100b78be21bd47b62944c07001c787d528e5e). Do not edit.
+// Generated from src/tokens.json (SHA-256: a7bcb775e8af7b78342a9418bc826f502dc8c9ba7a936e0cb0a6578310f51607). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -189,6 +189,13 @@ export const threadlineTokens = {
       "weight": 600,
       "swiftTextStyle": "subheadline",
       "androidSp": 14
+    },
+    "bodyCompact": {
+      "webRem": 0.8125,
+      "lineHeight": 1.7,
+      "weight": 400,
+      "swiftTextStyle": "footnote",
+      "androidSp": 13
     },
     "body": {
       "webRem": 1,
