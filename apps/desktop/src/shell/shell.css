@@ -61,6 +61,7 @@ button:disabled { cursor: default; }
 .tl-banner { grid-area: banner; margin: var(--tl-space-md) var(--tl-space-2xl) 0; padding: var(--tl-space-sm) var(--tl-space-lg); border-radius: var(--tl-radius-md); background: var(--tl-color-warning-subtle); color: var(--tl-color-warning); font-size: var(--tl-font-caption-size); }
 .tl-timeline { grid-area: timeline; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--tl-space-xl) var(--tl-space-2xl) var(--tl-space-2xl); }
 .tl-timeline ol { list-style: none; margin: 0; padding: 0; }
+.tl-day { margin: 0 0 var(--tl-space-xs); color: var(--tl-color-text-muted); text-align: center; font-size: var(--tl-font-caption-size); }
 .tl-message { display: flex; gap: var(--tl-space-lg); padding: var(--tl-space-lg) var(--tl-space-xs); }
 .tl-message[data-state="pending"] { color: var(--tl-color-text-muted); }
 .tl-message > div { min-width: 0; }

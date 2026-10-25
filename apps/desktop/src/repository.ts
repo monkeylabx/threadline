@@ -19,6 +19,8 @@ export interface Message {
   readonly channelId: string;
   readonly authorName: string;
   readonly sentAt: string;
+  /** Commit (else send) time in Unix ms; absent when the host has no timestamp. */
+  readonly sentAtMs?: number;
   readonly body: string;
   readonly state: MessageState;
   readonly channelSeq?: number;
@@ -39,6 +41,13 @@ export interface Repository {
 
 const SELF = "林嘉";
 
+/** Prototype history for #产品研发: event id, author, local clock time, body. */
+const PRODUCT_HISTORY = [
+  ["evt-1", "孟青", "10:18", "桌面端离线恢复还有一个问题：网络回来以后，旧的同步进程可能会覆盖新状态。"],
+  ["evt-2", "周一鸣", "10:21", "同意。建议把 Run Lease 和消息同步分开看。"],
+  ["evt-3", SELF, "10:34", "先跑最小改动，涉及删除旧状态文件时必须让我审批。"],
+] as const;
+
 /** FixtureRepository mirrors the V34 prototype content with no network. */
 export class FixtureRepository implements Repository {
   private readonly channels: Channel[];
@@ -49,22 +58,22 @@ export class FixtureRepository implements Repository {
   private state: ConnectionState;
   private sequence = 100;
 
-  constructor(options: { connection?: ConnectionState; autoCommit?: boolean } = {}) {
+  /** `now` places the fixture history on today's date and stamps pending sends. */
+  constructor(options: { connection?: ConnectionState; autoCommit?: boolean; now?: () => number } = {}) {
     this.state = options.connection ?? "online";
     this.autoCommit = options.autoCommit ?? true;
+    this.now = options.now ?? Date.now;
     this.channels = [
       { channelId: "channel-product", name: "产品研发", memberCount: 18, unread: 0 },
       { channelId: "channel-client", name: "客户端体验", memberCount: 9, unread: 4 },
       { channelId: "channel-security", name: "安全与合规", memberCount: 6, unread: 0 },
     ];
-    this.messages.set("channel-product", [
-      message("evt-1", "channel-product", "孟青", "10:18", "桌面端离线恢复还有一个问题：网络回来以后，旧的同步进程可能会覆盖新状态。", 1),
-      message("evt-2", "channel-product", "周一鸣", "10:21", "同意。建议把 Run Lease 和消息同步分开看。", 2),
-      message("evt-3", "channel-product", SELF, "10:34", "先跑最小改动，涉及删除旧状态文件时必须让我审批。", 3),
-    ]);
+    const today = new Date(this.now());
+    this.messages.set("channel-product", PRODUCT_HISTORY.map((row, index) => historyMessage(row, index + 1, today)));
   }
 
   private readonly autoCommit: boolean;
+  private readonly now: () => number;
 
   listChannels(): Promise<readonly Channel[]> {
     return Promise.resolve(this.channels);
@@ -76,7 +85,7 @@ export class FixtureRepository implements Repository {
 
   enqueue(channelId: string, body: string): Promise<Message> {
     const eventId = `evt-local-${this.sequence += 1}`;
-    const pending: Message = { eventId, channelId, authorName: SELF, sentAt: "现在", body, state: "pending" };
+    const pending: Message = { eventId, channelId, authorName: SELF, sentAt: "现在", sentAtMs: this.now(), body, state: "pending" };
     this.messages.set(channelId, [...(this.messages.get(channelId) ?? []), pending]);
     if (this.autoCommit && this.state === "online") {
       queueMicrotask(() => this.commit(eventId));
@@ -126,6 +135,9 @@ export class FixtureRepository implements Repository {
   }
 }
 
-function message(eventId: string, channelId: string, authorName: string, sentAt: string, body: string, channelSeq: number): Message {
-  return { eventId, channelId, authorName, sentAt, body, state: "committed", channelSeq };
+function historyMessage(row: (typeof PRODUCT_HISTORY)[number], channelSeq: number, day: Date): Message {
+  const [eventId, authorName, sentAt, body] = row;
+  const [hours = 0, minutes = 0] = sentAt.split(":").map(Number);
+  const sentAtMs = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hours, minutes).getTime();
+  return { eventId, channelId: "channel-product", authorName, sentAt, sentAtMs, body, state: "committed", channelSeq };
 }

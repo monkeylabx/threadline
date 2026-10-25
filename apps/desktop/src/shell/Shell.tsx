@@ -10,6 +10,8 @@ import { Timeline } from "./Timeline.tsx";
 interface ShellProps {
   readonly repository: Repository;
   readonly organization?: string;
+  /** Wall clock for relative day labels; injectable for deterministic tests. */
+  readonly clock?: () => number;
 }
 
 /**
@@ -17,7 +19,7 @@ interface ShellProps {
  * here; every read and write goes through the Repository so A8 can swap the
  * fixtures for locald without touching the panes.
  */
-export function Shell({ repository, organization = "北辰科技" }: ShellProps) {
+export function Shell({ repository, organization = "北辰科技", clock = Date.now }: ShellProps) {
   const directory = useChannelDirectory(repository);
   const channels = directory.channels;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function Shell({ repository, organization = "北辰科技" }: ShellProps)
       <section className="tl-workspace" aria-label="当前会话">
         <ConversationHeading selected={selected} />
         <DirectoryBanner status={directory.status} connection={connection} />
-        <Timeline channelName={selected?.name ?? ""} messages={selected ? messages : []} />
+        <Timeline channelName={selected?.name ?? ""} messages={selected ? messages : []} now={clock()} />
         <Composer channelName={selected?.name ?? ""} disabled={selected === null} onSend={send} />
       </section>
     </MessagingLayout>
