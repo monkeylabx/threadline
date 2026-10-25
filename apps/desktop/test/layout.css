@@ -5,3 +5,7 @@
 [data-layout-legacy="true"] .tl-workspace > * { grid-area: auto; }
 
 html:has([data-layout-text-scale="true"]) { font-size: 200%; }
+
+/* Mutation proves the composer geometry checks reject the previous defect. */
+[data-layout-composer-legacy="true"] .tl-composer textarea { resize: vertical; }
+[data-layout-composer-legacy="true"] .tl-composer-toolbar { padding: var(--tl-space-sm) var(--tl-space-md); }
