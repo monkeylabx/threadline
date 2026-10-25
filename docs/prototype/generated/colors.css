@@ -1,4 +1,4 @@
-/* Generated from src/tokens.json (12260fb11e06b612bee2cb99c13737200987c36f108c01f3d3d2538e55430315). Do not edit. */
+/* Generated from src/tokens.json (e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit. */
 :root, [data-tl-scheme="light"] {
   --tl-color-canvas: #FFFFFF;
   --tl-color-surface: #F5F6F7;
@@ -205,6 +205,9 @@
   --tl-font-label-size: 0.875rem;
   --tl-font-label-line: 1.4;
   --tl-font-label-weight: 600;
+  --tl-font-body-compact-size: 0.8125rem;
+  --tl-font-body-compact-line: 1.7;
+  --tl-font-body-compact-weight: 400;
   --tl-font-body-size: 1rem;
   --tl-font-body-line: 1.5;
   --tl-font-body-weight: 400;

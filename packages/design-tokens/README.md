@@ -76,3 +76,10 @@ stable author key to one role and never derive a nearby shade; Agent avatars
 keep `accentSubtle` with `accentHover`. `test/palette.test.mjs` keeps every
 mode's emphasis roles in the blue family and requires a contrast pair for each
 identity role.
+
+## Compact body text (#406)
+
+`bodyCompact` (0.8125rem, 1.7 line height, weight 400; iOS `footnote`, Android
+13sp) is the V34 size for message bodies and the company name. It scales with
+browser zoom, Dynamic Type and font scale like every other role. The prototype's
+10px metadata stays on `caption`: the verifier keeps a 12px/12sp floor.
