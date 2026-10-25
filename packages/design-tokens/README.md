@@ -11,6 +11,10 @@ generated/typescript/tokens.ts         Desktop/Admin Web adapter
 generated/swift/ThreadlineTokens.swift iOS adapter
 generated/kotlin/ThreadlineTokens.kt   Android adapter
 examples/                              platform consumption examples
+scripts/design-tokens.mjs              fixed generate/verify commands
+scripts/validate-tokens.mjs            schema and contrast invariants
+scripts/render-*.mjs                   one deterministic renderer per output
+scripts/outputs.mjs                    which inputs feed which generated files
 ```
 
 From the repository root:
