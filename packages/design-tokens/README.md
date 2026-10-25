@@ -58,6 +58,9 @@ Use the [interaction contract](../../docs/design/interaction-states.md) and
 outputs of the same command. Colors stay in tokens.json; no consumer derives a
 nearby shade. A selected resting control remains selected after pointer exit.
 
+Disabled controls keep their variant's resting surface and mute only the
+foreground; filled primary controls fall back to `controlDisabledSurface` (#405).
+
 ## V34 dark, high-contrast and identity roles (#404)
 
 The V34 palette now covers every mode. Dark mode replaces the earlier green
