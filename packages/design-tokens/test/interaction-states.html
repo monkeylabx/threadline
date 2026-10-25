@@ -1,18 +1,24 @@
 <!doctype html>
 <!-- QA fixture: shared CSS cascade, no service or product actions. -->
 <html lang="en"><meta charset="utf-8"><title>Shared interaction state regression</title>
-<link rel="stylesheet" href="./colors.css?v=399"><link rel="stylesheet" href="./interaction.css?v=399-zero-specificity">
+<link rel="stylesheet" href="./colors.css?v=405"><link rel="stylesheet" href="./interaction.css?v=405-resting-disabled">
 <style>
 body { font-family: system-ui; padding: 24px; }
 button, .reference { padding: 12px; margin: 12px; border-radius: 12px; border: 0; }
 [data-tl-interaction-scope] button { background: var(--tl-control-background); color: var(--tl-control-foreground); }
-#disabled-reference { background: var(--tl-color-control-disabled-surface); color: var(--tl-color-text-muted); }
+.reference { color: var(--tl-color-text-muted); }
+#quiet-reference { background: transparent; }
+#tinted-reference { background: var(--tl-color-navigation-control-surface); }
+#filled-reference { background: var(--tl-color-control-disabled-surface); }
 </style>
 <main data-tl-interaction-scope>
 <button id="normal">Normal</button><button id="selected" aria-pressed="true">Selected</button>
 <button id="native-disabled" disabled>Native disabled</button>
-<button id="aria-disabled" aria-disabled="true" data-tl-control="primary">Aria disabled</button>
 <button id="disabled-selected" disabled aria-pressed="true">Disabled selected</button>
-<div id="disabled-reference" class="reference">Expected disabled palette</div>
-<p>Regression: hover native disabled and aria-disabled; hold Space on aria-disabled. Their computed foreground/background must always match the reference. Selection persists after pointer exit.</p>
+<div id="quiet-reference" class="reference">Expected quiet disabled</div>
+<button id="tinted-disabled" disabled data-tl-control="tinted">Tinted disabled</button>
+<div id="tinted-reference" class="reference">Expected tinted disabled</div>
+<button id="aria-disabled" aria-disabled="true" data-tl-control="primary">Aria disabled</button>
+<div id="filled-reference" class="reference">Expected primary disabled</div>
+<p>Regression: hover every disabled control and hold Space on aria-disabled. Each must keep matching the reference after it: quiet controls stay transparent, tinted controls keep their tinted surface and primary falls back to the disabled surface. Selection persists after pointer exit and never shows on a disabled control.</p>
 </main></html>
