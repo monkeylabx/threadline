@@ -78,6 +78,7 @@ describe("LocaldRepository", () => {
     expect(await repository.listChannels()).toEqual([{ channelId: "channel-product", name: "产品研发", memberCount: 0, unread: 0 }]);
     const messages = await repository.listMessages("channel-product");
     expect(messages[0]).toMatchObject({ authorName: "actor-meng-qing", body: "来自孟青", state: "committed", channelSeq: 1 });
+    expect(messages[0]?.sentAtMs).toBe(1_700_000_000_000);
     expect(messages[1]).toMatchObject({ authorName: "?", body: "（此消息无法显示）", state: "unreadable" });
     expect(host.calls.find((call) => call.command === "list_messages")?.args).toEqual({ channelId: "channel-product" });
   });
@@ -158,4 +159,15 @@ test("formatClock renders local HH:MM or nothing", () => {
   const sample = new Date(2026, 9, 18, 9, 5).getTime();
   expect(formatClock(sample)).toBe("09:05");
   expect(formatClock(null)).toBe("");
+});
+
+test("messages without host timestamps carry no day", async () => {
+  const invoke = (<T,>(command: string) => Promise.resolve((command === "list_messages"
+    ? [{ event_id: "evt-n", channel_id: "c", author_actor_id: "a", author_device_id: "d", text: "t", state: "pending", channel_seq: null, sent_at_unix_ms: null, committed_at_unix_ms: null }]
+    : { committed: 0, deduplicated: 0, retained: 0, applied: 0, has_more: false, online: true }) as T));
+  const repository = new LocaldRepository(invoke, { pollMs: 0 });
+  const [message] = await repository.listMessages("c");
+  expect(message?.sentAt).toBe("");
+  expect(message && "sentAtMs" in message).toBe(false);
+  repository.dispose();
 });
