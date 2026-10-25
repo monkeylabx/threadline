@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Icon } from "./Icon.tsx";
 
 interface ComposerProps {
@@ -7,9 +7,17 @@ interface ComposerProps {
   readonly onSend: (body: string) => void;
 }
 
-/** Message composer; Enter sends, Shift+Enter inserts a newline. */
+/** Sizes the field to its content; the stylesheet's min/max-height clamp the result. */
+function fitField(field: HTMLTextAreaElement) {
+  field.style.height = "auto";
+  field.style.height = `${field.scrollHeight}px`;
+}
+
+/** Message composer; Enter sends, Shift+Enter inserts a newline. The field grows with the draft. */
 export function Composer({ channelName, disabled, onSend }: ComposerProps) {
   const [draft, setDraft] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => { if (field.current) fitField(field.current); }, [draft]);
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
     const body = draft.trim();
@@ -23,7 +31,8 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
         <label htmlFor="tl-composer-input" className="tl-visually-hidden">{`发消息到 ${channelName} 频道`}</label>
         <textarea
           id="tl-composer-input"
-          rows={2}
+          ref={field}
+          rows={1}
           value={draft}
           placeholder={`发消息到 #${channelName}`}
           disabled={disabled}
@@ -36,7 +45,7 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
           }}
         />
         <div className="tl-composer-toolbar">
-          <button type="button" disabled aria-label="添加附件" title="附件上传尚未接入"><Icon name="clip" /></button><span>消息</span>
+          <button type="button" disabled aria-label="添加附件" title="附件上传尚未接入"><Icon name="clip" /></button><span className="tl-composer-hint">Enter 发送 · Shift+Enter 换行</span>
           <button type="submit" data-tl-control="primary" className="tl-send" aria-label="发送" disabled={disabled || draft.trim() === ""}><Icon name="send" /></button>
         </div>
       </form>
