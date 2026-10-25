@@ -34,6 +34,12 @@ jobs:
         run: node --test scripts/toolchain.test.mjs scripts/ci/docs-only.test.mjs
       - name: Test native agentd receipt validation
         run: node --test scripts/ci/verify-agentd-windows.test.mjs scripts/ci/verify-agentd-windows-io.test.mjs
+      - name: Verify design tokens and shared state policy
+        # Dependency-free; runs for documentation-only changes too because the
+        # prototype's generated CSS lives under docs/.
+        run: |
+          node packages/design-tokens/scripts/design-tokens.mjs verify
+          node --test packages/design-tokens/scripts/*.test.mjs packages/design-tokens/test/*.test.mjs
       - name: Classify changes and check Markdown
         id: scope
         env:

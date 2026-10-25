@@ -96,6 +96,7 @@ executed checks from planned tooling. This documentation change installs no anal
 | [Desktop lint](../../apps/desktop/package.json) | Node TypeScript syntax check | This is not ESLint and enforces none of the proposed ESLint metrics. |
 | [Build workflow](../../.github/workflows/build.yml), `workspace-linux` | Cargo Clippy with warnings denied, workspace builds/tests and NATS fixture checks | Default enabled Clippy diagnostics are enforced; this is not an explicit configuration of this document's 60-line, 5-argument, depth-3 profile. |
 | Build workflow platform jobs and [secret scan](../../.github/workflows/secret-scan.yml) | Platform compilation/tests and secret scanning | No cross-language complexity, changed-line coverage percentage, cohesion or change-size gate is configured here. |
+| [Build workflow](../../.github/workflows/build.yml), `contracts` design-token step | Design-token schema, contrast pairs, byte-for-byte generated outputs (including prototype CSS) and the package's `node --test` suites | No function/type size, complexity or cohesion measurement. |
 
 All six function metrics, the type/module triggers and ceilings, the 80% changed-line
 coverage policy, security decision branch completeness, and the 400/800 change-size
