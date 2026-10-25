@@ -1504,11 +1504,12 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v14-message-content article.is-agent > div { padding: 0; background: transparent; }
 .v34-two-pane .v14-message-content article.is-agent button { padding: 5px 10px; font-size: 11px; border-radius: 8px; }
 .v34-two-pane .v14-message-composer { display: grid; grid-template-rows: auto auto; gap: var(--tl-space-composer-field-gap); margin: 0 var(--tl-space-composer-outer-inset) var(--tl-space-composer-outer-inset); border: 0; box-shadow: none; border-radius: var(--tl-radius-xl); background: var(--v34-sidebar); }
-.v34-two-pane .v14-message-composer textarea { display: block; min-height: var(--tl-space-composer-field-min); margin: 0; padding: var(--tl-space-composer-input-inset); resize: none; font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); background: transparent; }
+.v34-two-pane .v14-message-composer textarea { display: block; min-height: var(--tl-space-composer-field-min); max-height: var(--tl-space-composer-field-max); overflow-y: auto; margin: 0; padding: var(--tl-space-composer-input-inset); resize: none; font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); background: transparent; }
 .v34-two-pane .v14-message-composer footer { height: auto; gap: var(--tl-space-md); padding: 0 var(--tl-space-composer-toolbar-inset) var(--tl-space-sm); font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); }
 .v34-two-pane .v14-message-composer footer button { width: var(--tl-space-composer-control); height: var(--tl-space-composer-control); padding: 0; border-radius: var(--tl-radius-composer-tool); }
 .v34-two-pane .v14-message-composer footer button svg { width: var(--tl-space-composer-icon-width); height: var(--tl-space-composer-icon-height); }
 .v34-two-pane .v14-message-composer footer .focus-send { border-radius: var(--tl-radius-composer-send); }
+.v34-two-pane .v14-message-composer footer span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .v34-two-pane .v14-global-search:focus-within { outline: 2px solid var(--green); outline-offset: 2px; box-shadow: none; }
 .v34-two-pane .v14-search-results { border-radius: 12px; }
 .v34-two-pane .v14-search-results button { border-radius: 8px; }
