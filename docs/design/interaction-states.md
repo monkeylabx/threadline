@@ -16,7 +16,8 @@ Product selectors bind background/color to `--tl-control-background` and
 | Selected/open rest | controlSelectedSurface `#DCE7FF` | controlSelectedText `#204FA8` | stays after pointer exit |
 | Selected hover | controlSelectedHoverSurface `#D0DFF8` | controlSelectedText | hover preserves selection |
 | Selected pressed | controlSelectedPressedSurface `#C2D5F4` | controlSelectedText | pressed feedback preserves selection |
-| Disabled | controlDisabledSurface `#E9EDF3` | textMuted | overrides hover, pressed and selected |
+| Disabled (neutral, tinted, danger) | the variant's resting surface (transparent or navigationControlSurface) | textMuted | overrides hover, pressed and selected |
+| Disabled (primary) | controlDisabledSurface `#E9EDF3` | textMuted | a muted label on accent would be unreadable |
 
 Primary actions share accent/accentHover/actionPressed (`#4467B8`, `#365DA9`,
 `#2C4F91`) and onAccent. Danger actions use danger for resting text, dangerSubtle
@@ -30,13 +31,19 @@ Mark a container with `data-tl-interaction-scope`. Native buttons and
 control may choose `data-tl-control="tinted"`, `primary`, or `danger`; the default
 is neutral. Persistent selection comes from `.is-current`, `.is-active`,
 `aria-current="true"/"page"`, `aria-selected="true"`, `aria-pressed="true"`, or
-`aria-expanded="true"`. Disabled wins last. Do not add click feedback to a static
+`aria-expanded="true"`. Disabled wins last: it keeps the variant's resting surface,
+so an unavailable quiet or navigation control does not turn into a grey box, and
+only filled primary controls switch to controlDisabledSurface (#405). Do not add click feedback to a static
 current-device card or claim that disabled future features are implemented.
 
 All four modes expose explicit identical role names; consumers neither derive
 nor invert colors. Existing contrast gates remain. Additional pairs cover normal
 hover/press text, all selected states, disabled text, primary press and danger
-press. Lowest new light pair is disabled text at 4.66:1. Keyboard focus keeps the
+press. Lowest new light pair is disabled text at 4.66:1. Disabled foregrounds on
+their resting surfaces (canvas, surface, navigationSurface, navigationControlSurface)
+stay at or above 3:1 in every mode; inactive controls are exempt from WCAG
+1.4.3/1.4.11, and 3:1 keeps disabled icons perceivable. `test/interaction-policy.test.mjs`
+resolves the policy cascade for every variant and state and checks these ratios. Keyboard focus keeps the
 shared focusRing; no animation is needed to communicate state. Native mobile uses
 the same generated state roles with native pointer/touch/selection semantics.
 
