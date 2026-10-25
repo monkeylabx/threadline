@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit.
+// Generated from src/tokens.json (SHA-256: 20394858975d49f5413eb3e72a0086e2442c4da55c41b004897e2f8f2a067242). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -250,8 +250,9 @@ export const threadlineTokens = {
     "2xl": 1.5,
     "composerControl": 1.625,
     "3xl": 2,
+    "composerFieldMin": 2.6875,
     "4xl": 3,
-    "composerFieldMin": 3.9375
+    "composerFieldMax": 10.125
   },
   "radius": {
     "none": 0,
