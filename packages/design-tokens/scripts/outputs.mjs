@@ -1,4 +1,4 @@
-import { renderCssColors } from "./render-css.mjs";
+import { renderCssTokens } from "./render-css.mjs";
 import { renderKotlin } from "./render-kotlin.mjs";
 import { renderSwift } from "./render-swift.mjs";
 import { renderTypeScript } from "./render-typescript.mjs";
@@ -46,7 +46,7 @@ async function loadInputs() {
 export async function renderedOutputs() {
   const { tokens, digest } = await loadInputs();
   const policy = await readFile(policyPath, "utf8");
-  const css = renderCssColors(tokens, digest);
+  const css = renderCssTokens(tokens, digest);
   return new Map([
     [resolve(packageRoot, "generated/css/colors.css"), css],
     [resolve(prototypeRoot, "colors.css"), css],

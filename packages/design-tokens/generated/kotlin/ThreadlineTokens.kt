@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: a7bcb775e8af7b78342a9418bc826f502dc8c9ba7a936e0cb0a6578310f51607). Do not edit.
+// Generated from src/tokens.json (SHA-256: e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit.
 object ThreadlineTokens {
     data class TypographyToken(
         val webRem: Double,
@@ -80,20 +80,30 @@ object ThreadlineTokens {
     object Space {
         const val none = 0.0
         const val xxs = 0.125
+        const val composerFieldGap = 0.1875
         const val xs = 0.25
         const val sm = 0.375
         const val md = 0.5
+        const val composerToolbarInset = 0.625
         const val lg = 0.75
+        const val composerInputInset = 0.8125
+        const val composerIconWidth = 0.8125
         const val xl = 1.0
+        const val composerIconHeight = 1.125
+        const val composerOuterInset = 1.25
         const val _2Xl = 1.5
+        const val composerControl = 1.625
         const val _3Xl = 2.0
         const val _4Xl = 3.0
+        const val composerFieldMin = 3.9375
     }
     object Radius {
         const val none = 0.0
         const val sm = 0.25
+        const val composerTool = 0.3125
         const val md = 0.375
         const val lg = 0.5
+        const val composerSend = 0.5625
         const val control = 0.625
         const val xl = 0.75
         const val full = 9999.0
@@ -111,8 +121,8 @@ object ThreadlineTokens {
         const val standard = 180
         const val slow = 260
     }
-    val space: Map<String, Double> = mapOf("none" to 0.0, "xxs" to 0.125, "xs" to 0.25, "sm" to 0.375, "md" to 0.5, "lg" to 0.75, "xl" to 1.0, "2xl" to 1.5, "3xl" to 2.0, "4xl" to 3.0)
-    val radius: Map<String, Double> = mapOf("none" to 0.0, "sm" to 0.25, "md" to 0.375, "lg" to 0.5, "control" to 0.625, "xl" to 0.75, "full" to 9999.0)
+    val space: Map<String, Double> = mapOf("none" to 0.0, "xxs" to 0.125, "composerFieldGap" to 0.1875, "xs" to 0.25, "sm" to 0.375, "md" to 0.5, "composerToolbarInset" to 0.625, "lg" to 0.75, "composerInputInset" to 0.8125, "composerIconWidth" to 0.8125, "xl" to 1.0, "composerIconHeight" to 1.125, "composerOuterInset" to 1.25, "2xl" to 1.5, "composerControl" to 1.625, "3xl" to 2.0, "4xl" to 3.0, "composerFieldMin" to 3.9375)
+    val radius: Map<String, Double> = mapOf("none" to 0.0, "sm" to 0.25, "composerTool" to 0.3125, "md" to 0.375, "lg" to 0.5, "composerSend" to 0.5625, "control" to 0.625, "xl" to 0.75, "full" to 9999.0)
     val layer: Map<String, Int> = mapOf("base" to 0, "sticky" to 100, "overlay" to 400, "modal" to 600, "toast" to 800)
     val motionDurationMs: Map<String, Int> = mapOf("instant" to 0, "fast" to 120, "standard" to 180, "slow" to 260)
     val motionEasing: Map<String, String> = mapOf("standard" to "cubic-bezier(0.22, 0.72, 0.25, 1)", "enter" to "cubic-bezier(0.16, 1, 0.3, 1)", "exit" to "cubic-bezier(0.4, 0, 1, 1)")

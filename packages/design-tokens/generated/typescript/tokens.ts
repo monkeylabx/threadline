@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: a7bcb775e8af7b78342a9418bc826f502dc8c9ba7a936e0cb0a6578310f51607). Do not edit.
+// Generated from src/tokens.json (SHA-256: e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit.
 export const threadlineTokens = {
   "schemaVersion": 1,
   "color": {
@@ -236,20 +236,30 @@ export const threadlineTokens = {
   "space": {
     "none": 0,
     "xxs": 0.125,
+    "composerFieldGap": 0.1875,
     "xs": 0.25,
     "sm": 0.375,
     "md": 0.5,
+    "composerToolbarInset": 0.625,
     "lg": 0.75,
+    "composerInputInset": 0.8125,
+    "composerIconWidth": 0.8125,
     "xl": 1,
+    "composerIconHeight": 1.125,
+    "composerOuterInset": 1.25,
     "2xl": 1.5,
+    "composerControl": 1.625,
     "3xl": 2,
-    "4xl": 3
+    "4xl": 3,
+    "composerFieldMin": 3.9375
   },
   "radius": {
     "none": 0,
     "sm": 0.25,
+    "composerTool": 0.3125,
     "md": 0.375,
     "lg": 0.5,
+    "composerSend": 0.5625,
     "control": 0.625,
     "xl": 0.75,
     "full": 9999
