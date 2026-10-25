@@ -1,4 +1,5 @@
 import type { Message } from "../repository.ts";
+import { identityRole } from "./identity.ts";
 
 interface TimelineProps {
   readonly channelName: string;
@@ -13,7 +14,7 @@ export function Timeline({ channelName, messages }: TimelineProps) {
       <ol>
         {messages.map((message) => (
           <li key={message.eventId} className="tl-message" data-state={message.state} data-testid="message">
-            <span className="tl-avatar" aria-hidden="true">{message.authorName.slice(0, 1)}</span>
+            <span className="tl-avatar" data-identity={identityRole(message.authorName)} aria-hidden="true">{message.authorName.slice(0, 1)}</span>
             <div>
               <div className="tl-message-meta">
                 <strong>{message.authorName}</strong>
