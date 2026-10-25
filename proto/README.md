@@ -36,6 +36,12 @@ node proto/tools/verify-contracts.mjs
 uses the merged `proto/buf.yaml` policy against `main`; it must not be skipped
 now that `main` contains the protocol baseline.
 
+`verify-contracts.mjs` is a thin entry over `proto/tools/contract-checks/`:
+each policy module owns one set of frozen invariants, and
+`verifier-registry.mjs` is the only place a child verifier is registered. A new
+contract check is a new bounded module or registry entry, never growth of the
+entry script.
+
 ```bash
 make proto-generate
 ```
