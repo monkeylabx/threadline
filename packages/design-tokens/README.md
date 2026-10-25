@@ -60,3 +60,19 @@ nearby shade. A selected resting control remains selected after pointer exit.
 
 Disabled controls keep their variant's resting surface and mute only the
 foreground; filled primary controls fall back to `controlDisabledSurface` (#405).
+
+## V34 dark, high-contrast and identity roles (#404)
+
+The V34 palette now covers every mode. Dark mode replaces the earlier green
+surfaces with neutral graphite (`surface` window, a lifted `canvas`
+conversation) and the same blue emphasis family as light mode; high-contrast
+light and dark keep their black/white structure with blue accents. Statements
+above that other modes "retain their existing palette" describe the state before
+this change. Light values are unchanged.
+
+`identitySlate`, `identityPlum`, `identityClay` and `identityAmber` are the
+prototype's person avatar fills; `onIdentity` is their initial. Consumers map a
+stable author key to one role and never derive a nearby shade; Agent avatars
+keep `accentSubtle` with `accentHover`. `test/palette.test.mjs` keeps every
+mode's emphasis roles in the blue family and requires a contrast pair for each
+identity role.
