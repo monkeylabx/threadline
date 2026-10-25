@@ -34,7 +34,7 @@ test("the toolbar contains search and leaves native window controls to the host"
 
 test("application entries are named icon-only controls with honest unavailable states", async () => {
   await openShell();
-  for (const name of ["消息", "工作", "待办"]) {
+  for (const name of ["消息", "私人工作", "待办"]) {
     const button = screen.getByRole("button", { name });
     expect(button.textContent).toBe("");
     expect(button.querySelector("svg")).toBeTruthy();
@@ -114,4 +114,29 @@ test("pointer movement preserves its delta when the navigation panel has outer i
   fireEvent.lostPointerCapture(separator);
   fireEvent(separator, new MouseEvent("pointermove", { bubbles: true, clientX: 300 }));
   expect(separator.getAttribute("aria-valuenow")).toBe("250");
+});
+
+test("unread channels are emphasised and signalled on the message entry even when filtered out", async () => {
+  await openShell();
+  const rows = screen.getAllByRole("button").filter((button) => button.classList.contains("tl-channel"));
+  expect(rows.map((row) => row.getAttribute("data-unread"))).toEqual([null, "true", null]);
+  expect(screen.getByTestId("message-signal")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "消息" }).getAttribute("title")).toBe("消息 · 有未读");
+  fireEvent.change(screen.getByRole("searchbox", { name: "搜索频道" }), { target: { value: "安全" } });
+  expect(screen.queryByRole("button", { name: /客户端体验/ })).toBeNull();
+  expect(screen.getByTestId("message-signal")).toBeTruthy();
+});
+
+test("the message entry carries no signal when every channel is read", async () => {
+  class ReadRepository extends FixtureRepository {
+    override async listChannels() {
+      return (await super.listChannels()).map((channel) => ({ ...channel, unread: 0 }));
+    }
+  }
+  render(<Shell repository={new ReadRepository({ autoCommit: false })} />);
+  await screen.findByRole("heading", { level: 1, name: "产品研发" });
+  expect(screen.queryByTestId("message-signal")).toBeNull();
+  expect(screen.getByRole("button", { name: "消息" }).getAttribute("title")).toBe("消息");
+  const rows = screen.getAllByRole("button").filter((button) => button.classList.contains("tl-channel"));
+  expect(rows.every((row) => !row.hasAttribute("data-unread"))).toBe(true);
 });
