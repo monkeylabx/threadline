@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Prototype composer geometry</title>
+<style>body{margin:0;font:14px system-ui}header{padding:8px;display:flex;gap:12px;align-items:center}iframe{display:block;border:0;width:100%;height:800px}output{white-space:pre-wrap}</style></head>
+<body>
+<header><label>参考文字大小<select id="scale"><option value="100">100%</option><option value="200">200%</option></select></label><button id="check">检查原型输入框</button><output id="result">等待原型载入</output></header>
+<iframe title="输入框原型参考" src="../index.html?viewport=desktop&amp;screen=channel&amp;prototype=im-agent-fusion&amp;variant=A&amp;ui=v34"></iframe>
+<script type="module">
+const frame = document.querySelector("iframe");
+const scale = document.querySelector("select");
+const output = document.querySelector("output");
+function applyScale() {
+  const doc = frame.contentDocument;
+  if (!doc) return;
+  doc.documentElement.style.fontSize = `${scale.value}%`;
+  output.textContent = "点击检查原型输入框";
+}
+function checkComposer() {
+  const doc = frame.contentDocument;
+  if (!doc) return void (output.textContent = "FAIL reference not ready");
+  const composer = doc.querySelector(".v34-two-pane .v14-message-composer");
+  if (!composer) return void (output.textContent = "FAIL composer not ready");
+  const footer = composer.querySelector("footer");
+  if (!footer) return void (output.textContent = "FAIL footer not ready");
+  const factor = Number(scale.value) / 100;
+  const total = composer.getBoundingClientRect().height;
+  const toolbar = footer.getBoundingClientRect().height;
+  const valid = Math.abs(total - 98 * factor) < .75 && Math.abs(toolbar - 32 * factor) < .75;
+  output.textContent = `${valid ? "PASS" : "FAIL"} ${scale.value}%: composer=${total}, toolbar=${toolbar}`;
+}
+frame.addEventListener("load", applyScale);
+scale.addEventListener("change", applyScale);
+document.querySelector("button").addEventListener("click", checkComposer);
+</script>
+</body></html>
