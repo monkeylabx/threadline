@@ -822,6 +822,17 @@ if (imAgentPrototypeEnabled) {
   });
 }
 
+// The V34 channel field follows its draft; CSS clamps it to the shared min/max roles.
+function fitComposerField(field) {
+  field.style.height = "auto";
+  field.style.height = `${field.scrollHeight}px`;
+}
+document.addEventListener("input", (event) => {
+  if (event.target instanceof HTMLTextAreaElement && event.target.matches(".v34-two-pane .v14-message-composer textarea")) {
+    fitComposerField(event.target);
+  }
+});
+
 switchRoute(initialParams.get("screen") || (artifactPrototypeEnabled ? "task-result" : "channel"));
 if (artifactPrototypeEnabled) setArtifactVariant(initialParams.get("variant"), { updateUrl: true });
 if (privatePublishPrototypeEnabled) {
