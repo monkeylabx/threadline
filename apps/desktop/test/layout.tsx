@@ -6,7 +6,7 @@ import { Shell } from "../src/shell/Shell.tsx";
 import { applyTokens } from "../src/tokens.ts";
 import "../src/shell/shell.css";
 import "./layout.css";
-import { composerGeometryChecks } from "./composer-geometry.ts";
+import { composerGeometryChecks, composerGrowthChecks } from "./composer-geometry.ts";
 
 const scenario = new URLSearchParams(location.search).get("scenario") ?? "empty";
 class LayoutRepository extends FixtureRepository {
@@ -71,7 +71,7 @@ function textReflowChecks(): readonly Check[] {
 }
 
 /** Checks real geometry in a browser; the mutation control proves a red result. */
-function checkLayout() {
+async function checkLayout() {
   const shell = document.querySelector<HTMLElement>(".tl-shell");
   const timeline = document.querySelector<HTMLElement>(".tl-timeline");
   const composer = document.querySelector<HTMLElement>(".tl-composer");
@@ -81,6 +81,7 @@ function checkLayout() {
     const banner = document.querySelector<HTMLElement>(".tl-banner");
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);
   }
+  checks.push(...await composerGrowthChecks());
   const errors = violations(checks);
   return `${errors.length ? "FAIL" : "PASS"} ${scenario}: ${errors.join("; ") || "composer at conversation bottom; timeline flexes; viewport contained"}`;
 }
@@ -97,7 +98,7 @@ function LayoutFixture() {
       <label><input type="checkbox" checked={legacy} onChange={(event) => setLegacy(event.target.checked)} />模拟旧版网格缺陷</label>
       <label><input type="checkbox" checked={largeText} onChange={(event) => setLargeText(event.target.checked)} />2 倍文字</label>
       <label><input type="checkbox" checked={oldComposer} onChange={(event) => setOldComposer(event.target.checked)} />模拟旧输入框样式</label>
-      <button type="button" onClick={() => setReport(checkLayout())}>运行布局验收</button>
+      <button type="button" onClick={() => void checkLayout().then(setReport)}>运行布局验收</button>
       <output aria-live="polite">{report}</output>
     </aside>
   </div>;
