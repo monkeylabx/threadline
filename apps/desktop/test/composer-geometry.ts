@@ -1,12 +1,13 @@
 /** Read-only checks of the real Composer and its stylesheet against the V34 contract. */
 export function composerGeometryChecks(): readonly (readonly [boolean, string])[] {
   const form = document.querySelector<HTMLElement>(".tl-composer form");
-  const field = form?.querySelector<HTMLTextAreaElement>("textarea");
-  const toolbar = form?.querySelector<HTMLElement>(".tl-composer-toolbar");
-  const send = form?.querySelector<HTMLButtonElement>(".tl-send");
-  const tool = form?.querySelector<HTMLButtonElement>('[aria-label="添加附件"]');
+  if (!form) return [[false, "composer fixture is not ready"]];
+  const field = form.querySelector<HTMLTextAreaElement>("textarea");
+  const toolbar = form.querySelector<HTMLElement>(".tl-composer-toolbar");
+  const send = form.querySelector<HTMLButtonElement>(".tl-send");
+  const tool = form.querySelector<HTMLButtonElement>('[aria-label="添加附件"]');
   const panel = document.querySelector<HTMLElement>(".tl-workspace");
-  if (!form || !field || !toolbar || !send || !tool || !panel) return [[false, "composer fixture is not ready"]];
+  if (!field || !toolbar || !send || !tool || !panel) return [[false, "composer fixture is not ready"]];
   const scale = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
   const near = (actual: number, expected: number) => Math.abs(actual - expected * scale) < 0.75;
   const box = form.getBoundingClientRect(), parent = panel.getBoundingClientRect();
