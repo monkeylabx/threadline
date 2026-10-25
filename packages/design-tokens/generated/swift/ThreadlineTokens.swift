@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: 765aa00df1599bf80e1820091747dc6484752e1395d5e846860e0aae5ae9dddd). Do not edit.
+// Generated from src/tokens.json (SHA-256: be41461e574d9c40c74ac469c10b2181e13c415f78eb833fcda1915fe58e80e6). Do not edit.
 public enum ThreadlineTokens {
   public struct TypographyToken: Sendable {
     public let webRem: Double
@@ -74,20 +74,30 @@ public enum ThreadlineTokens {
   public enum Space {
     public static let none = 0
     public static let xxs = 0.125
+    public static let composerFieldGap = 0.1875
     public static let xs = 0.25
     public static let sm = 0.375
     public static let md = 0.5
+    public static let composerToolbarInset = 0.625
     public static let lg = 0.75
+    public static let composerInputInset = 0.8125
+    public static let composerIconWidth = 0.8125
     public static let xl = 1
+    public static let composerIconHeight = 1.125
+    public static let composerOuterInset = 1.25
     public static let _2Xl = 1.5
+    public static let composerControl = 1.625
     public static let _3Xl = 2
     public static let _4Xl = 3
+    public static let composerFieldMin = 3.9375
   }
   public enum Radius {
     public static let none = 0
     public static let sm = 0.25
+    public static let composerTool = 0.3125
     public static let md = 0.375
     public static let lg = 0.5
+    public static let composerSend = 0.5625
     public static let control = 0.625
     public static let xl = 0.75
     public static let full = 9999
@@ -105,8 +115,8 @@ public enum ThreadlineTokens {
     public static let standard = 180
     public static let slow = 260
   }
-  public static let space: [String: Double] = ["none": 0, "xxs": 0.125, "xs": 0.25, "sm": 0.375, "md": 0.5, "lg": 0.75, "xl": 1, "2xl": 1.5, "3xl": 2, "4xl": 3]
-  public static let radius: [String: Double] = ["none": 0, "sm": 0.25, "md": 0.375, "lg": 0.5, "control": 0.625, "xl": 0.75, "full": 9999]
+  public static let space: [String: Double] = ["none": 0, "xxs": 0.125, "composerFieldGap": 0.1875, "xs": 0.25, "sm": 0.375, "md": 0.5, "composerToolbarInset": 0.625, "lg": 0.75, "composerInputInset": 0.8125, "composerIconWidth": 0.8125, "xl": 1, "composerIconHeight": 1.125, "composerOuterInset": 1.25, "2xl": 1.5, "composerControl": 1.625, "3xl": 2, "4xl": 3, "composerFieldMin": 3.9375]
+  public static let radius: [String: Double] = ["none": 0, "sm": 0.25, "composerTool": 0.3125, "md": 0.375, "lg": 0.5, "composerSend": 0.5625, "control": 0.625, "xl": 0.75, "full": 9999]
   public static let layer: [String: Int] = ["base": 0, "sticky": 100, "overlay": 400, "modal": 600, "toast": 800]
   public static let motionDurationMs: [String: Int] = ["instant": 0, "fast": 120, "standard": 180, "slow": 260]
   public static let motionEasing: [String: String] = ["standard": "cubic-bezier(0.22, 0.72, 0.25, 1)", "enter": "cubic-bezier(0.16, 1, 0.3, 1)", "exit": "cubic-bezier(0.4, 0, 1, 1)"]

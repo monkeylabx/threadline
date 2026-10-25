@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { renderCssColors } from "./render-css.mjs";
+import { renderCssTokens } from "./render-css.mjs";
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -378,7 +378,7 @@ async function loadInputs() {
 async function renderedOutputs() {
   const { tokens, digest } = await loadInputs();
   const policy = await readFile(policyPath, "utf8");
-  const css = renderCssColors(tokens, digest);
+  const css = renderCssTokens(tokens, digest);
   return new Map([
     [resolve(packageRoot, "generated/css/colors.css"), css],
     [resolve(prototypeRoot, "colors.css"), css],

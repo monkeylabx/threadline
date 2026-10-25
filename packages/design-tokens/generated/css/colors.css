@@ -1,4 +1,4 @@
-/* Generated from src/tokens.json (765aa00df1599bf80e1820091747dc6484752e1395d5e846860e0aae5ae9dddd). Do not edit. */
+/* Generated from src/tokens.json (be41461e574d9c40c74ac469c10b2181e13c415f78eb833fcda1915fe58e80e6). Do not edit. */
 :root, [data-tl-scheme="light"] {
   --tl-color-canvas: #FFFFFF;
   --tl-color-surface: #F5F6F7;
@@ -150,4 +150,54 @@
   --tl-color-control-selected-text: #A4FFDF;
   --tl-color-control-disabled-surface: #0D0D0D;
   --tl-color-action-pressed: #A4FFDF;
+}
+:root {
+  --tl-space-none: 0rem;
+  --tl-space-xxs: 0.125rem;
+  --tl-space-composer-field-gap: 0.1875rem;
+  --tl-space-xs: 0.25rem;
+  --tl-space-sm: 0.375rem;
+  --tl-space-md: 0.5rem;
+  --tl-space-composer-toolbar-inset: 0.625rem;
+  --tl-space-lg: 0.75rem;
+  --tl-space-composer-input-inset: 0.8125rem;
+  --tl-space-composer-icon-width: 0.8125rem;
+  --tl-space-xl: 1rem;
+  --tl-space-composer-icon-height: 1.125rem;
+  --tl-space-composer-outer-inset: 1.25rem;
+  --tl-space-2xl: 1.5rem;
+  --tl-space-composer-control: 1.625rem;
+  --tl-space-3xl: 2rem;
+  --tl-space-4xl: 3rem;
+  --tl-space-composer-field-min: 3.9375rem;
+  --tl-radius-none: 0rem;
+  --tl-radius-sm: 0.25rem;
+  --tl-radius-composer-tool: 0.3125rem;
+  --tl-radius-md: 0.375rem;
+  --tl-radius-lg: 0.5rem;
+  --tl-radius-composer-send: 0.5625rem;
+  --tl-radius-control: 0.625rem;
+  --tl-radius-xl: 0.75rem;
+  --tl-radius-full: 9999px;
+  --tl-font-caption-size: 0.75rem;
+  --tl-font-caption-line: 1.4;
+  --tl-font-caption-weight: 500;
+  --tl-font-label-size: 0.875rem;
+  --tl-font-label-line: 1.4;
+  --tl-font-label-weight: 600;
+  --tl-font-body-size: 1rem;
+  --tl-font-body-line: 1.5;
+  --tl-font-body-weight: 400;
+  --tl-font-body-emphasis-size: 1rem;
+  --tl-font-body-emphasis-line: 1.5;
+  --tl-font-body-emphasis-weight: 600;
+  --tl-font-title-size: 1.25rem;
+  --tl-font-title-line: 1.3;
+  --tl-font-title-weight: 650;
+  --tl-font-display-size: 1.75rem;
+  --tl-font-display-line: 1.2;
+  --tl-font-display-weight: 700;
+  --tl-font-mono-size: 0.875rem;
+  --tl-font-mono-line: 1.6;
+  --tl-font-mono-weight: 400;
 }

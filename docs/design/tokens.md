@@ -44,3 +44,5 @@ When the platform requests reduced motion, nonessential spatial movement and dur
 The examples under [`packages/design-tokens/examples`](../../packages/design-tokens/examples) show direct consumption for TypeScript, SwiftUI, and Jetpack Compose. Native adapters may translate the generated string colors into platform color objects, but they must not substitute different values or rename the semantic roles.
 
 Existing prototype hard-coded values are migration inventory, not additional token authority. Page implementation tasks should replace them with these semantic tokens within their own owned paths; T013 deliberately does not edit product-page surfaces.
+
+Message-composer geometry and static CSS scale naming are defined in [the composer contract](message-composer.md).
