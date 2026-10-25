@@ -53,3 +53,10 @@ Use the [interaction contract](../../docs/design/interaction-states.md) and
 `generated/css/colors.css` and the prototype's generated CSS are deterministic
 outputs of the same command. Colors stay in tokens.json; no consumer derives a
 nearby shade. A selected resting control remains selected after pointer exit.
+
+## Compact body text (#406)
+
+`bodyCompact` (0.8125rem, 1.7 line height, weight 400; iOS `footnote`, Android
+13sp) is the V34 size for message bodies and the company name. It scales with
+browser zoom, Dynamic Type and font scale like every other role. The prototype's
+10px metadata stays on `caption`: the verifier keeps a 12px/12sp floor.

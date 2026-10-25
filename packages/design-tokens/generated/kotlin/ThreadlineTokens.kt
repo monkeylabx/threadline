@@ -1,4 +1,4 @@
-// Generated from src/tokens.json (SHA-256: 765aa00df1599bf80e1820091747dc6484752e1395d5e846860e0aae5ae9dddd). Do not edit.
+// Generated from src/tokens.json (SHA-256: 344d837a5409d7e37972483933ccbadbef2fd2c2d978fa062e02ae1f48fc18e4). Do not edit.
 object ThreadlineTokens {
     data class TypographyToken(
         val webRem: Double,
@@ -61,10 +61,11 @@ object ThreadlineTokens {
         val highContrastDark = ColorMode(canvas = "#000000", surface = "#000000", surfaceElevated = "#0D0D0D", textPrimary = "#FFFFFF", textSecondary = "#F2F2F2", textMuted = "#D9D9D9", border = "#FFFFFF", borderStrong = "#FFFFFF", accent = "#73F2C6", accentHover = "#A4FFDF", accentSubtle = "#123E31", onAccent = "#000000", info = "#8FC7FF", infoSubtle = "#173A5E", warning = "#FFD166", warningSubtle = "#493700", danger = "#FF9E95", dangerSubtle = "#501A16", rail = "#000000", onRail = "#FFFFFF", focusRing = "#A8D1FF", chrome = "#000000", surfaceHover = "#0D0D0D", selection = "#123E31", unread = "#FF9E95", navigationSurface = "#000000", navigationAccent = "#73F2C6", navigationControlSurface = "#0D0D0D", controlHoverSurface = "#19241E", controlPressedSurface = "#263C30", controlSelectedSurface = "#123E31", controlSelectedHoverSurface = "#194A3A", controlSelectedPressedSurface = "#215B46", controlSelectedText = "#A4FFDF", controlDisabledSurface = "#0D0D0D", actionPressed = "#A4FFDF")
     }
 
-    val typography: Map<String, TypographyToken> = mapOf("caption" to TypographyToken(0.75, 1.4, 500, "caption1", 12.0), "label" to TypographyToken(0.875, 1.4, 600, "subheadline", 14.0), "body" to TypographyToken(1.0, 1.5, 400, "body", 16.0), "bodyEmphasis" to TypographyToken(1.0, 1.5, 600, "headline", 16.0), "title" to TypographyToken(1.25, 1.3, 650, "title3", 20.0), "display" to TypographyToken(1.75, 1.2, 700, "title1", 28.0), "mono" to TypographyToken(0.875, 1.6, 400, "body", 14.0))
+    val typography: Map<String, TypographyToken> = mapOf("caption" to TypographyToken(0.75, 1.4, 500, "caption1", 12.0), "label" to TypographyToken(0.875, 1.4, 600, "subheadline", 14.0), "bodyCompact" to TypographyToken(0.8125, 1.7, 400, "footnote", 13.0), "body" to TypographyToken(1.0, 1.5, 400, "body", 16.0), "bodyEmphasis" to TypographyToken(1.0, 1.5, 600, "headline", 16.0), "title" to TypographyToken(1.25, 1.3, 650, "title3", 20.0), "display" to TypographyToken(1.75, 1.2, 700, "title1", 28.0), "mono" to TypographyToken(0.875, 1.6, 400, "body", 14.0))
     object Typography {
         val caption = TypographyToken(0.75, 1.4, 500, "caption1", 12.0)
         val label = TypographyToken(0.875, 1.4, 600, "subheadline", 14.0)
+        val bodyCompact = TypographyToken(0.8125, 1.7, 400, "footnote", 13.0)
         val body = TypographyToken(1.0, 1.5, 400, "body", 16.0)
         val bodyEmphasis = TypographyToken(1.0, 1.5, 600, "headline", 16.0)
         val title = TypographyToken(1.25, 1.3, 650, "title3", 20.0)
