@@ -7,6 +7,7 @@ Threadline uses one machine-readable token source for web/desktop, iOS, and Andr
 [`design-tokens.schema.json`](../../packages/design-tokens/schema/design-tokens.schema.json) publishes the portable shape. The dependency-free verifier enforces the same contract and additional executable invariants. It defines:
 
 - semantic colors for light, dark, high-contrast light, and high-contrast dark modes;
+- identity colors for person avatars (`identitySlate`, `identityPlum`, `identityClay`, `identityAmber` with `onIdentity`), mapped from a stable author key rather than chosen per screen;
 - typography roles with web `rem`, iOS Dynamic Type style, and Android `sp` mappings;
 - logical spacing, radius, and layer scales;
 - motion durations, easing, and a fail-closed reduced-motion policy; and

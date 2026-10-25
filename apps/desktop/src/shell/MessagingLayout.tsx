@@ -36,7 +36,7 @@ export function MessagingLayout(props: LayoutProps) {
       </div>
       <div className="tl-sidebar-pane" id="tl-sidebar-pane">
         <Sidebar organization={props.organization} channels={channels} selectedChannelId={props.selectedId}
-          onSelect={props.onSelect} connection={props.connection} />
+          onSelect={props.onSelect} connection={props.connection} hasUnread={props.channels.some((channel) => channel.unread > 0)} />
         <SidebarResize width={width} onChange={setWidth} />
       </div>
       {props.children}
