@@ -7,6 +7,7 @@
   --tl-control-pressed: var(--tl-color-control-pressed-surface);
   --tl-control-hover-text: var(--tl-color-text-primary);
   --tl-control-pressed-text: var(--tl-color-text-primary);
+  --tl-control-disabled: var(--tl-control-rest);
   --tl-control-background: var(--tl-control-rest);
   --tl-control-foreground: var(--tl-control-rest-text);
 }
@@ -20,6 +21,7 @@
   --tl-control-pressed: var(--tl-color-action-pressed);
   --tl-control-hover-text: var(--tl-color-on-accent);
   --tl-control-pressed-text: var(--tl-color-on-accent);
+  --tl-control-disabled: var(--tl-color-control-disabled-surface);
 }
 :where([data-tl-interaction-scope]) :where([data-tl-control="danger"]) {
   --tl-control-rest-text: var(--tl-color-danger);
@@ -44,7 +46,8 @@
   --tl-control-background: var(--tl-control-pressed);
   --tl-control-foreground: var(--tl-control-pressed-text);
 }
+/* Disabled keeps the variant's resting surface; filled primary falls back to the disabled surface. */
 :where([data-tl-interaction-scope]) :where(:disabled, [aria-disabled="true"]) {
-  --tl-control-background: var(--tl-color-control-disabled-surface);
+  --tl-control-background: var(--tl-control-disabled);
   --tl-control-foreground: var(--tl-color-text-muted);
 }
