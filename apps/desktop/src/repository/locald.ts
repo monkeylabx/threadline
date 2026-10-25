@@ -125,11 +125,13 @@ export class LocaldRepository implements Repository {
 
 function toMessage(dto: MessageDto): Message {
   const unreadable = dto.state === "unreadable";
+  const timestamp = dto.committed_at_unix_ms ?? dto.sent_at_unix_ms;
   return {
     eventId: dto.event_id,
     channelId: dto.channel_id,
     authorName: unreadable ? "?" : dto.author_actor_id,
-    sentAt: formatClock(dto.committed_at_unix_ms ?? dto.sent_at_unix_ms),
+    sentAt: formatClock(timestamp),
+    ...(timestamp === null ? {} : { sentAtMs: timestamp }),
     body: unreadable ? UNREADABLE_BODY : dto.text,
     state: dto.state,
     ...(dto.channel_seq === null ? {} : { channelSeq: dto.channel_seq }),
