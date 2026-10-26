@@ -1,53 +1,74 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><title>Prototype composer geometry</title>
-<style>body{margin:0;font:14px system-ui}header{padding:8px;display:flex;gap:12px;align-items:center}iframe{display:block;border:0;width:100%;height:800px}output{white-space:pre-wrap}</style></head>
+<head><meta charset="utf-8"><title>Reference composer layout QA</title>
+<style>body{margin:0;font:14px system-ui}header{height:96px;box-sizing:border-box;overflow:auto;padding:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}iframe{display:block;border:0;width:100%;height:calc(100vh - 96px)}output{white-space:pre-wrap}</style></head>
 <body>
-<header><label>参考文字大小<select id="scale"><option value="100">100%</option><option value="200">200%</option></select></label><label><input id="legacy" type="checkbox">模拟旧原型固定高度</label><button id="check">检查原型输入框</button><output id="result">等待原型载入</output></header>
+<header><label>参考文字大小<select id="scale"><option value="100">100%</option><option value="200">200%</option></select></label><label><input id="legacy" type="checkbox">模拟旧卡片布局</label><button id="check">检查参考布局</button><output id="result">等待原型载入</output></header>
 <iframe title="输入框原型参考" src="../index.html?viewport=desktop&amp;screen=channel&amp;prototype=im-agent-fusion&amp;variant=A&amp;ui=v34"></iframe>
 <script type="module">
 const frame = document.querySelector("iframe");
 const scale = document.querySelector("select");
 const output = document.querySelector("output");
 const legacy = document.querySelector("#legacy");
+function readParts(doc) {
+  if (!doc) return null;
+  const composer = doc.querySelector(".v35-reference-composer");
+  if (!composer) return null;
+  const field = composer.querySelector("textarea");
+  const tools = composer.querySelector('[role="toolbar"]');
+  const footer = composer.querySelector("footer");
+  if (!field || !tools || !footer) return null;
+  return { composer, field, tools, footer, doc };
+}
 function applyScale() {
   const doc = frame.contentDocument;
   if (!doc) return;
   doc.documentElement.style.fontSize = `${scale.value}%`;
   applyMutation();
-  output.textContent = "点击检查原型输入框";
+  output.textContent = "点击检查参考布局";
 }
 function applyMutation() {
-  const doc = frame.contentDocument;
-  if (!doc) return;
-  const field = doc.querySelector(".v34-two-pane .v14-message-composer textarea");
-  if (!field) return;
-  // The old reference: a fixed two-line field that scrolls instead of growing.
-  field.style.minHeight = legacy.checked ? "63px" : "";
-  field.style.maxHeight = legacy.checked ? "63px" : "";
+  const parts = readParts(frame.contentDocument);
+  if (!parts) return;
+  parts.composer.style.margin = legacy.checked ? "20px" : "";
+  parts.composer.style.borderRadius = legacy.checked ? "12px" : "";
+  parts.tools.hidden = legacy.checked;
 }
 function measure(composer, field, lines) {
   field.value = Array.from({ length: lines }, (_, index) => `第 ${index + 1} 行`).join("\n");
   field.dispatchEvent(new frame.contentWindow.Event("input", { bubbles: true }));
-  const total = composer.getBoundingClientRect().height;
-  return { total, scrolls: field.scrollHeight > field.clientHeight + 1 };
+  return { total: composer.getBoundingClientRect().height, field: field.getBoundingClientRect().height, scrolls: field.scrollHeight > field.clientHeight + 1 };
+}
+function referenceChecks(parts) {
+  const { composer, tools, field, footer, doc } = parts;
+  const panel = composer.parentElement;
+  const box = composer.getBoundingClientRect(), parent = panel.getBoundingClientRect();
+  const top = tools.getBoundingClientRect(), editor = field.getBoundingClientRect();
+  const action = footer.getBoundingClientRect();
+  const style = doc.defaultView.getComputedStyle(composer);
+  return [
+    [top.height > 0 && top.bottom <= editor.top + 1, "toolbar above editor"],
+    [editor.bottom <= action.top + 1, "actions below editor"],
+    [panel.querySelector("main").clientHeight >= 96, "timeline stays usable"],
+    [Math.abs(box.left - parent.left) < 1 && Math.abs(box.right - parent.right) < 1, "flush panel sides"],
+    [Math.abs(box.bottom - parent.bottom) < 1, "flush panel bottom"],
+    [style.borderRadius === "0px", "no nested rounded card"],
+    [style.backgroundColor === doc.defaultView.getComputedStyle(panel.parentElement).backgroundColor, "continuous conversation surface"],
+    [doc.defaultView.getComputedStyle(field).resize === "none", "no native resize grip"],
+  ];
 }
 function checkComposer() {
-  const doc = frame.contentDocument;
-  const composer = doc?.querySelector(".v34-two-pane .v14-message-composer");
-  const field = composer?.querySelector("textarea");
-  const footer = composer?.querySelector("footer");
-  if (!composer || !field || !footer) return void (output.textContent = "FAIL composer not ready");
+  const parts = readParts(frame.contentDocument);
+  if (!parts) return void (output.textContent = "FAIL composer not ready");
+  const { composer, field, doc } = parts;
+  const rest = measure(composer, field, 0), eight = measure(composer, field, 8);
+  const twelve = measure(composer, field, 12), cleared = measure(composer, field, 0);
   const factor = Number(scale.value) / 100;
-  const near = (actual, expected) => Math.abs(actual - expected * factor) < .75;
-  const rest = measure(composer, field, 0), eight = measure(composer, field, 8), twelve = measure(composer, field, 12);
-  const cleared = measure(composer, field, 0);
-  const toolbar = footer.getBoundingClientRect().height;
-  const checks = [
-    [near(rest.total, 78) && near(toolbar, 32), `rest=${rest.total} toolbar=${toolbar}`],
-    [!eight.scrolls && eight.total > rest.total && eight.total <= 197 * factor + .75, `eight=${eight.total}`],
-    [near(twelve.total, 197) && twelve.scrolls, `cap=${twelve.total} scrolls=${twelve.scrolls}`],
-    [near(cleared.total, 78), `cleared=${cleared.total}`],
+  const minimum = Math.min(96 * factor, doc.defaultView.innerHeight * .18);
+  const checks = [...referenceChecks(parts),
+    [rest.field >= minimum - 1, "roomy editor minimum"],
+    [eight.field > rest.field && twelve.scrolls, "draft grows then scrolls"],
+    [Math.abs(cleared.total - rest.total) < 1, "clearing restores editor"],
   ];
   output.textContent = `${checks.every(([ok]) => ok) ? "PASS" : "FAIL"} ${scale.value}%: ${checks.map(([ok, text]) => `${ok ? "" : "✗"}${text}`).join(", ")}`;
 }

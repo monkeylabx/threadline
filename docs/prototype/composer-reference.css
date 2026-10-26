@@ -1,0 +1,59 @@
+/* Draft #430: reference-led toolbar/editor/actions layout, prototype only. */
+.v34-two-pane .v14-message-composer.v35-reference-composer {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0;
+  margin: 0;
+  padding: 0 calc(var(--tl-space-2xl) + var(--tl-space-xs)) var(--tl-space-lg);
+  border: 0;
+  border-top: 1px solid var(--tl-color-border);
+  border-radius: 0;
+  background: var(--tl-color-canvas);
+  box-shadow: none;
+}
+.v35-reference-composer .v35-composer-tools {
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  align-items: center;
+  gap: var(--tl-space-lg);
+  padding: var(--tl-space-lg) 0 var(--tl-space-md);
+}
+.v35-reference-composer .v35-composer-tools button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 min(var(--tl-space-3xl), 40px);
+  width: min(var(--tl-space-3xl), 40px);
+  height: min(var(--tl-space-3xl), 40px);
+  padding: 0;
+  border-radius: var(--tl-radius-composer-tool);
+}
+.v35-reference-composer .v35-composer-tools svg {
+  width: min(var(--tl-space-composer-outer-inset), 24px);
+  height: min(var(--tl-space-composer-outer-inset), 24px);
+}
+.v34-two-pane .v35-reference-composer textarea {
+  min-height: min(calc(var(--tl-space-4xl) * 2), 18vh);
+  max-height: min(var(--tl-space-composer-field-max), 24vh);
+  padding: var(--tl-space-md) 0;
+  font-size: var(--tl-font-body-compact-size);
+  line-height: var(--tl-font-body-compact-line);
+}
+.v34-two-pane .v35-reference-composer footer {
+  gap: var(--tl-space-lg);
+  min-height: calc(var(--tl-space-3xl) + var(--tl-space-md));
+  padding: var(--tl-space-md) 0 0;
+}
+.v35-reference-composer footer span { color: var(--tl-color-text-muted); }
+.v34-two-pane .v35-reference-composer footer .focus-send {
+  width: auto;
+  min-width: calc(var(--tl-space-4xl) + var(--tl-space-xl));
+  height: var(--tl-space-3xl);
+  padding-inline: var(--tl-space-lg);
+}
+.v34-two-pane .v35-reference-composer:focus-within { outline: 0; }
+.v34-two-pane .v35-reference-composer:has(textarea:focus-visible) {
+  border-top-color: var(--tl-color-focus-ring);
+  box-shadow: inset 0 1px var(--tl-color-focus-ring);
+}

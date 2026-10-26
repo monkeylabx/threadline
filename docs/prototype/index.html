@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="./generated/colors.css?v=422-composer-growth" />
     <link rel="stylesheet" href="./generated/interaction.css?v=399-zero-specificity" />
     <link rel="stylesheet" href="./styles.css?v=423-composer-growth" />
+    <link rel="stylesheet" href="./composer-reference.css?v=430-toolbar-first" />
     <link rel="stylesheet" href="./interaction-bindings.css" />
   </head>
   <body>
@@ -52,6 +53,10 @@
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></symbol>
       <symbol id="i-sidebar" viewBox="0 0 24 24"><path d="M7 4v16M17 7l-5 5 5 5"></path></symbol>
+      <symbol id="i-composer-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M8 14s1.5 3 4 3 4-3 4-3M8.5 9h.01M15.5 9h.01"></path></symbol>
+      <symbol id="i-composer-cut" viewBox="0 0 24 24"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="18" r="3"></circle><path d="M4 3l12 13M20 3 8 16"></path></symbol>
+      <symbol id="i-composer-type" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="m8 17 4-10 4 10M9.5 13h5"></path></symbol>
+      <symbol id="i-composer-markdown" viewBox="0 0 24 24"><path d="M9 21H4V3h15v9M8 7h7M8 11h4M13 21v-6l3 3 3-3v6"></path></symbol>
     </svg>
 
     <template id="nav-signal-template"><em class="nav-signal" aria-hidden="true"></em></template>
@@ -408,7 +413,18 @@
                 <section class="v14-content-view v14-message-content" data-v14-content="messages">
                   <header><div><b>#</b><span><strong>产品研发</strong><small>18 位成员 · 2 个 Agent</small></span></div><button><svg><use href="#i-users"></use></svg></button></header>
                   <main><div class="focus-day">今天</div><article><span class="avatar avatar-meng">孟</span><div><b>孟青 <time>10:18</time></b><p>桌面端离线恢复还有一个问题：旧同步进程可能覆盖新状态。</p></div></article><article><span class="avatar avatar-zhou">周</span><div><b>周一鸣 <time>10:21</time></b><p>建议把 Run Lease 和消息同步分开，Runtime 使用 fencing token。</p></div></article><article class="is-agent"><span class="avatar avatar-agent">A</span><div><b>Atlas · Agent <time>10:22</time></b><p>我可以根据上方两条消息建立一个任务，不读取频道其他历史。</p><button>开始执行</button></div></article><article><span class="avatar avatar-agent">A</span><div><b>Atlas · Agent <time>10:25</time></b><p data-v34-request-summary>ENG-248 已暂停，等待你确认 3 个缓存文件的删除范围。</p><button class="v34-inline-action" data-v34-open="approval">查看审批 <span>→</span></button></div></article></main>
-                  <div class="v14-message-composer"><textarea rows="1" placeholder="发消息到 #产品研发"></textarea><footer><button><svg><use href="#i-paperclip"></use></svg></button><span>Enter 发送 · Shift+Enter 换行</span><button data-tl-control="primary" class="focus-send"><svg><use href="#i-send"></use></svg></button></footer></div>
+                  <div class="v14-message-composer v35-reference-composer" aria-label="消息编辑区">
+                    <div class="v35-composer-tools" role="toolbar" aria-label="消息工具">
+                      <button disabled aria-label="表情" title="表情暂未开放"><svg aria-hidden="true"><use href="#i-composer-smile"></use></svg></button>
+                      <button disabled aria-label="添加附件" title="附件暂未开放"><svg aria-hidden="true"><use href="#i-folder"></use></svg></button>
+                      <button disabled aria-label="截图" title="截图暂未开放"><svg aria-hidden="true"><use href="#i-composer-cut"></use></svg></button>
+                      <button disabled aria-label="文本格式" title="文本格式暂未开放"><svg aria-hidden="true"><use href="#i-composer-type"></use></svg></button>
+                      <button disabled aria-label="Markdown" title="Markdown暂未开放"><svg aria-hidden="true"><use href="#i-composer-markdown"></use></svg></button>
+                      <button disabled aria-label="更多" title="更多工具暂未开放"><svg aria-hidden="true"><use href="#i-more"></use></svg></button>
+                    </div>
+                    <textarea rows="1" aria-label="发消息到产品研发频道" placeholder="发消息到 #产品研发"></textarea>
+                    <footer><span>Enter 发送 · Shift+Enter 换行</span><button data-tl-control="primary" class="focus-send" aria-label="发送消息">发送</button></footer>
+                  </div>
                 </section>
                 <section class="v14-content-view v14-work-content" data-v14-content="work" hidden>
                   <header><div><div class="work-breadcrumb"><button># 产品研发</button><i>/</i><span>🔒 私人工作</span></div><h2 id="v14-work-title">重做桌面端入职引导</h2></div><div><button class="directory-picker"><svg><use href="#i-folder"></use></svg><span>~/Projects/threadline</span><b>⌄</b></button><button class="context-pill">3 条引用</button></div></header>
