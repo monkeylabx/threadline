@@ -79,11 +79,12 @@ button:disabled { cursor: default; }
 .tl-empty-conversation { margin: var(--tl-space-2xl) 0; color: var(--tl-color-text-muted); text-align: center; font-size: var(--tl-font-caption-size); }
 .tl-composer { grid-area: composer; min-width: 0; padding: 0 var(--tl-space-composer-outer-inset) var(--tl-space-composer-outer-inset); }
 .tl-composer form { display: grid; grid-template-rows: auto auto; gap: var(--tl-space-composer-field-gap); overflow: hidden; border: 0; border-radius: var(--tl-radius-xl); background: var(--tl-color-surface); }
-.tl-composer textarea { display: block; width: 100%; min-height: var(--tl-space-composer-field-min); margin: 0; resize: none; padding: var(--tl-space-composer-input-inset); border: 0; background: transparent; color: var(--tl-color-text-primary); font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); }
+.tl-composer textarea { display: block; width: 100%; min-height: var(--tl-space-composer-field-min); max-height: var(--tl-space-composer-field-max); overflow-y: auto; margin: 0; resize: none; padding: var(--tl-space-composer-input-inset); border: 0; background: transparent; color: var(--tl-color-text-primary); font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); }
 .tl-composer textarea:focus-visible, .tl-search input:focus-visible { outline: 0; }
 .tl-composer form:focus-within, .tl-search:focus-within { outline: 2px solid var(--tl-color-focus-ring); outline-offset: 2px; }
 .tl-composer-toolbar { display: flex; align-items: center; gap: var(--tl-space-md); padding: 0 var(--tl-space-composer-toolbar-inset) var(--tl-space-sm); color: var(--tl-color-text-muted); font-size: var(--tl-font-caption-size); line-height: var(--tl-font-caption-line); }
 .tl-composer-toolbar > button { display: grid; place-items: center; width: var(--tl-space-composer-control); height: var(--tl-space-composer-control); padding: 0; border: 0; border-radius: var(--tl-radius-composer-tool); }
+.tl-composer-hint { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tl-composer-toolbar > .tl-send { margin-left: auto; border-radius: var(--tl-radius-composer-send); }
 .tl-composer-toolbar > button svg { width: var(--tl-space-composer-icon-width); height: var(--tl-space-composer-icon-height); }
 :focus-visible { outline: 2px solid var(--tl-color-focus-ring); outline-offset: 2px; }

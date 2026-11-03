@@ -1,4 +1,4 @@
-/* Generated from src/tokens.json (e47f333a78f3d03f33b077916e652d590716a3b640aed56d16a1a16603464e22). Do not edit. */
+/* Generated from src/tokens.json (20394858975d49f5413eb3e72a0086e2442c4da55c41b004897e2f8f2a067242). Do not edit. */
 :root, [data-tl-scheme="light"] {
   --tl-color-canvas: #FFFFFF;
   --tl-color-surface: #F5F6F7;
@@ -188,8 +188,9 @@
   --tl-space-2xl: 1.5rem;
   --tl-space-composer-control: 1.625rem;
   --tl-space-3xl: 2rem;
+  --tl-space-composer-field-min: 2.6875rem;
   --tl-space-4xl: 3rem;
-  --tl-space-composer-field-min: 3.9375rem;
+  --tl-space-composer-field-max: 10.125rem;
   --tl-radius-none: 0rem;
   --tl-radius-sm: 0.25rem;
   --tl-radius-composer-tool: 0.3125rem;
