@@ -22,6 +22,8 @@ export const registeredVerifiers = [
   { path: tool("verify-golden-frames.mjs"), existence: "representative Golden Frame verifier must exist" },
   { path: tool("verify-message-sync-contracts.mjs"), existence: "T015 message/sync behavior verifier must exist" },
   { path: tool("verify-authorization-contracts.mjs"), existence: "P03-05B authorization behavior verifier must exist" },
+  { path: tool("verify-task-control-authorization.mjs"), existence: "Task authorization reference verifier must exist" },
+  { path: tool(join("task-control-authorization", "verify.test.mjs")), existence: "Task authorization mutation tests must exist" },
   { path: tool("verify-capability-grant-contracts.mjs"), existence: "P03-06B Capability Grant signature verifier must exist" },
   { path: tool("verify-audit-retention-contracts.mjs"), existence: "P03-07A Audit/Retention metadata verifier must exist" },
   { path: tool("verify-crypto-contracts.mjs"), existence: "T019 crypto/recovery behavior verifier must exist" },
