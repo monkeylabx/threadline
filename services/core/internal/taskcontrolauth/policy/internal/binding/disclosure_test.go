@@ -189,7 +189,10 @@ func TestCommittedReceipts(t *testing.T) {
 	p, req, f := fixture.BaseRuntime()
 	req.Action = ceiling.RunReport
 	withReceipt(&p, &req, &f)
-	res, _ := binding.Validate(context.Background(), p, req, f)
+	res, err := binding.Validate(context.Background(), p, req, f)
+	if err != nil || res.Refusal.Refused() {
+		t.Fatalf("receipt binding: err=%v res=%+v", err, res)
+	}
 	for _, tc := range []negCase{
 		{"ns-actor", true, fMut(func(f *model.Facts) { f.Receipt.Namespace.Actor.ID = "x" }), binding.ReasonReceiptNamespaceDenied, model.StatusPermissionDenied, model.CodePermissionDenied},
 		{"ns-device", true, fMut(func(f *model.Facts) { f.Receipt.Namespace.Device = "x" }), binding.ReasonReceiptNamespaceDenied, model.StatusPermissionDenied, model.CodePermissionDenied},

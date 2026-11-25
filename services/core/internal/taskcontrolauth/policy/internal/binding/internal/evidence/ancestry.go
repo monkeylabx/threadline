@@ -1,7 +1,10 @@
 // Package evidence checks resolved ancestry and caller equality assertions.
 package evidence
 
-import "github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
+import (
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/request"
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
+)
 
 var resourceLevels = map[model.ResourceKind]model.Level{
 	model.ResourceChannel: model.LevelChannel, model.ResourceTask: model.LevelTask,
@@ -36,7 +39,7 @@ func CompleteAtLevel(a model.Ancestry, level model.Level) bool {
 	}
 	for i, id := range [4]string{a.Channel, a.Task, a.Run, a.Approval} {
 		if i < int(level) {
-			if id == "" {
+			if !request.ValidID(id) {
 				return false
 			}
 		} else if id != "" {
@@ -44,4 +47,9 @@ func CompleteAtLevel(a model.Ancestry, level model.Level) bool {
 		}
 	}
 	return true
+}
+
+func ValidScope(scope model.Scope, level model.Level) bool {
+	return scope.Snapshot.TransactionID != "" && scope.Tenant != "" &&
+		CompleteAtLevel(scope.Ancestry.Truncate(level), level)
 }
