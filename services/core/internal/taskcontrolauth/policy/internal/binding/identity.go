@@ -1,7 +1,7 @@
 package binding
 
 import (
-	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/ceiling"
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/credential"
 	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
 )
 
@@ -9,18 +9,11 @@ func tenantScope(p model.Principal, f model.Facts) model.Scope {
 	return model.Scope{Snapshot: f.Snapshot, Tenant: p.Tenant}
 }
 
-func deviceOwner(p model.Principal) model.Actor {
-	if p.Route == ceiling.AssignedRuntime {
-		return p.Operator
-	}
-	return p.Actor
-}
-
 func checkDevice(p model.Principal, _ model.Request, f model.Facts) model.Refusal {
 	if r := Section(tenantScope(p, f), f.Device.Bound, model.LevelTenant); r.Refused() {
 		return r
 	}
-	if f.Device.Owner != deviceOwner(p) || f.Device.Device != p.Device {
+	if f.Device.Owner != credential.DeviceOwner(p) || f.Device.Device != p.Device {
 		return refuse(ReasonFactsBindingInvalid, model.StatusUnavailable, "")
 	}
 	if !f.Device.Current {

@@ -3,6 +3,7 @@ package binding_test
 import (
 	"context"
 	"encoding/json"
+	fixture "github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/testfixture"
 	"maps"
 	"os"
 	"testing"
@@ -16,33 +17,36 @@ import (
 
 func setOwner(p *model.Principal, f *model.Facts) {
 	f.Task.Creator = p.Actor
-	f.Task.Participants = []model.Participant{{Actor: p.Actor, Role: ceiling.Owner}, {Actor: agentA, Role: ceiling.Assignee}}
+	f.Task.Participants = []model.Participant{{Actor: p.Actor, Role: ceiling.Owner}, {Actor: values.Agent, Role: ceiling.Assignee}}
 }
 
 func recMut(fn mutFn) mutFn {
 	return func(p *model.Principal, r *model.Request, f *model.Facts) {
 		setOwner(p, f)
-		setTarget(r, f, ceiling.RunStart, model.ResourceTask)
+		fixture.SetTarget(r, f, ceiling.RunStart, model.ResourceTask)
 		withReceipt(p, r, f)
 		fn(p, r, f)
 	}
 }
 
 func ownMut(a model.Action, k model.ResourceKind) mutFn {
-	return func(p *model.Principal, r *model.Request, f *model.Facts) { setOwner(p, f); setTarget(r, f, a, k) }
+	return func(p *model.Principal, r *model.Request, f *model.Facts) {
+		setOwner(p, f)
+		fixture.SetTarget(r, f, a, k)
+	}
 }
 
 func appMut(a model.Action) mutFn {
 	return func(p *model.Principal, r *model.Request, f *model.Facts) {
 		f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: p.Actor, Role: ceiling.Approver})
-		setTarget(r, f, a, model.ResourceApproval)
+		fixture.SetTarget(r, f, a, model.ResourceApproval)
 	}
 }
 
 func rtMut(a model.Action, fn mutFn) mutFn {
 	return func(p *model.Principal, r *model.Request, f *model.Facts) {
-		*p, *r, *f = baseRuntime()
-		setTarget(r, f, a, model.ResourceRun)
+		*p, *r, *f = fixture.BaseRuntime()
+		fixture.SetTarget(r, f, a, model.ResourceRun)
 		if fn != nil {
 			fn(p, r, f)
 		}
@@ -53,22 +57,22 @@ func mappedMutators() map[string]mutFn {
 	return map[string]mutFn{
 		"allow-task-read": func(*model.Principal, *model.Request, *model.Facts) {},
 		"allow-run-read": func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, "run.read", model.ResourceRun)
+			fixture.SetTarget(r, f, "run.read", model.ResourceRun)
 		},
 		"auth-missing": func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.Actor.ID = "" },
 		"auth-before-foreign-shape": func(p *model.Principal, r *model.Request, f *model.Facts) {
 			p.Actor.ID, r.Resource.ID, f.Lookup.Found = "", "", false
 		},
-		"session-expired": func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.ExpiresAt = baseObs.Add(-time.Second) },
+		"session-expired": func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.ExpiresAt = values.Now.Add(-time.Second) },
 		"runtime-wrong-audience": func(p *model.Principal, r *model.Request, f *model.Facts) {
-			*p, *r, *f = baseRuntime()
+			*p, *r, *f = fixture.BaseRuntime()
 			r.Action, p.Audience = "run.report", model.AudienceHumanSession
 		},
 		"unknown-purpose":        func(_ *model.Principal, r *model.Request, _ *model.Facts) { r.Purpose = "synthetic-unknown" },
 		"rpc-name-is-not-action": func(*model.Principal, *model.Request, *model.Facts) {},
 		"task-edit-unsupported":  func(*model.Principal, *model.Request, *model.Facts) {},
 		"dm-unsupported": func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, "task.create", model.ResourceChannel)
+			fixture.SetTarget(r, f, "task.create", model.ResourceChannel)
 			r.ParentKind = "dm"
 		},
 		"device-revoked":            func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Current = false },
@@ -87,12 +91,12 @@ func mappedMutators() map[string]mutFn {
 func disclosureMutators() map[string]mutFn {
 	return map[string]mutFn{
 		"allow-task-create": func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
+			fixture.SetTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
 		},
 		"allow-run-start":   ownMut(ceiling.RunStart, model.ResourceTask),
 		"allow-run-control": ownMut(ceiling.RunControl, model.ResourceRun),
 		"allow-approval-read": func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.ApprovalRead, model.ResourceApproval)
+			fixture.SetTarget(r, f, ceiling.ApprovalRead, model.ResourceApproval)
 		},
 		"allow-approval-request":      rtMut(ceiling.ApprovalRequest, nil),
 		"allow-approval-decide":       appMut(ceiling.ApprovalDecide),
@@ -106,7 +110,7 @@ func disclosureMutators() map[string]mutFn {
 		"unknown-channel-role":        fMut(func(f *model.Facts) { f.Parent.Membership.Role = "synthetic-unknown" }),
 		"unknown-persisted-task-role": fMut(func(f *model.Facts) { f.Task.Participants[0].Role = "synthetic-unknown" }),
 		"human-assignee-unsupported-stored-fact": fMut(func(f *model.Facts) {
-			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: humanA, Role: ceiling.Assignee})
+			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: values.Human, Role: ceiling.Assignee})
 		}),
 		"policy-unavailable":           fMut(func(f *model.Facts) { f.Policy.Snapshot.TransactionID = "" }),
 		"policy-empty-revision":        fMut(func(f *model.Facts) { f.Policy.Revision = "" }),
@@ -122,10 +126,10 @@ func disclosureMutators() map[string]mutFn {
 			f.Member.Role, f.Parent.Membership.Current = standing.OrganizationRoleSecurityAdmin, false
 		}),
 		"parent-acl-deny": fMut(func(f *model.Facts) {
-			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: humanA, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
+			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: values.Human, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
 		}),
 		"parent-acl-deny-wins-allow": fMut(func(f *model.Facts) {
-			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: humanA, Action: standing.ActionChannelRead, Effect: standing.ACLEffectAllow}, {Actor: humanA, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
+			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: values.Human, Action: standing.ActionChannelRead, Effect: standing.ACLEffectAllow}, {Actor: values.Human, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
 		}),
 		"parent-acl-default-deny":      fMut(func(f *model.Facts) { f.Parent.ACL.DefaultEffect = standing.ACLEffectDeny }),
 		"parent-read-denied":           fMut(func(f *model.Facts) { f.Parent.Decisions[0].Effect = standing.EffectDeny }),
@@ -134,7 +138,7 @@ func disclosureMutators() map[string]mutFn {
 		"receipt-relogin-same-device":  recMut(func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.SessionGeneration = 8 }),
 		"receipt-membership-revoked":   recMut(fMut(func(f *model.Facts) { f.Parent.Membership.Current = false })),
 		"receipt-parent-acl-revoked": recMut(fMut(func(f *model.Facts) {
-			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: humanA, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
+			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: values.Human, Action: standing.ActionChannelRead, Effect: standing.ACLEffectDeny}}
 		})),
 		"receipt-foreign-device": recMut(fMut(func(f *model.Facts) { f.Receipt.Namespace.Device = "other-device" })),
 		"receipt-changed-bytes":  recMut(fMut(func(f *model.Facts) { f.Receipt.RequestDigest = [32]byte{1} })),
@@ -168,7 +172,7 @@ func TestMappedContractScenarios(t *testing.T) {
 		}
 		c := sf.Cases[idx]
 		t.Run(id, func(t *testing.T) {
-			p, req, f := baseHuman()
+			p, req, f := fixture.BaseHuman()
 			req.Action = model.Action(c.Action)
 			mutate(&p, &req, &f)
 			res, err := binding.Validate(context.Background(), p, req, f)
@@ -185,7 +189,7 @@ func TestMappedContractScenarios(t *testing.T) {
 				}
 				return
 			}
-			assertRefusal(t, ref, model.Reason(c.Then.Reason), model.Status(c.Then.Status), model.Code(c.Then.Code))
+			fixture.AssertRefusal(t, ref, model.Reason(c.Then.Reason), model.Status(c.Then.Status), model.Code(c.Then.Code))
 		})
 	}
 }

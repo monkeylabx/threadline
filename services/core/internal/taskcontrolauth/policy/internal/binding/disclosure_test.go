@@ -3,6 +3,7 @@ package binding_test
 import (
 	"context"
 	"fmt"
+	fixture "github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/testfixture"
 	"testing"
 
 	standing "github.com/monkeylabx/threadline/services/core/internal/authorization"
@@ -22,14 +23,14 @@ func withReceipt(p *model.Principal, r *model.Request, f *model.Facts) {
 		run = f.Lookup.Ancestry.Run
 	}
 	f.Receipt = model.ReceiptFacts{
-		Bound: model.Bound{Snapshot: baseSnap, Tenant: p.Tenant}, Committed: true, Action: r.Action, Resource: r.Resource,
+		Bound: model.Bound{Snapshot: values.Snapshot, Tenant: p.Tenant}, Committed: true, Action: r.Action, Resource: r.Resource,
 		Namespace: model.ReceiptNamespace{Actor: p.Actor, Device: p.Device, RPC: r.RPC, Enrollment: p.Enrollment, RuntimeGeneration: p.RuntimeGeneration, Run: run},
 	}
 }
 
 func recCreateMut(resKind model.ResourceKind, resID, taskAnc string) mutFn {
 	return func(p *model.Principal, r *model.Request, f *model.Facts) {
-		setTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
+		fixture.SetTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
 		withReceipt(p, r, f)
 		f.Task.Ancestry.Task = taskAnc
 		f.Receipt.Result = model.ResourceRef{Kind: resKind, ID: resID}
@@ -38,15 +39,15 @@ func recCreateMut(resKind model.ResourceKind, resID, taskAnc string) mutFn {
 
 func recAct(a model.Action, k model.ResourceKind) mutFn {
 	return func(p *model.Principal, r *model.Request, f *model.Facts) {
-		setTarget(r, f, a, k)
+		fixture.SetTarget(r, f, a, k)
 		withReceipt(p, r, f)
 	}
 }
 
 func tooManyParticipants() []model.Participant {
-	parts := []model.Participant{{Actor: humanOwner, Role: ceiling.Owner}, {Actor: agentA, Role: ceiling.Assignee}}
+	parts := []model.Participant{{Actor: values.Owner, Role: ceiling.Owner}, {Actor: values.Agent, Role: ceiling.Assignee}}
 	for i := range 15 {
-		parts = append(parts, model.Participant{Actor: model.Actor{Type: humanOwner.Type, ID: fmt.Sprintf("h-%d", i)}, Role: ceiling.Observer})
+		parts = append(parts, model.Participant{Actor: model.Actor{Type: values.Owner.Type, ID: fmt.Sprintf("h-%d", i)}, Role: ceiling.Observer})
 	}
 	return parts
 }
@@ -72,12 +73,12 @@ func TestDisclosureNegatives(t *testing.T) {
 		{"acl-wrong-res", false, fMut(func(f *model.Facts) { f.Parent.ACL.Resource.ID = "other" }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"acl-bad-default", false, fMut(func(f *model.Facts) { f.Parent.ACL.DefaultEffect = "bad" }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"acl-bad-entry", false, fMut(func(f *model.Facts) {
-			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: humanA, Action: standing.ActionChannelRead, Effect: "bad"}}
+			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: values.Human, Action: standing.ActionChannelRead, Effect: "bad"}}
 		}), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dec-wrong-res", false, fMut(func(f *model.Facts) { f.Parent.Decisions[0].Resource.ID = "other" }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dec-policy-ver", false, fMut(func(f *model.Facts) { f.Parent.Decisions[0].PolicyVersion = "6" }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dec-bad-action", false, fMut(func(f *model.Facts) {
-			f.Parent.Decisions = append(f.Parent.Decisions, standing.Decision{Effect: standing.EffectAllow, Action: standing.ActionChannelUpdate, Resource: f.Parent.ACL.Resource, Actor: humanA, PolicyVersion: "7", ACLVersion: "7"})
+			f.Parent.Decisions = append(f.Parent.Decisions, standing.Decision{Effect: standing.EffectAllow, Action: standing.ActionChannelUpdate, Resource: f.Parent.ACL.Resource, Actor: values.Human, PolicyVersion: "7", ACLVersion: "7"})
 		}), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dec-duplicate", false, fMut(func(f *model.Facts) { f.Parent.Decisions = append(f.Parent.Decisions, f.Parent.Decisions[0]) }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 	})
@@ -88,16 +89,16 @@ func TestRolesAndPolicyNegatives(t *testing.T) {
 		{"chan-role-none-cur", false, fMut(func(f *model.Facts) { f.Parent.Membership.Role = standing.ChannelRoleNone }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"parts-over-16", false, fMut(func(f *model.Facts) { f.Task.Participants = tooManyParticipants() }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"parts-dup-actor", false, fMut(func(f *model.Facts) {
-			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: agentA, Role: ceiling.Assignee})
+			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: values.Agent, Role: ceiling.Assignee})
 		}), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"parts-zero-owner", false, fMut(func(f *model.Facts) {
-			f.Task.Participants = []model.Participant{{Actor: agentA, Role: ceiling.Assignee}}
+			f.Task.Participants = []model.Participant{{Actor: values.Agent, Role: ceiling.Assignee}}
 		}), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"parts-two-owners", false, fMut(func(f *model.Facts) {
-			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: humanA, Role: ceiling.Owner})
+			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: values.Human, Role: ceiling.Owner})
 		}), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
-		{"parts-owner-creator", false, fMut(func(f *model.Facts) { f.Task.Participants[0].Actor = humanA }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
-		{"parts-agent-creator", false, fMut(func(f *model.Facts) { f.Task.Creator = agentA; f.Task.Participants[0].Actor = agentA }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
+		{"parts-owner-creator", false, fMut(func(f *model.Facts) { f.Task.Participants[0].Actor = values.Human }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
+		{"parts-agent-creator", false, fMut(func(f *model.Facts) { f.Task.Creator = values.Agent; f.Task.Participants[0].Actor = values.Agent }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"parts-agent-approver", false, fMut(func(f *model.Facts) { f.Task.Participants[1].Role = ceiling.Approver }), binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"policy-absent", false, fMut(func(f *model.Facts) { f.Policy.Snapshot.TransactionID = "" }), binding.ReasonPolicyUnavailable, model.StatusUnavailable, ""},
 		{"policy-rev-empty", false, fMut(func(f *model.Facts) { f.Policy.Revision = "" }), binding.ReasonPolicyInvalid, model.StatusUnavailable, ""},
@@ -139,9 +140,9 @@ func runDisclosurePositives(t *testing.T, cases []discPosCase) {
 	t.Helper()
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p, req, f := baseHuman()
+			p, req, f := fixture.BaseHuman()
 			if tc.rt {
-				p, req, f = baseRuntime()
+				p, req, f = fixture.BaseRuntime()
 			}
 			tc.set(&p, &req, &f)
 			res, err := binding.Validate(context.Background(), p, req, f)
@@ -158,17 +159,17 @@ func runDisclosurePositives(t *testing.T, cases []discPosCase) {
 func TestDisclosurePositives(t *testing.T) {
 	runDisclosurePositives(t, []discPosCase{
 		{"none-role", false, fMut(func(*model.Facts) {}), ceiling.None, ceiling.TaskRead},
-		{"owner-role", false, fMut(func(f *model.Facts) { f.Task.Creator = humanA; f.Task.Participants[0].Actor = humanA }), ceiling.Owner, ceiling.TaskRead},
+		{"owner-role", false, fMut(func(f *model.Facts) { f.Task.Creator = values.Human; f.Task.Participants[0].Actor = values.Human }), ceiling.Owner, ceiling.TaskRead},
 		{"approver-role", false, fMut(func(f *model.Facts) {
-			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: humanA, Role: ceiling.Approver})
+			f.Task.Participants = append(f.Task.Participants, model.Participant{Actor: values.Human, Role: ceiling.Approver})
 		}), ceiling.Approver, ceiling.TaskRead},
 		{"rt-assignee", true, fMut(func(*model.Facts) {}), ceiling.Assignee, ceiling.RunRead},
 		{"acl-default-deny-allow", false, fMut(func(f *model.Facts) {
 			f.Parent.ACL.DefaultEffect = standing.ACLEffectDeny
-			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: humanA, Action: standing.ActionChannelRead, Effect: standing.ACLEffectAllow}}
+			f.Parent.ACL.Entries = []standing.ACLEntry{{Actor: values.Human, Action: standing.ActionChannelRead, Effect: standing.ACLEffectAllow}}
 		}), ceiling.None, ceiling.TaskRead},
 		{"create-no-task", false, func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
+			fixture.SetTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
 			f.Task = model.TaskFacts{}
 		}, ceiling.None, ceiling.TaskCreate},
 		{"receipt-no-record", false, recMut(fMut(func(f *model.Facts) { f.Receipt.Committed = false })), ceiling.Owner, ceiling.RunStart},
@@ -185,7 +186,7 @@ func TestCommittedReceipts(t *testing.T) {
 		{"rec-app-dec", false, recAct(ceiling.ApprovalDecide, model.ResourceApproval), ceiling.None, ceiling.ApprovalRead},
 		{"rec-app-rev", false, recAct(ceiling.ApprovalRevoke, model.ResourceApproval), ceiling.None, ceiling.ApprovalRead},
 	})
-	p, req, f := baseRuntime()
+	p, req, f := fixture.BaseRuntime()
 	req.Action = ceiling.RunReport
 	withReceipt(&p, &req, &f)
 	res, _ := binding.Validate(context.Background(), p, req, f)
@@ -202,6 +203,6 @@ func TestCommittedReceipts(t *testing.T) {
 	} {
 		f2 := f
 		tc.mutate(&p, &req, &f2)
-		assertRefusal(t, binding.ValidateReceipt(p, req, f2, res), tc.reason, tc.status, tc.code)
+		fixture.AssertRefusal(t, binding.ValidateReceipt(p, req, f2, res), tc.reason, tc.status, tc.code)
 	}
 }
