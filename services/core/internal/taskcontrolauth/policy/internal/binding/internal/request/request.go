@@ -40,13 +40,17 @@ func CheckShape(_ model.Principal, req model.Request, _ model.Facts) model.Refus
 	if !ValidID(req.Resource.ID) || !validOptionalAncestry(req.Ancestry) {
 		return model.Refusal{Reason: ReasonShapeInvalid, Status: model.StatusInvalidArgument}
 	}
-	if want, known := actionResourceKinds[req.Action]; known && req.Resource.Kind != want {
+	if want, known := actionResourceKinds[req.Action]; known && req.Resource.Kind != want && !taskScopedRead(req) {
 		return model.Refusal{Reason: ReasonShapeInvalid, Status: model.StatusInvalidArgument}
 	}
 	if req.Purpose == model.PurposeOwnReceiptRead && !ValidID(req.RPC) {
 		return model.Refusal{Reason: ReasonShapeInvalid, Status: model.StatusInvalidArgument}
 	}
 	return model.Refusal{}
+}
+
+func taskScopedRead(req model.Request) bool {
+	return req.Resource.Kind == model.ResourceTask && (req.Action == ceiling.RunRead || req.Action == ceiling.ApprovalRead)
 }
 
 func validOptionalAncestry(a model.Ancestry) bool {

@@ -37,4 +37,5 @@ type Refusal struct {
 	Code   Code
 }
 
-func (r Refusal) Refused() bool { return r.Status != "" }
+// Refused fails closed for partial refusal values as well as complete ones.
+func (r Refusal) Refused() bool { return r != (Refusal{}) }

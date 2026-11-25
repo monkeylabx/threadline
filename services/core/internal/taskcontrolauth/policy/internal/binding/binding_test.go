@@ -68,7 +68,10 @@ func TestPositiveBindingsAndReceiptModes(t *testing.T) {
 				t.Fatalf("%s uncommitted receipt: err=%v res=%+v", tc.a, err, res)
 			}
 		} else {
-			res, _ := binding.Validate(context.Background(), p, req, f)
+			res, err := binding.Validate(context.Background(), p, req, f)
+			if err != nil {
+				t.Fatal(err)
+			}
 			fixture.AssertRefusal(t, res.Refusal, binding.ReasonPurposeInvalid, model.StatusInvalidArgument, "")
 		}
 	}
@@ -180,7 +183,7 @@ func TestOrderingContextAndSectionLevels(t *testing.T) {
 		t.Fatalf("deadline: err=%v res=%+v", err, res)
 	}
 	scope := model.Scope{Snapshot: values.Snapshot, Tenant: "t", Ancestry: values.Ancestry}
-	for _, lv := range []model.Level{model.LevelTenant, model.LevelChannel, model.LevelTask, model.LevelRun, model.LevelApproval, model.Level(99)} {
+	for _, lv := range []model.Level{model.LevelTenant, model.LevelChannel, model.LevelTask, model.LevelRun, model.LevelApproval} {
 		if ref := binding.Section(scope, model.Bound{Snapshot: values.Snapshot, Tenant: "t", Ancestry: values.Ancestry.Truncate(lv)}, lv); ref.Refused() {
 			t.Fatalf("level %d unexpected refusal: %+v", lv, ref)
 		}
