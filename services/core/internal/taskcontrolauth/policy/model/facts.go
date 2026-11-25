@@ -13,6 +13,10 @@ type Facts struct {
 	Member       MemberFacts
 	Device       DeviceFacts
 	Lookup       LookupFacts
+	Parent       ParentFacts
+	Policy       PolicyFacts
+	Task         TaskFacts
+	Receipt      ReceiptFacts
 }
 
 type OrganizationFacts struct {

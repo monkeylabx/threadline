@@ -24,5 +24,9 @@ func Validate(ctx context.Context, p model.Principal, req model.Request, f model
 			return Result{Refusal: r}, nil
 		}
 	}
-	return validateLookup(p, req, f), nil
+	res := validateLookup(p, req, f)
+	if res.Refusal.Refused() {
+		return res, nil
+	}
+	return validateDisclosure(p, req, f, res.Scope), nil
 }

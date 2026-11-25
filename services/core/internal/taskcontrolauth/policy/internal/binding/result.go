@@ -16,13 +16,23 @@ const (
 	ReasonOrganizationInactive   model.Reason = "organization-inactive"
 	ReasonMemberInactive         model.Reason = "member-inactive"
 	ReasonObjectAbsent           model.Reason = "object-absent"
+	ReasonPolicyUnavailable      model.Reason = "policy-unavailable"
+	ReasonPolicyInvalid          model.Reason = "policy-invalid"
+	ReasonNotAMember             model.Reason = "not-a-member"
+	ReasonParentReadDenied       model.Reason = "parent-read-denied"
+	ReasonParentACLDenied        model.Reason = "parent-acl-denied"
+	ReasonReceiptNamespaceDenied model.Reason = "receipt-namespace-denied"
+	ReasonIdempotencyConflict    model.Reason = "idempotency-conflict"
 )
 
-// Result holds either a refusal or the validated resource scope.
+// Result holds either a refusal or the validated resource scope and metadata.
 // A zero Refusal means inputs are bound; it never grants an operation.
 type Result struct {
-	Refusal model.Refusal
-	Scope   model.Scope
+	Refusal         model.Refusal
+	Scope           model.Scope
+	TaskRole        model.TaskRole
+	EffectiveAction model.Action
+	ReceiptSelected bool
 }
 
 func refuse(reason model.Reason, status model.Status, code model.Code) model.Refusal {
