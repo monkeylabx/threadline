@@ -2,14 +2,18 @@
 // authenticated principal and addressed resource in contract refusal order.
 package binding
 
-import "github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
+import (
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/credential"
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/request"
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
+)
 
 const (
-	ReasonAuthenticationRequired model.Reason = "authentication-required"
-	ReasonShapeInvalid           model.Reason = "shape-invalid"
-	ReasonUnknownAction          model.Reason = "unknown-action"
-	ReasonPurposeInvalid         model.Reason = "purpose-invalid"
-	ReasonUnsupportedParent      model.Reason = "unsupported-parent"
+	ReasonAuthenticationRequired              = credential.ReasonAuthenticationRequired
+	ReasonShapeInvalid                        = request.ReasonShapeInvalid
+	ReasonUnknownAction                       = request.ReasonUnknownAction
+	ReasonPurposeInvalid                      = request.ReasonPurposeInvalid
+	ReasonUnsupportedParent                   = request.ReasonUnsupportedParent
 	ReasonFactsUnavailable       model.Reason = "facts-unavailable"
 	ReasonFactsBindingInvalid    model.Reason = "facts-binding-invalid"
 	ReasonDeviceRevoked          model.Reason = "device-revoked"

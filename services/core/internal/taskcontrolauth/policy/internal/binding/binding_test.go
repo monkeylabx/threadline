@@ -3,25 +3,18 @@ package binding_test
 import (
 	"context"
 	"errors"
+	fixture "github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/testfixture"
 	"strings"
 	"testing"
 	"time"
 
-	standing "github.com/monkeylabx/threadline/services/core/internal/authorization"
 	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding"
 	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/ceiling"
 	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
 	"github.com/monkeylabx/threadline/services/internal/rpcmiddleware"
 )
 
-var (
-	baseObs    = time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	baseSnap   = model.Snapshot{TransactionID: "tx-7", Revision: 7}
-	humanA     = model.Actor{Type: rpcmiddleware.ActorTypeHuman, ID: "synthetic-human-a"}
-	humanOwner = model.Actor{Type: rpcmiddleware.ActorTypeHuman, ID: "synthetic-human-owner"}
-	agentA     = model.Actor{Type: rpcmiddleware.ActorTypeAgent, ID: "synthetic-agent-a"}
-	fullAnc    = model.Ancestry{Channel: "synthetic-channel", Task: "synthetic-task", Run: "synthetic-run", Approval: "synthetic-approval"}
-)
+var values = fixture.Golden()
 
 type mutFn func(*model.Principal, *model.Request, *model.Facts)
 type negCase struct {
@@ -33,91 +26,20 @@ type negCase struct {
 	code   model.Code
 }
 
-func baseHuman() (model.Principal, model.Request, model.Facts) {
-	b := model.Bound{Snapshot: baseSnap, Tenant: "synthetic-tenant"}
-	chBound := model.Bound{Snapshot: baseSnap, Tenant: "synthetic-tenant", Ancestry: fullAnc.Truncate(model.LevelChannel)}
-	chRef := standing.ResourceRef{TenantID: "synthetic-tenant", Kind: standing.ResourceKindChannel, ID: "synthetic-channel"}
-	p := model.Principal{Route: ceiling.Human, Tenant: "synthetic-tenant", Actor: humanA, Device: "synthetic-device-a", SessionGeneration: 7, Audience: model.AudienceHumanSession, ExpiresAt: baseObs.Add(time.Hour)}
-	req := model.Request{Action: ceiling.TaskRead, Purpose: model.PurposeOperation, ParentKind: model.ParentChannel, Resource: model.ResourceRef{Kind: model.ResourceTask, ID: "synthetic-task"}}
-	f := model.Facts{
-		Snapshot: baseSnap, ObservedAt: baseObs,
-		Device:       model.DeviceFacts{Bound: b, Owner: humanA, Device: "synthetic-device-a", Current: true},
-		Organization: model.OrganizationFacts{Bound: b, Active: true, PolicyVersion: "7"},
-		Member:       model.MemberFacts{Bound: b, Actor: humanA, Active: true, Role: standing.OrganizationRoleMember},
-		Lookup:       model.LookupFacts{Bound: model.Bound{Snapshot: baseSnap, Tenant: "synthetic-tenant", Ancestry: fullAnc.Truncate(model.LevelTask)}, Found: true, Resource: req.Resource},
-		Parent: model.ParentFacts{
-			Bound: chBound, State: standing.ResourceStateActive,
-			Membership: standing.ChannelMembershipFacts{TenantID: "synthetic-tenant", ChannelID: "synthetic-channel", Actor: humanA, Current: true, IntervalID: "7", Role: standing.ChannelRoleMember},
-			ACL:        standing.ResourceACLFacts{Resource: chRef, Version: "7", DefaultEffect: standing.ACLEffectAllow},
-			Decisions:  []standing.Decision{{Effect: standing.EffectAllow, Reason: standing.ReasonAllowed, Action: standing.ActionChannelRead, Resource: chRef, Actor: humanA, PolicyVersion: "7", ACLVersion: "7"}},
-		},
-		Policy: model.PolicyFacts{Bound: chBound, Profile: model.PolicyProfile, Revision: "7", Deployment: model.DeploymentDedicatedDev, Rules: defaultRules()},
-		Task: model.TaskFacts{
-			Bound: model.Bound{Snapshot: baseSnap, Tenant: "synthetic-tenant", Ancestry: fullAnc.Truncate(model.LevelTask)}, Creator: humanOwner,
-			Participants: []model.Participant{{Actor: humanOwner, Role: ceiling.Owner}, {Actor: agentA, Role: ceiling.Assignee}},
-		},
-	}
-	return p, req, f
-}
-
-func defaultRules() map[model.Action]model.PolicyRule {
-	m := map[model.Action]model.PolicyRule{}
-	for _, a := range []model.Action{ceiling.TaskCreate, ceiling.TaskRead, ceiling.RunStart, ceiling.RunRead, ceiling.RunControl, ceiling.ApprovalRead, ceiling.ApprovalRequest, ceiling.ApprovalDecide, ceiling.ApprovalRevoke, ceiling.RunReport} {
-		m[a] = model.PolicyRule{Audiences: []model.ReadAudience{model.ReadChannelReaders}}
-	}
-	return m
-}
-
-func baseRuntime() (model.Principal, model.Request, model.Facts) {
-	p, req, f := baseHuman()
-	p.Route, p.Actor, p.Operator = ceiling.AssignedRuntime, agentA, humanA
-	p.Audience, p.Enrollment, p.RuntimeGeneration = model.AudienceRuntimeControl, "enroll-1", 1
-	f.Member.Actor, f.Parent.Membership.Actor = agentA, agentA
-	chRef := f.Parent.ACL.Resource
-	f.Parent.Decisions = []standing.Decision{
-		{Effect: standing.EffectAllow, Reason: standing.ReasonAllowed, Action: standing.ActionChannelRead, Resource: chRef, Actor: agentA, PolicyVersion: "7", ACLVersion: "7"},
-		{Effect: standing.EffectAllow, Reason: standing.ReasonAllowed, Action: standing.ActionChannelRead, Resource: chRef, Actor: humanA, PolicyVersion: "7", ACLVersion: "7"},
-	}
-	setTarget(&req, &f, ceiling.RunRead, model.ResourceRun)
-	return p, req, f
-}
-
-func setTarget(req *model.Request, f *model.Facts, action model.Action, kind model.ResourceKind) model.Ancestry {
-	levels := map[model.ResourceKind]model.Level{model.ResourceChannel: model.LevelChannel, model.ResourceTask: model.LevelTask, model.ResourceRun: model.LevelRun, model.ResourceApproval: model.LevelApproval}
-	req.Action, req.Resource = action, model.ResourceRef{Kind: kind, ID: "synthetic-" + string(kind)}
-	f.Lookup.Resource, f.Lookup.Bound.Ancestry = req.Resource, fullAnc.Truncate(levels[kind])
-	return f.Lookup.Bound.Ancestry
-}
-
-func assertRefusal(t *testing.T, got model.Refusal, reason model.Reason, status model.Status, code model.Code) {
-	t.Helper()
-	if !got.Refused() || got.Reason != reason || got.Status != status || got.Code != code {
-		t.Fatalf("got refusal %+v, want (%s, %s, %s)", got, reason, status, code)
-	}
-}
-
-func assertBound(t *testing.T, p model.Principal, req model.Request, f model.Facts, wantAnc model.Ancestry) {
-	t.Helper()
-	res, err := binding.Validate(context.Background(), p, req, f)
-	if err != nil || res.Refusal.Refused() || res.Scope != (model.Scope{Snapshot: baseSnap, Tenant: p.Tenant, Ancestry: wantAnc}) {
-		t.Fatalf("%s/%s: err=%v res=%+v", req.Action, req.Purpose, err, res)
-	}
-}
-
 func runNegatives(t *testing.T, cases []negCase) {
 	t.Helper()
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			p, req, f := baseHuman()
+			p, req, f := fixture.BaseHuman()
 			if tc.rt {
-				p, req, f = baseRuntime()
+				p, req, f = fixture.BaseRuntime()
 			}
 			tc.mutate(&p, &req, &f)
 			res, err := binding.Validate(context.Background(), p, req, f)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertRefusal(t, res.Refusal, tc.reason, tc.status, tc.code)
+			fixture.AssertRefusal(t, res.Refusal, tc.reason, tc.status, tc.code)
 		})
 	}
 }
@@ -135,11 +57,11 @@ func TestPositiveBindingsAndReceiptModes(t *testing.T) {
 		{ceiling.ApprovalRevoke, model.ResourceApproval, true}, {ceiling.RunReport, model.ResourceRun, true},
 	}
 	for _, tc := range actions {
-		p, req, f := baseHuman()
-		wantAnc := setTarget(&req, &f, tc.a, tc.k)
-		assertBound(t, p, req, f, wantAnc)
+		p, req, f := fixture.BaseHuman()
+		wantAnc := fixture.SetTarget(&req, &f, tc.a, tc.k)
+		fixture.AssertBound(t, p, req, f, wantAnc)
 		req.Purpose, req.RPC = model.PurposeOwnReceiptRead, "TaskService.Op"
-		f.Receipt = model.ReceiptFacts{Bound: model.Bound{Snapshot: baseSnap, Tenant: p.Tenant}}
+		f.Receipt = model.ReceiptFacts{Bound: model.Bound{Snapshot: values.Snapshot, Tenant: p.Tenant}}
 		if tc.r {
 			res, err := binding.Validate(context.Background(), p, req, f)
 			if err != nil || res.Refusal.Refused() || res.EffectiveAction != tc.a || res.ReceiptSelected {
@@ -147,11 +69,11 @@ func TestPositiveBindingsAndReceiptModes(t *testing.T) {
 			}
 		} else {
 			res, _ := binding.Validate(context.Background(), p, req, f)
-			assertRefusal(t, res.Refusal, binding.ReasonPurposeInvalid, model.StatusInvalidArgument, "")
+			fixture.AssertRefusal(t, res.Refusal, binding.ReasonPurposeInvalid, model.StatusInvalidArgument, "")
 		}
 	}
-	p, req, f := baseRuntime()
-	assertBound(t, p, req, f, fullAnc.Truncate(model.LevelRun))
+	p, req, f := fixture.BaseRuntime()
+	fixture.AssertBound(t, p, req, f, values.Ancestry.Truncate(model.LevelRun))
 }
 
 func TestPrincipalNegatives(t *testing.T) {
@@ -165,7 +87,7 @@ func TestPrincipalNegatives(t *testing.T) {
 			p.Actor.Type = rpcmiddleware.ActorTypeAgent
 		}, binding.ReasonAuthenticationRequired, model.StatusUnauthenticated, ""},
 		{"human-audience", false, func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.Audience = model.AudienceRuntimeControl }, binding.ReasonAuthenticationRequired, model.StatusUnauthenticated, ""},
-		{"human-operator", false, func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.Operator = humanA }, binding.ReasonAuthenticationRequired, model.StatusUnauthenticated, ""},
+		{"human-operator", false, func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.Operator = values.Human }, binding.ReasonAuthenticationRequired, model.StatusUnauthenticated, ""},
 		{"human-enroll", false, func(p *model.Principal, _ *model.Request, _ *model.Facts) { p.Enrollment = "e" }, binding.ReasonAuthenticationRequired, model.StatusUnauthenticated, ""},
 		{"rt-actor-type", true, func(p *model.Principal, _ *model.Request, _ *model.Facts) {
 			p.Actor.Type = rpcmiddleware.ActorTypeHuman
@@ -200,7 +122,7 @@ func TestFactsNegatives(t *testing.T) {
 		{"dev-tenant", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Tenant = "other" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dev-ancestry", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Ancestry.Channel = "c" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dev-owner", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Owner.ID = "other" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
-		{"rt-dev-owner", true, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Owner = agentA }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
+		{"rt-dev-owner", true, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Owner = values.Agent }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dev-id", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Device = "other" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"dev-revoked", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Device.Current = false }, binding.ReasonDeviceRevoked, model.StatusPermissionDenied, model.CodeDeviceRevoked},
 		{"org-absent", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Organization.Snapshot.TransactionID = "" }, binding.ReasonFactsUnavailable, model.StatusUnavailable, ""},
@@ -217,15 +139,15 @@ func TestFactsNegatives(t *testing.T) {
 		{"lookup-no-chan", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Lookup.Ancestry.Channel = "" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"lookup-deep", false, func(_ *model.Principal, _ *model.Request, f *model.Facts) { f.Lookup.Ancestry.Run = "extra" }, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"chan-extra-task", false, func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
+			fixture.SetTarget(r, f, ceiling.TaskCreate, model.ResourceChannel)
 			f.Lookup.Ancestry.Task = "extra"
 		}, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"run-no-task", false, func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.RunRead, model.ResourceRun)
+			fixture.SetTarget(r, f, ceiling.RunRead, model.ResourceRun)
 			f.Lookup.Ancestry.Task = ""
 		}, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 		{"appr-no-run", false, func(_ *model.Principal, r *model.Request, f *model.Facts) {
-			setTarget(r, f, ceiling.ApprovalRead, model.ResourceApproval)
+			fixture.SetTarget(r, f, ceiling.ApprovalRead, model.ResourceApproval)
 			f.Lookup.Ancestry.Run = ""
 		}, binding.ReasonFactsBindingInvalid, model.StatusUnavailable, ""},
 	})
@@ -246,7 +168,7 @@ func TestOrderingContextAndSectionLevels(t *testing.T) {
 			q.Ancestry.Channel, f.Lookup.Snapshot.Revision = "x", 99
 		}, binding.ReasonObjectAbsent, model.StatusNotFound, ""},
 	})
-	p, req, f := baseHuman()
+	p, req, f := fixture.BaseHuman()
 	cctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if res, err := binding.Validate(cctx, p, req, f); !errors.Is(err, context.Canceled) || res != (binding.Result{}) {
@@ -257,9 +179,9 @@ func TestOrderingContextAndSectionLevels(t *testing.T) {
 	if res, err := binding.Validate(dctx, p, req, f); !errors.Is(err, context.DeadlineExceeded) || res != (binding.Result{}) {
 		t.Fatalf("deadline: err=%v res=%+v", err, res)
 	}
-	scope := model.Scope{Snapshot: baseSnap, Tenant: "t", Ancestry: fullAnc}
+	scope := model.Scope{Snapshot: values.Snapshot, Tenant: "t", Ancestry: values.Ancestry}
 	for _, lv := range []model.Level{model.LevelTenant, model.LevelChannel, model.LevelTask, model.LevelRun, model.LevelApproval, model.Level(99)} {
-		if ref := binding.Section(scope, model.Bound{Snapshot: baseSnap, Tenant: "t", Ancestry: fullAnc.Truncate(lv)}, lv); ref.Refused() {
+		if ref := binding.Section(scope, model.Bound{Snapshot: values.Snapshot, Tenant: "t", Ancestry: values.Ancestry.Truncate(lv)}, lv); ref.Refused() {
 			t.Fatalf("level %d unexpected refusal: %+v", lv, ref)
 		}
 	}

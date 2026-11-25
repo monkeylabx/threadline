@@ -3,14 +3,16 @@ package binding
 import (
 	"context"
 
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/credential"
+	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/internal/binding/internal/request"
 	"github.com/monkeylabx/threadline/services/core/internal/taskcontrolauth/policy/model"
 )
 
 type checkFn func(model.Principal, model.Request, model.Facts) model.Refusal
 
 var orderedChecks = []checkFn{
-	checkAuthentication, checkShape, checkAction, checkPurpose,
-	checkParentKind, checkDevice, checkOrganization, checkMember,
+	credential.CheckAuthentication, request.CheckShape, request.CheckAction, request.CheckPurpose,
+	request.CheckParentKind, checkDevice, checkOrganization, checkMember,
 }
 
 // Validate checks principal, request, identity, and lookup bindings in contract
