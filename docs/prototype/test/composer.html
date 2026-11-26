@@ -66,7 +66,8 @@ function checkComposer() {
   const rest = measure(composer, field, 0), eight = measure(composer, field, 8);
   const twelve = measure(composer, field, 12), cleared = measure(composer, field, 0);
   const factor = Number(scale.value) / 100;
-  const minimum = Math.min(96 * factor, doc.defaultView.innerHeight * .18);
+  const height = doc.defaultView.innerHeight;
+  const minimum = Math.min(96 * factor, height * (height <= 700 ? .14 : .18));
   const checks = [...referenceChecks(parts),
     [rest.field >= minimum - 1, "roomy editor minimum"],
     [eight.field > rest.field && twelve.scrolls, "draft grows then scrolls"],

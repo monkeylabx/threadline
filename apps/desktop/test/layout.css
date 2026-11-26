@@ -6,6 +6,6 @@
 
 html:has([data-layout-text-scale="true"]) { font-size: 200%; }
 
-/* Mutation proves the composer geometry checks reject the previous defect. */
-[data-layout-composer-legacy="true"] .tl-composer textarea { resize: vertical; min-height: 63px; max-height: 63px; }
-[data-layout-composer-legacy="true"] .tl-composer-toolbar { padding: var(--tl-space-sm) var(--tl-space-md); }
+/* Mutation proves the fixture rejects a top divider without the enclosing input frame. */
+[data-layout-composer-legacy="true"] .tl-composer { padding-inline: 0; }
+[data-layout-composer-legacy="true"] .tl-composer form { border-width: 1px 0 0; border-radius: 0; }

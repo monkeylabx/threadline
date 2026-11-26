@@ -1,8 +1,8 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Composer } from "../src/shell/Composer.tsx";
 
-// jsdom has no layout: model the content height as 13px insets plus one 17px row per line.
+// jsdom has no layout: stub content height independently of the CSS layout clamp.
 const scrollHeight = Object.getOwnPropertyDescriptor(Element.prototype, "scrollHeight");
 beforeEach(() => {
   Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", {
@@ -21,15 +21,21 @@ function renderComposer(onSend = vi.fn()) {
   return screen.getByRole<HTMLTextAreaElement>("textbox", { name: "发消息到 产品研发 频道" });
 }
 
-test("rests at one line and labels the toolbar with the keyboard hint", () => {
+test("places the unavailable tools above the draft and sends below it", () => {
   const field = renderComposer();
   expect(field.rows).toBe(1);
   expect(field.style.height).toBe("43px");
+  const toolbar = screen.getByRole("toolbar", { name: "消息工具" });
+  const tools = within(toolbar).getAllByRole<HTMLButtonElement>("button");
+  const send = screen.getByRole("button", { name: "发送" });
+  expect(tools).toHaveLength(6);
+  expect(tools.every((tool) => tool.disabled && tool.type === "button")).toBe(true);
+  expect(toolbar.nextElementSibling).toBe(field);
+  expect(field.nextElementSibling?.contains(send)).toBe(true);
   expect(screen.getByText("Enter 发送 · Shift+Enter 换行")).toBeTruthy();
-  expect(screen.queryByText("消息")).toBeNull();
 });
 
-test("grows with the draft and returns to one line after sending", () => {
+test("fits the draft and clears it after sending", () => {
   const onSend = vi.fn();
   const field = renderComposer(onSend);
   fireEvent.change(field, { target: { value: "第一行\n第二行\n第三行" } });

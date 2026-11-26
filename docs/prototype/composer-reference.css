@@ -1,4 +1,4 @@
-/* Draft #430: reference-led toolbar/editor/actions layout, prototype only. */
+/* V34 composer layout. The Desktop consumer mirrors these shared geometry roles. */
 .v34-two-pane .v14-message-composer.v35-reference-composer {
   display: grid;
   grid-template-rows: auto auto auto;
@@ -55,4 +55,14 @@
   outline: 0;
   border-color: var(--tl-color-focus-ring);
   box-shadow: 0 0 0 1px var(--tl-color-focus-ring);
+}
+
+/* Match the Desktop composer in short windows. */
+@media (max-height: 700px) {
+  .v34-two-pane .v14-message-composer.v35-reference-composer { padding-bottom: var(--tl-space-sm); }
+  .v35-reference-composer .v35-composer-tools { padding-block: var(--tl-space-md) var(--tl-space-sm); }
+  .v34-two-pane .v35-reference-composer textarea { min-height: min(calc(var(--tl-space-4xl) * 2), 14vh); max-height: min(var(--tl-space-composer-field-max), 18vh); }
+  .v35-reference-composer .v35-composer-tools button { flex-basis: min(var(--tl-space-3xl), 32px); height: min(var(--tl-space-3xl), 32px); }
+  .v34-two-pane .v35-reference-composer footer { min-height: 0; padding-top: var(--tl-space-sm); }
+  .v34-two-pane .v35-reference-composer footer .focus-send { height: min(var(--tl-space-3xl), 40px); }
 }

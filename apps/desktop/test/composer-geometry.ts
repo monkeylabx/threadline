@@ -4,61 +4,70 @@ function textScale() {
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
 }
 
-function scaledNear(scale = textScale()) {
-  return (actual: number, expected: number) => Math.abs(actual - expected * scale) < 0.75;
+function frameChecks(form: HTMLElement, panel: HTMLElement): readonly Check[] {
+  const scale = textScale();
+  const box = form.getBoundingClientRect();
+  const parent = panel.getBoundingClientRect();
+  const style = getComputedStyle(form);
+  return [
+    [Math.abs(box.left - parent.left - 20 * scale) < 1 && Math.abs(parent.right - box.right - 20 * scale) < 1, "composer needs 20px side insets"],
+    [Math.abs(parent.bottom - box.bottom - 20 * scale) < 1, "composer needs a 20px bottom inset"],
+    [Math.abs(Number.parseFloat(style.borderRadius) - 12 * scale) < 1, "composer needs 12px rounded corners"],
+    [style.borderWidth === "1px" && style.borderStyle === "solid", "composer needs a complete outline"],
+  ];
 }
 
-/** Read-only checks of the real Composer and its stylesheet against the V34 contract. */
+function contentChecks(form: HTMLElement, field: HTMLTextAreaElement): readonly Check[] {
+  const toolbar = form.querySelector(".tl-composer-toolbar")?.getBoundingClientRect();
+  const actions = form.querySelector(".tl-composer-actions")?.getBoundingClientRect();
+  const send = form.querySelector(".tl-send")?.getBoundingClientRect();
+  if (!toolbar || !actions || !send) return [[false, "composer rows are missing"]];
+  const editor = field.getBoundingClientRect();
+  const scale = textScale();
+  return [
+    [toolbar.height > 0 && toolbar.bottom <= editor.top + 1, "toolbar must precede the editor"],
+    [editor.bottom <= actions.top + 1, "actions must follow the editor"],
+    [Math.abs(actions.right - send.right) < 1, "send must align with the right edge of the actions"],
+    [editor.height >= Math.min(96 * scale, innerHeight * (innerHeight <= 700 ? 0.14 : 0.18)) - 1, "editor needs its viewport-bounded resting space"],
+    [getComputedStyle(field).resize === "none", "editor must hide the native resize handle"],
+  ];
+}
+
+/** Measures the real form and editor in the browser, including its viewport-relative geometry. */
 export function composerGeometryChecks(): readonly Check[] {
   const form = document.querySelector<HTMLElement>(".tl-composer form");
-  if (!form) return [[false, "composer fixture is not ready"]];
-  const field = form.querySelector<HTMLTextAreaElement>("textarea");
-  const toolbar = form.querySelector<HTMLElement>(".tl-composer-toolbar");
-  const send = form.querySelector<HTMLButtonElement>(".tl-send");
-  const tool = form.querySelector<HTMLButtonElement>('[aria-label="添加附件"]');
+  const field = form?.querySelector("textarea");
   const panel = document.querySelector<HTMLElement>(".tl-workspace");
-  if (!field || !toolbar || !send || !tool || !panel) return [[false, "composer fixture is not ready"]];
-  const near = scaledNear();
-  const box = form.getBoundingClientRect(), parent = panel.getBoundingClientRect();
-  const input = getComputedStyle(field), action = getComputedStyle(send);
-  return [
-    [input.resize === "none", "composer must not expose a native resize handle"],
-    [near(box.height, 78), "composer must rest at the 78px one-line height"],
-    [near(field.getBoundingClientRect().height, 43), "composer field must rest at one scalable line"],
-    [near(toolbar.getBoundingClientRect().height, 32), "composer toolbar must match 32px"],
-    [near(Number.parseFloat(input.paddingLeft), 13), "composer field padding must match 13px"],
-    [near(box.left - parent.left, 20) && near(parent.right - box.right, 20), "composer side insets must match 20px"],
-    [near(parent.bottom - box.bottom, 20), "composer bottom inset must match 20px"],
-    [near(send.getBoundingClientRect().width, 26) && near(send.getBoundingClientRect().height, 26), "send control must match 26px"],
-    [near(tool.getBoundingClientRect().width, 26) && near(tool.getBoundingClientRect().height, 26), "tool control must match 26px"],
-    [near(Number.parseFloat(action.borderRadius), 9), "send control radius must match 9px"],
-    [near(Number.parseFloat(getComputedStyle(tool).borderRadius), 5), "tool control radius must match 5px"],
-    [near(Number.parseFloat(getComputedStyle(toolbar).fontSize), 12), "toolbar must preserve the shared 12px caption minimum"],
-  ];
+  if (!form || !field || !panel) return [[false, "composer fixture is not ready"]];
+  return [...frameChecks(form, panel), ...contentChecks(form, field)];
 }
 
 const setFieldValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
 
 /** Types lines into the real Composer the way React observes input, then measures after layout. */
-async function typeLines(form: HTMLElement, field: HTMLTextAreaElement, lines: number) {
+async function typeLines(field: HTMLTextAreaElement, lines: number) {
   setFieldValue?.call(field, Array.from({ length: lines }, (_, index) => `第 ${index + 1} 行`).join("\n"));
   field.dispatchEvent(new Event("input", { bubbles: true }));
   await new Promise((resolve) => requestAnimationFrame(resolve));
-  return { height: form.getBoundingClientRect().height, scrolls: field.scrollHeight > field.clientHeight + 1 };
+  return { height: field.getBoundingClientRect().height, scrolls: field.scrollHeight > field.clientHeight + 1 };
 }
 
-/** Drives the real Composer through eight-line growth, the scrolling cap and clearing. */
+/** Drives an editable Composer through growth, the viewport-dependent scrolling cap and clearing. */
 export async function composerGrowthChecks(): Promise<readonly Check[]> {
-  const form = document.querySelector<HTMLElement>(".tl-composer form");
-  const field = form?.querySelector<HTMLTextAreaElement>("textarea");
-  if (!form || !field) return [[false, "composer fixture is not ready"]];
-  const scale = textScale(), near = scaledNear(scale);
-  const eight = await typeLines(form, field, 8);
-  const twelve = await typeLines(form, field, 12);
-  const cleared = await typeLines(form, field, 0);
+  const field = document.querySelector<HTMLTextAreaElement>(".tl-composer textarea");
+  const send = document.querySelector<HTMLButtonElement>(".tl-composer .tl-send");
+  if (!field || !send) return [[false, "composer fixture is not ready"]];
+  if (field.disabled) return [[send.disabled, "send must be disabled when editing is unavailable"]];
+  const rest = field.getBoundingClientRect().height;
+  const eight = await typeLines(field, 8);
+  const capped = await typeLines(field, 24);
+  const historyHeight = document.querySelector(".tl-timeline")?.clientHeight ?? 0;
+  const cleared = await typeLines(field, 0);
+  const cap = Math.min(162 * textScale(), innerHeight * (innerHeight <= 700 ? 0.18 : 0.24));
   return [
-    [!eight.scrolls && !near(eight.height, 78) && eight.height <= 197 * scale + 0.75, "composer field must grow to eight lines without scrolling"],
-    [near(twelve.height, 197) && twelve.scrolls, "composer field must stop at the 197px cap and scroll"],
-    [near(cleared.height, 78), "composer must return to its resting height when cleared"],
+    [eight.height > rest + 1 && eight.height <= cap + 1, "editor must grow within the viewport-dependent cap"],
+    [Math.abs(capped.height - cap) < 1 && capped.scrolls, "editor must stop growing and scroll at the cap"],
+    [historyHeight >= 96, "timeline must remain visible with a full draft"],
+    [Math.abs(cleared.height - rest) < 1 && !cleared.scrolls, "clearing must restore the resting height"],
   ];
 }
