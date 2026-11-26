@@ -36,6 +36,21 @@ function viewportChecks(shell: HTMLElement, composer: HTMLElement): readonly Che
     [document.documentElement.scrollHeight <= height + 1, "document must not scroll"],
   ];
 }
+function paneChecks(): readonly Check[] {
+  const sidebar = document.querySelector(".tl-sidebar");
+  const chat = document.querySelector(".tl-workspace");
+  const handle = document.querySelector(".tl-sidebar-resizer");
+  if (!sidebar || !chat || !handle) return [[false, "conversation panes are missing"]];
+  const left = sidebar.getBoundingClientRect(), right = chat.getBoundingClientRect();
+  const sidebarStyle = getComputedStyle(sidebar), chatStyle = getComputedStyle(chat);
+  return [
+    [Math.abs(left.right - right.left) < 0.5, "sidebar and chat must share an edge"],
+    [sidebarStyle.borderTopRightRadius === "0px" && sidebarStyle.borderBottomRightRadius === "0px", "sidebar joining corners must be square"],
+    [chatStyle.borderTopLeftRadius === "0px" && chatStyle.borderBottomLeftRadius === "0px", "chat joining corners must be square"],
+    [document.elementFromPoint(right.left, (right.top + right.bottom) / 2) === handle, "sidebar resize handle must be reachable at the shared edge"],
+  ];
+}
+
 function canScroll(timeline: HTMLElement) {
   const allowed = ["auto", "scroll"].includes(getComputedStyle(timeline).overflowY);
   const previous = timeline.scrollTop;
@@ -74,7 +89,7 @@ async function checkLayout() {
   const timeline = document.querySelector<HTMLElement>(".tl-timeline");
   const composer = document.querySelector<HTMLElement>(".tl-composer");
   if (!shell || !timeline || !composer) return "FAIL fixture is not ready";
-  const checks = [...viewportChecks(shell, composer), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
+  const checks = [...viewportChecks(shell, composer), ...paneChecks(), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
   if (scenario === "offline") {
     const banner = document.querySelector<HTMLElement>(".tl-banner");
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);

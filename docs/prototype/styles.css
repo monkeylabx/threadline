@@ -1453,7 +1453,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v14-global-search-wrap { grid-column: 2; width: min(480px,100%); }
 .v34-two-pane .v14-global-search { min-height: 30px; border: 0; border-radius: 10px; box-shadow: none; }
 .v34-two-pane .v14-global-search input { font-size: 12px; }
-.v34-two-pane .v14-context-sidebar { grid-column: 1; grid-row: 2; position: relative; display: flex; flex-direction: column; margin: 0 8px 8px; padding: 0; border-radius: 12px; background: var(--v34-navigation); border: 0; container: none; }
+.v34-two-pane .v14-context-sidebar { grid-column: 1; grid-row: 2; position: relative; display: flex; flex-direction: column; margin: 0 0 8px 8px; padding: 0; border-radius: 12px 0 0 12px; background: var(--v34-navigation); border: 0; container: none; }
 .v34-two-pane .v14-context-sidebar > .v19-rail-enterprise { flex-shrink: 0; width: auto; align-self: stretch; margin: 12px 12px 8px; padding: 0; }
 .v34-two-pane .v19-rail-enterprise > .v18-enterprise { display: flex; justify-content: flex-start; gap: 8px; width: 100%; min-height: 44px; height: auto; padding: 8px; border-radius: 12px; }
 .v34-two-pane .v18-enterprise-logo { width: 29px; height: 29px; border-radius: 10px; font-size: 12px; background: var(--v34-control); color: var(--v34-navigation-accent); }
@@ -1487,7 +1487,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v34-profile-name small { color: var(--muted); font-size: 10px; }
 .v34-two-pane .v18-profile-button > i { position: static; width: 6px; height: 6px; margin-left: auto; border: 0; }
 .v34-two-pane .v18-profile-menu { left: 0; bottom: 52px; width: 215px; }
-.v34-two-pane .v14-content-area { grid-column: 2; grid-row: 2; margin: 0 8px 8px 0; overflow: hidden; border-radius: 12px; background: white; }
+.v34-two-pane .v14-content-area { grid-column: 2; grid-row: 2; margin: 0 8px 8px 0; overflow: hidden; border-radius: 0 12px 12px 0; background: white; }
 .v34-two-pane .v14-content-view > header { min-width: 0; padding-inline: 24px; border: 0; }
 .v34-two-pane .v14-content-view > header strong { font-size: 14px; font-weight: 600; }
 .v34-two-pane .v14-content-view > header small { font-size: 10px; }
@@ -1536,6 +1536,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-sidebar-note { padding: 0 19px; }
 .v34-two-pane.is-sidebar-hidden { grid-template-columns: 0 minmax(0,1fr); }
 .v34-two-pane.is-sidebar-hidden .v14-context-sidebar { visibility: hidden; }
+.v34-two-pane.is-sidebar-hidden .v14-content-area { border-radius: 12px; }
 .v34-two-pane.is-sidebar-hidden .v18-list-toggle svg { transform: rotate(180deg); }
 .v34-detail-sheet { position: fixed; inset: 10px 10px 10px auto; width: min(420px,calc(100vw - 20px)); height: calc(100dvh - 20px); max-height: none; max-width: none; margin: 0; padding: 0; border: 1px solid #e3e8e5; border-radius: 12px; color: var(--ink); background: white; box-shadow: -12px 0 50px #172c2320; }
 .v34-detail-sheet::backdrop { background: #1e322320; }

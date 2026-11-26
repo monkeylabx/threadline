@@ -59,6 +59,18 @@ function referenceChecks(parts) {
     [doc.defaultView.getComputedStyle(field).resize === "none", "no native resize grip"],
   ];
 }
+function paneChecks(doc) {
+  const sidebar = doc.querySelector(".v34-two-pane .v14-context-sidebar");
+  const chat = doc.querySelector(".v34-two-pane .v14-content-area");
+  if (!sidebar || !chat) return [[false, "conversation panes are missing"]];
+  const left = doc.defaultView.getComputedStyle(sidebar);
+  const right = doc.defaultView.getComputedStyle(chat);
+  return [
+    [Math.abs(sidebar.getBoundingClientRect().right - chat.getBoundingClientRect().left) < 0.5, "sidebar and chat share an edge"],
+    [left.borderTopRightRadius === "0px" && left.borderBottomRightRadius === "0px", "sidebar joining corners are square"],
+    [right.borderTopLeftRadius === "0px" && right.borderBottomLeftRadius === "0px", "chat joining corners are square"],
+  ];
+}
 function checkComposer() {
   const parts = readParts(frame.contentDocument);
   if (!parts) return void (output.textContent = "FAIL composer not ready");
@@ -68,7 +80,7 @@ function checkComposer() {
   const factor = Number(scale.value) / 100;
   const height = doc.defaultView.innerHeight;
   const minimum = Math.min(96 * factor, height * (height <= 700 ? .14 : .18));
-  const checks = [...referenceChecks(parts),
+  const checks = [...referenceChecks(parts), ...paneChecks(doc),
     [rest.field >= minimum - 1, "roomy editor minimum"],
     [eight.field > rest.field && twelve.scrolls, "draft grows then scrolls"],
     [Math.abs(cleared.total - rest.total) < 1, "clearing restores editor"],
