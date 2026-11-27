@@ -1454,7 +1454,7 @@ body.is-im-agent-prototype .screen-channel.is-visible { grid-template-columns: m
 .v34-two-pane .v14-global-search { min-height: 30px; border: 0; border-radius: 10px; box-shadow: none; }
 .v34-two-pane .v14-global-search input { font-size: 12px; }
 .v34-two-pane .v14-context-sidebar { grid-column: 1; grid-row: 2; position: relative; display: flex; flex-direction: column; margin: 0 0 8px 8px; padding: 0; border-radius: 12px var(--tl-radius-lg) var(--tl-radius-lg) 12px; background: var(--v34-navigation); border: 0; container: none; }
-.v34-two-pane .v14-context-sidebar > .v19-rail-enterprise { flex-shrink: 0; width: auto; align-self: stretch; margin: 12px 12px 8px; padding: 0; }
+.v34-two-pane .v14-context-sidebar > .v19-rail-enterprise { flex-shrink: 0; width: auto; align-self: stretch; margin: 12px 12px var(--tl-space-xl); padding: 0; }
 .v34-two-pane .v19-rail-enterprise > .v18-enterprise { display: flex; justify-content: flex-start; gap: 8px; width: 100%; min-height: 44px; height: auto; padding: 8px; border-radius: 12px; }
 .v34-two-pane .v18-enterprise-logo { width: 29px; height: 29px; border-radius: 10px; font-size: 12px; background: var(--v34-control); color: var(--v34-navigation-accent); }
 .v34-two-pane .v18-enterprise strong { flex: 1; min-width: 0; text-align: left; overflow-wrap: anywhere; font-size: 13px; color: inherit; }

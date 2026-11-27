@@ -59,6 +59,13 @@ function referenceChecks(parts) {
     [doc.defaultView.getComputedStyle(field).resize === "none", "no native resize grip"],
   ];
 }
+function sidebarHeaderGap(doc) {
+  const company = doc.querySelector(".v34-two-pane .v19-rail-enterprise > .v18-enterprise");
+  const tabs = doc.querySelector(".v34-two-pane .v14-app-rail > button");
+  if (!company || !tabs) return [false, "sidebar navigation is missing"];
+  const gap = tabs.getBoundingClientRect().top - company.getBoundingClientRect().bottom;
+  return [Math.abs(gap - parseFloat(doc.defaultView.getComputedStyle(doc.documentElement).fontSize)) < 1, "company and app tabs are one rem apart"];
+}
 function paneChecks(doc) {
   const sidebar = doc.querySelector(".v34-two-pane .v14-context-sidebar");
   const chat = doc.querySelector(".v34-two-pane .v14-content-area");
@@ -80,7 +87,7 @@ function checkComposer() {
   const factor = Number(scale.value) / 100;
   const height = doc.defaultView.innerHeight;
   const minimum = Math.min(96 * factor, height * (height <= 700 ? .14 : .18));
-  const checks = [...referenceChecks(parts), ...paneChecks(doc),
+  const checks = [...referenceChecks(parts), ...paneChecks(doc), sidebarHeaderGap(doc),
     [rest.field >= minimum - 1, "roomy editor minimum"],
     [eight.field > rest.field && twelve.scrolls, "draft grows then scrolls"],
     [Math.abs(cleared.total - rest.total) < 1, "clearing restores editor"],

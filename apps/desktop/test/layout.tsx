@@ -36,6 +36,14 @@ function viewportChecks(shell: HTMLElement, composer: HTMLElement): readonly Che
     [document.documentElement.scrollHeight <= height + 1, "document must not scroll"],
   ];
 }
+function sidebarHeaderGap(): Check {
+  const company = document.querySelector(".tl-sidebar-head");
+  const tabs = document.querySelector(".tl-app-switch");
+  if (!company || !tabs) return [false, "sidebar navigation is missing"];
+  const gap = tabs.getBoundingClientRect().top - company.getBoundingClientRect().bottom;
+  return [Math.abs(gap - parseFloat(getComputedStyle(document.documentElement).fontSize)) < 1, "company and app tabs must be one rem apart"];
+}
+
 function paneChecks(): readonly Check[] {
   const sidebar = document.querySelector(".tl-sidebar");
   const chat = document.querySelector(".tl-workspace");
@@ -89,7 +97,7 @@ async function checkLayout() {
   const timeline = document.querySelector<HTMLElement>(".tl-timeline");
   const composer = document.querySelector<HTMLElement>(".tl-composer");
   if (!shell || !timeline || !composer) return "FAIL fixture is not ready";
-  const checks = [...viewportChecks(shell, composer), ...paneChecks(), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
+  const checks = [...viewportChecks(shell, composer), ...paneChecks(), sidebarHeaderGap(), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
   if (scenario === "offline") {
     const banner = document.querySelector<HTMLElement>(".tl-banner");
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);
