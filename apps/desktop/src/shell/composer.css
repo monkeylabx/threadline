@@ -1,0 +1,100 @@
+/* Dimensions mirror the V34 HTML composer and resolve through shared tokens. */
+.tl-composer {
+  grid-area: composer;
+  min-width: 0;
+  padding: 0 var(--tl-space-composer-outer-inset) var(--tl-space-composer-outer-inset);
+}
+
+.tl-composer form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 0 var(--tl-space-composer-outer-inset) var(--tl-space-lg);
+  border: 1px solid var(--tl-color-border-strong);
+  border-radius: var(--tl-radius-xl);
+  background: var(--tl-color-surface);
+}
+
+.tl-composer form:focus-within {
+  border-color: var(--tl-color-focus-ring);
+  box-shadow: 0 0 0 1px var(--tl-color-focus-ring);
+}
+
+.tl-composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--tl-space-lg);
+  overflow-x: auto;
+  padding: var(--tl-space-lg) 0 var(--tl-space-md);
+}
+
+.tl-composer-toolbar > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 min(var(--tl-space-3xl), 40px);
+  height: min(var(--tl-space-3xl), 40px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--tl-radius-composer-tool);
+}
+
+.tl-composer-toolbar > button svg {
+  width: min(var(--tl-space-composer-outer-inset), 24px);
+  height: min(var(--tl-space-composer-outer-inset), 24px);
+}
+
+.tl-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: min(calc(var(--tl-space-4xl) * 2), 18vh);
+  max-height: min(var(--tl-space-composer-field-max), 24vh);
+  overflow-y: auto;
+  margin: 0;
+  resize: none;
+  padding: var(--tl-space-md) 0;
+  border: 0;
+  background: transparent;
+  color: var(--tl-color-text-primary);
+  font-size: var(--tl-font-body-compact-size);
+  line-height: var(--tl-font-body-compact-line);
+}
+
+.tl-composer textarea:focus-visible { outline: 0; }
+
+.tl-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: calc(var(--tl-space-3xl) + var(--tl-space-md));
+  gap: var(--tl-space-lg);
+  padding-top: var(--tl-space-md);
+  color: var(--tl-color-text-muted);
+  font-size: var(--tl-font-caption-size);
+  line-height: var(--tl-font-caption-line);
+}
+
+.tl-composer-hint {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tl-send {
+  flex-shrink: 0;
+  min-width: calc(var(--tl-space-4xl) + var(--tl-space-xl));
+  height: var(--tl-space-3xl);
+  padding: 0 var(--tl-space-lg);
+  border: 0;
+  border-radius: var(--tl-radius-composer-send);
+}
+
+/* Short windows also need space for the conversation and its connection banner. */
+@media (max-height: 700px) {
+  .tl-composer form { padding-bottom: var(--tl-space-sm); }
+  .tl-composer-toolbar { padding-block: var(--tl-space-md) var(--tl-space-sm); }
+  .tl-composer textarea { min-height: min(calc(var(--tl-space-4xl) * 2), 14vh); max-height: min(var(--tl-space-composer-field-max), 18vh); }
+  .tl-composer-toolbar > button { flex-basis: min(var(--tl-space-3xl), 32px); height: min(var(--tl-space-3xl), 32px); }
+  .tl-composer-actions { min-height: 0; padding-top: var(--tl-space-sm); }
+  .tl-send { height: min(var(--tl-space-3xl), 40px); }
+}

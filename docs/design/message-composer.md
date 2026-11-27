@@ -1,54 +1,34 @@
 # Message composer presentation contract
 
-The accepted V34 composer is the reference for this component. Authoritative
-portable values live in packages/design-tokens/src/tokens.json. The fixed
-TypeScript, Swift, Kotlin and CSS adapters publish the same roles; product pages
-consume these roles instead of adding near-duplicate dimensions or state colors.
+The desktop V34 channel in [the HTML prototype](../prototype/index.html) is the
+visual reference. Inside one inset frame, the tool row precedes the textarea.
+The muted keyboard hint and send action share a bottom row. Layout uses
+existing spacing, type, radius and semantic color roles published by the
+TypeScript and CSS token adapters.
 
-| Role | At16px root | Use |
-| --- | --- | --- |
-| space.composerOuterInset |20px| Side and bottom breathing room |
-| space.composerInputInset |13px| Textarea padding |
-| space.composerFieldMin | 43px | Resting input height: one caption line, scalable |
-| space.composerFieldMax | 162px | Largest input height: eight caption lines, then scroll |
-| space.composerFieldGap |3px| Explicit gap between field and toolbar |
-| space.composerToolbarInset |10px| Horizontal toolbar padding |
-| space.composerControl |26px| Attachment and send control box |
-| space.composerIconWidth / composerIconHeight |13px /18px| Reference icon geometry |
-| radius.composerTool / composerSend |5px /9px| Tool and send control corners |
+| Element | Geometry at a 16px root |
+| --- | --- |
+| Frame | 20px side and bottom insets, 20px horizontal inner padding, 12px corners, 1px border |
+| Top tool row | 32px square controls, 5px corners, 20px glyphs and 12px gaps |
+| Textarea | Body-compact type, 8px vertical padding, no native resize handle |
+| Editor height | At least the smaller of 96px and 18vh, at most the smaller of 162px and 24vh |
+| Bottom actions | 12px caption, 32px send height, 64px minimum width, 9px send corners |
 
-The gap replaces the prototype's accidental inline-textarea baseline gap.
-Both consumers use an explicit grid, block textarea and the shared gap. With
-the existing 6px bottom padding and 26px controls, the toolbar is 32px. The
-field is content-driven: it rests at one caption line (2 × 13px inset + 16.8px
-line, rounded up to 43px), grows with the draft line by line, and starts to
-scroll only after eight full lines (162px). The composer therefore totals 78px
-at rest and at most 197px at a 16px root, doubling at 200% text. Dimensions are
-rem, so these bounds scale with text size. The textarea has no native resize
-handle. Input and toolbar use the existing caption role12px and
-its line height. The old prototype10px toolbar is migration inventory, below the
-already-reviewed12px schema minimum; that minimum must not be relaxed.
-The toolbar's text slot carries the muted keyboard hint
-"Enter 发送 · Shift+Enter 换行" and truncates with an ellipsis; it is not a control.
+Spacing and radii follow the root text size. Tool controls and glyphs cap at
+40px and 24px to leave space for the editor at 200%. In windows up to 700px
+high, tighter vertical padding, tool/send heights capped at 32px/40px and
+14vh/18vh editor bounds leave room for history and the connection banner. The draft grows up to the editor height cap and scrolls within the textarea after reaching it. Clearing
+the draft restores the resting height. The timeline scrolls independently.
+The hint truncates in narrow windows.
 
-Shared CSS custom properties use kebab-case for colors, spaces, radii and type
-roles. The existing radius.full value remains pixels rather than rem. Theme
-colors and all interaction states remain governed by interaction-states.md;
-this contract changes no palette, hover/pressed/selected/disabled precedence.
+The frame uses the shared surface and border roles. Focus within the composer
+uses the shared focus ring. Tool and send states follow the
+[interaction policy](interaction-states.md). The six toolbar tools remain
+disabled until their capabilities are connected. Desktop keeps its existing
+Enter, Shift+Enter, IME, empty-draft and unavailable-send behavior.
 
-The CSS adapter is pure and deterministic; generation and byte verification
-have no product side effects. It emits role data only, no selectors for product
-layout and no events. Schema/contrast validation stays in the existing verifier.
-The legacy generator orchestrator only renames the adapter call; its size and
-control flow do not grow, so the existing#400 exception does not expand.
-
-Consumer acceptance must exercise the real Composer with the real stylesheet:
-compare the reference textarea, toolbar/control radii, insets and total geometry;
-cover100%/200% text and short/long/offline scenes. Check the resting field,
-growth to the eight-line cap and scrolling past it at both text sizes. Preserve
-Enter/Shift+Enter, IME composition, empty/disabled sends, shared focus and state feedback. No
-Repository, outbox, authorization or native-session behavior changes. A browser
-visual fixture does not establish real native network delivery.
-
-Revert consumers before reverting these additive presentation roles. No stored
-state, migration, dependency or lockfile changes are required.
+The real browser fixtures check the frame, row order, draft growth and cap,
+and independent history scrolling at 100% and 200% in regular and compact
+windows. Desktop unit tests cover the form behavior. The fixtures exercise
+rendering and input locally. Repository, outbox, authorization, native
+session and persisted data contracts are unchanged by this layout.

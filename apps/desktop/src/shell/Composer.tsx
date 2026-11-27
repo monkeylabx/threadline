@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
-import { Icon } from "./Icon.tsx";
+import { ComposerTools } from "./ComposerTools.tsx";
 
 interface ComposerProps {
   readonly channelName: string;
@@ -29,6 +29,7 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
     <div className="tl-composer">
       <form onSubmit={submit}>
         <label htmlFor="tl-composer-input" className="tl-visually-hidden">{`发消息到 ${channelName} 频道`}</label>
+        <ComposerTools />
         <textarea
           id="tl-composer-input"
           ref={field}
@@ -44,9 +45,9 @@ export function Composer({ channelName, disabled, onSend }: ComposerProps) {
             }
           }}
         />
-        <div className="tl-composer-toolbar">
-          <button type="button" disabled aria-label="添加附件" title="附件上传尚未接入"><Icon name="clip" /></button><span className="tl-composer-hint">Enter 发送 · Shift+Enter 换行</span>
-          <button type="submit" data-tl-control="primary" className="tl-send" aria-label="发送" disabled={disabled || draft.trim() === ""}><Icon name="send" /></button>
+        <div className="tl-composer-actions">
+          <span className="tl-composer-hint">Enter 发送 · Shift+Enter 换行</span>
+          <button type="submit" data-tl-control="primary" className="tl-send" disabled={disabled || draft.trim() === ""}>发送</button>
         </div>
       </form>
     </div>

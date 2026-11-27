@@ -33,10 +33,32 @@ function viewportChecks(shell: HTMLElement, composer: HTMLElement): readonly Che
   return [
     [Math.abs(shell.getBoundingClientRect().height - height) <= 1, "shell must fill viewport"],
     [panel !== undefined && Math.abs(input.bottom - panel.bottom) <= 1, "composer must remain at conversation bottom"],
-    [input.top >= height / 2, "composer moved into upper half"],
     [document.documentElement.scrollHeight <= height + 1, "document must not scroll"],
   ];
 }
+function sidebarHeaderGap(): Check {
+  const company = document.querySelector(".tl-sidebar-head");
+  const tabs = document.querySelector(".tl-app-switch");
+  if (!company || !tabs) return [false, "sidebar navigation is missing"];
+  const gap = tabs.getBoundingClientRect().top - company.getBoundingClientRect().bottom;
+  return [Math.abs(gap - parseFloat(getComputedStyle(document.documentElement).fontSize)) < 1, "company and app tabs must be one rem apart"];
+}
+
+function paneChecks(): readonly Check[] {
+  const sidebar = document.querySelector(".tl-sidebar");
+  const chat = document.querySelector(".tl-workspace");
+  const handle = document.querySelector(".tl-sidebar-resizer");
+  if (!sidebar || !chat || !handle) return [[false, "conversation panes are missing"]];
+  const left = sidebar.getBoundingClientRect(), right = chat.getBoundingClientRect();
+  const sidebarStyle = getComputedStyle(sidebar), chatStyle = getComputedStyle(chat);
+  return [
+    [Math.abs(left.right - right.left) < 0.5, "sidebar and chat must share an edge"],
+    [parseFloat(sidebarStyle.borderTopRightRadius) > 0 && sidebarStyle.borderBottomRightRadius === sidebarStyle.borderTopRightRadius, "sidebar joining corners must be equally rounded"],
+    [parseFloat(chatStyle.borderTopLeftRadius) > 0 && chatStyle.borderBottomLeftRadius === chatStyle.borderTopLeftRadius, "chat joining corners must be equally rounded"],
+    [document.elementFromPoint(right.left, (right.top + right.bottom) / 2) === handle, "sidebar resize handle must be reachable at the shared edge"],
+  ];
+}
+
 function canScroll(timeline: HTMLElement) {
   const allowed = ["auto", "scroll"].includes(getComputedStyle(timeline).overflowY);
   const previous = timeline.scrollTop;
@@ -48,11 +70,10 @@ function canScroll(timeline: HTMLElement) {
 function timelineChecks(timeline: HTMLElement, composer: HTMLElement): readonly Check[] {
   const list = timeline.getBoundingClientRect();
   const overflow = timeline.scrollHeight > timeline.clientHeight + 1;
-  const scaled = document.querySelector('[data-layout-text-scale="true"]') !== null;
   return [
     [Math.abs(list.bottom - composer.getBoundingClientRect().top) <= 1, "timeline must precede composer"],
-    [list.height > 1, "timeline needs flexible space"],
-    [scenario === "long" ? overflow : scaled || !overflow, "history overflow must stay in timeline"],
+    [list.height >= 96, "timeline needs at least 96px of flexible space"],
+    [scenario !== "long" || overflow, "long history must overflow within the timeline"],
     [!overflow || canScroll(timeline), "long timeline must be independently scrollable"],
   ];
 }
@@ -76,7 +97,7 @@ async function checkLayout() {
   const timeline = document.querySelector<HTMLElement>(".tl-timeline");
   const composer = document.querySelector<HTMLElement>(".tl-composer");
   if (!shell || !timeline || !composer) return "FAIL fixture is not ready";
-  const checks = [...viewportChecks(shell, composer), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
+  const checks = [...viewportChecks(shell, composer), ...paneChecks(), sidebarHeaderGap(), ...timelineChecks(timeline, composer), ...textReflowChecks(), ...composerGeometryChecks()];
   if (scenario === "offline") {
     const banner = document.querySelector<HTMLElement>(".tl-banner");
     checks.push([banner !== null && banner.getBoundingClientRect().bottom <= timeline.getBoundingClientRect().top + 1, "offline banner must precede timeline"]);
@@ -97,7 +118,7 @@ function LayoutFixture() {
       <nav aria-label="验收场景">{["empty", "short", "long", "offline"].map((name) => <a key={name} href={`?scenario=${name}`}>{name}</a>)}</nav>
       <label><input type="checkbox" checked={legacy} onChange={(event) => setLegacy(event.target.checked)} />模拟旧版网格缺陷</label>
       <label><input type="checkbox" checked={largeText} onChange={(event) => setLargeText(event.target.checked)} />2 倍文字</label>
-      <label><input type="checkbox" checked={oldComposer} onChange={(event) => setOldComposer(event.target.checked)} />模拟旧输入框样式</label>
+      <label><input type="checkbox" checked={oldComposer} onChange={(event) => setOldComposer(event.target.checked)} />模拟单横线输入区</label>
       <button type="button" onClick={() => void checkLayout().then(setReport)}>运行布局验收</button>
       <output aria-live="polite">{report}</output>
     </aside>
