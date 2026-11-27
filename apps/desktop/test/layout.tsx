@@ -45,8 +45,8 @@ function paneChecks(): readonly Check[] {
   const sidebarStyle = getComputedStyle(sidebar), chatStyle = getComputedStyle(chat);
   return [
     [Math.abs(left.right - right.left) < 0.5, "sidebar and chat must share an edge"],
-    [sidebarStyle.borderTopRightRadius === "0px" && sidebarStyle.borderBottomRightRadius === "0px", "sidebar joining corners must be square"],
-    [chatStyle.borderTopLeftRadius === "0px" && chatStyle.borderBottomLeftRadius === "0px", "chat joining corners must be square"],
+    [parseFloat(sidebarStyle.borderTopRightRadius) > 0 && sidebarStyle.borderBottomRightRadius === sidebarStyle.borderTopRightRadius, "sidebar joining corners must be equally rounded"],
+    [parseFloat(chatStyle.borderTopLeftRadius) > 0 && chatStyle.borderBottomLeftRadius === chatStyle.borderTopLeftRadius, "chat joining corners must be equally rounded"],
     [document.elementFromPoint(right.left, (right.top + right.bottom) / 2) === handle, "sidebar resize handle must be reachable at the shared edge"],
   ];
 }

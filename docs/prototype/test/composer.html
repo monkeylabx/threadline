@@ -67,8 +67,8 @@ function paneChecks(doc) {
   const right = doc.defaultView.getComputedStyle(chat);
   return [
     [Math.abs(sidebar.getBoundingClientRect().right - chat.getBoundingClientRect().left) < 0.5, "sidebar and chat share an edge"],
-    [left.borderTopRightRadius === "0px" && left.borderBottomRightRadius === "0px", "sidebar joining corners are square"],
-    [right.borderTopLeftRadius === "0px" && right.borderBottomLeftRadius === "0px", "chat joining corners are square"],
+    [parseFloat(left.borderTopRightRadius) > 0 && left.borderBottomRightRadius === left.borderTopRightRadius, "sidebar joining corners are equally rounded"],
+    [parseFloat(right.borderTopLeftRadius) > 0 && right.borderBottomLeftRadius === right.borderTopLeftRadius, "chat joining corners are equally rounded"],
   ];
 }
 function checkComposer() {
